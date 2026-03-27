@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# Build output
+out/
+dist/
+release/
+
+# Test coverage
+coverage/
+playwright-report/
+test-results/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temp files
+*.tmp
+tmpclaude-*-cwd
+
+# Tool config
+.ace-tool/
+.claude/
+
+# E2E screenshots
+e2e/screenshots/
+
+# pnpm store
+.pnpm-store/

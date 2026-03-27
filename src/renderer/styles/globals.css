@@ -1,0 +1,573 @@
+/* Import Token System - must be before @tailwind */
+@import './tokens/colors.css';
+@import './tokens/typography.css';
+@import './tokens/animations.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========================================
+   Base Styles - Soviet Constructivism
+   ======================================== */
+
+@layer base {
+  body {
+    @apply bg-surface-950 text-text-primary antialiased;
+    font-family: var(--font-sans);
+  }
+
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* ========================================
+   Scrollbar - Industrial Style
+   ======================================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface-800);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-600);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-500);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--surface-800);
+}
+
+/* ========================================
+   Selection & Focus
+   ======================================== */
+
+::selection {
+  background: rgba(214, 69, 69, 0.4);
+  color: var(--text-primary);
+}
+
+*:focus-visible {
+  outline: 2px solid var(--red-500);
+  outline-offset: 2px;
+}
+
+/* ========================================
+   Utility Classes
+   ======================================== */
+
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Diagonal Stripe Background */
+.deco-diagonal {
+  background: var(--diagonal-stripe);
+}
+
+/* Corner Decoration */
+.deco-corner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 24px;
+  height: 24px;
+  border-left: 3px solid var(--red-500);
+  border-top: 3px solid var(--red-500);
+}
+
+.deco-corner-br::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 24px;
+  height: 24px;
+  border-right: 3px solid var(--red-500);
+  border-bottom: 3px solid var(--red-500);
+}
+
+/* ========================================
+   Button Components - Constructivist
+   ======================================== */
+
+.btn-primary {
+  @apply relative overflow-hidden bg-accent text-white px-5 py-2.5 font-semibold;
+  @apply transition-all duration-200;
+  @apply hover:bg-accent-400;
+  @apply active:bg-accent-600;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  border-radius: 2px;
+  border-left: 3px solid var(--gold-500);
+}
+
+.btn-primary:hover {
+  transform: translateX(2px);
+}
+
+.btn-primary:active {
+  transform: translateX(0);
+}
+
+.btn-secondary {
+  @apply bg-transparent border border-surface-600 text-text-secondary px-5 py-2.5 font-semibold;
+  @apply transition-all duration-200;
+  @apply hover:bg-surface-700 hover:border-surface-500 hover:text-text-primary;
+  border-radius: 2px;
+}
+
+.btn-ghost {
+  @apply text-text-tertiary px-4 py-2.5;
+  @apply transition-all duration-200;
+  @apply hover:bg-surface-800 hover:text-text-primary;
+  border-radius: 2px;
+}
+
+.btn-icon {
+  @apply w-8 h-8 flex items-center justify-center;
+  @apply text-text-secondary;
+  @apply transition-all duration-200;
+  @apply hover:bg-surface-700 hover:text-text-primary;
+  border-radius: 2px;
+}
+
+.btn-icon:hover {
+  transform: scale(1.1);
+}
+
+.btn-icon:active {
+  transform: scale(0.95);
+}
+
+.btn-icon-sm {
+  @apply w-7 h-7 flex items-center justify-center;
+  @apply text-text-secondary;
+  @apply transition-all duration-200;
+  @apply hover:bg-surface-700 hover:text-text-primary;
+  border-radius: 2px;
+}
+
+.btn-danger {
+  @apply bg-transparent text-error border border-error/50 px-4 py-2 font-semibold;
+  @apply transition-all duration-200;
+  @apply hover:bg-error hover:text-white hover:border-error;
+  border-radius: 2px;
+}
+
+.btn-success {
+  @apply bg-transparent text-success border border-success/50 px-4 py-2 font-semibold;
+  @apply transition-all duration-200;
+  @apply hover:bg-success hover:text-white hover:border-success;
+  border-radius: 2px;
+}
+
+/* ========================================
+   Card Components - Industrial
+   ======================================== */
+
+.card {
+  @apply bg-surface-800 border border-surface-700;
+  @apply transition-all duration-200;
+  border-radius: 4px;
+  border-left: 3px solid transparent;
+}
+
+.card:hover {
+  @apply border-surface-600;
+  border-left-color: var(--gold-500);
+}
+
+.card-active {
+  border-left-color: var(--red-500) !important;
+  @apply bg-surface-750;
+}
+
+.card-running {
+  border-left-color: var(--success) !important;
+}
+
+.card-error {
+  border-left-color: var(--error) !important;
+}
+
+/* Monitor Card */
+.monitor-card {
+  @apply relative bg-surface-800 border border-surface-700 p-4;
+  @apply transition-all duration-200;
+  border-radius: 4px;
+  border-left: 3px solid transparent;
+}
+
+.monitor-card:hover {
+  @apply bg-surface-750 border-surface-600;
+  border-left-color: var(--gold-500);
+}
+
+.monitor-card-selected {
+  border-left-color: var(--red-500) !important;
+  @apply bg-surface-750;
+}
+
+/* ========================================
+   Status Badges - Trapezoid Style
+   ======================================== */
+
+.status-badge {
+  @apply inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold;
+  @apply transition-all duration-200;
+  clip-path: polygon(0 0, 100% 0, 95% 100%, 0 100%);
+}
+
+.status-badge-running {
+  @apply bg-success/20 text-success;
+}
+
+.status-badge-idle {
+  @apply bg-surface-700 text-text-muted;
+}
+
+.status-badge-error {
+  @apply bg-error/20 text-error;
+}
+
+/* Status Dot */
+.status-dot {
+  @apply w-2.5 h-2.5 rounded-full;
+}
+
+.status-dot-running {
+  @apply bg-success;
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
+.status-dot-idle {
+  @apply bg-surface-500;
+}
+
+.status-dot-error {
+  @apply bg-error;
+}
+
+/* ========================================
+   Input Components - Underline Style
+   ======================================== */
+
+.input {
+  @apply bg-surface-900 border-0 border-b-2 border-b-surface-600 px-4 py-2.5;
+  @apply text-text-primary placeholder:text-text-muted;
+  @apply transition-all duration-200;
+  @apply focus:border-b-accent focus:outline-none;
+  border-radius: 2px 2px 0 0;
+}
+
+.input:focus {
+  @apply bg-surface-850;
+}
+
+.input-sm {
+  @apply bg-surface-900 border-0 border-b-2 border-b-surface-600 px-3 py-2;
+  @apply text-sm text-text-primary placeholder:text-text-muted;
+  @apply transition-all duration-200;
+  @apply focus:border-b-accent focus:outline-none;
+  border-radius: 2px 2px 0 0;
+}
+
+/* ========================================
+   Tag Components
+   ======================================== */
+
+.tag {
+  @apply inline-flex items-center px-2.5 py-1 text-xs font-medium;
+  @apply transition-all duration-150;
+  border-radius: 2px;
+}
+
+.tag-default {
+  @apply bg-surface-700 text-text-secondary;
+  @apply hover:bg-surface-600;
+}
+
+.tag-accent {
+  @apply bg-accent/20 text-accent-300 border border-accent/30;
+}
+
+.tag-gold {
+  @apply bg-gold/20 text-gold-400 border border-gold/30;
+}
+
+/* ========================================
+   Checkbox Styling
+   ======================================== */
+
+input[type="checkbox"] {
+  @apply appearance-none w-5 h-5 border-2 border-surface-500 bg-surface-800;
+  @apply checked:bg-accent checked:border-accent;
+  @apply focus:ring-2 focus:ring-accent/30 focus:ring-offset-0;
+  @apply cursor-pointer relative transition-all duration-150;
+  border-radius: 2px;
+}
+
+input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+input[type="checkbox"]:hover {
+  @apply border-surface-400;
+}
+
+input[type="checkbox"]:checked:hover {
+  @apply bg-accent-400 border-accent-400;
+}
+
+/* ========================================
+   Select Styling
+   ======================================== */
+
+select {
+  @apply bg-surface-900 border-0 border-b-2 border-b-surface-600 px-4 py-2.5 pr-10;
+  @apply text-text-primary cursor-pointer;
+  @apply transition-all duration-200;
+  @apply focus:border-b-accent focus:outline-none;
+  border-radius: 2px 2px 0 0;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%238a8279' stroke-linecap='square' stroke-linejoin='miter' stroke-width='2' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.75rem center;
+  background-repeat: no-repeat;
+  background-size: 1.25rem;
+  appearance: none;
+}
+
+select option {
+  @apply bg-surface-900 text-text-primary py-2;
+}
+
+/* ========================================
+   Log Styles
+   ======================================== */
+
+.log-line {
+  @apply flex items-start py-0.5 px-4;
+  @apply hover:bg-surface-850;
+}
+
+.log-timestamp {
+  @apply w-16 flex-shrink-0 text-right pr-3 text-text-muted font-mono text-caption;
+  border-right: 2px solid var(--surface-700);
+}
+
+.log-stdout {
+  @apply text-text-secondary;
+}
+
+.log-stderr {
+  @apply text-error font-medium;
+}
+
+.log-system {
+  @apply text-steel-400 italic text-center w-full;
+}
+
+/* ========================================
+   Hero Number Display
+   ======================================== */
+
+.hero-number {
+  @apply flex flex-col items-center justify-center p-4;
+  border-bottom: 2px solid var(--surface-600);
+}
+
+.hero-number-value {
+  font-family: var(--font-display);
+  font-size: 48px;
+  line-height: 56px;
+  @apply text-text-primary;
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-number-label {
+  @apply text-xs text-text-muted uppercase tracking-wider mt-1;
+}
+
+.hero-number-accent {
+  border-bottom-color: var(--gold-500);
+}
+
+.hero-number-success {
+  border-bottom-color: var(--success);
+}
+
+.hero-number-error {
+  border-bottom-color: var(--error);
+}
+
+/* ========================================
+   Dialog / Modal
+   ======================================== */
+
+.backdrop {
+  @apply fixed inset-0 bg-black/70;
+  @apply flex items-center justify-center z-50;
+}
+
+.dialog {
+  @apply bg-surface-900 border border-surface-700 shadow-elevated;
+  @apply max-h-[85vh] overflow-hidden;
+  border-radius: 4px;
+}
+
+/* ========================================
+   Dividers
+   ======================================== */
+
+.divider {
+  @apply border-t border-surface-700;
+}
+
+.divider-vertical {
+  @apply border-l border-surface-700;
+}
+
+.divider-accent {
+  @apply border-t-2 border-accent;
+}
+
+/* Diagonal Divider */
+.divider-diagonal {
+  height: 2px;
+  background: linear-gradient(
+    -12deg,
+    transparent 45%,
+    var(--surface-600) 45%,
+    var(--surface-600) 55%,
+    transparent 55%
+  );
+}
+
+/* ========================================
+   Section Headers
+   ======================================== */
+
+.section-header {
+  @apply flex items-center gap-2 px-4 text-xs font-bold text-text-muted uppercase tracking-wider;
+}
+
+.section-header-bar {
+  @apply relative pl-4;
+}
+
+.section-header-bar::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 16px;
+  background: var(--red-500);
+}
+
+/* ========================================
+   Nav Items
+   ======================================== */
+
+.nav-item {
+  @apply relative w-full px-4 py-2.5 text-left flex items-center gap-3 text-sm;
+  @apply transition-all duration-200;
+  @apply text-text-tertiary hover:bg-surface-800 hover:text-text-secondary;
+  border-radius: 0;
+  border-left: 3px solid transparent;
+}
+
+.nav-item:hover {
+  border-left-color: var(--gold-500);
+}
+
+.nav-item-active {
+  @apply bg-accent/10 text-accent-300;
+  border-left-color: var(--red-500) !important;
+}
+
+/* ========================================
+   Tab Navigation
+   ======================================== */
+
+.tab {
+  @apply flex items-center gap-2 px-4 py-2 text-sm font-medium;
+  @apply transition-all duration-200;
+  @apply text-text-muted hover:bg-surface-700 hover:text-text-secondary;
+  border-radius: 2px 2px 0 0;
+  border-bottom: 2px solid transparent;
+}
+
+.tab-active {
+  @apply bg-accent/10 text-accent-300;
+  border-bottom-color: var(--red-500);
+}
+
+/* ========================================
+   Progress Bar
+   ======================================== */
+
+.progress-bar {
+  @apply h-2 bg-surface-700 overflow-hidden;
+  border-radius: 0;
+}
+
+.progress-bar-fill {
+  @apply h-full transition-all duration-300;
+  background: linear-gradient(90deg, var(--red-500), var(--gold-500));
+}
+
+/* ========================================
+   Tooltip
+   ======================================== */
+
+.tooltip {
+  @apply absolute z-50 px-3 py-1.5 text-xs font-medium;
+  @apply bg-surface-800 text-text-primary border border-surface-600;
+  @apply shadow-elevated;
+  border-radius: 2px;
+}
+
+/* ========================================
+   Action Group (hover reveal)
+   ======================================== */
+
+.action-group {
+  @apply flex items-center gap-1 opacity-0 transition-all duration-200;
+  transform: translateX(8px);
+}
+
+.monitor-card:hover .action-group,
+.card:hover .action-group {
+  @apply opacity-100;
+  transform: translateX(0);
+}

@@ -1,0 +1,111 @@
+/* ========================================
+   Soviet Constructivism Typography System
+   ======================================== */
+
+/* Font Face Definitions */
+@font-face {
+  font-family: 'Bebas Neue';
+  src: url('https://fonts.gstatic.com/s/bebasneue/v14/JTUSjIg69CK48gW7PXoo9Wlhyw.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* ---- Font Families ---- */
+  --font-display: 'Bebas Neue', 'Oswald', 'Anton', sans-serif;
+  --font-sans: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+
+  /* ---- Font Sizes ---- */
+  --text-hero: 48px;
+  --text-h1: 24px;
+  --text-h2: 18px;
+  --text-h3: 14px;
+  --text-body: 13px;
+  --text-small: 12px;
+  --text-micro: 11px;
+
+  /* ---- Line Heights ---- */
+  --leading-hero: 56px;
+  --leading-h1: 32px;
+  --leading-h2: 24px;
+  --leading-h3: 20px;
+  --leading-body: 20px;
+  --leading-small: 16px;
+  --leading-micro: 14px;
+
+  /* ---- Font Weights ---- */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-black: 900;
+
+  /* ---- Letter Spacing ---- */
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.05em;
+  --tracking-wider: 0.1em;
+}
+
+/* ---- Typography Utility Classes ---- */
+
+/* Display / Hero Text */
+.text-display {
+  font-family: var(--font-display);
+  font-size: var(--text-hero);
+  line-height: var(--leading-hero);
+  font-weight: var(--weight-regular);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+.text-display-sm {
+  font-family: var(--font-display);
+  font-size: var(--text-h1);
+  line-height: var(--leading-h1);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+/* Dynamic Tilt - Decorative Headers */
+.title-dynamic {
+  transform: rotate(-12deg);
+  transform-origin: left center;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  font-family: var(--font-display);
+  font-weight: var(--weight-bold);
+}
+
+.title-slogan {
+  transform: rotate(-8deg);
+  transform-origin: left center;
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+}
+
+/* Section Headers */
+.text-section {
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--text-muted);
+}
+
+/* Monospace / Code */
+.text-code {
+  font-family: var(--font-mono);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+}
+
+.text-timestamp {
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}

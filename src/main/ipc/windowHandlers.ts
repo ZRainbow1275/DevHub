@@ -1,0 +1,199 @@
+import { ipcMain, BrowserWindow } from 'electron'
+import { IPC_CHANNELS_EXT, WindowInfo, WindowGroup, WindowLayout, ServiceResult } from '@shared/types-extended'
+import { WindowManager } from '../services/WindowManager'
+import { validateHwnd, validateString, validateHwndArray } from '../utils/validation'
+import { withRateLimit, RATE_LIMITS } from '../utils/rateLimiter'
+
+let windowManager: WindowManager | null = null
+
+export function setupWindowHandlers(_mainWindow: BrowserWindow): void {
+  windowManager = new WindowManager()
+
+  ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_SCAN, withRateLimit(
+    IPC_CHANNELS_EXT.WINDOW_SCAN, RATE_LIMITS.SCAN,
+    async (): Promise<ServiceResult<WindowInfo[]>> => {
+      if (!windowManager) return { success: false, data: [], error: 'Window manager not initialized' }
+      return windowManager.scanWindows()
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_FOCUS, withRateLimit(
+    IPC_CHANNELS_EXT.WINDOW_FOCUS, RATE_LIMITS.ACTION,
+    async (_, hwnd: number): Promise<ServiceResult> => {
+      validateHwnd(hwnd)
+      if (!windowManager) return { success: false, error: 'Window manager not initialized' }
+      return windowManager.focusWindow(hwnd)
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_FOCUS_GROUP, withRateLimit(
+    IPC_CHANNELS_EXT.WINDOW_FOCUS_GROUP, RATE_LIMITS.ACTION,
+    async (_, groupId: string): Promise<ServiceResult> => {
+      validateString(groupId, 'groupId')
+      if (!windowManager) return { success: false, error: 'Window manager not initialized' }
+      return windowManager.focusWindowGroup(groupId)
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_MOVE, withRateLimit(
+    IPC_CHANNELS_EXT.WINDOW_MOVE, RATE_LIMITS.ACTION,
+    async (_, hwnd: number, x: number, y: number, width: number, height: number): Promise<ServiceResult> => {
+      validateHwnd(hwnd)
+      // Validate coordinates are numbers (IPC can pass any type at runtime)
+      for (const [name, val] of [['x', x], ['y', y], ['width', width], ['height', height]] as const) {
+        if (typeof val !== 'number' || !Number.isFinite(val)) {
+          return { success: false, error: `Invalid ${name}: must be a finite number` }
+        }
+      }
+      if (!windowManager) return { success: false, error: 'Window manager not initialized' }
+      return windowManager.moveWindow(hwnd, x, y, width, height)
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_MINIMIZE, withRateLimit(
+    IPC_CHANNELS_EXT.WINDOW_MINIMIZE, RATE_LIMITS.ACTION,
+    async (_, hwnd: number): Promise<ServiceResult> => {
+      validateHwnd(hwnd)
+      if (!windowManager) return { success: false, error: 'Window manager not initialized' }
+      return windowManager.minimizeWindow(hwnd)
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_MAXIMIZE, withRateLimit(
+    IPC_CHANNELS_EXT.WINDOW_MAXIMIZE, RATE_LIMITS.ACTION,
+    async (_, hwnd: number): Promise<ServiceResult> => {
+      validateHwnd(hwnd)
+      if (!windowManager) return { success: false, error: 'Window manager not initialized' }
+      return windowManager.maximizeWindow(hwnd)
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_CLOSE, withRateLimit(
+    IPC_CHANNELS_EXT.WINDOW_CLOSE, RATE_LIMITS.ACTION,
+    async (_, hwnd: number): Promise<ServiceResult> => {
+      validateHwnd(hwnd)
+      if (!windowManager) return { success: false, error: 'Window manager not initialized' }
+      return windowManager.closeWindow(hwnd)
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_CREATE_GROUP, withRateLimit(
+    IPC_CHANNELS_EXT.WINDOW_CREATE_GROUP, RATE_LIMITS.ACTION,
+    async (_, name: string, windowHwnds: number[], projectId?: string): Promise<WindowGroup | null> => {
+      validateString(name, 'name')
+      validateHwndArray(windowHwnds)
+      if (projectId !== undefined) {
+        validateString(projectId, 'projectId')
+      }
+      if (!windowManager) return null
+      return windowManager.createGroup(name, windowHwnds, projectId)
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_GET_GROUPS, withRateLimit(
+    IPC_CHANNELS_EXT.WINDOW_GET_GROUPS, RATE_LIMITS.QUERY,
+    async (): Promise<WindowGroup[]> => {
+      if (!windowManager) return []
+      return windowManager.getGroups()
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_REMOVE_GROUP, withRateLimit(
+    IPC_CHANNELS_EXT.WINDOW_REMOVE_GROUP, RATE_LIMITS.ACTION,
+    async (_, groupId: string): Promise<boolean> => {
+      validateString(groupId, 'groupId')
+      if (!windowManager) return false
+      return windowManager.removeGroup(groupId)
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_SAVE_LAYOUT, withRateLimit(
+    IPC_CHANNELS_EXT.WINDOW_SAVE_LAYOUT, RATE_LIMITS.ACTION,
+    async (_, name: string, description?: string): Promise<WindowLayout | null> => {
+      validateString(name, 'name')
+      if (description !== undefined) {
+        validateString(description, 'description', 1000)
+      }
+      if (!windowManager) return null
+      return windowManager.saveLayout(name, description)
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_RESTORE_LAYOUT, withRateLimit(
+    IPC_CHANNELS_EXT.WINDOW_RESTORE_LAYOUT, RATE_LIMITS.ACTION,
+    async (_, layoutId: string): Promise<ServiceResult> => {
+      validateString(layoutId, 'layoutId')
+      if (!windowManager) return { success: false, error: 'Window manager not initialized' }
+      return windowManager.restoreLayout(layoutId)
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_GET_LAYOUTS, withRateLimit(
+    IPC_CHANNELS_EXT.WINDOW_GET_LAYOUTS, RATE_LIMITS.QUERY,
+    async (): Promise<WindowLayout[]> => {
+      if (!windowManager) return []
+      return windowManager.getLayouts()
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_REMOVE_LAYOUT, withRateLimit(
+    IPC_CHANNELS_EXT.WINDOW_REMOVE_LAYOUT, RATE_LIMITS.ACTION,
+    async (_, layoutId: string): Promise<boolean> => {
+      validateString(layoutId, 'layoutId')
+      if (!windowManager) return false
+      return windowManager.removeLayout(layoutId)
+    }
+  ))
+
+  ipcMain.handle('window:minimize-group', withRateLimit(
+    'window:minimize-group', RATE_LIMITS.ACTION,
+    async (_, groupId: string): Promise<ServiceResult> => {
+      validateString(groupId, 'groupId')
+      if (!windowManager) return { success: false, error: 'Window manager not initialized' }
+      return windowManager.minimizeGroup(groupId)
+    }
+  ))
+
+  ipcMain.handle('window:close-group', withRateLimit(
+    'window:close-group', RATE_LIMITS.ACTION,
+    async (_, groupId: string): Promise<ServiceResult> => {
+      validateString(groupId, 'groupId')
+      if (!windowManager) return { success: false, error: 'Window manager not initialized' }
+      return windowManager.closeGroup(groupId)
+    }
+  ))
+
+  ipcMain.handle('window:filter-dev', withRateLimit(
+    'window:filter-dev', RATE_LIMITS.SCAN,
+    async (): Promise<ServiceResult<WindowInfo[]>> => {
+      if (!windowManager) return { success: false, data: [], error: 'Window manager not initialized' }
+      const scanResult = await windowManager.scanWindows()
+      const allWindows = scanResult.data ?? []
+      return { success: true, data: windowManager.filterDevWindows(allWindows) }
+    }
+  ))
+}
+
+export function cleanupWindowHandlers(): void {
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_SCAN)
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_FOCUS)
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_FOCUS_GROUP)
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_MOVE)
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_MINIMIZE)
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_MAXIMIZE)
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_CLOSE)
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_CREATE_GROUP)
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_GET_GROUPS)
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_REMOVE_GROUP)
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_SAVE_LAYOUT)
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_RESTORE_LAYOUT)
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_GET_LAYOUTS)
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_REMOVE_LAYOUT)
+  ipcMain.removeHandler('window:minimize-group')
+  ipcMain.removeHandler('window:close-group')
+  ipcMain.removeHandler('window:filter-dev')
+}
+
+export function getWindowManager(): WindowManager | null {
+  return windowManager
+}

@@ -1,0 +1,285 @@
+/* ========================================
+   Soviet Constructivism Animation System
+   ======================================== */
+
+:root {
+  /* ---- Timing ---- */
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --duration-slower: 400ms;
+
+  /* ---- Easing ---- */
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-linear: linear;
+}
+
+/* ========================================
+   Sidebar Animations
+   ======================================== */
+
+@keyframes sidebar-slide-in {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.sidebar-enter {
+  animation: sidebar-slide-in var(--duration-slower) var(--ease-out-expo);
+}
+
+/* ========================================
+   Navigation Item Animations
+   ======================================== */
+
+@keyframes nav-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.nav-item-animate {
+  opacity: 0;
+  animation: nav-slide-in var(--duration-slow) var(--ease-out-expo) forwards;
+}
+
+.nav-item-animate:nth-child(1) { animation-delay: 50ms; }
+.nav-item-animate:nth-child(2) { animation-delay: 100ms; }
+.nav-item-animate:nth-child(3) { animation-delay: 150ms; }
+.nav-item-animate:nth-child(4) { animation-delay: 200ms; }
+.nav-item-animate:nth-child(5) { animation-delay: 250ms; }
+.nav-item-animate:nth-child(6) { animation-delay: 300ms; }
+.nav-item-animate:nth-child(7) { animation-delay: 350ms; }
+.nav-item-animate:nth-child(8) { animation-delay: 400ms; }
+
+/* ========================================
+   Left Bar Animations
+   ======================================== */
+
+@keyframes bar-slide-down {
+  from {
+    transform: scaleY(0);
+    transform-origin: top;
+  }
+  to {
+    transform: scaleY(1);
+    transform-origin: top;
+  }
+}
+
+@keyframes bar-extend {
+  from { height: 0; }
+  to { height: 100%; }
+}
+
+.bar-animate {
+  animation: bar-slide-down var(--duration-normal) var(--ease-out-expo);
+}
+
+/* ========================================
+   Panel Animations
+   ======================================== */
+
+@keyframes panel-diagonal-in {
+  from {
+    transform: translate(-20px, 10px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes panel-slide-up {
+  from {
+    transform: translateY(15px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.panel-enter {
+  animation: panel-diagonal-in var(--duration-slow) var(--ease-out-expo);
+}
+
+.panel-slide-up {
+  animation: panel-slide-up 250ms var(--ease-out-expo);
+}
+
+/* ========================================
+   Card Stagger Animations
+   ======================================== */
+
+@keyframes card-stagger-in {
+  from {
+    opacity: 0;
+    transform: translateX(-15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.card-stagger {
+  opacity: 0;
+  animation: card-stagger-in var(--duration-slow) var(--ease-out-expo) forwards;
+}
+
+.card-stagger:nth-child(1) { animation-delay: 0ms; }
+.card-stagger:nth-child(2) { animation-delay: 50ms; }
+.card-stagger:nth-child(3) { animation-delay: 100ms; }
+.card-stagger:nth-child(4) { animation-delay: 150ms; }
+.card-stagger:nth-child(5) { animation-delay: 200ms; }
+.card-stagger:nth-child(6) { animation-delay: 250ms; }
+.card-stagger:nth-child(7) { animation-delay: 300ms; }
+.card-stagger:nth-child(8) { animation-delay: 350ms; }
+
+/* ========================================
+   Industrial Element Animations
+   ======================================== */
+
+@keyframes gear-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes lightning-flash {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 4px var(--gold-500));
+  }
+}
+
+@keyframes number-punch {
+  0% { transform: scale(1); }
+  50% {
+    transform: scale(1.15);
+    color: var(--gold-500);
+  }
+  100% { transform: scale(1); }
+}
+
+.gear-spin {
+  animation: gear-rotate 3s var(--ease-linear) infinite;
+}
+
+.lightning-pulse {
+  animation: lightning-flash 1.5s ease-in-out infinite;
+}
+
+.hero-number-update {
+  animation: number-punch var(--duration-slow) var(--ease-out-expo);
+}
+
+/* ========================================
+   Dialog Animations
+   ======================================== */
+
+@keyframes backdrop-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dialog-enter {
+  from {
+    transform: translate(-10px, -10px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes dialog-leave {
+  from {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translate(10px, 10px) scale(0.95);
+    opacity: 0;
+  }
+}
+
+.dialog-backdrop-enter {
+  animation: backdrop-fade var(--duration-normal) ease-out;
+}
+
+.dialog-content-enter {
+  animation: dialog-enter var(--duration-slow) var(--ease-out-expo);
+}
+
+.dialog-content-exit {
+  animation: dialog-leave var(--duration-normal) ease-in forwards;
+}
+
+/* ========================================
+   Status Pulse
+   ======================================== */
+
+@keyframes status-pulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(90, 154, 107, 0.4);
+  }
+  50% {
+    opacity: 0.8;
+    box-shadow: 0 0 0 4px rgba(90, 154, 107, 0);
+  }
+}
+
+.status-running-pulse {
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
+/* ========================================
+   Hover Transitions
+   ======================================== */
+
+.hover-lift {
+  transition: transform var(--duration-normal) var(--ease-out-expo),
+              box-shadow var(--duration-normal) ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+}
+
+.hover-bar {
+  position: relative;
+}
+
+.hover-bar::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 3px;
+  height: 0;
+  background: var(--gold-500);
+  transition: height var(--duration-normal) var(--ease-out-expo);
+}
+
+.hover-bar:hover::before {
+  height: 100%;
+}

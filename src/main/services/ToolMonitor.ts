@@ -1,0 +1,311 @@
+import { execFile } from 'child_process'
+import { promisify } from 'util'
+import { CodingTool } from '@shared/types'
+
+const execFileAsync = promisify(execFile)
+
+type CompletionCallback = (tool: CodingTool) => void
+
+// 严格的进程名白名单 - 只允许这些进程名用于检测
+const VALID_PROCESS_NAMES = ['codex', 'claude', 'gemini', 'node', 'cursor', 'code', 'windsurf'] as const
+type ValidProcessName = typeof VALID_PROCESS_NAMES[number]
+
+function isValidProcessName(name: string): name is ValidProcessName {
+  return VALID_PROCESS_NAMES.includes(name.toLowerCase() as ValidProcessName)
+}
+
+// 工具检测配置
+interface ToolDetectionConfig {
+  processNames: ValidProcessName[]  // 可能的进程名 (严格类型)
+  commandPatterns: string[]         // 命令行参数中的关键词
+}
+
+// 工具检测配置 - 使用精确匹配模式
+interface ToolDetectionConfigExt extends ToolDetectionConfig {
+  excludePatterns?: string[]  // 排除包含这些关键词的进程
+}
+
+const TOOL_DETECTION_CONFIG: Record<string, ToolDetectionConfigExt> = {
+  'codex': {
+    processNames: ['codex', 'node'],
+    // 精确匹配 @openai/codex 路径，避免匹配到其他包含 codex 的包
+    commandPatterns: ['@openai/codex', '/codex/bin/codex.js'],
+    excludePatterns: ['codex-mcp', 'mcp-server']
+  },
+  'claude-code': {
+    processNames: ['claude', 'node'],
+    // 精确匹配 claude-code CLI 路径
+    commandPatterns: ['@anthropic-ai/claude-code', '/claude-code/cli.js'],
+    excludePatterns: ['mcp-server']
+  },
+  'gemini-cli': {
+    processNames: ['gemini', 'node'],
+    commandPatterns: ['gemini-cli', '@google/gemini-cli'],
+    excludePatterns: ['mcp-server']
+  }
+}
+
+export class ToolMonitor {
+  private timeoutId: ReturnType<typeof setTimeout> | null = null
+  private tools: CodingTool[] = []
+  private previousStatus = new Map<string, boolean>()
+  private onCompletion: CompletionCallback | null = null
+  private statusResetTimers = new Map<string, ReturnType<typeof setTimeout>>()
+
+  // 智能轮询配置
+  private baseIntervalMs: number = 3000
+  private activeIntervalMs: number = 1000  // 活跃时快速轮询
+  private idleIntervalMs: number = 5000    // 空闲时慢速轮询
+  private currentIntervalMs: number = 3000
+  private consecutiveIdleCount: number = 0
+  private idleThreshold: number = 3  // 连续3次空闲后切换到慢速模式
+
+  start(
+    tools: CodingTool[],
+    checkIntervalMs: number,
+    onCompletion: CompletionCallback
+  ): void {
+    this.tools = tools
+    this.onCompletion = onCompletion
+    this.baseIntervalMs = checkIntervalMs
+    this.currentIntervalMs = checkIntervalMs
+
+    // Initialize previous status
+    this.tools.forEach((tool) => {
+      this.previousStatus.set(tool.id, false)
+    })
+
+    // Run initial check and start smart polling
+    this.checkTools().then(() => {
+      this.scheduleNextCheck()
+    })
+  }
+
+  stop(): void {
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId)
+      this.timeoutId = null
+    }
+
+    // 清理所有状态重置定时器
+    this.statusResetTimers.forEach((timer) => clearTimeout(timer))
+    this.statusResetTimers.clear()
+
+    // 重置轮询状态
+    this.consecutiveIdleCount = 0
+    this.currentIntervalMs = this.baseIntervalMs
+  }
+
+  // 智能轮询调度
+  private scheduleNextCheck(): void {
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId)
+    }
+
+    this.timeoutId = setTimeout(() => {
+      this.checkTools().then(() => {
+        this.scheduleNextCheck()
+      })
+    }, this.currentIntervalMs)
+  }
+
+  // 根据活跃状态调整轮询间隔
+  private adjustPollingInterval(hasActiveTools: boolean): void {
+    if (hasActiveTools) {
+      // 有工具运行时，使用快速轮询
+      this.currentIntervalMs = this.activeIntervalMs
+      this.consecutiveIdleCount = 0
+    } else {
+      // 空闲时，逐步降低轮询频率
+      this.consecutiveIdleCount++
+      if (this.consecutiveIdleCount >= this.idleThreshold) {
+        this.currentIntervalMs = this.idleIntervalMs
+      } else {
+        this.currentIntervalMs = this.baseIntervalMs
+      }
+    }
+  }
+
+  private scheduleStatusReset(toolId: string, delay: number = 5000): void {
+    // 清除之前的定时器
+    const existing = this.statusResetTimers.get(toolId)
+    if (existing) {
+      clearTimeout(existing)
+    }
+
+    const timer = setTimeout(() => {
+      const tool = this.tools.find(t => t.id === toolId)
+      if (tool) {
+        tool.status = 'idle'
+      }
+      this.statusResetTimers.delete(toolId)
+    }, delay)
+
+    this.statusResetTimers.set(toolId, timer)
+  }
+
+  private async checkTools(): Promise<void> {
+    let hasActiveTools = false
+
+    // 一次性获取所有进程列表，避免为每个工具单独调用 tasklist
+    let allProcessNames: Set<string>
+    try {
+      allProcessNames = await this.getAllProcessNames()
+    } catch (error) {
+      console.warn(
+        'Failed to get process list:',
+        error instanceof Error ? error.message : 'Unknown error'
+      )
+      this.adjustPollingInterval(false)
+      return
+    }
+
+    // 预先获取命令行信息（仅在有 node 进程时才需要）
+    let commandLines: string[] | null = null
+    if (allProcessNames.has('node.exe')) {
+      commandLines = await this.getNodeCommandLines()
+    }
+
+    for (const tool of this.tools) {
+      try {
+        const isRunning = this.isToolDetected(tool.id, allProcessNames, commandLines)
+        const wasRunning = this.previousStatus.get(tool.id) ?? false
+
+        if (isRunning) {
+          hasActiveTools = true
+        }
+
+        // Update tool status
+        if (isRunning) {
+          tool.status = 'running'
+          tool.lastRunAt = Date.now()
+        } else if (wasRunning && !isRunning) {
+          // Transition from running to stopped = completed
+          tool.status = 'completed'
+          tool.lastCompletedAt = Date.now()
+
+          // Trigger notification
+          this.onCompletion?.(tool)
+
+          // 使用安全的状态重置方法
+          this.scheduleStatusReset(tool.id)
+        } else {
+          tool.status = 'idle'
+        }
+
+        this.previousStatus.set(tool.id, isRunning)
+      } catch (error) {
+        // 记录错误但不中断流程
+        console.warn(
+          `Tool detection failed for ${tool.id}:`,
+          error instanceof Error ? error.message : 'Unknown error'
+        )
+      }
+    }
+
+    // 根据活跃状态调整下次轮询间隔
+    this.adjustPollingInterval(hasActiveTools)
+  }
+
+  // 一次性获取所有进程名称（CSV 格式，解析后返回 Set）
+  private async getAllProcessNames(): Promise<Set<string>> {
+    const { stdout } = await execFileAsync(
+      'tasklist',
+      ['/FO', 'CSV', '/NH'],
+      { windowsHide: true }
+    )
+    const names = new Set<string>()
+    for (const line of stdout.split('\n')) {
+      const trimmed = line.trim()
+      if (!trimmed) continue
+      // CSV format: "ImageName","PID","Session Name","Session#","Mem Usage"
+      const match = trimmed.match(/^"([^"]+)"/)
+      if (match) {
+        names.add(match[1].toLowerCase())
+      }
+    }
+    return names
+  }
+
+  // 获取所有 node 进程的命令行（仅调用一次）
+  private async getNodeCommandLines(): Promise<string[]> {
+    try {
+      const { stdout } = await execFileAsync(
+        'powershell',
+        ['-NoProfile', '-Command', "Get-CimInstance Win32_Process | Where-Object { $_.Name -like '*node*' } | Select-Object -ExpandProperty CommandLine"],
+        { windowsHide: true, maxBuffer: 1024 * 1024 }
+      )
+      return stdout.split('\n').filter(l => l.trim())
+    } catch (error) {
+      console.warn(
+        'PowerShell command line check failed:',
+        error instanceof Error ? error.message : 'Unknown error'
+      )
+      return []
+    }
+  }
+
+  // 基于已获取的进程列表判断工具是否在运行（纯内存匹配，无系统调用）
+  private isToolDetected(
+    toolId: string,
+    allProcessNames: Set<string>,
+    commandLines: string[] | null
+  ): boolean {
+    const config = TOOL_DETECTION_CONFIG[toolId]
+    if (!config) {
+      return false
+    }
+
+    for (const pName of config.processNames) {
+      if (!isValidProcessName(pName)) continue
+
+      // 检查进程是否存在于全局进程列表中
+      if (!allProcessNames.has(`${pName}.exe`)) continue
+
+      if (pName === 'node') {
+        // node 进程需要进一步检查命令行参数
+        if (!commandLines) continue
+        for (const line of commandLines) {
+          const lowerLine = line.toLowerCase()
+          const matchesPattern = config.commandPatterns.some(p => lowerLine.includes(p.toLowerCase()))
+          if (!matchesPattern) continue
+          const isExcluded = config.excludePatterns?.some(p => lowerLine.includes(p.toLowerCase())) ?? false
+          if (!isExcluded) return true
+        }
+      } else {
+        return true
+      }
+    }
+
+    return false
+  }
+
+
+  getToolStatus(toolId: string): CodingTool | undefined {
+    return this.tools.find((t) => t.id === toolId)
+  }
+
+  getAllToolStatus(): CodingTool[] {
+    return [...this.tools]
+  }
+
+  async checkToolNow(toolId: string): Promise<CodingTool | undefined> {
+    const tool = this.tools.find((t) => t.id === toolId)
+    if (!tool) return undefined
+
+    const allProcessNames = await this.getAllProcessNames()
+    let commandLines: string[] | null = null
+    if (allProcessNames.has('node.exe')) {
+      commandLines = await this.getNodeCommandLines()
+    }
+    const isRunning = this.isToolDetected(tool.id, allProcessNames, commandLines)
+    tool.status = isRunning ? 'running' : 'idle'
+
+    return tool
+  }
+
+  // 获取当前轮询间隔（用于调试）
+  getCurrentInterval(): number {
+    return this.currentIntervalMs
+  }
+}

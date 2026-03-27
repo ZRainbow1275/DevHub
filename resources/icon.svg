@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Background -->
+  <rect width="256" height="256" fill="#0D0D0D"/>
+
+  <!-- Constructivist diagonal -->
+  <path d="M0 256 L256 0 L256 40 L40 256 Z" fill="#C41E3A"/>
+
+  <!-- Inner square -->
+  <rect x="64" y="64" width="128" height="128" fill="none" stroke="#C41E3A" stroke-width="8"/>
+
+  <!-- Inner diamond -->
+  <rect x="96" y="96" width="64" height="64" fill="#C41E3A" transform="rotate(45 128 128)"/>
+
+  <!-- Center dot -->
+  <circle cx="128" cy="128" r="8" fill="#FAFAFA"/>
+</svg>

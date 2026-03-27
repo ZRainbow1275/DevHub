@@ -1,0 +1,209 @@
+import Store from 'electron-store'
+import { v4 as uuidv4 } from 'uuid'
+import {
+  Project,
+  CodingTool,
+  AppConfig,
+  AppSettings,
+  DEFAULT_TOOLS,
+  DEFAULT_SETTINGS
+} from '@shared/types'
+import { guardProtoPollution } from '../utils/validation'
+
+const schema = {
+  projects: {
+    type: 'array' as const,
+    default: []
+  },
+  tools: {
+    type: 'array' as const,
+    default: DEFAULT_TOOLS
+  },
+  tags: {
+    type: 'array' as const,
+    default: []
+  },
+  groups: {
+    type: 'array' as const,
+    default: []
+  },
+  settings: {
+    type: 'object' as const,
+    default: DEFAULT_SETTINGS
+  }
+}
+
+export class AppStore {
+  private store: Store<AppConfig>
+  private _cache: { projects?: Project[]; settings?: AppSettings } = {}
+
+  constructor() {
+    this.store = new Store<AppConfig>({
+      name: 'devhub-config',
+      schema
+    })
+  }
+
+  private invalidateCache(key?: 'projects' | 'settings'): void {
+    if (key) {
+      delete this._cache[key]
+    } else {
+      this._cache = {}
+    }
+  }
+
+  // Projects
+  getProjects(): Project[] {
+    if (this._cache.projects) return this._cache.projects
+    const projects = this.store.get('projects', [])
+    this._cache.projects = projects
+    return projects
+  }
+
+  getProject(id: string): Project | undefined {
+    return this.getProjects().find((p) => p.id === id)
+  }
+
+  addProject(project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>): Project {
+    const now = Date.now()
+    const newProject: Project = {
+      ...project,
+      id: uuidv4(),
+      createdAt: now,
+      updatedAt: now
+    }
+
+    const projects = this.getProjects()
+    projects.push(newProject)
+    this.store.set('projects', projects)
+    this.invalidateCache('projects')
+
+    return newProject
+  }
+
+  updateProject(id: string, updates: Partial<Project>): Project | undefined {
+    const projects = this.getProjects()
+    const index = projects.findIndex((p) => p.id === id)
+
+    if (index === -1) return undefined
+
+    guardProtoPollution(updates)
+
+    // Destructure out immutable fields
+    const {
+      id: _id,
+      createdAt: _createdAt,
+      ...safeUpdates
+    } = updates
+
+    projects[index] = {
+      ...projects[index],
+      ...safeUpdates,
+      updatedAt: Date.now()
+    }
+
+    this.store.set('projects', projects)
+    this.invalidateCache('projects')
+    return projects[index]
+  }
+
+  removeProject(id: string): boolean {
+    const projects = this.getProjects()
+    const filtered = projects.filter((p) => p.id !== id)
+
+    if (filtered.length === projects.length) return false
+
+    this.store.set('projects', filtered)
+    this.invalidateCache('projects')
+    return true
+  }
+
+  // Tags
+  getTags(): string[] {
+    return this.store.get('tags', [])
+  }
+
+  addTag(tag: string): void {
+    const tags = this.getTags()
+    if (!tags.includes(tag)) {
+      tags.push(tag)
+      this.store.set('tags', tags)
+    }
+  }
+
+  removeTag(tag: string): void {
+    const tags = this.getTags().filter((t) => t !== tag)
+    this.store.set('tags', tags)
+  }
+
+  // Groups
+  getGroups(): string[] {
+    return this.store.get('groups', [])
+  }
+
+  addGroup(group: string): void {
+    const groups = this.getGroups()
+    if (!groups.includes(group)) {
+      groups.push(group)
+      this.store.set('groups', groups)
+    }
+  }
+
+  removeGroup(group: string): void {
+    const groups = this.getGroups().filter((g) => g !== group)
+    this.store.set('groups', groups)
+  }
+
+  // Tools
+  getTools(): CodingTool[] {
+    return this.store.get('tools', DEFAULT_TOOLS)
+  }
+
+  updateTool(id: string, updates: Partial<CodingTool>): void {
+    const tools = this.getTools()
+    const index = tools.findIndex((t) => t.id === id)
+
+    if (index !== -1) {
+      guardProtoPollution(updates)
+
+      // Field whitelist
+      const ALLOWED_FIELDS: (keyof CodingTool)[] = [
+        'displayName', 'processName', 'completionPatterns', 'status', 'lastRunAt', 'lastCompletedAt'
+      ]
+      const safeUpdates: Partial<CodingTool> = {}
+      for (const key of ALLOWED_FIELDS) {
+        if (key in updates) {
+          ;(safeUpdates as Record<string, unknown>)[key] = (updates as Record<string, unknown>)[key]
+        }
+      }
+
+      tools[index] = { ...tools[index], ...safeUpdates }
+      this.store.set('tools', tools)
+    }
+  }
+
+  // Settings
+  getSettings(): AppSettings {
+    return this.store.get('settings', DEFAULT_SETTINGS)
+  }
+
+  updateSettings(updates: Partial<AppSettings>): void {
+    const settings = this.getSettings()
+    this.store.set('settings', { ...settings, ...updates })
+  }
+
+  // Allowed paths management
+  addAllowedPath(path: string): void {
+    const settings = this.getSettings()
+    if (!settings.allowedPaths.includes(path)) {
+      settings.allowedPaths.push(path)
+      this.store.set('settings', settings)
+    }
+  }
+
+  removeAllowedPath(path: string): void {
+    const settings = this.getSettings()
+    settings.allowedPaths = settings.allowedPaths.filter((p) => p !== path)
+    this.store.set('settings', settings)
+  }
+}

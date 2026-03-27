@@ -1,0 +1,74 @@
+/* ========================================
+   Soviet Constructivism Color Token System
+   ======================================== */
+
+:root {
+  /* ---- Background Layers (Warm Gray) ---- */
+  --surface-950: #1a1814;  /* Deepest - warm charcoal */
+  --surface-900: #252220;  /* Main container */
+  --surface-850: #2b2825;  /* Mid layer */
+  --surface-800: #322e2a;  /* Cards/panels */
+  --surface-750: #3b3632;  /* Hover state */
+  --surface-700: #443f39;  /* Borders/dividers */
+  --surface-600: #5a534b;  /* Secondary borders */
+  --surface-500: #6b635a;  /* Muted elements */
+
+  /* ---- Text Layers (Ivory/Cream) ---- */
+  --text-primary: #f5f0e8;    /* Ivory white */
+  --text-secondary: #c4bdb3;  /* Secondary */
+  --text-tertiary: #9a938a;   /* Tertiary */
+  --text-muted: #8a8279;      /* Muted */
+  --text-accent: #e8e0d4;     /* Warm white accent */
+
+  /* ---- Revolutionary Red (Primary) ---- */
+  --red-300: #f28b8b;
+  --red-400: #e85d5d;
+  --red-500: #d64545;  /* Primary accent */
+  --red-600: #b83a3a;
+  --red-700: #9a2f2f;
+
+  /* ---- Industrial Gold (Secondary) ---- */
+  --gold-300: #e8cf6a;
+  --gold-400: #dab948;
+  --gold-500: #c9a227;  /* Secondary accent */
+  --gold-600: #a68619;
+  --gold-700: #856b14;
+
+  /* ---- Steel Gray (Tertiary) ---- */
+  --steel-300: #9fb0be;
+  --steel-400: #8499a8;
+  --steel-500: #6b7d8a;
+  --steel-600: #4a5966;
+  --steel-700: #3a464f;
+
+  /* ---- Semantic Colors ---- */
+  --success: #5a9a6b;
+  --success-light: #6db37e;
+  --success-dark: #4a8259;
+  --warning: #c9a227;
+  --warning-light: #dab948;
+  --warning-dark: #a68619;
+  --error: #d64545;
+  --error-light: #e85d5d;
+  --error-dark: #b83a3a;
+  --info: #6b7d8a;
+  --info-light: #8499a8;
+  --info-dark: #4a5966;
+
+  /* ---- Transparency Layers ---- */
+  --overlay-light: rgba(245, 240, 232, 0.05);
+  --overlay-medium: rgba(245, 240, 232, 0.10);
+  --overlay-heavy: rgba(245, 240, 232, 0.15);
+  --red-overlay: rgba(214, 69, 69, 0.15);
+  --gold-overlay: rgba(201, 162, 39, 0.15);
+  --success-overlay: rgba(90, 154, 107, 0.15);
+
+  /* ---- Decorative ---- */
+  --diagonal-stripe: repeating-linear-gradient(
+    -12deg,
+    transparent,
+    transparent 40px,
+    rgba(214, 69, 69, 0.03) 40px,
+    rgba(214, 69, 69, 0.03) 42px
+  );
+}
