@@ -1,7 +1,8 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import kill from 'tree-kill'
-import { PortInfo, PortState, COMMON_DEV_PORTS } from '@shared/types-extended'
+import { PortInfo, PortState, COMMON_DEV_PORTS, DEV_PROCESS_PATTERNS, isProtectedProcess } from '@shared/types-extended'
+import { auditLogger } from './AuditLogger'
 
 const execFileAsync = promisify(execFile)
 
@@ -37,10 +38,34 @@ export class PortScanner {
     const info = await this.checkPort(port)
     if (!info) return true
 
+    // 1. Get process name
+    const processName = this.processNameCache.get(info.pid) || info.processName
+
+    // 2. Protected process check
+    if (isProtectedProcess(processName)) {
+      console.warn(`Refused: port ${port} held by protected process ${processName}`)
+      auditLogger.log('port:release', { port, pid: info.pid, processName }, 'refused', 'protected process')
+      return false
+    }
+
+    // 3. Dev process check
+    if (!DEV_PROCESS_PATTERNS.some(p => processName.toLowerCase() === p.toLowerCase())) {
+      console.warn(`Refused: port ${port} held by non-dev process ${processName}`)
+      auditLogger.log('port:release', { port, pid: info.pid, processName }, 'refused', 'non-dev process')
+      return false
+    }
+
+    // 4. Audit log
+    auditLogger.log('port:release', { port, pid: info.pid, processName }, 'success')
+
+    return this.killProcessGracefully(info.pid)
+  }
+
+  private killProcessGracefully(pid: number): Promise<boolean> {
     return new Promise((resolve) => {
-      kill(info.pid, 'SIGTERM', (err) => {
+      kill(pid, 'SIGTERM', (err) => {
         if (err) {
-          kill(info.pid, 'SIGKILL', (err) => resolve(!err))
+          kill(pid, 'SIGKILL', (err2) => resolve(!err2))
         } else {
           resolve(true)
         }

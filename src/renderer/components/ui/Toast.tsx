@@ -26,9 +26,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const timeoutIds = useRef<Set<ReturnType<typeof setTimeout>>>(new Set())
 
   useEffect(() => {
+    const ids = timeoutIds.current
     return () => {
-      timeoutIds.current.forEach(id => clearTimeout(id))
-      timeoutIds.current.clear()
+      ids.forEach(id => clearTimeout(id))
+      ids.clear()
     }
   }, [])
 

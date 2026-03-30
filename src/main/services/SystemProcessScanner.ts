@@ -1,7 +1,8 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
+import os from 'os'
 import kill from 'tree-kill'
-import { ProcessInfo, ProcessType, ProcessStatusType, ProcessGroup, DEV_PROCESS_PATTERNS, ServiceResult } from '@shared/types-extended'
+import { ProcessInfo, ProcessType, ProcessStatusType, ProcessGroup, DEV_PROCESS_PATTERNS, ServiceResult, isProtectedProcess } from '@shared/types-extended'
 import { Project } from '@shared/types'
 import { PortScanner } from './PortScanner'
 
@@ -19,6 +20,8 @@ interface RawProcessInfo {
 export class SystemProcessScanner {
   private processes = new Map<number, ProcessInfo>()
   private processFirstSeen = new Map<number, number>()
+  private previousCpuTimes = new Map<number, number>()
+  private lastCpuSampleTime: number = 0
   private portScanner: PortScanner
   private refreshInterval: number = 5000
   private zombieThreshold: number = 3600000 // 1 hour
@@ -132,6 +135,13 @@ export class SystemProcessScanner {
   }
 
   async killProcess(pid: number, force: boolean = false): Promise<boolean> {
+    // Protected process check
+    const proc = this.processes.get(pid)
+    if (proc && isProtectedProcess(proc.name)) {
+      console.warn(`Refused to kill protected process: ${proc.name} (PID ${pid})`)
+      return false
+    }
+
     return new Promise((resolve) => {
       const signal = force ? 'SIGKILL' : 'SIGTERM'
       kill(pid, signal, (err) => {
@@ -151,8 +161,11 @@ export class SystemProcessScanner {
   findZombieProcesses(): ProcessInfo[] {
     const now = Date.now()
     return Array.from(this.processes.values()).filter(p =>
-      p.cpu < 1 &&
-      now - p.startTime > this.zombieThreshold
+      p.cpu < 0.5 &&
+      p.memory < 10 && // MB
+      (now - p.startTime) > this.zombieThreshold &&
+      !isProtectedProcess(p.name) &&
+      this.isDevServerProcess(p.name, p.command)
     )
   }
 
@@ -161,11 +174,33 @@ export class SystemProcessScanner {
     let cleaned = 0
 
     for (const zombie of zombies) {
-      const success = await this.killProcess(zombie.pid, true)
-      if (success) cleaned++
+      // Graceful: SIGTERM first
+      const terminated = await this.killProcess(zombie.pid, false)
+      if (terminated) {
+        cleaned++
+        continue
+      }
+      // Wait 5s then force kill if still alive
+      await new Promise(r => setTimeout(r, 5000))
+      if (this.isProcessAlive(zombie.pid)) {
+        const forced = await this.killProcess(zombie.pid, true)
+        if (forced) cleaned++
+      } else {
+        this.processes.delete(zombie.pid)
+        cleaned++
+      }
     }
 
     return cleaned
+  }
+
+  private isProcessAlive(pid: number): boolean {
+    try {
+      process.kill(pid, 0)
+      return true
+    } catch {
+      return false
+    }
   }
 
   groupByProject(projects: Project[]): ProcessGroup[] {
@@ -217,56 +252,162 @@ export class SystemProcessScanner {
 
   private async getRawProcesses(): Promise<RawProcessInfo[]> {
     try {
-      // TODO: Migrate from deprecated WMIC to PowerShell Get-CimInstance
+      const psCmd = `Get-CimInstance Win32_Process | Select-Object ProcessId,Name,CommandLine,WorkingSetSize | ConvertTo-Csv -NoTypeInformation`
       const { stdout } = await execFileAsync(
-        'wmic',
-        ['process', 'get', 'ProcessId,Name,CommandLine,WorkingSetSize', '/format:csv'],
+        'powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-Command', psCmd],
         { windowsHide: true, maxBuffer: 10 * 1024 * 1024 }
       )
       const lines = stdout.split('\n').filter(l => l.trim())
-
       const processes: RawProcessInfo[] = []
 
-      // First line is header: Node,CommandLine,Name,ProcessId,WorkingSetSize
+      // First line is CSV header: "ProcessId","Name","CommandLine","WorkingSetSize"
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim()
         if (!line) continue
 
-        // Parse CSV - columns: Node, CommandLine, Name, ProcessId, WorkingSetSize
-        // CommandLine may contain commas, so we parse from the right side first
-        const parts = line.split(',')
-        if (parts.length < 5) continue
+        // Parse CSV with quoted fields
+        const fields = this.parseCsvLine(line)
+        if (fields.length < 4) continue
 
-        // Index 0 = Node (computer name)
-        // Last field = WorkingSetSize
-        // Second-to-last = ProcessId
-        // Third-to-last = Name
-        // Everything between index 1 and third-to-last = CommandLine (may contain commas)
-        const memoryStr = parts[parts.length - 1] || '0'
-        const pidStr = parts[parts.length - 2] || '0'
-        const name = parts[parts.length - 3] || ''
-        const commandLine = parts.slice(1, parts.length - 3).join(',') || ''
-
-        const pid = parseInt(pidStr.trim(), 10)
-        const memoryBytes = parseInt(memoryStr.trim(), 10)
+        const pid = parseInt(fields[0], 10)
+        const name = fields[1] || 'Unknown'
+        const commandLine = fields[2] || ''
+        const memoryBytes = parseInt(fields[3], 10) || 0
 
         if (isNaN(pid) || pid === 0) continue
 
         processes.push({
           pid,
-          name: name.trim() || 'Unknown',
-          commandLine: commandLine.trim(),
+          name,
+          commandLine,
           workingDir: this.extractWorkingDir(commandLine),
           memoryMB: Math.round(memoryBytes / 1024 / 1024),
-          cpuPercent: 0 // Will be updated separately if needed
+          cpuPercent: 0 // Will be filled by measureCpuUsage
         })
+      }
+
+      // Measure CPU for dev processes only (to limit overhead)
+      const devPids = processes
+        .filter(p => this.isDevProcess(p.name))
+        .map(p => p.pid)
+
+      if (devPids.length > 0) {
+        const cpuMap = await this.measureCpuUsage(devPids)
+        for (const proc of processes) {
+          const cpu = cpuMap.get(proc.pid)
+          if (cpu !== undefined) {
+            proc.cpuPercent = cpu
+          }
+        }
       }
 
       return processes
     } catch (err) {
-      console.error('WMIC process enumeration failed:', err instanceof Error ? err.message : err)
+      console.error('Process enumeration failed:', err instanceof Error ? err.message : err)
       return []
     }
+  }
+
+  private parseCsvLine(line: string): string[] {
+    const fields: string[] = []
+    let current = ''
+    let inQuotes = false
+
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i]
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"'
+          i++ // skip escaped quote
+        } else {
+          inQuotes = !inQuotes
+        }
+      } else if (ch === ',' && !inQuotes) {
+        fields.push(current)
+        current = ''
+      } else {
+        current += ch
+      }
+    }
+    fields.push(current)
+    return fields
+  }
+
+  private async measureCpuUsage(pids: number[]): Promise<Map<number, number>> {
+    const cpuMap = new Map<number, number>()
+    const numCores = os.cpus().length
+
+    try {
+      // Get current CPU times for all target PIDs
+      const currentCpuTimes = await this.getCpuTimes(pids)
+      const now = Date.now()
+
+      if (this.lastCpuSampleTime > 0) {
+        const elapsedSec = (now - this.lastCpuSampleTime) / 1000
+        if (elapsedSec > 0) {
+          for (const pid of pids) {
+            const currentTime = currentCpuTimes.get(pid)
+            const previousTime = this.previousCpuTimes.get(pid)
+
+            if (currentTime !== undefined && previousTime !== undefined) {
+              const deltaCpu = currentTime - previousTime
+              const cpuPercent = (deltaCpu / elapsedSec / numCores) * 100
+              cpuMap.set(pid, Math.max(0, Math.round(cpuPercent * 10) / 10))
+            }
+          }
+        }
+      }
+
+      // Store current values for next cycle
+      this.previousCpuTimes = currentCpuTimes
+      this.lastCpuSampleTime = now
+
+      // Clean up PIDs that no longer exist
+      const pidSet = new Set(pids)
+      for (const pid of this.previousCpuTimes.keys()) {
+        if (!pidSet.has(pid)) {
+          this.previousCpuTimes.delete(pid)
+        }
+      }
+    } catch (err) {
+      console.error('CPU measurement failed:', err instanceof Error ? err.message : err)
+    }
+
+    return cpuMap
+  }
+
+  private async getCpuTimes(pids: number[]): Promise<Map<number, number>> {
+    const result = new Map<number, number>()
+
+    try {
+      // Batch query: get CPU (total processor time in seconds) for all PIDs
+      const pidList = pids.join(',')
+      const psCmd = `${pidList} | ForEach-Object { try { $p = Get-Process -Id $_ -ErrorAction SilentlyContinue; if($p) { Write-Output "$($_.ToString())=$($p.TotalProcessorTime.TotalSeconds)" } } catch {} }`
+      const { stdout } = await execFileAsync(
+        'powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-Command', psCmd],
+        { windowsHide: true, timeout: 10000 }
+      )
+
+      for (const line of stdout.split('\n')) {
+        const trimmed = line.trim()
+        if (!trimmed) continue
+        const eqIdx = trimmed.indexOf('=')
+        if (eqIdx === -1) continue
+
+        const pid = parseInt(trimmed.substring(0, eqIdx), 10)
+        const cpuTime = parseFloat(trimmed.substring(eqIdx + 1))
+
+        if (!isNaN(pid) && !isNaN(cpuTime)) {
+          result.set(pid, cpuTime)
+        }
+      }
+    } catch (err) {
+      console.error('getCpuTimes failed:', err instanceof Error ? err.message : err)
+    }
+
+    return result
   }
 
   private isDevProcess(name: string): boolean {
@@ -300,6 +441,13 @@ export class SystemProcessScanner {
     if (cpu > 5) return 'running'
     if (cpu > 0) return 'idle'
     return 'waiting'
+  }
+
+  private isDevServerProcess(name: string, cmd: string): boolean {
+    const devRuntimes = ['node.exe', 'python.exe', 'ruby.exe', 'java.exe']
+    const serverKeywords = ['dev', 'serve', 'start', 'watch', 'run']
+    return devRuntimes.some(r => name.toLowerCase().includes(r)) &&
+           serverKeywords.some(k => cmd.toLowerCase().includes(k))
   }
 
   private extractWorkingDir(commandLine: string): string {

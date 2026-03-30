@@ -14,7 +14,8 @@ const rateLimiter = new Map<string, RateLimitEntry>()
 export const RATE_LIMITS = {
   SCAN: 12,
   ACTION: 30,
-  QUERY: 60
+  QUERY: 60,
+  DESTRUCTIVE: 5
 } as const
 
 /**

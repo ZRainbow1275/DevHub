@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useProjectStore } from '../../stores/projectStore'
 import { useProjects } from '../../hooks/useProjects'
+import { useWindowSize } from '../../hooks/useWindowSize'
 import { FolderIcon, TagIcon, GroupIcon, GearIcon, ChevronLeftIcon, ChevronRightIcon, PlayIcon, StopIcon } from '../icons'
+
+const SIDEBAR_STORAGE_KEY = 'devhub:sidebar-collapsed'
 
 interface SidebarProps {
   onSettingsClick: () => void
@@ -12,9 +15,20 @@ const isElectron = typeof window !== 'undefined' && window.devhub !== undefined
 export function Sidebar({ onSettingsClick }: SidebarProps) {
   const [tags, setTags] = useState<string[]>([])
   const [groups, setGroups] = useState<string[]>([])
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(() => {
+    return localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'true'
+  })
   const { filter, setTagFilter, setGroupFilter } = useProjectStore()
   const { startGroup, stopGroup, startByTag, stopByTag, getGroupStats, getTagStats } = useProjects()
+  const { width } = useWindowSize()
+
+  // Auto-collapse on narrow windows
+  useEffect(() => {
+    if (width < 1024 && !collapsed) {
+      setCollapsed(true)
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, 'true')
+    }
+  }, [width]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!isElectron) return

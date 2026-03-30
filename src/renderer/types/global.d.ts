@@ -52,6 +52,7 @@ declare global {
         scan: (scanPath?: string) => Promise<Array<{ path: string; name: string; scripts: string[] }>>
         scanDirectory: (dirPath: string) => Promise<Array<{ path: string; name: string; scripts: string[] }>>
         discover: () => Promise<Array<{ path: string; name: string; scripts: string[] }>>
+        onAutoDiscovered: (callback: (projects: Array<{ path: string; name: string; scripts: string[] }>) => void) => () => void
       }
 
       // ==================== Process ====================

@@ -243,7 +243,7 @@ export const AI_TOOL_SIGNATURES: Record<AIToolType, {
   'claude-code': {
     processPatterns: ['node.exe', 'claude'],
     windowTitlePatterns: [/claude/i, /anthropic/i],
-    commandPatterns: [/claude\s+/i]
+    commandPatterns: [/\bclaude\b/i, /@anthropic-ai\/claude-code/i, /claude-code/i]
   },
   'gemini-cli': {
     processPatterns: ['node.exe', 'gemini'],
@@ -262,12 +262,29 @@ export const AI_TOOL_SIGNATURES: Record<AIToolType, {
   }
 }
 
+// Protected system processes — never kill these
+export const PROTECTED_PROCESSES: ReadonlySet<string> = new Set([
+  'csrss.exe', 'lsass.exe', 'smss.exe', 'wininit.exe', 'winlogon.exe',
+  'services.exe', 'svchost.exe', 'dwm.exe', 'system', 'registry',
+  'explorer.exe', 'runtimebroker.exe', 'taskhostw.exe', 'conhost.exe',
+  'msmpeng.exe', 'searchindexer.exe', 'spoolsv.exe', 'audiodg.exe',
+  'fontdrvhost.exe', 'sihost.exe', 'ctfmon.exe',
+  'electron.exe', 'devhub.exe' // self-protection
+])
+
+export function isProtectedProcess(name: string): boolean {
+  return PROTECTED_PROCESSES.has(name.toLowerCase())
+}
+
 // Dev process patterns for filtering
 export const DEV_PROCESS_PATTERNS = [
+  // Runtimes
   'node.exe', 'python.exe', 'python3.exe', 'java.exe',
   'go.exe', 'cargo.exe', 'rustc.exe', 'ruby.exe',
-  'php.exe', 'dotnet.exe', 'code.exe', 'idea64.exe',
-  'WindowsTerminal.exe', 'cmd.exe', 'powershell.exe',
-  'chrome.exe', 'msedge.exe', 'firefox.exe',
+  'php.exe', 'dotnet.exe',
+  // IDEs
+  'code.exe', 'idea64.exe', 'pycharm64.exe', 'webstorm64.exe',
+  'Cursor.exe', 'windsurf.exe',
+  // Infrastructure
   'docker.exe', 'redis-server.exe', 'mongod.exe', 'postgres.exe'
-]
+] as const

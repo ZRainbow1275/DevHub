@@ -35,7 +35,14 @@ contextBridge.exposeInMainWorld('devhub', {
 
     // 智能项目发现（包括 VSCode 最近打开、pnpm/npm 链接等）
     discover: (): Promise<Array<{ path: string; name: string; scripts: string[] }>> =>
-      ipcRenderer.invoke('projects:discover')
+      ipcRenderer.invoke('projects:discover'),
+
+    // 监听首次启动自动发现结果
+    onAutoDiscovered: (callback: (projects: Array<{ path: string; name: string; scripts: string[] }>) => void) => {
+      const handler = (_: unknown, projects: Array<{ path: string; name: string; scripts: string[] }>) => callback(projects)
+      ipcRenderer.on('projects:auto-discovered', handler)
+      return () => ipcRenderer.removeListener('projects:auto-discovered', handler)
+    }
   },
 
   // ==================== Process ====================

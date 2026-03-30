@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react'
 import { AppSettings } from '@shared/types'
 import { CloseIcon, SettingsIcon, FolderIcon, CheckIcon } from '../icons'
+import { useTheme, type ThemeName } from '../../hooks/useTheme'
+
+const THEMES: { key: ThemeName; name: string; desc: string; colors: [string, string, string] }[] = [
+  { key: 'constructivism', name: '构成主义', desc: '暗色·红金·工业', colors: ['#1a1814', '#d64545', '#c9a227'] },
+  { key: 'modern-light', name: '现代明亮', desc: '亮色·蓝白·专业', colors: ['#f8f9fa', '#3b82f6', '#f59e0b'] },
+  { key: 'warm-light', name: '暖光', desc: '亮色·铜金·温暖', colors: ['#faf8f5', '#b85c38', '#c9a227'] },
+]
 
 interface SettingsDialogProps {
   isOpen: boolean
@@ -11,6 +18,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [newPath, setNewPath] = useState('')
   const [availableDrives, setAvailableDrives] = useState<string[]>([])
+  const { theme, setTheme } = useTheme()
 
   useEffect(() => {
     if (isOpen) {
@@ -143,6 +151,52 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             <div className="text-text-muted text-center py-8">加载中...</div>
           ) : (
             <>
+              {/* Theme Selector */}
+              <section>
+                <h3
+                  className="text-sm font-bold text-text-secondary mb-4 uppercase tracking-wider border-l-3 border-accent pl-3"
+                  style={{ fontFamily: 'var(--font-display)' }}
+                >
+                  主题风格
+                </h3>
+                <div className="grid grid-cols-3 gap-3">
+                  {THEMES.map((t) => {
+                    const isActive = theme === t.key
+                    return (
+                      <button
+                        key={t.key}
+                        onClick={() => setTheme(t.key)}
+                        className={`
+                          relative p-3 border-2 transition-all text-left
+                          ${isActive
+                            ? 'border-accent bg-surface-800'
+                            : 'border-surface-600 bg-surface-800/50 hover:border-surface-500'
+                          }
+                        `}
+                        style={{ borderRadius: '4px' }}
+                      >
+                        {isActive && (
+                          <div className="absolute top-1.5 right-1.5">
+                            <CheckIcon size={14} className="text-accent" />
+                          </div>
+                        )}
+                        <div className="flex gap-1.5 mb-2">
+                          {t.colors.map((c, i) => (
+                            <div
+                              key={i}
+                              className="w-5 h-5 border border-surface-600"
+                              style={{ backgroundColor: c, borderRadius: '2px' }}
+                            />
+                          ))}
+                        </div>
+                        <div className="text-sm font-medium text-text-primary">{t.name}</div>
+                        <div className="text-xs text-text-muted">{t.desc}</div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </section>
+
               {/* General Settings */}
               <section>
                 <h3

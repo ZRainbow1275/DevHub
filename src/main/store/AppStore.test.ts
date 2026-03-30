@@ -152,7 +152,8 @@ describe('AppStore Logic Tests', () => {
       checkInterval: 3000,
       scanDrives: ['C:', 'D:'],
       allowedPaths: [],
-      minimizeToTray: false
+      minimizeToTray: false,
+      firstLaunchDone: false
     }
 
     it('应该返回默认设置', () => {

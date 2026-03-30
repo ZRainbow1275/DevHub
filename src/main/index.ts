@@ -5,6 +5,7 @@ import { registerIpcHandlers, cleanupIpcHandlers } from './ipc'
 import { AppStore } from './store/AppStore'
 import { ProcessManager } from './services/ProcessManager'
 import { ToolMonitor } from './services/ToolMonitor'
+import { ProjectScanner } from './services/ProjectScanner'
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -120,12 +121,13 @@ app.whenReady().then(() => {
 
   // Set Content Security Policy headers
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    const csp = is.dev
+      ? "default-src 'self' 'unsafe-inline' 'unsafe-eval'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' ws://127.0.0.1:* http://127.0.0.1:*"
+      : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'"
     callback({
       responseHeaders: {
         ...details.responseHeaders,
-        'Content-Security-Policy': [
-          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'"
-        ]
+        'Content-Security-Policy': [csp]
       }
     })
   })
@@ -140,6 +142,23 @@ app.whenReady().then(() => {
 
   // Register IPC handlers AFTER window is created
   registerIpcHandlers(appStore, processManager, toolMonitor, () => mainWindow)
+
+  // Auto-discover projects on first launch
+  if (appStore.getProjects().length === 0 && !settings.firstLaunchDone) {
+    const projectScanner = new ProjectScanner()
+    mainWindow!.webContents.once('did-finish-load', () => {
+      projectScanner.scanCommonLocations(settings.scanDrives).then((results) => {
+        if (results.length > 0 && mainWindow) {
+          mainWindow.webContents.send('projects:auto-discovered', results)
+        }
+        appStore.updateSettings({ firstLaunchDone: true })
+      }).catch((err) => {
+        console.error('Auto-discovery failed:', err)
+        appStore.updateSettings({ firstLaunchDone: true })
+      })
+    })
+  }
+
   if (settings.notificationEnabled) {
     toolMonitor.start(appStore.getTools(), settings.checkInterval, (tool) => {
       // Send notification

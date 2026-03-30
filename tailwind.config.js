@@ -100,10 +100,10 @@ export default {
         '2xl': '4px'
       },
       boxShadow: {
-        'glow': '0 0 20px rgba(214, 69, 69, 0.4)',
-        'glow-sm': '0 0 10px rgba(214, 69, 69, 0.3)',
-        'glow-gold': '0 0 15px rgba(201, 162, 39, 0.3)',
-        'glow-success': '0 0 15px rgba(90, 154, 107, 0.3)',
+        'glow': '0 0 20px var(--red-overlay, rgba(214, 69, 69, 0.4))',
+        'glow-sm': '0 0 10px var(--red-overlay, rgba(214, 69, 69, 0.3))',
+        'glow-gold': '0 0 15px var(--gold-overlay, rgba(201, 162, 39, 0.3))',
+        'glow-success': '0 0 15px var(--success-overlay, rgba(90, 154, 107, 0.3))',
         'card': '0 2px 4px rgba(0, 0, 0, 0.3)',
         'card-hover': '0 4px 8px rgba(0, 0, 0, 0.4)',
         'elevated': '0 8px 16px rgba(0, 0, 0, 0.4)',

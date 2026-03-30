@@ -1,8 +1,10 @@
 /* ========================================
-   Soviet Constructivism Color Token System
+   DevHub Multi-Theme Color Token System
    ======================================== */
 
-:root {
+/* ---- Default Theme = Constructivism ---- */
+:root,
+[data-theme="constructivism"] {
   /* ---- Background Layers (Warm Gray) ---- */
   --surface-950: #1a1814;  /* Deepest - warm charcoal */
   --surface-900: #252220;  /* Main container */
@@ -70,5 +72,133 @@
     transparent 40px,
     rgba(214, 69, 69, 0.03) 40px,
     rgba(214, 69, 69, 0.03) 42px
+  );
+}
+
+/* ---- Modern Light Theme ---- */
+[data-theme="modern-light"] {
+  --surface-950: #f8f9fa;
+  --surface-900: #f1f3f5;
+  --surface-850: #e9ecef;
+  --surface-800: #dee2e6;
+  --surface-750: #ced4da;
+  --surface-700: #adb5bd;
+  --surface-600: #868e96;
+  --surface-500: #495057;
+
+  --text-primary: #212529;
+  --text-secondary: #495057;
+  --text-tertiary: #868e96;
+  --text-muted: #adb5bd;
+  --text-accent: #343a40;
+
+  --red-300: #93c5fd;
+  --red-400: #60a5fa;
+  --red-500: #3b82f6;
+  --red-600: #2563eb;
+  --red-700: #1d4ed8;
+
+  --gold-300: #fcd34d;
+  --gold-400: #fbbf24;
+  --gold-500: #f59e0b;
+  --gold-600: #d97706;
+  --gold-700: #b45309;
+
+  --steel-300: #93c5fd;
+  --steel-400: #60a5fa;
+  --steel-500: #3b82f6;
+  --steel-600: #2563eb;
+  --steel-700: #1d4ed8;
+
+  --success: #22c55e;
+  --success-light: #4ade80;
+  --success-dark: #16a34a;
+  --warning: #f59e0b;
+  --warning-light: #fbbf24;
+  --warning-dark: #d97706;
+  --error: #ef4444;
+  --error-light: #f87171;
+  --error-dark: #dc2626;
+  --info: #3b82f6;
+  --info-light: #60a5fa;
+  --info-dark: #2563eb;
+
+  --overlay-light: rgba(33, 37, 41, 0.03);
+  --overlay-medium: rgba(33, 37, 41, 0.06);
+  --overlay-heavy: rgba(33, 37, 41, 0.10);
+  --red-overlay: rgba(59, 130, 246, 0.10);
+  --gold-overlay: rgba(245, 158, 11, 0.10);
+  --success-overlay: rgba(34, 197, 94, 0.10);
+
+  --diagonal-stripe: repeating-linear-gradient(
+    -12deg,
+    transparent,
+    transparent 8px,
+    rgba(59, 130, 246, 0.05) 8px,
+    rgba(59, 130, 246, 0.05) 9px
+  );
+}
+
+/* ---- Warm Light Theme ---- */
+[data-theme="warm-light"] {
+  --surface-950: #faf8f5;
+  --surface-900: #f5f0e8;
+  --surface-850: #ede6da;
+  --surface-800: #e5ddd0;
+  --surface-750: #dbd2c4;
+  --surface-700: #c4b8a8;
+  --surface-600: #a69885;
+  --surface-500: #8a7c6c;
+
+  --text-primary: #3d2c1e;
+  --text-secondary: #5c4a3a;
+  --text-tertiary: #8a7c6c;
+  --text-muted: #a69885;
+  --text-accent: #4a3828;
+
+  --red-300: #d4957a;
+  --red-400: #c67858;
+  --red-500: #b85c38;
+  --red-600: #9a4c2e;
+  --red-700: #7c3d25;
+
+  --gold-300: #e0c84e;
+  --gold-400: #d5b538;
+  --gold-500: #c9a227;
+  --gold-600: #a68619;
+  --gold-700: #856b14;
+
+  --steel-300: #9fb0be;
+  --steel-400: #8499a8;
+  --steel-500: #6b7d8a;
+  --steel-600: #4a5966;
+  --steel-700: #3a464f;
+
+  --success: #5a9a6b;
+  --success-light: #6db37e;
+  --success-dark: #4a8259;
+  --warning: #c9a227;
+  --warning-light: #dab948;
+  --warning-dark: #a68619;
+  --error: #b85c38;
+  --error-light: #c67858;
+  --error-dark: #9a4c2e;
+  --info: #6b7d8a;
+  --info-light: #8499a8;
+  --info-dark: #4a5966;
+
+  --overlay-light: rgba(61, 44, 30, 0.03);
+  --overlay-medium: rgba(61, 44, 30, 0.06);
+  --overlay-heavy: rgba(61, 44, 30, 0.10);
+  --red-overlay: rgba(184, 92, 56, 0.10);
+  --gold-overlay: rgba(201, 162, 39, 0.10);
+  --success-overlay: rgba(90, 154, 107, 0.10);
+
+  --diagonal-stripe: repeating-linear-gradient(
+    -12deg,
+    transparent,
+    transparent 8px,
+    rgba(184, 92, 56, 0.05) 8px,
+    rgba(184, 92, 56, 0.05) 9px
   );
 }

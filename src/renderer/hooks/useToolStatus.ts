@@ -39,11 +39,12 @@ export function useToolStatus() {
       timeoutsRef.current.set(tool.id, timeout)
     })
 
+    const timeouts = timeoutsRef.current
     return () => {
       unsubscribe()
       // 清理所有 timeout
-      timeoutsRef.current.forEach((timeout) => clearTimeout(timeout))
-      timeoutsRef.current.clear()
+      timeouts.forEach((timeout) => clearTimeout(timeout))
+      timeouts.clear()
     }
   }, [updateTool])
 

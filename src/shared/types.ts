@@ -48,7 +48,8 @@ export interface AppSettings {
   checkInterval: number
   allowedPaths: string[]
   scanDrives: string[]  // 自定义扫描盘符，如 ['C', 'D', 'E']
-  theme: 'dark' | 'light'
+  theme: 'constructivism' | 'modern-light' | 'warm-light' | 'dark' | 'light'
+  firstLaunchDone: boolean
 }
 
 // IPC Channel names
@@ -122,5 +123,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   checkInterval: 3000,
   allowedPaths: [],
   scanDrives: ['C', 'D'],  // 默认扫描 C 和 D 盘
-  theme: 'dark'
+  theme: 'constructivism',
+  firstLaunchDone: false
 }

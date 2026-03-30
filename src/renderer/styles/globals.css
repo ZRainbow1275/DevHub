@@ -54,7 +54,7 @@
    ======================================== */
 
 ::selection {
-  background: rgba(214, 69, 69, 0.4);
+  background: var(--red-overlay);
   color: var(--text-primary);
 }
 
@@ -426,6 +426,17 @@ select option {
 
 .hero-number-error {
   border-bottom-color: var(--error);
+}
+
+/* Hero responsive */
+@media (max-width: 1024px) {
+  .hero-number-value {
+    font-size: 32px;
+    line-height: 40px;
+  }
+  .hero-number {
+    padding: 8px;
+  }
 }
 
 /* ========================================

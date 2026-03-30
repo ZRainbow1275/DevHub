@@ -4,15 +4,21 @@ import { Sidebar } from './components/layout/Sidebar'
 import { StatusBar } from './components/layout/StatusBar'
 import { ProjectList } from './components/project/ProjectList'
 import { AddProjectDialog } from './components/project/AddProjectDialog'
+import { AutoDiscoveryDialog } from './components/project/AutoDiscoveryDialog'
 import { LogPanel } from './components/log/LogPanel'
 import { MonitorPanel } from './components/monitor'
 import { SettingsDialog } from './components/settings/SettingsDialog'
 import { CloseConfirmDialog } from './components/ui/CloseConfirmDialog'
+import { ResizeHandle } from './components/ui/ResizeHandle'
 import { ToastProvider, useToast } from './components/ui/Toast'
 import { HeroStats } from './components/ui/HeroStats'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { useProjects } from './hooks/useProjects'
 import { LogIcon, MonitorIcon } from './components/icons'
+
+const PANEL_MIN = 280
+const PANEL_MAX = 400
+const PANEL_STORAGE_KEY = 'devhub:panel-width'
 
 type MainView = 'logs' | 'monitor'
 
@@ -20,9 +26,24 @@ function AppContent() {
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showCloseConfirm, setShowCloseConfirm] = useState(false)
+  const [showAutoDiscovery, setShowAutoDiscovery] = useState(false)
+  const [discoveredProjects, setDiscoveredProjects] = useState<Array<{ path: string; name: string; scripts: string[] }>>([])
   const [mainView, setMainView] = useState<MainView>('logs')
+  const [panelWidth, setPanelWidth] = useState(() => {
+    const stored = localStorage.getItem(PANEL_STORAGE_KEY)
+    const parsed = stored ? Number(stored) : 340
+    return Math.min(PANEL_MAX, Math.max(PANEL_MIN, parsed))
+  })
   const { selectedProject, selectedProjectId, addProject } = useProjects()
   const { showToast } = useToast()
+
+  const handlePanelResize = useCallback((delta: number) => {
+    setPanelWidth(prev => {
+      const next = Math.min(PANEL_MAX, Math.max(PANEL_MIN, prev + delta))
+      localStorage.setItem(PANEL_STORAGE_KEY, String(next))
+      return next
+    })
+  }, [])
 
   const handleAddProject = useCallback(async (path: string) => {
     try {
@@ -32,6 +53,32 @@ function AppContent() {
       showToast('error', error instanceof Error ? error.message : '添加项目失败')
       throw error
     }
+  }, [addProject, showToast])
+
+  // 监听首次启动项目自动发现
+  useEffect(() => {
+    if (!window.devhub?.projects?.onAutoDiscovered) return
+
+    const unsubscribe = window.devhub.projects.onAutoDiscovered((projects) => {
+      if (projects.length > 0) {
+        setDiscoveredProjects(projects)
+        setShowAutoDiscovery(true)
+      }
+    })
+    return unsubscribe
+  }, [])
+
+  const handleAutoDiscoveryImport = useCallback(async (projects: Array<{ path: string; name: string; scripts: string[] }>) => {
+    for (const project of projects) {
+      try {
+        await addProject(project.path)
+      } catch {
+        // Skip projects that fail to add
+      }
+    }
+    showToast('success', `已导入 ${projects.length} 个项目`)
+    setShowAutoDiscovery(false)
+    setDiscoveredProjects([])
   }, [addProject, showToast])
 
   // 监听窗口关闭确认事件 - window.devhub 在非 Electron 环境下不存在
@@ -59,7 +106,10 @@ function AppContent() {
           {/* Split View */}
           <div className="flex-1 flex overflow-hidden">
             {/* Project List (Left Panel) */}
-            <div className="w-[340px] border-r-2 border-surface-700 overflow-hidden bg-surface-900/50 relative flex flex-col">
+            <div
+              className="border-r-2 border-surface-700 overflow-hidden bg-surface-900/50 relative flex flex-col"
+              style={{ width: panelWidth, minWidth: PANEL_MIN, maxWidth: PANEL_MAX }}
+            >
               {/* Diagonal decoration */}
               <div className="absolute inset-0 deco-diagonal opacity-5 pointer-events-none" />
               {/* Hero Stats */}
@@ -69,6 +119,9 @@ function AppContent() {
                 <ProjectList onAddProject={() => setShowAddDialog(true)} />
               </div>
             </div>
+
+            {/* Resize Handle */}
+            <ResizeHandle onResize={handlePanelResize} />
 
             {/* Log Panel (Right Panel) */}
             <div className="flex-1 overflow-hidden flex flex-col relative">
@@ -137,6 +190,17 @@ function AppContent() {
       <SettingsDialog
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
+      />
+
+      {/* Auto Discovery Dialog */}
+      <AutoDiscoveryDialog
+        isOpen={showAutoDiscovery}
+        projects={discoveredProjects}
+        onImport={handleAutoDiscoveryImport}
+        onClose={() => {
+          setShowAutoDiscovery(false)
+          setDiscoveredProjects([])
+        }}
       />
 
       {/* Close Confirm Dialog */}

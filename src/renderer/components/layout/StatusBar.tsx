@@ -11,6 +11,12 @@ export function StatusBar() {
   const runningTools = tools.filter(t => t.status === 'running')
   const completedTools = tools.filter(t => t.status === 'completed')
 
+  const MAX_SHOW = 2
+  const projectNames = runningProjects.map(p => p.name)
+  const projectDisplay = projectNames.length <= MAX_SHOW
+    ? projectNames.join(', ')
+    : `${projectNames.slice(0, MAX_SHOW).join(', ')} +${projectNames.length - MAX_SHOW} more`
+
   return (
     <footer className="h-8 bg-surface-900 border-t-2 border-surface-700 flex items-center justify-between px-4 text-xs relative">
       {/* Top accent line */}
@@ -34,8 +40,8 @@ export function StatusBar() {
             <GearIcon size={14} className="text-success animate-gear-spin" style={{ animationDuration: '2s' }} />
             <span className="text-success font-bold tabular-nums">{runningCount}</span>
             <span className="text-text-muted">个项目运行中</span>
-            <span className="text-accent-300 truncate max-w-[180px] font-medium" title={runningProjects.map(p => p.name).join(', ')}>
-              {runningProjects.map(p => p.name).join(', ')}
+            <span className="text-accent-300 truncate max-w-[180px] lg:max-w-[300px] font-medium" title={projectNames.join(', ')}>
+              {projectDisplay}
             </span>
           </div>
         )}

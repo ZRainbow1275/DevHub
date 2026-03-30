@@ -8,7 +8,6 @@ export function useProjects() {
   const {
     projects,
     selectedProjectId,
-    filter,
     setProjects,
     addProject,
     updateProject,
@@ -207,7 +206,7 @@ export function useProjects() {
   }, [projects])
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId)
-  const filteredProjects = useMemo(() => getFilteredProjects(), [projects, filter])
+  const filteredProjects = useMemo(() => getFilteredProjects(), [getFilteredProjects])
 
   return {
     projects,

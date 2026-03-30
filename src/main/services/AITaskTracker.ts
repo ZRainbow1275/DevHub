@@ -7,7 +7,8 @@ import {
   AIToolType,
   AITaskState,
   AI_TOOL_SIGNATURES,
-  ProcessInfo
+  ProcessInfo,
+  WindowInfo
 } from '@shared/types-extended'
 import { SystemProcessScanner } from './SystemProcessScanner'
 
@@ -93,7 +94,7 @@ export class AITaskTracker extends EventEmitter {
     }
   }
 
-  async scanForAITasks(cachedProcesses?: ProcessInfo[]): Promise<AITask[]> {
+  async scanForAITasks(cachedProcesses?: ProcessInfo[], windows?: WindowInfo[]): Promise<AITask[]> {
     const processes = cachedProcesses ?? await this.processScanner.getAll()
     const newTasks: AITask[] = []
 
@@ -106,10 +107,14 @@ export class AITaskTracker extends EventEmitter {
       )
 
       if (!existingTask) {
+        // Match window by PID to assign windowHwnd
+        const matchedWindow = windows?.find(w => w.pid === process.pid)
+
         const task: AITask = {
           id: `ai_${process.pid}_${Date.now()}`,
           toolType,
           pid: process.pid,
+          windowHwnd: matchedWindow?.hwnd,
           startTime: process.startTime,
           status: {
             state: 'running',
@@ -126,6 +131,12 @@ export class AITaskTracker extends EventEmitter {
         this.tasks.set(task.id, task)
         newTasks.push(task)
         this.emit('task-started', task)
+      } else if (!existingTask.windowHwnd && windows) {
+        // Try to assign windowHwnd if not yet set
+        const matchedWindow = windows.find(w => w.pid === process.pid)
+        if (matchedWindow) {
+          existingTask.windowHwnd = matchedWindow.hwnd
+        }
       }
     }
 
@@ -312,11 +323,17 @@ export class AITaskTracker extends EventEmitter {
       if (toolType === 'other') continue
 
       // Check process patterns
-      if (signatures.processPatterns.some(p => lowerName.includes(p.toLowerCase()))) {
-        // Check command patterns
-        if (signatures.commandPatterns.some(pattern => pattern.test(command))) {
-          return toolType as AIToolType
-        }
+      const nameMatch = signatures.processPatterns.some(p => lowerName.includes(p.toLowerCase()))
+      if (!nameMatch) continue
+
+      // If commandPatterns is empty, match on processName alone (e.g., Cursor)
+      if (signatures.commandPatterns.length === 0) {
+        return toolType as AIToolType
+      }
+
+      // Check command patterns
+      if (signatures.commandPatterns.some(pattern => pattern.test(command))) {
+        return toolType as AIToolType
       }
     }
 
