@@ -10,6 +10,12 @@ import { ProjectScanner } from './services/ProjectScanner'
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 
+// 单实例锁：防止启动多个窗口
+const gotTheLock = app.requestSingleInstanceLock()
+if (!gotTheLock) {
+  app.quit()
+}
+
 // Initialize services
 const appStore = new AppStore()
 const processManager = new ProcessManager()
@@ -109,6 +115,14 @@ function createTray(): void {
   })
 }
 
+// 第二实例尝试启动时聚焦已有窗口
+app.on('second-instance', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.focus()
+  }
+})
+
 // App lifecycle
 app.whenReady().then(() => {
   // Set app user model id for windows notifications
@@ -147,15 +161,18 @@ app.whenReady().then(() => {
   if (appStore.getProjects().length === 0 && !settings.firstLaunchDone) {
     const projectScanner = new ProjectScanner()
     mainWindow!.webContents.once('did-finish-load', () => {
-      projectScanner.scanCommonLocations(settings.scanDrives).then((results) => {
-        if (results.length > 0 && mainWindow) {
-          mainWindow.webContents.send('projects:auto-discovered', results)
-        }
-        appStore.updateSettings({ firstLaunchDone: true })
-      }).catch((err) => {
-        console.error('Auto-discovery failed:', err)
-        appStore.updateSettings({ firstLaunchDone: true })
-      })
+      // 延迟发送，确保 React useEffect listener 已挂载
+      setTimeout(() => {
+        projectScanner.scanCommonLocations(settings.scanDrives).then((results) => {
+          if (results.length > 0 && mainWindow) {
+            mainWindow.webContents.send('projects:auto-discovered', results)
+          }
+          appStore.updateSettings({ firstLaunchDone: true })
+        }).catch((err) => {
+          console.error('Auto-discovery failed:', err)
+          appStore.updateSettings({ firstLaunchDone: true })
+        })
+      }, 1000)
     })
   }
 

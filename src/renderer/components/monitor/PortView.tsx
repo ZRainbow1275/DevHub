@@ -101,7 +101,7 @@ const PortCard = memo(function PortCard({ port, index, isCommon, isSelected, onS
           {/* Address */}
           <div className="mb-4">
             <div className="text-[10px] text-text-tertiary uppercase tracking-wider mb-1">本地地址</div>
-            <div className="text-xs text-text-secondary font-mono bg-surface-800 px-2 py-1 border-l-2 border-surface-600" style={{ borderRadius: '2px' }}>
+            <div className="text-xs text-text-secondary font-mono bg-surface-800 px-2 py-1 border-l-2 border-surface-600 truncate" style={{ borderRadius: '2px' }} title={port.localAddress}>
               {port.localAddress}
             </div>
           </div>
@@ -453,7 +453,7 @@ export function PortView() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-5">
         {viewMode === 'cards' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredPorts.map((port, index) => (
               <PortCard
                 key={`${port.port}-${port.pid}`}

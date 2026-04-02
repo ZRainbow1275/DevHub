@@ -277,14 +277,20 @@ export function isProtectedProcess(name: string): boolean {
 }
 
 // Dev process patterns for filtering
+// 注意: 不包含数据库服务（postgres/mysql/mongo/redis），它们不是开发工具进程
 export const DEV_PROCESS_PATTERNS = [
-  // Runtimes
-  'node.exe', 'python.exe', 'python3.exe', 'java.exe',
-  'go.exe', 'cargo.exe', 'rustc.exe', 'ruby.exe',
+  // JS/TS 运行时
+  'node.exe', 'deno.exe', 'bun.exe',
+  // Python
+  'python.exe', 'python3.exe',
+  // 其他运行时
+  'java.exe', 'go.exe', 'cargo.exe', 'rustc.exe', 'ruby.exe',
   'php.exe', 'dotnet.exe',
-  // IDEs
-  'code.exe', 'idea64.exe', 'pycharm64.exe', 'webstorm64.exe',
-  'Cursor.exe', 'windsurf.exe',
-  // Infrastructure
-  'docker.exe', 'redis-server.exe', 'mongod.exe', 'postgres.exe'
+  // IDE & 编辑器
+  'code.exe', 'Cursor.exe', 'windsurf.exe',
+  'idea64.exe', 'pycharm64.exe', 'webstorm64.exe',
+  // AI 编程工具
+  'codex', 'claude', 'gemini',
+  // 容器
+  'docker.exe'
 ] as const

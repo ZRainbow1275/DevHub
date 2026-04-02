@@ -169,14 +169,16 @@
 }
 
 .btn-danger {
-  @apply bg-transparent text-error border border-error/50 px-4 py-2 font-semibold;
+  @apply bg-transparent text-error border px-4 py-2 font-semibold;
+  border-color: color-mix(in srgb, var(--error) 50%, transparent);
   @apply transition-all duration-200;
   @apply hover:bg-error hover:text-white hover:border-error;
   border-radius: 2px;
 }
 
 .btn-success {
-  @apply bg-transparent text-success border border-success/50 px-4 py-2 font-semibold;
+  @apply bg-transparent text-success border px-4 py-2 font-semibold;
+  border-color: color-mix(in srgb, var(--success) 50%, transparent);
   @apply transition-all duration-200;
   @apply hover:bg-success hover:text-white hover:border-success;
   border-radius: 2px;
@@ -240,7 +242,8 @@
 }
 
 .status-badge-running {
-  @apply bg-success/20 text-success;
+  @apply text-success;
+  background-color: color-mix(in srgb, var(--success) 20%, transparent);
 }
 
 .status-badge-idle {
@@ -248,7 +251,8 @@
 }
 
 .status-badge-error {
-  @apply bg-error/20 text-error;
+  @apply text-error;
+  background-color: color-mix(in srgb, var(--error) 20%, transparent);
 }
 
 /* Status Dot */
@@ -309,11 +313,15 @@
 }
 
 .tag-accent {
-  @apply bg-accent/20 text-accent-300 border border-accent/30;
+  @apply text-accent-300 border;
+  background-color: color-mix(in srgb, var(--red-500) 20%, transparent);
+  border-color: color-mix(in srgb, var(--red-500) 30%, transparent);
 }
 
 .tag-gold {
-  @apply bg-gold/20 text-gold-400 border border-gold/30;
+  @apply text-gold-400 border;
+  background-color: color-mix(in srgb, var(--gold-500) 20%, transparent);
+  border-color: color-mix(in srgb, var(--gold-500) 30%, transparent);
 }
 
 /* ========================================
@@ -323,7 +331,8 @@
 input[type="checkbox"] {
   @apply appearance-none w-5 h-5 border-2 border-surface-500 bg-surface-800;
   @apply checked:bg-accent checked:border-accent;
-  @apply focus:ring-2 focus:ring-accent/30 focus:ring-offset-0;
+  @apply focus:ring-2 focus:ring-offset-0;
+  --tw-ring-color: color-mix(in srgb, var(--red-500) 30%, transparent);
   @apply cursor-pointer relative transition-all duration-150;
   border-radius: 2px;
 }
@@ -439,6 +448,16 @@ select option {
   }
 }
 
+@media (max-width: 640px) {
+  .hero-number-value {
+    font-size: 24px;
+    line-height: 32px;
+  }
+  .hero-number {
+    padding: 6px 4px;
+  }
+}
+
 /* ========================================
    Dialog / Modal
    ======================================== */
@@ -522,7 +541,8 @@ select option {
 }
 
 .nav-item-active {
-  @apply bg-accent/10 text-accent-300;
+  @apply text-accent-300;
+  background-color: color-mix(in srgb, var(--red-500) 10%, transparent);
   border-left-color: var(--red-500) !important;
 }
 
@@ -539,7 +559,8 @@ select option {
 }
 
 .tab-active {
-  @apply bg-accent/10 text-accent-300;
+  @apply text-accent-300;
+  background-color: color-mix(in srgb, var(--red-500) 10%, transparent);
   border-bottom-color: var(--red-500);
 }
 
@@ -581,4 +602,32 @@ select option {
 .card:hover .action-group {
   @apply opacity-100;
   transform: translateX(0);
+}
+
+/* ========================================
+   Metric Display (Process/Port cards)
+   ======================================== */
+
+.metric-display {
+  @apply flex flex-col items-center justify-center p-2 min-w-0 overflow-hidden;
+  background-color: color-mix(in srgb, var(--surface-900) 50%, transparent);
+  border-radius: 2px;
+}
+
+.metric-display span {
+  @apply truncate max-w-full;
+}
+
+/* ========================================
+   Responsive Hero Numbers
+   ======================================== */
+
+@media (max-width: 1024px) {
+  .hero-number-value {
+    font-size: 32px;
+    line-height: 40px;
+  }
+  .hero-number {
+    padding: 8px;
+  }
 }

@@ -6,68 +6,63 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Soviet Constructivism - Warm Lightened Palette
+        // All colors reference CSS custom properties for multi-theme support
         'accent': {
-          DEFAULT: '#d64545',  // Revolutionary Red (brightened)
-          50: '#fef2f2',
-          100: '#fee2e2',
-          200: '#fecaca',
-          300: '#f28b8b',
-          400: '#e85d5d',
-          500: '#d64545',
-          600: '#b83a3a',
-          700: '#9a2f2f',
-          800: '#7f2626',
-          900: '#691f1f'
+          DEFAULT: 'var(--red-500)',
+          50: 'var(--red-50, #fef2f2)',
+          100: 'var(--red-100, #fee2e2)',
+          200: 'var(--red-200, #fecaca)',
+          300: 'var(--red-300, #f28b8b)',
+          400: 'var(--red-400, #e85d5d)',
+          500: 'var(--red-500)',
+          600: 'var(--red-600, #b83a3a)',
+          700: 'var(--red-700, #9a2f2f)',
+          800: 'var(--red-800, #7f2626)',
+          900: 'var(--red-900, #691f1f)'
         },
-        // Industrial Gold
         'gold': {
-          DEFAULT: '#c9a227',
-          300: '#e8cf6a',
-          400: '#dab948',
-          500: '#c9a227',
-          600: '#a68619',
-          700: '#856b14'
+          DEFAULT: 'var(--gold-500)',
+          300: 'var(--gold-300, #e8cf6a)',
+          400: 'var(--gold-400, #dab948)',
+          500: 'var(--gold-500)',
+          600: 'var(--gold-600, #a68619)',
+          700: 'var(--gold-700, #856b14)'
         },
-        // Steel Gray
         'steel': {
-          DEFAULT: '#6b7d8a',
-          300: '#9fb0be',
-          400: '#8499a8',
-          500: '#6b7d8a',
-          600: '#4a5966',
-          700: '#3a464f'
+          DEFAULT: 'var(--steel-500, #6b7d8a)',
+          300: 'var(--steel-300, #9fb0be)',
+          400: 'var(--steel-400, #8499a8)',
+          500: 'var(--steel-500, #6b7d8a)',
+          600: 'var(--steel-600, #4a5966)',
+          700: 'var(--steel-700, #3a464f)'
         },
-        // Warm Gray Surfaces
         'surface': {
-          DEFAULT: '#252220',
-          50: '#f5f0e8',
-          100: '#e8e0d4',
-          200: '#c4bdb3',
-          300: '#9a938a',
-          400: '#6b635a',
-          500: '#5a534b',
-          600: '#443f39',
-          700: '#3b3632',
-          750: '#322e2a',
-          800: '#2b2825',
-          850: '#252220',
-          900: '#1f1c1a',
-          950: '#1a1814'
+          DEFAULT: 'var(--surface-850)',
+          50: 'var(--surface-50)',
+          100: 'var(--surface-100)',
+          200: 'var(--surface-200)',
+          300: 'var(--surface-300)',
+          400: 'var(--surface-400)',
+          500: 'var(--surface-500)',
+          600: 'var(--surface-600)',
+          700: 'var(--surface-700)',
+          750: 'var(--surface-750)',
+          800: 'var(--surface-800)',
+          850: 'var(--surface-850)',
+          900: 'var(--surface-900)',
+          950: 'var(--surface-950)'
         },
-        // Semantic Colors (warmer)
-        'success': '#5a9a6b',
-        'warning': '#c9a227',
-        'error': '#d64545',
-        'info': '#6b7d8a',
-        'running': '#5a9a6b',
-        // Text Colors (ivory/cream)
+        'success': 'var(--success)',
+        'warning': 'var(--warning)',
+        'error': 'var(--error)',
+        'info': 'var(--info)',
+        'running': 'var(--success)',
         'text': {
-          primary: '#f5f0e8',
-          secondary: '#c4bdb3',
-          tertiary: '#9a938a',
-          muted: '#8a8279',
-          accent: '#e8e0d4'
+          primary: 'var(--text-primary)',
+          secondary: 'var(--text-secondary)',
+          tertiary: 'var(--text-tertiary)',
+          muted: 'var(--text-muted)',
+          accent: 'var(--text-accent)'
         }
       },
       fontFamily: {

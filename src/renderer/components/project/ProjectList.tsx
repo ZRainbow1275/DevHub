@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { ProjectCard } from './ProjectCard'
 import { TagManagerDialog } from './TagManagerDialog'
@@ -7,7 +7,7 @@ import { useDebouncedCallback } from '../../hooks/useDebouncedCallback'
 import { useProjectStore } from '../../stores/projectStore'
 import { useToast } from '../ui/Toast'
 import { Project } from '@shared/types'
-import { SearchIcon, PlusIcon, FolderIcon } from '../icons'
+import { SearchIcon, PlusIcon, FolderIcon, RefreshIcon } from '../icons'
 
 interface ProjectListProps {
   onAddProject: () => void
@@ -73,6 +73,41 @@ export function ProjectList({ onAddProject }: ProjectListProps) {
       showToast('error', error instanceof Error ? error.message : '删除失败')
     }
   }
+
+  const [isDiscovering, setIsDiscovering] = useState(false)
+
+  const handleDiscover = useCallback(async () => {
+    if (!isElectron) return
+    setIsDiscovering(true)
+    try {
+      const results = await window.devhub.projects.discover()
+      if (results.length === 0) {
+        showToast('info', '未发现新项目')
+        return
+      }
+      let imported = 0
+      for (const project of results) {
+        try {
+          await window.devhub.projects.add(project.path)
+          imported++
+        } catch {
+          // 跳过已存在或无效的项目
+        }
+      }
+      if (imported > 0) {
+        // 刷新列表
+        const list = await window.devhub.projects.list()
+        useProjectStore.getState().setProjects(list)
+        showToast('success', `已导入 ${imported} 个项目（发现 ${results.length} 个）`)
+      } else {
+        showToast('info', `发现 ${results.length} 个项目，但均已存在`)
+      }
+    } catch (error) {
+      showToast('error', error instanceof Error ? error.message : '扫描失败')
+    } finally {
+      setIsDiscovering(false)
+    }
+  }, [showToast])
 
   const handleStart = async (id: string, script: string) => {
     try {
@@ -156,12 +191,22 @@ export function ProjectList({ onAddProject }: ProjectListProps) {
                 <FolderIcon size={32} className="text-text-muted" />
               </div>
               <p className="text-sm font-medium">暂无项目</p>
-              <button
-                onClick={onAddProject}
-                className="mt-4 text-sm text-accent hover:text-accent-400 font-bold uppercase tracking-wider transition-colors"
-              >
-                添加第一个项目
-              </button>
+              <div className="flex flex-col items-center gap-2 mt-4">
+                <button
+                  onClick={handleDiscover}
+                  disabled={isDiscovering}
+                  className="flex items-center gap-2 text-sm text-accent hover:text-accent-400 font-bold uppercase tracking-wider transition-colors disabled:opacity-50"
+                >
+                  <RefreshIcon size={14} className={isDiscovering ? 'animate-spin' : ''} />
+                  {isDiscovering ? '扫描中...' : '自动扫描项目'}
+                </button>
+                <button
+                  onClick={onAddProject}
+                  className="text-sm text-text-secondary hover:text-text-primary transition-colors"
+                >
+                  或手动添加项目
+                </button>
+              </div>
             </div>
           ) : (
             <div

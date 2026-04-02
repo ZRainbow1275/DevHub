@@ -48,8 +48,12 @@ export class WindowManager {
   private layouts: WindowLayout[] = []
   private store: Store<WindowLayoutData>
   private saveTimeout: NodeJS.Timeout | null = null
-  private windowHelperCompiled = false
-  private windowHelperCompiling: Promise<void> | null = null
+
+  // WindowHelper C# 类型定义 — 每次 PowerShell 调用都需要内联（因为每次都是新进程）
+  // 使用单行 here-string 避免换行符在 Windows 上的问题
+  private static readonly HELPER_ADD_TYPE = `Add-Type @"
+using System; using System.Runtime.InteropServices; public class WindowHelper { [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd); [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow); [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int W, int H, bool repaint); [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd); [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam); public static void Focus(IntPtr h) { if(IsIconic(h)) ShowWindow(h,9); SetForegroundWindow(h); } public static void Move(IntPtr h,int x,int y,int w,int ht) { MoveWindow(h,x,y,w,ht,true); } public static void Minimize(IntPtr h) { ShowWindow(h,6); } public static void Maximize(IntPtr h) { ShowWindow(h,3); } public static void Close(IntPtr h) { PostMessage(h,0x0010,IntPtr.Zero,IntPtr.Zero); } }
+"@`
 
   constructor() {
     this.store = new Store<WindowLayoutData>({
@@ -100,7 +104,7 @@ export class WindowManager {
 
   async scanWindows(): Promise<ServiceResult<WindowInfo[]>> {
     try {
-      const script = `
+      const script = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
         Add-Type @"
           using System;
           using System.Runtime.InteropServices;
@@ -182,11 +186,10 @@ export class WindowManager {
         [WindowEnumerator]::GetWindows()
       `
 
-      const psCommand = script.replace(/\n/g, ' ')
       const { stdout } = await execFileAsync(
         'powershell',
-        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', psCommand],
-        { windowsHide: true, maxBuffer: 10 * 1024 * 1024 }
+        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script],
+        { windowsHide: true, maxBuffer: 10 * 1024 * 1024, encoding: 'utf8' }
       )
 
       const windows: WindowInfo[] = []
@@ -266,12 +269,10 @@ export class WindowManager {
     }
 
     try {
-      await this.ensureWindowHelper()
+      const cmd = `${WindowManager.HELPER_ADD_TYPE}; [WindowHelper]::Focus([IntPtr]${Math.floor(Number(hwnd))})`
       await execFileAsync(
         'powershell',
-        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command',
-          `[WindowHelper]::Focus([IntPtr]${Math.floor(Number(hwnd))})`
-        ],
+        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', cmd],
         { windowsHide: true }
       )
       return { success: true }
@@ -302,12 +303,10 @@ export class WindowManager {
     }
 
     try {
-      await this.ensureWindowHelper()
+      const cmd = `${WindowManager.HELPER_ADD_TYPE}; [WindowHelper]::Move([IntPtr]${Math.floor(Number(hwnd))},${Math.floor(Number(x))},${Math.floor(Number(y))},${Math.floor(Number(width))},${Math.floor(Number(height))})`
       await execFileAsync(
         'powershell',
-        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command',
-          `[WindowHelper]::Move([IntPtr]${Math.floor(Number(hwnd))},${Math.floor(Number(x))},${Math.floor(Number(y))},${Math.floor(Number(width))},${Math.floor(Number(height))})`
-        ],
+        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', cmd],
         { windowsHide: true }
       )
       return { success: true }
@@ -324,12 +323,10 @@ export class WindowManager {
     }
 
     try {
-      await this.ensureWindowHelper()
+      const cmd = `${WindowManager.HELPER_ADD_TYPE}; [WindowHelper]::Minimize([IntPtr]${Math.floor(Number(hwnd))})`
       await execFileAsync(
         'powershell',
-        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command',
-          `[WindowHelper]::Minimize([IntPtr]${Math.floor(Number(hwnd))})`
-        ],
+        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', cmd],
         { windowsHide: true }
       )
       return { success: true }
@@ -346,12 +343,10 @@ export class WindowManager {
     }
 
     try {
-      await this.ensureWindowHelper()
+      const cmd = `${WindowManager.HELPER_ADD_TYPE}; [WindowHelper]::Maximize([IntPtr]${Math.floor(Number(hwnd))})`
       await execFileAsync(
         'powershell',
-        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command',
-          `[WindowHelper]::Maximize([IntPtr]${Math.floor(Number(hwnd))})`
-        ],
+        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', cmd],
         { windowsHide: true }
       )
       return { success: true }
@@ -368,12 +363,10 @@ export class WindowManager {
     }
 
     try {
-      await this.ensureWindowHelper()
+      const cmd = `${WindowManager.HELPER_ADD_TYPE}; [WindowHelper]::Close([IntPtr]${Math.floor(Number(hwnd))})`
       await execFileAsync(
         'powershell',
-        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command',
-          `[WindowHelper]::Close([IntPtr]${Math.floor(Number(hwnd))})`
-        ],
+        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', cmd],
         { windowsHide: true }
       )
       return { success: true }
@@ -545,9 +538,9 @@ export class WindowManager {
       const { stdout } = await execFileAsync(
         'powershell',
         ['-NoProfile', '-Command',
-          `Get-Process -Id ${validPids.join(',')} -ErrorAction SilentlyContinue | Select-Object Id,ProcessName | ConvertTo-Csv -NoTypeInformation`
+          `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-Process -Id ${validPids.join(',')} -ErrorAction SilentlyContinue | Select-Object Id,ProcessName | ConvertTo-Csv -NoTypeInformation`
         ],
-        { windowsHide: true }
+        { windowsHide: true, encoding: 'utf8' }
       )
 
       for (const line of stdout.split('\n')) {
@@ -564,46 +557,6 @@ export class WindowManager {
     }
 
     return result
-  }
-
-  // 编译统一的 WindowHelper C# 类（缓存，只编译一次）
-  private async ensureWindowHelper(): Promise<void> {
-    if (this.windowHelperCompiled) return
-    // Prevent concurrent compilation race condition
-    if (this.windowHelperCompiling) {
-      await this.windowHelperCompiling
-      return
-    }
-
-    const compilePromise = (async () => {
-      try {
-        await execFileAsync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', `
-          Add-Type @"
-            using System;
-            using System.Runtime.InteropServices;
-            public class WindowHelper {
-              [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
-              [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-              [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int W, int H, bool repaint);
-              [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd);
-              [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
-              public static void Focus(IntPtr h) { if(IsIconic(h)) ShowWindow(h,9); SetForegroundWindow(h); }
-              public static void Move(IntPtr h,int x,int y,int w,int ht) { MoveWindow(h,x,y,w,ht,true); }
-              public static void Minimize(IntPtr h) { ShowWindow(h,6); }
-              public static void Maximize(IntPtr h) { ShowWindow(h,3); }
-              public static void Close(IntPtr h) { PostMessage(h,0x0010,IntPtr.Zero,IntPtr.Zero); }
-            }
-"@
-        `.replace(/\n/g, ' ')], { windowsHide: true })
-        this.windowHelperCompiled = true
-      } catch (error) {
-        console.warn('ensureWindowHelper failed:', error instanceof Error ? error.message : 'Unknown error')
-      } finally {
-        this.windowHelperCompiling = null
-      }
-    })()
-    this.windowHelperCompiling = compilePromise
-    await compilePromise
   }
 
   /**

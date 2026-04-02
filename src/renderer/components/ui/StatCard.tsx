@@ -43,10 +43,14 @@ export const StatCard = memo(function StatCard({
         >
           {icon}
         </div>
-        <div>
+        <div className="min-w-0 flex-1">
           <div
-            className="text-2xl font-bold text-text-primary font-mono tabular-nums"
-            style={{ fontFamily: 'var(--font-display)' }}
+            className="font-bold text-text-primary font-mono tabular-nums whitespace-nowrap"
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: String(value).length > 6 ? '16px' : String(value).length > 4 ? '20px' : '24px',
+              lineHeight: '1.2'
+            }}
           >
             {value}
           </div>

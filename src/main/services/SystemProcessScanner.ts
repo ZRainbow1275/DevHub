@@ -252,11 +252,11 @@ export class SystemProcessScanner {
 
   private async getRawProcesses(): Promise<RawProcessInfo[]> {
     try {
-      const psCmd = `Get-CimInstance Win32_Process | Select-Object ProcessId,Name,CommandLine,WorkingSetSize | ConvertTo-Csv -NoTypeInformation`
+      const psCmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-CimInstance Win32_Process | Select-Object ProcessId,Name,CommandLine,WorkingSetSize | ConvertTo-Csv -NoTypeInformation`
       const { stdout } = await execFileAsync(
         'powershell.exe',
         ['-NoProfile', '-NonInteractive', '-Command', psCmd],
-        { windowsHide: true, maxBuffer: 10 * 1024 * 1024 }
+        { windowsHide: true, maxBuffer: 10 * 1024 * 1024, encoding: 'utf8' }
       )
       const lines = stdout.split('\n').filter(l => l.trim())
       const processes: RawProcessInfo[] = []
@@ -359,9 +359,11 @@ export class SystemProcessScanner {
         }
       }
 
-      // Store current values for next cycle
-      this.previousCpuTimes = currentCpuTimes
-      this.lastCpuSampleTime = now
+      // Store current values for next cycle (only if we got valid data)
+      if (currentCpuTimes.size > 0) {
+        this.previousCpuTimes = currentCpuTimes
+        this.lastCpuSampleTime = now
+      }
 
       // Clean up PIDs that no longer exist
       const pidSet = new Set(pids)
@@ -383,11 +385,11 @@ export class SystemProcessScanner {
     try {
       // Batch query: get CPU (total processor time in seconds) for all PIDs
       const pidList = pids.join(',')
-      const psCmd = `${pidList} | ForEach-Object { try { $p = Get-Process -Id $_ -ErrorAction SilentlyContinue; if($p) { Write-Output "$($_.ToString())=$($p.TotalProcessorTime.TotalSeconds)" } } catch {} }`
+      const psCmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; @(${pidList}) | ForEach-Object { try { $p = Get-Process -Id $_ -ErrorAction SilentlyContinue; if($p) { Write-Output "$($_.ToString())=$($p.TotalProcessorTime.TotalSeconds)" } } catch {} }`
       const { stdout } = await execFileAsync(
         'powershell.exe',
         ['-NoProfile', '-NonInteractive', '-Command', psCmd],
-        { windowsHide: true, timeout: 10000 }
+        { windowsHide: true, timeout: 10000, encoding: 'utf8' }
       )
 
       for (const line of stdout.split('\n')) {

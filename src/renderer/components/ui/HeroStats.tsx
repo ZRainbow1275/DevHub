@@ -15,7 +15,7 @@ function HeroStat({ value, label, variant = 'default' }: HeroStatProps) {
   }[variant]
 
   return (
-    <div className={`hero-number ${variantClass}`}>
+    <div className={`hero-number ${variantClass} min-w-0 flex-1`}>
       <span className="hero-number-value hero-number-update">{value}</span>
       <span className="hero-number-label">{label}</span>
     </div>

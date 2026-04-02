@@ -203,8 +203,8 @@ export function registerIpcHandlers(
       if ('checkInterval' in sanitized && typeof sanitized.checkInterval !== 'number') {
         throw new Error('checkInterval must be a number')
       }
-      if ('theme' in sanitized && !['dark', 'light'].includes(sanitized.theme as string)) {
-        throw new Error('theme must be "dark" or "light"')
+      if ('theme' in sanitized && !['constructivism', 'modern-light', 'warm-light', 'dark', 'light'].includes(sanitized.theme as string)) {
+        throw new Error('theme must be a valid theme name')
       }
       if ('scanDrives' in sanitized && !Array.isArray(sanitized.scanDrives)) {
         throw new Error('scanDrives must be an array')

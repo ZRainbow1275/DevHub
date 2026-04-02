@@ -14,6 +14,7 @@ import { ToastProvider, useToast } from './components/ui/Toast'
 import { HeroStats } from './components/ui/HeroStats'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { useProjects } from './hooks/useProjects'
+import { useTheme } from './hooks/useTheme'
 import { LogIcon, MonitorIcon } from './components/icons'
 
 const PANEL_MIN = 280
@@ -36,6 +37,7 @@ function AppContent() {
   })
   const { selectedProject, selectedProjectId, addProject } = useProjects()
   const { showToast } = useToast()
+  useTheme() // 初始化主题：从设置加载并应用到 DOM
 
   const handlePanelResize = useCallback((delta: number) => {
     setPanelWidth(prev => {
@@ -69,14 +71,20 @@ function AppContent() {
   }, [])
 
   const handleAutoDiscoveryImport = useCallback(async (projects: Array<{ path: string; name: string; scripts: string[] }>) => {
+    let successCount = 0
     for (const project of projects) {
       try {
         await addProject(project.path)
+        successCount++
       } catch {
         // Skip projects that fail to add
       }
     }
-    showToast('success', `已导入 ${projects.length} 个项目`)
+    if (successCount > 0) {
+      showToast('success', `已导入 ${successCount} 个项目${successCount < projects.length ? `（${projects.length - successCount} 个失败）` : ''}`)
+    } else {
+      showToast('error', '导入失败，请手动添加项目')
+    }
     setShowAutoDiscovery(false)
     setDiscoveredProjects([])
   }, [addProject, showToast])
