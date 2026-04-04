@@ -1,0 +1,45 @@
+{
+  "id": "process-card-enhancement",
+  "name": "process-card-enhancement",
+  "title": "进程卡片增强：路径显示太小只有前几字符，需完整显示或hover展开。添加更多操作(查看详情/打开目录/复制命令行/进程树)。改进CPU/内存可视化。分析ProcessView.tsx。源码在devhub/src/",
+  "description": "",
+  "status": "planning",
+  "dev_type": "fullstack",
+  "scope": "process",
+  "package": null,
+  "priority": "P2",
+  "creator": "ZRainbow",
+  "assignee": "ZRainbow",
+  "createdAt": "2026-04-03",
+  "completedAt": null,
+  "branch": "feature/process-card-enhancement",
+  "base_branch": "main",
+  "worktree_path": null,
+  "current_phase": 0,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

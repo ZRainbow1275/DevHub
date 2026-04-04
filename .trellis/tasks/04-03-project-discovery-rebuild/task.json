@@ -1,0 +1,45 @@
+{
+  "id": "project-discovery-rebuild",
+  "name": "project-discovery-rebuild",
+  "title": "项目探查重建：支持npm/pnpm/yarn/venv/conda/poetry/Rust/Go/Java项目扫描。手动+自动两种模式，文件系统监听实时发现。分析ProjectScanner.ts和useProjects.ts。源码在devhub/src/",
+  "description": "",
+  "status": "planning",
+  "dev_type": "fullstack",
+  "scope": "scanner",
+  "package": null,
+  "priority": "P2",
+  "creator": "ZRainbow",
+  "assignee": "ZRainbow",
+  "createdAt": "2026-04-03",
+  "completedAt": null,
+  "branch": "feature/project-discovery-rebuild",
+  "base_branch": "main",
+  "worktree_path": null,
+  "current_phase": 0,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

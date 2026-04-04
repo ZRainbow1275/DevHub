@@ -1,0 +1,45 @@
+{
+  "id": "settings-page-complete",
+  "name": "settings-page-complete",
+  "title": "设置页面完善：添加外观/扫描/进程监控/通知/窗口管理/高级等全面设置项。分析SettingsDialog.tsx和AppSettings类型。源码在devhub/src/",
+  "description": "",
+  "status": "planning",
+  "dev_type": "fullstack",
+  "scope": "settings",
+  "package": null,
+  "priority": "P2",
+  "creator": "ZRainbow",
+  "assignee": "ZRainbow",
+  "createdAt": "2026-04-03",
+  "completedAt": null,
+  "branch": "feature/settings-page-complete",
+  "base_branch": "main",
+  "worktree_path": null,
+  "current_phase": 0,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

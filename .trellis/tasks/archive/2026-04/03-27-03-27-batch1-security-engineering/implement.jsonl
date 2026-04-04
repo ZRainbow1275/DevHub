@@ -1,0 +1,8 @@
+{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend development guide"}
+{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend development guide"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Error handling patterns for SEC fixes"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "Component extraction patterns"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "DRY code extraction patterns"}
+{"file": "prompt/0327/01-spec-security.md", "reason": "Security fix specifications"}
+{"file": "prompt/0327/02-spec-engineering.md", "reason": "Engineering fix specifications"}

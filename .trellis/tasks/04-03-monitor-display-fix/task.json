@@ -1,0 +1,45 @@
+{
+  "id": "monitor-display-fix",
+  "name": "monitor-display-fix",
+  "title": "监控数值显示修复：StatCard中1445MB被截断，端口号:471...被截断，窗口统计文字挤压，PID数值过大。重新设计响应式布局。分析StatCard.tsx和所有monitor组件。源码在devhub/src/",
+  "description": "",
+  "status": "planning",
+  "dev_type": "frontend",
+  "scope": "monitor",
+  "package": null,
+  "priority": "P2",
+  "creator": "ZRainbow",
+  "assignee": "ZRainbow",
+  "createdAt": "2026-04-03",
+  "completedAt": null,
+  "branch": "feature/monitor-display-fix",
+  "base_branch": "main",
+  "worktree_path": null,
+  "current_phase": 0,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

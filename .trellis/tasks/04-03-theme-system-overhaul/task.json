@@ -1,0 +1,45 @@
+{
+  "id": "theme-system-overhaul",
+  "name": "theme-system-overhaul",
+  "title": "主题系统全面革新：不只颜色切换，需包含排版/布局/字体/视觉传达。设计token系统，至少3个完整主题(暗色专业/明亮现代/温暖自然)。分析styles/和tailwind.config.js。源码在devhub/src/",
+  "description": "",
+  "status": "planning",
+  "dev_type": "frontend",
+  "scope": "theme",
+  "package": null,
+  "priority": "P2",
+  "creator": "ZRainbow",
+  "assignee": "ZRainbow",
+  "createdAt": "2026-04-03",
+  "completedAt": null,
+  "branch": "feature/theme-system-overhaul",
+  "base_branch": "main",
+  "worktree_path": null,
+  "current_phase": 0,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

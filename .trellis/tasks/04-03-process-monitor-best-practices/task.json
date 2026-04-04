@@ -1,0 +1,45 @@
+{
+  "id": "process-monitor-best-practices",
+  "name": "process-monitor-best-practices",
+  "title": "调研进程监控最佳实践：对比Windows Task Manager和Process Explorer和htop。重点：低资源消耗的进程数据采集，分析SystemProcessScanner.ts的CPU始终0问题，PowerShell命令优化。不要引起驱动或内核崩溃。源码在devhub/src/",
+  "description": "",
+  "status": "planning",
+  "dev_type": "backend",
+  "scope": "process-monitor",
+  "package": null,
+  "priority": "P2",
+  "creator": "ZRainbow",
+  "assignee": "ZRainbow",
+  "createdAt": "2026-04-03",
+  "completedAt": null,
+  "branch": "feature/process-monitor-best-practices",
+  "base_branch": "main",
+  "worktree_path": null,
+  "current_phase": 0,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

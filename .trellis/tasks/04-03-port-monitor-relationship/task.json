@@ -1,0 +1,45 @@
+{
+  "id": "port-monitor-relationship",
+  "name": "port-monitor-relationship",
+  "title": "端口监控+关系图：修复端口号截断(:471...)，设计端口与进程的深层关系可视化，揭示网络拓扑。分析PortScanner.ts和PortView.tsx。源码在devhub/src/",
+  "description": "",
+  "status": "planning",
+  "dev_type": "fullstack",
+  "scope": "port-topology",
+  "package": null,
+  "priority": "P2",
+  "creator": "ZRainbow",
+  "assignee": "ZRainbow",
+  "createdAt": "2026-04-03",
+  "completedAt": null,
+  "branch": "feature/port-monitor-relationship",
+  "base_branch": "main",
+  "worktree_path": null,
+  "current_phase": 0,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

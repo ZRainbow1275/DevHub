@@ -1,0 +1,45 @@
+{
+  "id": "window-manager-interaction",
+  "name": "window-manager-interaction",
+  "title": "窗口管理交互重构：过滤系统窗口(设置/CoreWindow/Progman)，修复聚焦操作(C# Add-Type)，处理同PID多窗口，修复标题?号乱码。分析WindowManager.ts和WindowView.tsx。源码在devhub/src/",
+  "description": "",
+  "status": "planning",
+  "dev_type": "fullstack",
+  "scope": "window",
+  "package": null,
+  "priority": "P2",
+  "creator": "ZRainbow",
+  "assignee": "ZRainbow",
+  "createdAt": "2026-04-03",
+  "completedAt": null,
+  "branch": "feature/window-manager-interaction",
+  "base_branch": "main",
+  "worktree_path": null,
+  "current_phase": 0,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
