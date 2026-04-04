@@ -1,4 +1,4 @@
-import { useEffect, memo, useState, useCallback } from 'react'
+import { useEffect, memo, useState, useCallback, useMemo, useRef } from 'react'
 import { useWindows } from '../../hooks/useWindows'
 import { WindowInfo, WindowGroup, WindowLayout } from '@shared/types-extended'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
@@ -20,8 +20,196 @@ import {
   CodeIcon,
   GlobeIcon,
   TerminalIcon,
-  AlertIcon
+  AlertIcon,
+  ProcessIcon
 } from '../icons'
+
+// ============================================
+// Process Group data structure for "group by process" view
+// ============================================
+interface ProcessGroupData {
+  pid: number
+  processName: string
+  windows: WindowInfo[]
+}
+
+// ============================================
+// Process Group Card - collapsible group header + child windows
+// ============================================
+interface ProcessGroupCardProps {
+  group: ProcessGroupData
+  isExpanded: boolean
+  onToggleExpand: () => void
+  selectedHwnd: number | null
+  selectedWindows: Set<number>
+  onSelectWindow: (hwnd: number) => void
+  onFocusWindow: (hwnd: number) => void
+  onToggleCheck: (hwnd: number) => void
+  index: number
+}
+
+const ProcessGroupCard = memo(function ProcessGroupCard({
+  group,
+  isExpanded,
+  onToggleExpand,
+  selectedHwnd,
+  selectedWindows,
+  onSelectWindow,
+  onFocusWindow,
+  onToggleCheck,
+  index
+}: ProcessGroupCardProps) {
+  return (
+    <div
+      className="monitor-card relative overflow-hidden animate-card-stagger border-l-info"
+      style={{ animationDelay: `${index * 40}ms` }}
+    >
+      {/* Diagonal decoration */}
+      <div className="absolute inset-0 deco-diagonal opacity-5 pointer-events-none" />
+
+      {/* Group Header */}
+      <div
+        onClick={onToggleExpand}
+        className="w-full px-4 py-3 flex items-center justify-between hover:bg-surface-800/30 transition-colors cursor-pointer relative z-10"
+      >
+        <div className="flex items-center gap-3">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onToggleExpand()
+            }}
+            className="p-1 hover:bg-surface-700/50 transition-colors"
+            style={{ borderRadius: '2px' }}
+          >
+            <ChevronIcon
+              size={16}
+              className={`text-text-muted transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}
+            />
+          </button>
+
+          <div
+            className="w-10 h-10 bg-info/20 flex items-center justify-center border-l-3 border-info"
+            style={{ borderRadius: '2px' }}
+          >
+            <ProcessIcon size={20} className="text-info" />
+          </div>
+
+          <div>
+            <span className="text-sm font-semibold text-text-primary">{group.processName}</span>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span
+                className="text-xs text-text-muted bg-surface-800 px-2 py-0.5 border-l-2 border-info"
+                style={{ borderRadius: '2px' }}
+              >
+                PID: {group.pid}
+              </span>
+              <span
+                className="text-xs text-text-muted bg-surface-800 px-2 py-0.5 border-l-2 border-surface-600"
+                style={{ borderRadius: '2px' }}
+              >
+                {group.windows.length} 个窗口
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Child Windows */}
+      {isExpanded && group.windows.length > 0 && (
+        <div className="px-4 pb-3 space-y-1">
+          {group.windows.map((w) => {
+            const typeInfo = getWindowTypeInfo(w.processName)
+            const isSelected = selectedHwnd === w.hwnd
+            const isChecked = selectedWindows.has(w.hwnd)
+
+            return (
+              <div
+                key={w.hwnd}
+                onClick={() => onSelectWindow(w.hwnd)}
+                onDoubleClick={() => onFocusWindow(w.hwnd)}
+                className={`
+                  group flex items-center gap-3 p-2.5 cursor-pointer
+                  border-l-2 transition-all duration-200
+                  ${isSelected
+                    ? 'bg-surface-800 border-l-accent'
+                    : 'border-surface-600 hover:bg-surface-800/50 hover:border-l-surface-500'
+                  }
+                `}
+                style={{ borderRadius: '2px' }}
+              >
+                {/* Checkbox */}
+                <div onClick={(e) => e.stopPropagation()}>
+                  <div
+                    onClick={() => onToggleCheck(w.hwnd)}
+                    className={`
+                      w-4 h-4 flex items-center justify-center border-2 transition-all cursor-pointer
+                      ${isChecked
+                        ? 'bg-accent border-accent'
+                        : 'border-surface-500 hover:border-accent'
+                      }
+                    `}
+                    style={{ borderRadius: '2px' }}
+                  >
+                    {isChecked && <CheckIcon size={10} className="text-white" />}
+                  </div>
+                </div>
+
+                {/* Status */}
+                <span
+                  className={`w-2 h-2 flex-shrink-0 ${
+                    w.isMinimized ? 'bg-warning' : 'bg-success'
+                  }`}
+                  style={{ borderRadius: '1px' }}
+                />
+
+                {/* Icon */}
+                <div className={`w-7 h-7 bg-surface-700 flex items-center justify-center border-l-2 ${typeInfo.borderColor}`} style={{ borderRadius: '2px' }}>
+                  {typeInfo.icon}
+                </div>
+
+                {/* Title */}
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs text-text-secondary truncate block" title={w.title}>
+                    {w.title.length > 50 ? w.title.slice(0, 50) + '...' : w.title}
+                  </span>
+                </div>
+
+                {/* Size */}
+                <span className="text-xs text-text-tertiary font-mono flex-shrink-0">
+                  {w.rect.width}x{w.rect.height}
+                </span>
+
+                {w.isMinimized && (
+                  <span className="status-badge bg-warning/10 text-warning text-xs flex-shrink-0">
+                    最小化
+                  </span>
+                )}
+
+                {w.isSystemWindow && (
+                  <span className="status-badge bg-surface-600 text-text-muted text-xs flex-shrink-0">
+                    系统
+                  </span>
+                )}
+
+                {/* Focus button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onFocusWindow(w.hwnd)
+                  }}
+                  className="btn-icon-sm opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                  title="聚焦窗口"
+                >
+                  <EyeIcon size={14} />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+})
 
 // ============================================
 // Window Type Icon Mapping
@@ -157,6 +345,11 @@ const WindowCard = memo(function WindowCard({
                 最小化
               </span>
             )}
+            {window.isSystemWindow && (
+              <span className="status-badge bg-surface-600/50 text-text-muted border-surface-500/30">
+                系统窗口
+              </span>
+            )}
           </div>
         </div>
 
@@ -270,6 +463,11 @@ const WindowItem = memo(function WindowItem({
         {window.isMinimized && (
           <span className="status-badge bg-warning/10 text-warning text-xs">
             最小化
+          </span>
+        )}
+        {window.isSystemWindow && (
+          <span className="status-badge bg-surface-600/50 text-text-muted text-xs">
+            系统
           </span>
         )}
       </div>
@@ -583,7 +781,7 @@ export function WindowView() {
   } = useWindows()
 
   const [viewTab, setViewTab] = useState<'windows' | 'groups' | 'layouts'>('windows')
-  const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards')
+  const [viewMode, setViewMode] = useState<'cards' | 'list' | 'process'>('cards')
   const [showCreateGroup, setShowCreateGroup] = useState(false)
   const [showSaveLayout, setShowSaveLayout] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
@@ -591,12 +789,40 @@ export function WindowView() {
   const [newLayoutDesc, setNewLayoutDesc] = useState('')
   const [selectedWindows, setSelectedWindows] = useState<Set<number>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
+  const [showSystemWindows, setShowSystemWindows] = useState(false)
+  const [expandedPids, setExpandedPids] = useState<Set<number>>(new Set())
+  // Race condition guard: tracks the latest scan version so stale results trigger a corrective re-scan
+  const scanVersionRef = useRef(0)
+  // Tracks the latest showSystemWindows value for the corrective re-scan
+  const latestShowSystemRef = useRef(false)
 
   useEffect(() => {
-    scan()
+    scan(showSystemWindows)
     fetchGroups()
     fetchLayouts()
+    // showSystemWindows intentionally excluded — handleToggleSystemWindows drives re-scan on toggle
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scan, fetchGroups, fetchLayouts])
+
+  // Rescan when showSystemWindows changes, with race condition protection.
+  // If scan() completes and discovers its version is stale (user toggled again while the
+  // previous scan was in-flight), it re-issues a corrective scan with the latest flag
+  // so the store always converges to fresh data.
+  const handleToggleSystemWindows = useCallback(() => {
+    setShowSystemWindows(prev => {
+      const next = !prev
+      latestShowSystemRef.current = next
+      const version = ++scanVersionRef.current
+      scan(next).then(() => {
+        if (scanVersionRef.current !== version) {
+          // A newer toggle happened — store holds stale data. Issue a corrective scan
+          // with the most recent showSystemWindows value.
+          scan(latestShowSystemRef.current)
+        }
+      })
+      return next
+    })
+  }, [scan])
 
   const handleCreateGroup = useCallback(async () => {
     if (!newGroupName.trim() || selectedWindows.size === 0) return
@@ -631,12 +857,44 @@ export function WindowView() {
     w.processName.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+  // Process groups: group filteredWindows by PID
+  const processGroups = useMemo((): ProcessGroupData[] => {
+    const groupMap = new Map<number, ProcessGroupData>()
+    for (const w of filteredWindows) {
+      let group = groupMap.get(w.pid)
+      if (!group) {
+        group = { pid: w.pid, processName: w.processName, windows: [] }
+        groupMap.set(w.pid, group)
+      }
+      group.windows.push(w)
+    }
+    // Sort by window count descending, then by process name
+    return Array.from(groupMap.values()).sort((a, b) => {
+      if (b.windows.length !== a.windows.length) return b.windows.length - a.windows.length
+      return a.processName.localeCompare(b.processName)
+    })
+  }, [filteredWindows])
+
+  const togglePidExpanded = useCallback((pid: number) => {
+    setExpandedPids(prev => {
+      const next = new Set(prev)
+      if (next.has(pid)) {
+        next.delete(pid)
+      } else {
+        next.add(pid)
+      }
+      return next
+    })
+  }, [])
+
   // Statistics
   const stats = {
     total: windows.length,
     minimized: windows.filter(w => w.isMinimized).length,
     active: windows.filter(w => !w.isMinimized).length,
-    groups: groups.length
+    groups: groups.length,
+    systemCount: windows.filter(w => w.isSystemWindow).length,
+    processCount: new Set(windows.map(w => w.pid)).size
   }
 
   // Tab items
@@ -683,11 +941,31 @@ export function WindowView() {
               <ViewModeToggle
                 modes={[
                   { key: 'cards', icon: <GridIcon size={16} />, label: '卡片视图' },
-                  { key: 'list', icon: <ListIcon size={16} />, label: '列表视图' }
+                  { key: 'list', icon: <ListIcon size={16} />, label: '列表视图' },
+                  { key: 'process', icon: <ProcessIcon size={16} />, label: '按进程分组' }
                 ]}
                 current={viewMode}
                 onChange={(mode) => setViewMode(mode as typeof viewMode)}
               />
+            )}
+
+            {/* Show System Windows Toggle */}
+            {viewTab === 'windows' && (
+              <button
+                onClick={handleToggleSystemWindows}
+                className={`
+                  flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-all duration-200 border-l-2
+                  ${showSystemWindows
+                    ? 'bg-warning/20 text-warning border-warning'
+                    : 'bg-surface-800 text-text-muted border-surface-600 hover:bg-surface-700 hover:text-text-secondary'
+                  }
+                `}
+                style={{ borderRadius: '2px' }}
+                title={showSystemWindows ? '隐藏系统窗口' : '显示系统窗口'}
+              >
+                <EyeIcon size={14} />
+                {showSystemWindows ? '隐藏系统窗口' : '系统窗口'}
+              </button>
             )}
 
             {/* Create Group Button */}
@@ -716,7 +994,7 @@ export function WindowView() {
 
             {/* Refresh */}
             <button
-              onClick={scan}
+              onClick={() => scan(showSystemWindows)}
               disabled={isScanning}
               className={`
                 btn-icon-sm transition-all duration-200
@@ -786,7 +1064,7 @@ export function WindowView() {
       {/* Statistics (only for windows tab) */}
       {viewTab === 'windows' && (
         <div className="flex-shrink-0 px-5 py-4 border-b border-surface-700/50">
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <StatCard
               icon={<WindowIcon size={20} className="text-info" />}
               label="总窗口数"
@@ -806,9 +1084,9 @@ export function WindowView() {
               color="warning"
             />
             <StatCard
-              icon={<FolderIcon size={20} className="text-accent" />}
-              label="分组数量"
-              value={stats.groups}
+              icon={<ProcessIcon size={20} className="text-accent" />}
+              label="进程数"
+              value={stats.processCount}
               color="accent"
             />
           </div>
@@ -817,54 +1095,80 @@ export function WindowView() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-5">
-        {viewTab === 'windows' && (
-          viewMode === 'cards' ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {filteredWindows.map((window, index) => (
-                <WindowCard
-                  key={window.hwnd}
-                  window={window}
-                  isSelected={selectedHwnd === window.hwnd}
-                  isChecked={selectedWindows.has(window.hwnd)}
-                  onSelect={() => selectWindow(window.hwnd)}
-                  onFocus={() => focusWindow(window.hwnd)}
-                  onToggleCheck={() => toggleWindowSelection(window.hwnd)}
-                  index={index}
-                />
-              ))}
-              {filteredWindows.length === 0 && (
-                <div className="col-span-full">
-                  <EmptyState
-                    icon={<SearchIcon size={40} className="text-text-muted" />}
-                    title="未找到窗口"
-                    description={searchQuery ? '尝试其他搜索关键词' : '系统中没有可用窗口'}
-                  />
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {filteredWindows.map((window, index) => (
-                <WindowItem
-                  key={window.hwnd}
-                  window={window}
-                  isSelected={selectedHwnd === window.hwnd}
-                  isChecked={selectedWindows.has(window.hwnd)}
-                  onSelect={() => selectWindow(window.hwnd)}
-                  onFocus={() => focusWindow(window.hwnd)}
-                  onToggleCheck={() => toggleWindowSelection(window.hwnd)}
-                  index={index}
-                />
-              ))}
-              {filteredWindows.length === 0 && (
+        {viewTab === 'windows' && viewMode === 'cards' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {filteredWindows.map((window, index) => (
+              <WindowCard
+                key={window.hwnd}
+                window={window}
+                isSelected={selectedHwnd === window.hwnd}
+                isChecked={selectedWindows.has(window.hwnd)}
+                onSelect={() => selectWindow(window.hwnd)}
+                onFocus={() => focusWindow(window.hwnd)}
+                onToggleCheck={() => toggleWindowSelection(window.hwnd)}
+                index={index}
+              />
+            ))}
+            {filteredWindows.length === 0 && (
+              <div className="col-span-full">
                 <EmptyState
                   icon={<SearchIcon size={40} className="text-text-muted" />}
                   title="未找到窗口"
                   description={searchQuery ? '尝试其他搜索关键词' : '系统中没有可用窗口'}
                 />
-              )}
-            </div>
-          )
+              </div>
+            )}
+          </div>
+        )}
+
+        {viewTab === 'windows' && viewMode === 'list' && (
+          <div className="space-y-1">
+            {filteredWindows.map((window, index) => (
+              <WindowItem
+                key={window.hwnd}
+                window={window}
+                isSelected={selectedHwnd === window.hwnd}
+                isChecked={selectedWindows.has(window.hwnd)}
+                onSelect={() => selectWindow(window.hwnd)}
+                onFocus={() => focusWindow(window.hwnd)}
+                onToggleCheck={() => toggleWindowSelection(window.hwnd)}
+                index={index}
+              />
+            ))}
+            {filteredWindows.length === 0 && (
+              <EmptyState
+                icon={<SearchIcon size={40} className="text-text-muted" />}
+                title="未找到窗口"
+                description={searchQuery ? '尝试其他搜索关键词' : '系统中没有可用窗口'}
+              />
+            )}
+          </div>
+        )}
+
+        {viewTab === 'windows' && viewMode === 'process' && (
+          <div className="space-y-3">
+            {processGroups.map((group, index) => (
+              <ProcessGroupCard
+                key={group.pid}
+                group={group}
+                isExpanded={expandedPids.has(group.pid)}
+                onToggleExpand={() => togglePidExpanded(group.pid)}
+                selectedHwnd={selectedHwnd}
+                selectedWindows={selectedWindows}
+                onSelectWindow={(hwnd) => selectWindow(hwnd)}
+                onFocusWindow={(hwnd) => focusWindow(hwnd)}
+                onToggleCheck={(hwnd) => toggleWindowSelection(hwnd)}
+                index={index}
+              />
+            ))}
+            {processGroups.length === 0 && (
+              <EmptyState
+                icon={<SearchIcon size={40} className="text-text-muted" />}
+                title="未找到窗口"
+                description={searchQuery ? '尝试其他搜索关键词' : '系统中没有可用窗口'}
+              />
+            )}
+          </div>
         )}
 
         {viewTab === 'groups' && (

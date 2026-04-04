@@ -1,7 +1,7 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import Store from 'electron-store'
-import { WindowInfo, WindowGroup, WindowLayout, ServiceResult } from '@shared/types-extended'
+import { WindowInfo, WindowGroup, WindowLayout, ServiceResult, SYSTEM_WINDOW_CLASSNAMES } from '@shared/types-extended'
 
 const execFileAsync = promisify(execFile)
 
@@ -51,8 +51,10 @@ export class WindowManager {
 
   // WindowHelper C# 类型定义 — 每次 PowerShell 调用都需要内联（因为每次都是新进程）
   // 使用单行 here-string 避免换行符在 Windows 上的问题
+  // Focus 使用 AttachThreadInput + BringWindowToTop + SetForegroundWindow 组合策略
+  // 带有 keybd_event Alt 模拟重试机制
   private static readonly HELPER_ADD_TYPE = `Add-Type @"
-using System; using System.Runtime.InteropServices; public class WindowHelper { [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd); [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow); [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int W, int H, bool repaint); [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd); [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam); public static void Focus(IntPtr h) { if(IsIconic(h)) ShowWindow(h,9); SetForegroundWindow(h); } public static void Move(IntPtr h,int x,int y,int w,int ht) { MoveWindow(h,x,y,w,ht,true); } public static void Minimize(IntPtr h) { ShowWindow(h,6); } public static void Maximize(IntPtr h) { ShowWindow(h,3); } public static void Close(IntPtr h) { PostMessage(h,0x0010,IntPtr.Zero,IntPtr.Zero); } }
+using System; using System.Runtime.InteropServices; public class WindowHelper { [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd); [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow); [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int W, int H, bool repaint); [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd); [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam); [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId); [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow(); [DllImport("user32.dll")] public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach); [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr hWnd); [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId(); [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo); private const int SW_RESTORE = 9; private const int SW_MINIMIZE = 6; private const int SW_MAXIMIZE = 3; private const byte VK_MENU = 0x12; private const uint KEYEVENTF_EXTENDEDKEY = 0x0001; private const uint KEYEVENTF_KEYUP = 0x0002; public static void Focus(IntPtr h) { if(IsIconic(h)) ShowWindow(h, SW_RESTORE); IntPtr fg = GetForegroundWindow(); if(fg == h) return; uint targetThread = GetWindowThreadProcessId(h, out _); uint fgThread = (fg != IntPtr.Zero) ? GetWindowThreadProcessId(fg, out _) : 0; bool attached = false; try { if(fgThread != 0 && targetThread != fgThread) { attached = AttachThreadInput(fgThread, targetThread, true); } BringWindowToTop(h); SetForegroundWindow(h); } finally { if(attached) AttachThreadInput(fgThread, targetThread, false); } if(GetForegroundWindow() != h) { keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY, UIntPtr.Zero); keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, UIntPtr.Zero); SetForegroundWindow(h); } } public static void Move(IntPtr h,int x,int y,int w,int ht) { MoveWindow(h,x,y,w,ht,true); } public static void Minimize(IntPtr h) { ShowWindow(h,SW_MINIMIZE); } public static void Maximize(IntPtr h) { ShowWindow(h,SW_MAXIMIZE); } public static void Close(IntPtr h) { PostMessage(h,0x0010,IntPtr.Zero,IntPtr.Zero); } }
 "@`
 
   constructor() {
@@ -102,94 +104,59 @@ using System; using System.Runtime.InteropServices; public class WindowHelper { 
     }
   }
 
-  async scanWindows(): Promise<ServiceResult<WindowInfo[]>> {
+  async scanWindows(includeSystemWindows = false): Promise<ServiceResult<WindowInfo[]>> {
     try {
-      const script = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-        Add-Type @"
-          using System;
-          using System.Runtime.InteropServices;
-          using System.Text;
-          using System.Collections.Generic;
-
-          public class WindowEnumerator {
-            [DllImport("user32.dll")]
-            private static extern bool EnumWindows(EnumWindowsProc enumProc, IntPtr lParam);
-
-            [DllImport("user32.dll")]
-            private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
-
-            [DllImport("user32.dll")]
-            private static extern int GetWindowTextLength(IntPtr hWnd);
-
-            [DllImport("user32.dll")]
-            private static extern bool IsWindowVisible(IntPtr hWnd);
-
-            [DllImport("user32.dll")]
-            private static extern bool IsIconic(IntPtr hWnd);
-
-            [DllImport("user32.dll")]
-            private static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
-
-            [DllImport("user32.dll")]
-            private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
-
-            [DllImport("user32.dll")]
-            private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-
-            [StructLayout(LayoutKind.Sequential)]
-            public struct RECT {
-              public int Left, Top, Right, Bottom;
-            }
-
-            private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
-
-            public static string GetWindows() {
-              var result = new List<string>();
-              EnumWindows((hWnd, lParam) => {
-                if (!IsWindowVisible(hWnd)) return true;
-
-                int length = GetWindowTextLength(hWnd);
-                if (length == 0) return true;
-
-                StringBuilder title = new StringBuilder(length + 1);
-                GetWindowText(hWnd, title, title.Capacity);
-
-                StringBuilder className = new StringBuilder(256);
-                GetClassName(hWnd, className, className.Capacity);
-
-                RECT rect;
-                GetWindowRect(hWnd, out rect);
-
-                uint pid;
-                GetWindowThreadProcessId(hWnd, out pid);
-
-                bool isMinimized = IsIconic(hWnd);
-
-                result.Add(string.Format("{0}|{1}|{2}|{3}|{4}|{5}|{6}|{7}|{8}",
-                  hWnd.ToInt64(),
-                  title.ToString().Replace("|", " "),
-                  className.ToString(),
-                  pid,
-                  rect.Left,
-                  rect.Top,
-                  rect.Right - rect.Left,
-                  rect.Bottom - rect.Top,
-                  isMinimized ? 1 : 0
-                ));
-
-                return true;
-              }, IntPtr.Zero);
-              return string.Join("\\n", result);
-            }
-          }
+      // 端到端 UTF-8 编码链路：PowerShell $OutputEncoding + [Console]::OutputEncoding + C# Console.OutputEncoding
+      // 使用管道分隔文本格式（避免 JSON 转义在多层嵌入中的复杂性）
+      const script = `$OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+Add-Type @"
+using System; using System.Runtime.InteropServices; using System.Text; using System.Collections.Generic;
+public class WindowEnumerator {
+  [DllImport("user32.dll")] private static extern bool EnumWindows(EnumWindowsProc enumProc, IntPtr lParam);
+  [DllImport("user32.dll")] private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+  [DllImport("user32.dll")] private static extern int GetWindowTextLength(IntPtr hWnd);
+  [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hWnd);
+  [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr hWnd);
+  [DllImport("user32.dll")] private static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+  [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+  [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+  [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
+  private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+  public static string GetWindows() {
+    Console.OutputEncoding = System.Text.Encoding.UTF8;
+    var result = new List<string>();
+    EnumWindows((hWnd, lParam) => {
+      if (!IsWindowVisible(hWnd)) return true;
+      int length = GetWindowTextLength(hWnd);
+      if (length == 0) return true;
+      StringBuilder title = new StringBuilder(length + 1);
+      GetWindowText(hWnd, title, title.Capacity);
+      StringBuilder className = new StringBuilder(256);
+      GetClassName(hWnd, className, className.Capacity);
+      RECT rect; GetWindowRect(hWnd, out rect);
+      uint pid; GetWindowThreadProcessId(hWnd, out pid);
+      bool isMinimized = IsIconic(hWnd);
+      result.Add(string.Format("{0}|{1}|{2}|{3}|{4}|{5}|{6}|{7}|{8}",
+        hWnd.ToInt64(),
+        title.ToString().Replace("|", " "),
+        className.ToString(),
+        pid, rect.Left, rect.Top,
+        rect.Right - rect.Left,
+        rect.Bottom - rect.Top,
+        isMinimized ? 1 : 0));
+      return true;
+    }, IntPtr.Zero);
+    return string.Join("\\n", result);
+  }
+}
 "@
-        [WindowEnumerator]::GetWindows()
-      `
+[WindowEnumerator]::GetWindows()`
 
       const { stdout } = await execFileAsync(
         'powershell',
         ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script],
-        { windowsHide: true, maxBuffer: 10 * 1024 * 1024, encoding: 'utf8' }
+        { windowsHide: true, maxBuffer: 10 * 1024 * 1024, encoding: 'utf8', timeout: 15000 }
       )
 
       const windows: WindowInfo[] = []
@@ -230,7 +197,7 @@ using System; using System.Runtime.InteropServices; public class WindowHelper { 
           y: parseInt(yStr, 10) || 0,
           width: parseInt(widthStr, 10) || 0,
           height: parseInt(heightStr, 10) || 0,
-          isMinimized: minimizedStr === '1'
+          isMinimized: minimizedStr.trim() === '1'
         })
         uniquePids.add(pid)
       }
@@ -238,8 +205,13 @@ using System; using System.Runtime.InteropServices; public class WindowHelper { 
       // 一次性批量获取所有 PID 的进程名
       const pidNameMap = await this.batchGetProcessNames([...uniquePids])
 
-      // 第二遍：构建 WindowInfo 对象
+      // 第二遍：构建 WindowInfo 对象（含系统窗口标记与过滤）
       for (const pw of parsedWindows) {
+        const isSystem = SYSTEM_WINDOW_CLASSNAMES.has(pw.className)
+
+        // 后端默认过滤系统窗口（减少数据传输量）
+        if (!includeSystemWindows && isSystem) continue
+
         const windowInfo: WindowInfo = {
           hwnd: pw.hwnd,
           title: pw.title,
@@ -248,7 +220,8 @@ using System; using System.Runtime.InteropServices; public class WindowHelper { 
           className: pw.className,
           rect: { x: pw.x, y: pw.y, width: pw.width, height: pw.height },
           isVisible: true,
-          isMinimized: pw.isMinimized
+          isMinimized: pw.isMinimized,
+          isSystemWindow: isSystem
         }
 
         this.windows.set(pw.hwnd, windowInfo)
@@ -273,7 +246,7 @@ using System; using System.Runtime.InteropServices; public class WindowHelper { 
       await execFileAsync(
         'powershell',
         ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', cmd],
-        { windowsHide: true }
+        { windowsHide: true, timeout: 15000 }
       )
       return { success: true }
     } catch (error) {
@@ -307,7 +280,7 @@ using System; using System.Runtime.InteropServices; public class WindowHelper { 
       await execFileAsync(
         'powershell',
         ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', cmd],
-        { windowsHide: true }
+        { windowsHide: true, timeout: 15000 }
       )
       return { success: true }
     } catch (error) {
@@ -327,7 +300,7 @@ using System; using System.Runtime.InteropServices; public class WindowHelper { 
       await execFileAsync(
         'powershell',
         ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', cmd],
-        { windowsHide: true }
+        { windowsHide: true, timeout: 15000 }
       )
       return { success: true }
     } catch (error) {
@@ -347,7 +320,7 @@ using System; using System.Runtime.InteropServices; public class WindowHelper { 
       await execFileAsync(
         'powershell',
         ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', cmd],
-        { windowsHide: true }
+        { windowsHide: true, timeout: 15000 }
       )
       return { success: true }
     } catch (error) {
@@ -367,7 +340,7 @@ using System; using System.Runtime.InteropServices; public class WindowHelper { 
       await execFileAsync(
         'powershell',
         ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', cmd],
-        { windowsHide: true }
+        { windowsHide: true, timeout: 15000 }
       )
       return { success: true }
     } catch (error) {
@@ -538,9 +511,9 @@ using System; using System.Runtime.InteropServices; public class WindowHelper { 
       const { stdout } = await execFileAsync(
         'powershell',
         ['-NoProfile', '-Command',
-          `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-Process -Id ${validPids.join(',')} -ErrorAction SilentlyContinue | Select-Object Id,ProcessName | ConvertTo-Csv -NoTypeInformation`
+          `$OutputEncoding = [System.Text.Encoding]::UTF8; [Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-Process -Id ${validPids.join(',')} -ErrorAction SilentlyContinue | Select-Object Id,ProcessName | ConvertTo-Csv -NoTypeInformation`
         ],
-        { windowsHide: true, encoding: 'utf8' }
+        { windowsHide: true, encoding: 'utf8', timeout: 15000 }
       )
 
       for (const line of stdout.split('\n')) {
