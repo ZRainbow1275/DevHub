@@ -1,0 +1,5 @@
+{"file": ".claude/commands/trellis/check.md", "reason": "Code quality check spec"}
+{"file": "devhub/src/main/services/WindowManager.ts", "reason": "验证timeout添加后PowerShell操作正常执行"}
+{"file": "devhub/src/main/services/PortScanner.ts", "reason": "验证未知TCP状态处理逻辑修改后netstat输出正确解析"}
+{"file": "devhub/src/renderer/components/monitor/WindowView.tsx", "reason": "验证快速切换showSystemWindows时无竞态覆盖"}
+{"file": "devhub/src/renderer/hooks/useTheme.ts", "reason": "验证类型守卫在legacy和new两种结构下正确解析theme"}

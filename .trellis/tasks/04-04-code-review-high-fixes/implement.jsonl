@@ -1,0 +1,13 @@
+{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend development guide"}
+{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend development guide"}
+{"file": "devhub/src/main/services/WindowManager.ts", "reason": "HIGH-5: 6处execFileAsync调用需添加timeout:15000"}
+{"file": "devhub/src/main/services/PortScanner.ts", "reason": "HIGH-6: normalizeState方法需修改未知状态处理逻辑"}
+{"file": "devhub/src/shared/types-extended.ts", "reason": "HIGH-6依赖: PortState类型定义可能需要扩展"}
+{"file": "devhub/src/main/services/ProjectWatcher.ts", "reason": "HIGH-7: 需增大polling interval到30000ms"}
+{"file": "devhub/src/renderer/components/monitor/WindowView.tsx", "reason": "HIGH-8: handleToggleSystemWindows需用useRef追踪最新值避免竞态"}
+{"file": "devhub/src/renderer/hooks/useWindows.ts", "reason": "HIGH-8相关: scan函数竞态条件处理"}
+{"file": "devhub/src/renderer/hooks/useTheme.ts", "reason": "HIGH-9: 需提取类型守卫函数替换多层类型断言"}
+{"file": ".trellis/spec/frontend/type-safety.md", "reason": "HIGH-9类型安全规范参考"}
+{"file": ".trellis/spec/frontend/hook-guidelines.md", "reason": "HIGH-8 useRef竞态处理的Hook规范参考"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "HIGH-5/6错误处理规范参考"}

@@ -1,0 +1,7 @@
+{"file": ".claude/commands/trellis/finish-work.md", "reason": "Finish work checklist"}
+{"file": ".claude/commands/trellis/check.md", "reason": "Code quality check spec"}
+{"file": "devhub/src/main/services/PortScanner.test.ts", "reason": "HIGH-6修改后需更新测试，未知状态断言需同步修改"}
+{"file": "devhub/src/renderer/stores/portStore.ts", "reason": "引用PortState类型，需确认修改后无冲突"}
+{"file": "devhub/src/renderer/stores/windowStore.ts", "reason": "HIGH-8相关: setWindows覆盖写入，需确认竞态修复后行为正确"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "后端质量检查规范"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "前端质量检查规范"}

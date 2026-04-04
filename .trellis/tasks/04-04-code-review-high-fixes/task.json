@@ -1,0 +1,45 @@
+{
+  "id": "code-review-high-fixes",
+  "name": "code-review-high-fixes",
+  "title": "修复代码审查中剩余的5个HIGH优先级问题：(1) HIGH-5: WindowManager.ts所有execFileAsync调用缺少timeout，需添加timeout:15000；(2) HIGH-6: PortScanner.ts的normalizeState将未知TCP状态默认为LISTENING，应扩展PortState类型或跳过未知状态；(3) HIGH-7: ProjectWatcher.ts在Windows上usePolling:true对大目录性能差，需限制根目录或增大polling interval到30000ms；(4) HIGH-8: WindowView.tsx中showSystemWindows切换时存在scan竞态条件，需用useRef追踪最新值避免旧scan结果覆盖新结果；(5) HIGH-9: useTheme.ts中多层嵌套类型断言(as Record as string)可读性差，需提取类型守卫函数。所有文件在devhub/src/目录下。",
+  "description": "",
+  "status": "planning",
+  "dev_type": "fullstack",
+  "scope": "bugfix",
+  "package": null,
+  "priority": "P2",
+  "creator": "ZRainbow",
+  "assignee": "ZRainbow",
+  "createdAt": "2026-04-04",
+  "completedAt": null,
+  "branch": "feature/code-review-high-fixes",
+  "base_branch": "master",
+  "worktree_path": "D:\\Desktop\\trellis-worktrees\\feature\\code-review-high-fixes",
+  "current_phase": 3,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
