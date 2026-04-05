@@ -195,3 +195,70 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 3: Fix DevHub Monitor Notifications & Crash
+
+**Date**: 2026-04-05
+**Task**: Fix DevHub Monitor Notifications & Crash
+**Branch**: `master`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+
+## 修复内容
+
+### Bug 1: 过期完成通知重复弹出
+| 层级 | 修复 |
+|------|------|
+| 根因 | `ToolMonitor.checkTools()` 失败时 `previousStatus.clear()` + 全部设为 false |
+| ToolMonitor 去重 | `shouldSendNotification()` 30秒时间窗口 |
+| 跨系统去重 | `NotificationService.isDuplicate()` + dedupKey 统一 ToolMonitor/AITaskTracker |
+| 退出时序 | `toolMonitor.stop()` 移至 `processManager.stopAll()` 之前 |
+| 生命周期 | `isStopped` 标志 + 7处守卫检查，stop()后所有操作为 no-op |
+
+### Bug 2: onDetected undefined 崩溃
+| 修复 | 说明 |
+|------|------|
+| optional chaining | `window.devhub?.projects?.watcher` + `if (!watcher?.onDetected) return` |
+| 类型安全 | `global.d.ts` 中 `watcher` 标记为可选 |
+| 一致性 | 所有 hooks 的 `window.devhub.*` 深层访问均使用 `?.` |
+
+## 修改文件
+- `devhub/src/main/services/ToolMonitor.ts` — 失败路径状态重置 + 去重 + 生命周期
+- `devhub/src/main/services/NotificationService.ts` — dedupKey 跨系统去重
+- `devhub/src/main/index.ts` — 退出时序 + 通知统一走 NotificationService
+- `devhub/src/main/ipc/aiTaskHandlers.ts` — AITaskTracker 通知走 NotificationService
+- `devhub/src/main/services/ToolMonitor.test.ts` — 新增3个测试场景（11项全通过）
+- `devhub/src/renderer/hooks/useProjects.ts` — watcher 防御性检查
+- `devhub/src/renderer/types/global.d.ts` — watcher 可选类型
+- `devhub/src/preload/index.ts` + `extended.ts` — preload 桥接调整
+
+## 验证
+- tsc --noEmit: ✅ 零错误
+- vitest ToolMonitor.test.ts: ✅ 11/11 通过
+- 9/9 验收标准全部通过
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `45069be` | (see git log) |
+| `256edb0` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
