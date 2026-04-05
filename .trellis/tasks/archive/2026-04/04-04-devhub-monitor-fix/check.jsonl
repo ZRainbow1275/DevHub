@@ -1,0 +1,9 @@
+{"file": ".claude/commands/trellis/finish-work.md", "reason": "Finish work checklist"}
+{"file": ".claude/commands/trellis/check.md", "reason": "Code quality check spec"}
+{"file": "devhub/src/renderer/App.tsx", "reason": "验证 AppContent 不再因 useProjects 中的 undefined 访问而崩溃"}
+{"file": "devhub/src/renderer/types/global.d.ts", "reason": "验证 window.devhub 类型声明与实际 preload API 一致"}
+{"file": "devhub/src/preload/index.ts", "reason": "验证 watcher API 暴露是否可能在某些情况下失败"}
+{"file": "devhub/src/preload/extended.ts", "reason": "验证 aiTaskApi 事件订阅完整性"}
+{"file": "devhub/src/shared/types.ts", "reason": "CodingTool 类型定义参考"}
+{"file": "devhub/src/shared/types-extended.ts", "reason": "AITask/AITaskHistory/IPC_CHANNELS_EXT 类型定义参考"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "确保修改符合项目质量规范"}

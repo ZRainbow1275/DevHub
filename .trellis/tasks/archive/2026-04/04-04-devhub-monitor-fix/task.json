@@ -1,0 +1,45 @@
+{
+  "id": "devhub-monitor-fix",
+  "name": "devhub-monitor-fix",
+  "title": "Fix two critical bugs in DevHub monitoring system: (1) Stale completion notifications - 'XXX completed work, took X seconds' notifications keep appearing even when the AI CLI has already finished long ago. This happens repeatedly and even in crashed state. (2) App crash with 'Cannot read properties of undefined (reading onDetected)' at AppContent in App.tsx:41:45. Root causes likely in heartbeat/polling mechanism that monitors CLI windows. Need to: strengthen monitoring lifecycle management, fix undefined access on onDetected, ensure notifications fire only once on actual completion, and clean up intervals/watchers when monitoring is no longer needed.",
+  "description": "",
+  "status": "completed",
+  "dev_type": "frontend",
+  "scope": "monitor",
+  "package": null,
+  "priority": "P2",
+  "creator": "ZRainbow",
+  "assignee": "ZRainbow",
+  "createdAt": "2026-04-04",
+  "completedAt": "2026-04-05",
+  "branch": "fix/devhub-monitor-fix",
+  "base_branch": "master",
+  "worktree_path": "D:\\Desktop\\trellis-worktrees\\fix\\devhub-monitor-fix",
+  "current_phase": 0,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

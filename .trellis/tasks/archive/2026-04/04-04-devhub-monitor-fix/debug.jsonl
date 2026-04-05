@@ -1,0 +1,8 @@
+{"file": ".claude/commands/trellis/check.md", "reason": "Code quality check spec"}
+{"file": "devhub/src/main/services/ToolMonitor.test.ts", "reason": "扩展测试覆盖完成通知去重逻辑和检查失败后的状态处理"}
+{"file": "devhub/src/main/services/NotificationService.test.ts", "reason": "扩展测试覆盖通知去重/节流场景"}
+{"file": "devhub/src/renderer/components/monitor/AITaskView.tsx", "reason": "验证 AI 任务视图轮询不会因状态错误导致 UI 问题"}
+{"file": "devhub/src/renderer/stores/toolStore.ts", "reason": "调试工具状态更新流"}
+{"file": "devhub/src/renderer/stores/aiTaskStore.ts", "reason": "调试 AI 任务状态更新流"}
+{"file": "devhub/src/renderer/hooks/useAITasks.ts", "reason": "验证事件订阅的清理逻辑"}
+{"file": "devhub/src/renderer/components/ErrorBoundary.tsx", "reason": "理解崩溃被捕获后的恢复路径"}

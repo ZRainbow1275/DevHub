@@ -1,0 +1,10 @@
+{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend development guide"}
+{"file": "devhub/src/main/services/ToolMonitor.ts", "reason": "Bug 1 核心文件——修复 previousStatus 在检查失败时不重置导致的重复完成通知，添加通知去重"}
+{"file": "devhub/src/main/services/AITaskTracker.ts", "reason": "Bug 1 第二触发源——防止进程扫描间歇性失败导致的重复 task-completed 事件"}
+{"file": "devhub/src/main/ipc/aiTaskHandlers.ts", "reason": "Bug 1 通知发送处——添加通知去重逻辑防止同一完成事件重复弹出"}
+{"file": "devhub/src/main/index.ts", "reason": "Bug 1——ToolMonitor 完成回调注册处，需要添加去重/节流保护"}
+{"file": "devhub/src/renderer/hooks/useProjects.ts", "reason": "Bug 2 崩溃处——第 48 行需要添加 optional chaining 防护 watcher.onDetected 的 undefined 访问"}
+{"file": "devhub/src/renderer/hooks/useToolStatus.ts", "reason": "完成事件的渲染进程消费者——确保清理逻辑完整，防止 stale 状态"}
+{"file": "devhub/src/main/services/NotificationService.ts", "reason": "可能需要在服务层添加通知去重/节流机制"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "质量规范——race condition guard 模式、测试要求"}
