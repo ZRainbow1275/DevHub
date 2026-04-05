@@ -21,6 +21,10 @@ export class NotificationService {
   private history: AppNotification[] = []
   private mainWindow: BrowserWindow | null = null
 
+  // 通知去重：基于 dedup key + 时间窗口
+  private recentNotifications = new Map<string, number>()
+  private static readonly DEDUP_WINDOW_MS = 30000 // 30秒去重窗口
+
   constructor(mainWindow?: BrowserWindow) {
     this.mainWindow = mainWindow || null
   }
@@ -41,6 +45,32 @@ export class NotificationService {
     return this.config.enabled && this.config.types[type]
   }
 
+  /**
+   * 检查通知是否在去重窗口内（防止 ToolMonitor 和 AITaskTracker 重复发送）
+   * @param dedupKey 去重键（例如 toolId 或 toolType）
+   * @returns true 表示应该被去重（跳过），false 表示可以发送
+   */
+  isDuplicate(dedupKey: string): boolean {
+    const lastTime = this.recentNotifications.get(dedupKey)
+    if (lastTime === undefined) return false
+    return (Date.now() - lastTime) < NotificationService.DEDUP_WINDOW_MS
+  }
+
+  /**
+   * 记录已发送的通知用于去重
+   */
+  private recordNotification(dedupKey: string): void {
+    this.recentNotifications.set(dedupKey, Date.now())
+
+    // 清理过期的去重记录
+    const now = Date.now()
+    for (const [key, time] of this.recentNotifications) {
+      if (now - time >= NotificationService.DEDUP_WINDOW_MS) {
+        this.recentNotifications.delete(key)
+      }
+    }
+  }
+
   async notify(
     type: NotificationType,
     title: string,
@@ -48,9 +78,18 @@ export class NotificationService {
     options?: {
       icon?: string
       actions?: { label: string; action: string }[]
+      dedupKey?: string  // 可选的去重键
     }
   ): Promise<void> {
     if (!this.isTypeEnabled(type)) return
+
+    // 去重检查
+    if (options?.dedupKey) {
+      if (this.isDuplicate(options.dedupKey)) {
+        return
+      }
+      this.recordNotification(options.dedupKey)
+    }
 
     // Create notification record
     const notification: AppNotification = {
@@ -97,7 +136,8 @@ export class NotificationService {
     this.notify(
       'task-complete',
       `${toolName} 任务完成`,
-      `任务耗时: ${Math.round(duration / 1000)}秒`
+      `任务耗时: ${Math.round(duration / 1000)}秒`,
+      { dedupKey: `task-complete:${toolName}` }
     )
   }
 

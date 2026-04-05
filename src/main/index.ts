@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, Notification, Tray, Menu, nativeImage, session } from 'electron'
+import { app, BrowserWindow, shell, Tray, Menu, nativeImage, session } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerIpcHandlers, cleanupIpcHandlers } from './ipc'
@@ -6,6 +6,7 @@ import { AppStore } from './store/AppStore'
 import { ProcessManager } from './services/ProcessManager'
 import { ToolMonitor } from './services/ToolMonitor'
 import { ProjectScanner } from './services/ProjectScanner'
+import { getNotificationService } from './services/NotificationService'
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -150,7 +151,7 @@ app.whenReady().then(() => {
 
   // Only create tray if minimizeToTray is enabled
   const settings = appStore.getSettings()
-  if (settings.minimizeToTray) {
+  if (settings.advanced.minimizeToTray) {
     createTray()
   }
 
@@ -163,7 +164,7 @@ app.whenReady().then(() => {
     mainWindow!.webContents.once('did-finish-load', () => {
       // 延迟发送，确保 React useEffect listener 已挂载
       setTimeout(() => {
-        projectScanner.scanCommonLocations(settings.scanDrives).then((results) => {
+        projectScanner.scanCommonLocations(settings.scan.scanDrives).then((results) => {
           if (results.length > 0 && mainWindow) {
             mainWindow.webContents.send('projects:auto-discovered', results)
           }
@@ -176,14 +177,19 @@ app.whenReady().then(() => {
     })
   }
 
-  if (settings.notificationEnabled) {
-    toolMonitor.start(appStore.getTools(), settings.checkInterval, (tool) => {
-      // Send notification
-      new Notification({
-        title: 'DevHub',
-        body: `${tool.displayName} 任务已完成`,
-        icon: join(__dirname, '../../resources/icon.png')
-      }).show()
+  if (settings.notification.enabled) {
+    toolMonitor.start(appStore.getTools(), settings.scan.checkInterval, (tool) => {
+      // 通过 NotificationService 发送通知（自动去重，与 AITaskTracker 协调）
+      const notificationService = getNotificationService()
+      notificationService.notify(
+        'task-complete',
+        'DevHub',
+        `${tool.displayName} 任务已完成`,
+        {
+          icon: join(__dirname, '../../resources/icon.png'),
+          dedupKey: `task-complete:${tool.displayName}`
+        }
+      )
 
       // Notify renderer
       mainWindow?.webContents.send('tool:complete', tool)
@@ -209,11 +215,15 @@ app.on('before-quit', (event) => {
   if (isQuitting) return
   isQuitting = true
   event.preventDefault()
+
+  // 关键：先停止 toolMonitor，避免 processManager.stopAll() 终止进程时
+  // 被 toolMonitor 误判为"任务正常完成"而发出虚假通知
+  toolMonitor.stop()
+
   Promise.all([
-    processManager.stopAll()
-  ]).finally(() => {
-    toolMonitor.stop()
+    processManager.stopAll(),
     cleanupIpcHandlers()
+  ]).finally(() => {
     app.exit(0)
   })
 })

@@ -51,6 +51,11 @@ export class ToolMonitor {
   private previousStatus = new Map<string, boolean>()
   private onCompletion: CompletionCallback | null = null
   private statusResetTimers = new Map<string, ReturnType<typeof setTimeout>>()
+  private isStopped: boolean = true
+
+  // 通知去重：记录每个工具最后一次发送完成通知的时间戳
+  private lastNotificationTime = new Map<string, number>()
+  private static readonly NOTIFICATION_DEDUP_WINDOW_MS = 30000 // 30秒内同一工具不重复通知
 
   // 智能轮询配置
   private baseIntervalMs: number = 3000
@@ -65,6 +70,7 @@ export class ToolMonitor {
     checkIntervalMs: number,
     onCompletion: CompletionCallback
   ): void {
+    this.isStopped = false
     this.tools = tools
     this.onCompletion = onCompletion
     this.baseIntervalMs = checkIntervalMs
@@ -77,11 +83,16 @@ export class ToolMonitor {
 
     // Run initial check and start smart polling
     this.checkTools().then(() => {
-      this.scheduleNextCheck()
+      if (!this.isStopped) {
+        this.scheduleNextCheck()
+      }
     })
   }
 
   stop(): void {
+    this.isStopped = true
+    this.onCompletion = null
+
     if (this.timeoutId) {
       clearTimeout(this.timeoutId)
       this.timeoutId = null
@@ -91,6 +102,9 @@ export class ToolMonitor {
     this.statusResetTimers.forEach((timer) => clearTimeout(timer))
     this.statusResetTimers.clear()
 
+    // 清理通知去重记录
+    this.lastNotificationTime.clear()
+
     // 重置轮询状态
     this.consecutiveIdleCount = 0
     this.currentIntervalMs = this.baseIntervalMs
@@ -98,13 +112,18 @@ export class ToolMonitor {
 
   // 智能轮询调度
   private scheduleNextCheck(): void {
+    if (this.isStopped) return
+
     if (this.timeoutId) {
       clearTimeout(this.timeoutId)
     }
 
     this.timeoutId = setTimeout(() => {
+      if (this.isStopped) return
       this.checkTools().then(() => {
-        this.scheduleNextCheck()
+        if (!this.isStopped) {
+          this.scheduleNextCheck()
+        }
       })
     }, this.currentIntervalMs)
   }
@@ -127,6 +146,8 @@ export class ToolMonitor {
   }
 
   private scheduleStatusReset(toolId: string, delay: number = 5000): void {
+    if (this.isStopped) return
+
     // 清除之前的定时器
     const existing = this.statusResetTimers.get(toolId)
     if (existing) {
@@ -134,6 +155,7 @@ export class ToolMonitor {
     }
 
     const timer = setTimeout(() => {
+      if (this.isStopped) return
       const tool = this.tools.find(t => t.id === toolId)
       if (tool) {
         tool.status = 'idle'
@@ -145,6 +167,9 @@ export class ToolMonitor {
   }
 
   private async checkTools(): Promise<void> {
+    // 已停止时不做任何检查
+    if (this.isStopped) return
+
     let hasActiveTools = false
 
     // 一次性获取所有进程列表，避免为每个工具单独调用 tasklist
@@ -156,9 +181,18 @@ export class ToolMonitor {
         'Failed to get process list:',
         error instanceof Error ? error.message : 'Unknown error'
       )
+      // 关键修复：进程列表获取失败时，清除 previousStatus 以避免
+      // 下次成功检查时误判"从 running 到 stopped"的状态转变
+      this.previousStatus.clear()
+      this.tools.forEach((tool) => {
+        this.previousStatus.set(tool.id, false)
+      })
       this.adjustPollingInterval(false)
       return
     }
+
+    // 二次检查：获取进程列表期间可能已被 stop()
+    if (this.isStopped) return
 
     // 预先获取命令行信息（仅在有 node 进程时才需要）
     let commandLines: string[] | null = null
@@ -167,6 +201,9 @@ export class ToolMonitor {
     }
 
     for (const tool of this.tools) {
+      // 检查是否已停止
+      if (this.isStopped) return
+
       try {
         const isRunning = this.isToolDetected(tool.id, allProcessNames, commandLines)
         const wasRunning = this.previousStatus.get(tool.id) ?? false
@@ -184,8 +221,11 @@ export class ToolMonitor {
           tool.status = 'completed'
           tool.lastCompletedAt = Date.now()
 
-          // Trigger notification
-          this.onCompletion?.(tool)
+          // 通知去重：检查是否在去重时间窗口内
+          if (this.shouldSendNotification(tool.id)) {
+            this.lastNotificationTime.set(tool.id, Date.now())
+            this.onCompletion?.(tool)
+          }
 
           // 使用安全的状态重置方法
           this.scheduleStatusReset(tool.id)
@@ -205,6 +245,16 @@ export class ToolMonitor {
 
     // 根据活跃状态调整下次轮询间隔
     this.adjustPollingInterval(hasActiveTools)
+  }
+
+  // 检查是否应该发送通知（去重逻辑）
+  private shouldSendNotification(toolId: string): boolean {
+    if (this.isStopped) return false
+
+    const lastTime = this.lastNotificationTime.get(toolId)
+    if (lastTime === undefined) return true
+
+    return (Date.now() - lastTime) >= ToolMonitor.NOTIFICATION_DEDUP_WINDOW_MS
   }
 
   // 一次性获取所有进程名称（CSV 格式，解析后返回 Set）

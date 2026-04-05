@@ -1,7 +1,8 @@
-import { ipcMain, BrowserWindow, Notification } from 'electron'
+import { ipcMain, BrowserWindow } from 'electron'
 import { IPC_CHANNELS_EXT, AITask, AITaskHistory, AIToolType } from '@shared/types-extended'
 import { AITaskTracker } from '../services/AITaskTracker'
 import { getProcessScanner } from './processHandlers'
+import { getNotificationService } from '../services/NotificationService'
 import { withRateLimit, RATE_LIMITS } from '../utils/rateLimiter'
 
 let aiTaskTracker: AITaskTracker | null = null
@@ -27,30 +28,21 @@ export function setupAITaskHandlers(mainWindow: BrowserWindow): void {
   aiTaskTracker.on('task-completed', (history: AITaskHistory) => {
     mainWindow.webContents.send(IPC_CHANNELS_EXT.AI_TASK_COMPLETED, history)
 
-    // Show Windows notification
-    if (Notification.isSupported()) {
-      const toolNames: Record<AIToolType, string> = {
-        'codex': 'Codex',
-        'claude-code': 'Claude Code',
-        'gemini-cli': 'Gemini CLI',
-        'cursor': 'Cursor',
-        'other': 'AI Tool'
-      }
-
-      const notification = new Notification({
-        title: `${toolNames[history.toolType]} 任务完成`,
-        body: `任务耗时: ${Math.round(history.duration / 1000)}秒`,
-        icon: undefined,
-        silent: false
-      })
-
-      notification.on('click', () => {
-        mainWindow.show()
-        mainWindow.focus()
-      })
-
-      notification.show()
+    // 通过 NotificationService 发送通知（自动去重，与 ToolMonitor 协调）
+    const notificationService = getNotificationService()
+    // 使用与 CodingTool.displayName 完全一致的名称，
+    // 确保 dedupKey 与 ToolMonitor 侧（task-complete:${tool.displayName}）匹配
+    const toolDisplayNames: Record<AIToolType, string> = {
+      'codex': 'Codex CLI',
+      'claude-code': 'Claude Code',
+      'gemini-cli': 'Gemini CLI',
+      'cursor': 'Cursor',
+      'other': 'AI Tool'
     }
+
+    const toolName = toolDisplayNames[history.toolType]
+    // dedupKey = `task-complete:${toolName}`，与 ToolMonitor 的 `task-complete:${tool.displayName}` 一致
+    notificationService.notifyTaskComplete(toolName, history.duration)
   })
 
   // Start tracking

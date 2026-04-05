@@ -4,6 +4,7 @@ import {
   ProcessInfo,
   ProcessGroup,
   PortInfo,
+  PortTopologyData,
   WindowInfo,
   WindowGroup,
   WindowLayout,
@@ -30,6 +31,9 @@ export const systemProcessApi = {
 
   getGroups: (): Promise<ProcessGroup[]> =>
     ipcRenderer.invoke('process:get-groups'),
+
+  getProcessTree: (pid: number): Promise<ProcessInfo[]> =>
+    ipcRenderer.invoke('process:get-tree', pid),
 
   onUpdated: (callback: (processes: ProcessInfo[]) => void) => {
     const handler = (_: unknown, processes: ProcessInfo[]) => callback(processes)
@@ -66,6 +70,9 @@ export const portApi = {
   detectConflicts: (ports: number[]): Promise<PortInfo[]> =>
     ipcRenderer.invoke('port:detect-conflicts', ports),
 
+  getTopology: (): Promise<PortTopologyData> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.PORT_TOPOLOGY),
+
   onConflict: (callback: (data: { port: number; resolved: boolean }) => void) => {
     const handler = (_: unknown, data: { port: number; resolved: boolean }) => callback(data)
     ipcRenderer.on(IPC_CHANNELS_EXT.PORT_CONFLICT, handler)
@@ -74,8 +81,8 @@ export const portApi = {
 }
 
 export const windowApi = {
-  scan: (): Promise<ServiceResult<WindowInfo[]>> =>
-    ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_SCAN),
+  scan: (includeSystemWindows?: boolean): Promise<ServiceResult<WindowInfo[]>> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_SCAN, includeSystemWindows ?? false),
 
   focus: (hwnd: number): Promise<ServiceResult> =>
     ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_FOCUS, hwnd),

@@ -22,9 +22,9 @@ export function useProjects() {
   // Load projects on mount
   useEffect(() => {
     if (isElectron) {
-      window.devhub.projects.list()
-        .then(setProjects)
-        .catch((error: Error) => {
+      window.devhub?.projects?.list()
+        ?.then(setProjects)
+        ?.catch((error: Error) => {
           console.warn('Failed to load projects:', error.message)
         })
     }
@@ -34,12 +34,38 @@ export function useProjects() {
   useEffect(() => {
     if (!isElectron) return
 
-    const unsubscribe = window.devhub.process.onStatusChange(({ projectId, status }) => {
+    const unsubscribe = window.devhub?.process?.onStatusChange?.(({ projectId, status }) => {
       updateProject(projectId, { status: status as Project['status'] })
     })
 
-    return unsubscribe
+    return () => { unsubscribe?.() }
   }, [updateProject])
+
+  // Subscribe to watcher events (auto-detected project changes)
+  useEffect(() => {
+    if (!isElectron) return
+
+    // 防御性检查：watcher 对象可能在运行时不存在
+    const watcher = window.devhub?.projects?.watcher
+    if (!watcher?.onDetected) return
+
+    const unsubscribe = watcher.onDetected((events) => {
+      // Refresh the full project list when watcher detects changes
+      // This is simpler and safer than trying to incrementally update
+      window.devhub?.projects?.list()
+        .then(setProjects)
+        .catch((error: Error) => {
+          console.warn('Failed to refresh projects after watcher event:', error.message)
+        })
+
+      // Log for debugging (use console.warn since info is restricted)
+      if (events.length > 0) {
+        console.warn(`[ProjectWatcher] Detected ${events.length} change(s), refreshing project list`)
+      }
+    })
+
+    return unsubscribe
+  }, [setProjects])
 
   const handleAddProject = useCallback(async (path: string) => {
     if (!isElectron) return null

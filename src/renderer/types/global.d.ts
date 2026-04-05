@@ -9,13 +9,15 @@ import type {
   Project,
   LogEntry,
   CodingTool,
-  AppSettings
+  AppSettings,
+  ProjectType
 } from '@shared/types'
 
 import type {
   ProcessInfo,
   ProcessGroup,
   PortInfo,
+  PortTopologyData,
   WindowInfo,
   WindowGroup,
   WindowLayout,
@@ -49,10 +51,16 @@ declare global {
         add: (path: string) => Promise<Project>
         remove: (id: string) => Promise<boolean>
         update: (id: string, updates: Partial<Project>) => Promise<Project | undefined>
-        scan: (scanPath?: string) => Promise<Array<{ path: string; name: string; scripts: string[] }>>
-        scanDirectory: (dirPath: string) => Promise<Array<{ path: string; name: string; scripts: string[] }>>
-        discover: () => Promise<Array<{ path: string; name: string; scripts: string[] }>>
-        onAutoDiscovered: (callback: (projects: Array<{ path: string; name: string; scripts: string[] }>) => void) => () => void
+        scan: (scanPath?: string) => Promise<Array<{ path: string; name: string; scripts: string[]; projectType: ProjectType }>>
+        scanDirectory: (dirPath: string) => Promise<Array<{ path: string; name: string; scripts: string[]; projectType: ProjectType }>>
+        discover: () => Promise<Array<{ path: string; name: string; scripts: string[]; projectType: ProjectType }>>
+        onAutoDiscovered: (callback: (projects: Array<{ path: string; name: string; scripts: string[]; projectType: ProjectType }>) => void) => () => void
+        watcher?: {
+          start: (watchPaths?: string[]) => Promise<{ running: boolean }>
+          stop: () => Promise<{ running: boolean }>
+          status: () => Promise<{ running: boolean }>
+          onDetected: (callback: (events: Array<{ type: 'added' | 'removed'; dirPath: string; detections: Array<{ projectType: ProjectType; name: string; scripts: string[] }> }>) => void) => () => void
+        }
       }
 
       // ==================== Process ====================
@@ -130,6 +138,7 @@ declare global {
         kill: (pid: number) => Promise<boolean>
         cleanupZombies: () => Promise<number>
         getGroups: () => Promise<ProcessGroup[]>
+        getProcessTree: (pid: number) => Promise<ProcessInfo[]>
         onUpdated: (callback: (processes: ProcessInfo[]) => void) => () => void
         onZombieDetected: (callback: (zombies: ProcessInfo[]) => void) => () => void
       }
@@ -143,12 +152,13 @@ declare global {
         isAvailable: (port: number) => Promise<boolean>
         findAvailable: (startPort: number) => Promise<number>
         detectConflicts: (ports: number[]) => Promise<PortInfo[]>
+        getTopology: () => Promise<PortTopologyData>
         onConflict: (callback: (data: { port: number; resolved: boolean }) => void) => () => void
       }
 
       // Window Manager API
       windowManager: {
-        scan: () => Promise<ServiceResult<WindowInfo[]>>
+        scan: (includeSystemWindows?: boolean) => Promise<ServiceResult<WindowInfo[]>>
         focus: (hwnd: number) => Promise<ServiceResult>
         move: (hwnd: number, x: number, y: number, width: number, height: number) => Promise<ServiceResult>
         minimize: (hwnd: number) => Promise<ServiceResult>
