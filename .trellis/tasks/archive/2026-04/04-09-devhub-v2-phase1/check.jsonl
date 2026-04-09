@@ -1,0 +1,5 @@
+{"file": ".claude/commands/trellis/finish-work.md", "reason": "Finish work checklist"}
+{"file": ".claude/commands/trellis/check.md", "reason": "Code quality check spec"}
+{"file": "prompts/0409/spec-01-monitor-responsive.md", "reason": "验证监控响应式"}
+{"file": "prompts/0409/spec-04-window-management.md", "reason": "验证窗口管理"}
+{"file": ".trellis/tasks/04-09-devhub-v2-phase1/prd.md", "reason": "验证PRD要求"}

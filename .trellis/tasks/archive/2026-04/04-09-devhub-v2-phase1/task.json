@@ -1,0 +1,45 @@
+{
+  "id": "devhub-v2-phase1",
+  "name": "devhub-v2-phase1",
+  "title": "DevHub V2 Phase 1 - 基础增强实施",
+  "description": "",
+  "status": "completed",
+  "dev_type": "fullstack",
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "ZRainbow",
+  "assignee": "ZRainbow",
+  "createdAt": "2026-04-09",
+  "completedAt": "2026-04-10",
+  "branch": null,
+  "base_branch": "master",
+  "worktree_path": null,
+  "current_phase": 2,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
