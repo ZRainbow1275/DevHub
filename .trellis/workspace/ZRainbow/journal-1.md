@@ -262,3 +262,64 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 4: DevHub V2 系统级增强 — 设计文档编制
+
+**Date**: 2026-04-09
+**Task**: DevHub V2 系统级增强 — 设计文档编制
+**Branch**: `master`
+
+### Summary
+
+完成6大改进领域的总领PRD和5个Spec文档
+
+### Main Changes
+
+## 工作内容
+
+编制 DevHub V2 系统级增强的完整设计文档体系，基于对现有代码的深度分析（读取 20+ 核心文件，覆盖前端组件、后端服务、类型定义、样式系统）。
+
+## 产出文档
+
+| 文档 | 路径 | 内容 |
+|------|------|------|
+| 总领 PRD | `prompts/0409/prd-master.md` | 6大改进领域、目标、架构决策、实施优先级 |
+| Spec-01 | `prompts/0409/spec-01-monitor-responsive.md` | 监控面板 Container Queries 响应式 |
+| Spec-02 | `prompts/0409/spec-02-process-enhancement.md` | 进程排序/过滤/勘探/神经关系图/卡片 |
+| Spec-03 | `prompts/0409/spec-03-port-topology.md` | 端口聚焦面板/连接可视化/神经图集成 |
+| Spec-04 | `prompts/0409/spec-04-window-management.md` | AI窗口命名/通知增强/分组修复/进度监控 |
+| Spec-05 | `prompts/0409/spec-05-theme-visual.md` | 主题视觉传达差异化(布局/排版/装饰/动效) |
+
+## 关键设计决策
+
+- **神经图引擎**: d3-force + Canvas 粒子系统替代 dagre 静态图
+- **Container Queries**: @container + cqi 替代 viewport media queries
+- **AI 窗口别名**: 多因子加权匹配(PID+目录+命令hash)，跨重启持久化
+- **主题 Token**: 60+ CSS 变量扩展到布局/圆角/阴影/动效/字体/密度
+
+## 下一步
+
+按 Phase 顺序实施：
+1. Phase 1: Spec-01(响应式) + Spec-04A(AI窗口命名) + Spec-04C(分组修复)
+2. Phase 2: Spec-02A(排序过滤) + Spec-02B(真实勘探)
+3. Phase 3: NeuralGraphEngine → 进程/端口神经图
+4. Phase 4: 通知增强 + 进度监控
+5. Phase 5: 主题视觉系统
+
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
