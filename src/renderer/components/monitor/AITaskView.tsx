@@ -1,6 +1,9 @@
-import { useEffect, memo, useState } from 'react'
+import { useEffect, memo, useState, useCallback } from 'react'
 import { useAITasks } from '../../hooks/useAITasks'
-import { AITask, AITaskHistory, AIToolType, AITaskState } from '@shared/types-extended'
+import { useAliasStore } from '../../stores/aliasStore'
+import { useToast } from '../ui/Toast'
+import { AITask, AITaskHistory, AIToolType, AITaskState, AIWindowAlias } from '@shared/types-extended'
+import { AIWindowAliasEditor } from './AIWindowAlias'
 import { formatDuration, formatDurationCN } from '../../utils/formatDuration'
 
 const TOOL_INFO: Record<AIToolType, { name: string; icon: string; color: string }> = {
@@ -23,12 +26,15 @@ interface TaskCardProps {
   task: AITask
   isSelected: boolean
   onSelect: () => void
+  onSaveAlias: (alias: AIWindowAlias) => void
+  existingAlias?: AIWindowAlias
 }
 
-const TaskCard = memo(function TaskCard({ task, isSelected, onSelect }: TaskCardProps) {
+const TaskCard = memo(function TaskCard({ task, isSelected, onSelect, onSaveAlias, existingAlias }: TaskCardProps) {
   const toolInfo = TOOL_INFO[task.toolType]
   const stateInfo = STATE_INFO[task.status.state]
   const [now, setNow] = useState(Date.now())
+  const [isEditingAlias, setIsEditingAlias] = useState(false)
 
   useEffect(() => {
     if (task.status.state !== 'running' && task.status.state !== 'waiting') return
@@ -41,6 +47,9 @@ const TaskCard = memo(function TaskCard({ task, isSelected, onSelect }: TaskCard
   const avgCpu = task.metrics.cpuHistory.length > 0
     ? task.metrics.cpuHistory.reduce((a, b) => a + b, 0) / task.metrics.cpuHistory.length
     : 0
+
+  const displayAlias = task.alias || existingAlias?.alias
+  const aliasColor = task.aliasColor || existingAlias?.color
 
   return (
     <div
@@ -58,9 +67,23 @@ const TaskCard = memo(function TaskCard({ task, isSelected, onSelect }: TaskCard
           <span className="text-2xl" title={toolInfo.name}>{toolInfo.icon}</span>
           <div>
             <div className="flex items-center gap-2">
-              <span className={`text-sm font-semibold ${toolInfo.color}`}>
-                {toolInfo.name}
-              </span>
+              {displayAlias ? (
+                <>
+                  <span
+                    className="text-sm font-semibold"
+                    style={{ color: aliasColor ?? undefined }}
+                  >
+                    {displayAlias}
+                  </span>
+                  <span className="text-xs text-text-tertiary">
+                    {toolInfo.name}
+                  </span>
+                </>
+              ) : (
+                <span className={`text-sm font-semibold ${toolInfo.color}`}>
+                  {toolInfo.name}
+                </span>
+              )}
               <span className={`text-xs px-2 py-0.5 rounded ${stateInfo.bgColor} ${stateInfo.color}`}>
                 {stateInfo.label}
               </span>
@@ -72,18 +95,52 @@ const TaskCard = memo(function TaskCard({ task, isSelected, onSelect }: TaskCard
           </div>
         </div>
 
-        <div className="text-right">
-          <div className="text-xs text-text-tertiary">
-            平均 CPU: {avgCpu.toFixed(1)}%
-          </div>
-          {task.status.state === 'running' && (
-            <div className="flex items-center gap-1 mt-1">
-              <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
-              <span className="text-xs text-success">活跃</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setIsEditingAlias(!isEditingAlias)
+            }}
+            className="px-2 py-1 text-xs text-text-muted hover:text-text-primary
+                       hover:bg-surface-600 rounded transition-colors opacity-0 group-hover:opacity-100"
+            title={displayAlias ? '编辑别名' : '设置别名'}
+          >
+            {displayAlias ? '编辑' : '命名'}
+          </button>
+          <div className="text-right">
+            <div className="text-xs text-text-tertiary">
+              平均 CPU: {avgCpu.toFixed(1)}%
             </div>
-          )}
+            {task.status.state === 'running' && (
+              <div className="flex items-center gap-1 mt-1">
+                <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
+                <span className="text-xs text-success">活跃</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Alias color indicator bar */}
+      {aliasColor && (
+        <div
+          className="h-0.5 mt-2 rounded-full opacity-60"
+          style={{ backgroundColor: aliasColor }}
+        />
+      )}
+
+      {/* Inline alias editor */}
+      {isEditingAlias && (
+        <AIWindowAliasEditor
+          task={task}
+          existingAlias={existingAlias}
+          onSave={(alias) => {
+            onSaveAlias(alias)
+            setIsEditingAlias(false)
+          }}
+          onCancel={() => setIsEditingAlias(false)}
+        />
+      )}
 
       {/* CPU History Mini Chart */}
       {task.metrics.cpuHistory.length > 1 && (
@@ -153,19 +210,40 @@ export function AITaskView() {
     selectTask
   } = useAITasks()
 
+  const { aliases, fetchAliases, saveAlias } = useAliasStore()
+  const { showToast } = useToast()
   const [viewTab, setViewTab] = useState<'active' | 'history' | 'stats'>('active')
+
+  const findAliasForTask = useCallback((task: AITask) => {
+    return aliases.find(
+      (a) =>
+        a.matchCriteria.toolType === task.toolType &&
+        (a.matchCriteria.pid === task.pid ||
+          (a.alias === task.alias))
+    )
+  }, [aliases])
+
+  const handleSaveAlias = useCallback(async (alias: AIWindowAlias) => {
+    const result = await saveAlias(alias)
+    if (result) {
+      showToast('success', `别名 "${alias.alias}" 已保存`)
+    } else {
+      showToast('error', '别名保存失败')
+    }
+  }, [saveAlias, showToast])
 
   useEffect(() => {
     fetchActiveTasks()
     fetchHistory(50)
     fetchStatistics()
+    fetchAliases()
 
     const interval = setInterval(() => {
       fetchActiveTasks()
     }, 2000)
 
     return () => clearInterval(interval)
-  }, [fetchActiveTasks, fetchHistory, fetchStatistics])
+  }, [fetchActiveTasks, fetchHistory, fetchStatistics, fetchAliases])
 
   return (
     <div className="h-full flex flex-col bg-surface-950">
@@ -244,6 +322,8 @@ export function AITaskView() {
                 task={task}
                 isSelected={selectedTaskId === task.id}
                 onSelect={() => selectTask(task.id)}
+                onSaveAlias={handleSaveAlias}
+                existingAlias={findAliasForTask(task)}
               />
             ))}
             {activeTasks.length === 0 && (

@@ -8,13 +8,14 @@
 @tailwind utilities;
 
 /* ========================================
-   Base Styles - Soviet Constructivism
+   Base Styles - Theme-aware
    ======================================== */
 
 @layer base {
   body {
     @apply bg-surface-950 text-text-primary antialiased;
     font-family: var(--font-sans);
+    letter-spacing: var(--body-tracking, 0);
   }
 
   * {
@@ -24,7 +25,7 @@
 }
 
 /* ========================================
-   Scrollbar - Industrial Style
+   Scrollbar - Theme-aware
    ======================================== */
 
 ::-webkit-scrollbar {
@@ -38,7 +39,7 @@
 
 ::-webkit-scrollbar-thumb {
   background: var(--surface-600);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -93,8 +94,8 @@
   left: 0;
   width: 24px;
   height: 24px;
-  border-left: 3px solid var(--red-500);
-  border-top: 3px solid var(--red-500);
+  border-left: var(--border-width-thick) solid var(--red-500);
+  border-top: var(--border-width-thick) solid var(--red-500);
 }
 
 .deco-corner-br::after {
@@ -104,8 +105,8 @@
   right: 0;
   width: 24px;
   height: 24px;
-  border-right: 3px solid var(--red-500);
-  border-bottom: 3px solid var(--red-500);
+  border-right: var(--border-width-thick) solid var(--red-500);
+  border-bottom: var(--border-width-thick) solid var(--red-500);
 }
 
 /* ========================================
@@ -118,8 +119,8 @@
   @apply hover:bg-accent-400;
   @apply active:bg-accent-600;
   @apply disabled:opacity-50 disabled:cursor-not-allowed;
-  border-radius: 2px;
-  border-left: 3px solid var(--gold-500);
+  border-radius: var(--radius-sm);
+  border-left: var(--border-width-thick) solid var(--gold-500);
 }
 
 .btn-primary:hover {
@@ -134,14 +135,14 @@
   @apply bg-transparent border border-surface-600 text-text-secondary px-5 py-2.5 font-semibold;
   @apply transition-all duration-200;
   @apply hover:bg-surface-700 hover:border-surface-500 hover:text-text-primary;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .btn-ghost {
   @apply text-text-tertiary px-4 py-2.5;
   @apply transition-all duration-200;
   @apply hover:bg-surface-800 hover:text-text-primary;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .btn-icon {
@@ -149,7 +150,7 @@
   @apply text-text-secondary;
   @apply transition-all duration-200;
   @apply hover:bg-surface-700 hover:text-text-primary;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .btn-icon:hover {
@@ -165,7 +166,7 @@
   @apply text-text-secondary;
   @apply transition-all duration-200;
   @apply hover:bg-surface-700 hover:text-text-primary;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .btn-danger {
@@ -173,7 +174,7 @@
   border-color: color-mix(in srgb, var(--error) 50%, transparent);
   @apply transition-all duration-200;
   @apply hover:bg-error hover:text-white hover:border-error;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .btn-success {
@@ -181,7 +182,7 @@
   border-color: color-mix(in srgb, var(--success) 50%, transparent);
   @apply transition-all duration-200;
   @apply hover:bg-success hover:text-white hover:border-success;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
 }
 
 /* ========================================
@@ -191,8 +192,9 @@
 .card {
   @apply bg-surface-800 border border-surface-700;
   @apply transition-all duration-200;
-  border-radius: 4px;
-  border-left: 3px solid transparent;
+  border-radius: var(--radius-md);
+  border-left: var(--border-width-thick) solid transparent;
+  box-shadow: var(--shadow-card);
 }
 
 .card:hover {
@@ -217,8 +219,9 @@
 .monitor-card {
   @apply relative bg-surface-800 border border-surface-700 p-4;
   @apply transition-all duration-200;
-  border-radius: 4px;
-  border-left: 3px solid transparent;
+  border-radius: var(--radius-md);
+  border-left: var(--border-width-thick) solid transparent;
+  box-shadow: var(--shadow-card);
 }
 
 .monitor-card:hover {
@@ -282,7 +285,7 @@
   @apply text-text-primary placeholder:text-text-muted;
   @apply transition-all duration-200;
   @apply focus:border-b-accent focus:outline-none;
-  border-radius: 2px 2px 0 0;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
 }
 
 .input:focus {
@@ -294,7 +297,7 @@
   @apply text-sm text-text-primary placeholder:text-text-muted;
   @apply transition-all duration-200;
   @apply focus:border-b-accent focus:outline-none;
-  border-radius: 2px 2px 0 0;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
 }
 
 /* ========================================
@@ -304,7 +307,7 @@
 .tag {
   @apply inline-flex items-center px-2.5 py-1 text-xs font-medium;
   @apply transition-all duration-150;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .tag-default {
@@ -334,7 +337,7 @@ input[type="checkbox"] {
   @apply focus:ring-2 focus:ring-offset-0;
   --tw-ring-color: color-mix(in srgb, var(--red-500) 30%, transparent);
   @apply cursor-pointer relative transition-all duration-150;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
 }
 
 input[type="checkbox"]:checked::after {
@@ -366,7 +369,7 @@ select {
   @apply text-text-primary cursor-pointer;
   @apply transition-all duration-200;
   @apply focus:border-b-accent focus:outline-none;
-  border-radius: 2px 2px 0 0;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%238a8279' stroke-linecap='square' stroke-linejoin='miter' stroke-width='2' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
   background-position: right 0.75rem center;
   background-repeat: no-repeat;
@@ -405,6 +408,15 @@ select option {
 }
 
 /* ========================================
+   Monitor Container Query Infrastructure
+   ======================================== */
+
+.monitor-content {
+  container-type: inline-size;
+  container-name: monitor;
+}
+
+/* ========================================
    Hero Number Display
    ======================================== */
 
@@ -415,8 +427,8 @@ select option {
 
 .hero-number-value {
   font-family: var(--font-display);
-  font-size: 48px;
-  line-height: 56px;
+  font-size: clamp(36px, 5cqi, 56px);
+  line-height: 1.2;
   @apply text-text-primary;
   font-variant-numeric: tabular-nums;
 }
@@ -437,24 +449,128 @@ select option {
   border-bottom-color: var(--error);
 }
 
-/* Hero responsive */
-@media (max-width: 1024px) {
+/* Hero responsive — container queries */
+@container monitor (width < 800px) {
   .hero-number-value {
-    font-size: 32px;
-    line-height: 40px;
+    font-size: clamp(24px, 4cqi, 36px);
   }
   .hero-number {
     padding: 8px;
   }
 }
 
-@media (max-width: 640px) {
+@container monitor (width < 500px) {
   .hero-number-value {
-    font-size: 24px;
-    line-height: 32px;
+    font-size: clamp(18px, 6cqi, 28px);
   }
   .hero-number {
     padding: 6px 4px;
+  }
+}
+
+/* ========================================
+   Stat Grid — Container Query Layout
+   ======================================== */
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+@container monitor (width < 800px) {
+  .stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@container monitor (width < 500px) {
+  .stat-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ========================================
+   ResponsiveMetric — Container Query Display Modes
+   ======================================== */
+
+.responsive-metric {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.responsive-metric__icon {
+  flex-shrink: 0;
+}
+
+.responsive-metric__value {
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.responsive-metric__label {
+  @apply text-xs text-text-muted uppercase tracking-wider;
+}
+
+/* Default: full mode visible */
+.responsive-metric__full    { display: inline; }
+.responsive-metric__compact { display: none; }
+.responsive-metric__minimal { display: none; }
+
+/* Compact mode: 500px <= width < 800px */
+@container monitor (width < 800px) {
+  .responsive-metric__full    { display: none; }
+  .responsive-metric__compact { display: inline; }
+  .responsive-metric__minimal { display: none; }
+}
+
+/* Minimal mode: width < 500px */
+@container monitor (width < 500px) {
+  .responsive-metric__full    { display: none; }
+  .responsive-metric__compact { display: none; }
+  .responsive-metric__minimal { display: inline; }
+}
+
+/* Hero variant */
+.responsive-metric--hero .responsive-metric__value {
+  font-family: var(--font-display);
+  @apply text-text-primary;
+}
+
+/* Stat variant */
+.responsive-metric--stat .responsive-metric__value {
+  font-family: var(--font-display);
+  line-height: 1.2;
+}
+
+/* Inline variant */
+.responsive-metric--inline .responsive-metric__value {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* ========================================
+   Stat Card Value — Container Query Sizing
+   ======================================== */
+
+.stat-card-value {
+  font-size: clamp(16px, 3cqi, 24px);
+}
+
+@container monitor (width < 800px) {
+  .stat-card-value {
+    font-size: clamp(14px, 2.5cqi, 20px);
+  }
+}
+
+@container monitor (width < 500px) {
+  .stat-card-value {
+    font-size: clamp(12px, 4cqi, 16px);
   }
 }
 
@@ -468,9 +584,10 @@ select option {
 }
 
 .dialog {
-  @apply bg-surface-900 border border-surface-700 shadow-elevated;
+  @apply bg-surface-900 border border-surface-700;
   @apply max-h-[85vh] overflow-hidden;
-  border-radius: 4px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-elevated);
 }
 
 /* ========================================
@@ -519,7 +636,7 @@ select option {
   left: 0;
   top: 50%;
   transform: translateY(-50%);
-  width: 3px;
+  width: var(--border-width-thick);
   height: 16px;
   background: var(--red-500);
 }
@@ -533,7 +650,7 @@ select option {
   @apply transition-all duration-200;
   @apply text-text-tertiary hover:bg-surface-800 hover:text-text-secondary;
   border-radius: 0;
-  border-left: 3px solid transparent;
+  border-left: var(--border-width-thick) solid transparent;
 }
 
 .nav-item:hover {
@@ -554,8 +671,8 @@ select option {
   @apply flex items-center gap-2 px-4 py-2 text-sm font-medium;
   @apply transition-all duration-200;
   @apply text-text-muted hover:bg-surface-700 hover:text-text-secondary;
-  border-radius: 2px 2px 0 0;
-  border-bottom: 2px solid transparent;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border-bottom: var(--border-width-default) solid transparent;
 }
 
 .tab-active {
@@ -585,8 +702,8 @@ select option {
 .tooltip {
   @apply absolute z-50 px-3 py-1.5 text-xs font-medium;
   @apply bg-surface-800 text-text-primary border border-surface-600;
-  @apply shadow-elevated;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-elevated);
 }
 
 /* ========================================
@@ -609,25 +726,14 @@ select option {
    ======================================== */
 
 .metric-display {
-  @apply flex flex-col items-center justify-center p-2 min-w-0 overflow-hidden;
+  @apply flex flex-col items-center justify-center p-2 min-w-0;
   background-color: color-mix(in srgb, var(--surface-900) 50%, transparent);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .metric-display span {
-  @apply truncate max-w-full;
+  @apply max-w-full text-center;
+  overflow-wrap: break-word;
+  word-break: break-all;
 }
 
-/* ========================================
-   Responsive Hero Numbers
-   ======================================== */
-
-@media (max-width: 1024px) {
-  .hero-number-value {
-    font-size: 32px;
-    line-height: 40px;
-  }
-  .hero-number {
-    padding: 8px;
-  }
-}

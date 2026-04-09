@@ -12,6 +12,7 @@ describe('ProjectCard Logic Tests', () => {
     path: 'D:/Projects/test',
     scripts: ['dev', 'build'],
     defaultScript: 'dev',
+    projectType: 'npm',
     tags: ['frontend', 'react'],
     status: 'stopped',
     createdAt: Date.now(),

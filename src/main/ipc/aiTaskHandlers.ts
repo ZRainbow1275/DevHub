@@ -1,11 +1,14 @@
 import { ipcMain, BrowserWindow } from 'electron'
-import { IPC_CHANNELS_EXT, AITask, AITaskHistory, AIToolType } from '@shared/types-extended'
+import { IPC_CHANNELS_EXT, AITask, AITaskHistory, AIToolType, AIWindowAlias } from '@shared/types-extended'
 import { AITaskTracker } from '../services/AITaskTracker'
+import { AIAliasManager } from '../services/AIAliasManager'
 import { getProcessScanner } from './processHandlers'
 import { getNotificationService } from '../services/NotificationService'
 import { withRateLimit, RATE_LIMITS } from '../utils/rateLimiter'
+import { validateString, validateObject, guardProtoPollution } from '../utils/validation'
 
 let aiTaskTracker: AITaskTracker | null = null
+let aliasManager: AIAliasManager | null = null
 
 export function setupAITaskHandlers(mainWindow: BrowserWindow): void {
   const processScanner = getProcessScanner()
@@ -14,7 +17,8 @@ export function setupAITaskHandlers(mainWindow: BrowserWindow): void {
     return
   }
 
-  aiTaskTracker = new AITaskTracker(processScanner)
+  aliasManager = new AIAliasManager()
+  aiTaskTracker = new AITaskTracker(processScanner, aliasManager)
 
   // Set up event listeners
   aiTaskTracker.on('task-started', (task: AITask) => {
@@ -25,13 +29,11 @@ export function setupAITaskHandlers(mainWindow: BrowserWindow): void {
     mainWindow.webContents.send(IPC_CHANNELS_EXT.AI_TASK_STATUS_CHANGED, task)
   })
 
-  aiTaskTracker.on('task-completed', (history: AITaskHistory) => {
+  aiTaskTracker.on('task-completed', (history: AITaskHistory, taskAlias?: string) => {
     mainWindow.webContents.send(IPC_CHANNELS_EXT.AI_TASK_COMPLETED, history)
 
     // 通过 NotificationService 发送通知（自动去重，与 ToolMonitor 协调）
     const notificationService = getNotificationService()
-    // 使用与 CodingTool.displayName 完全一致的名称，
-    // 确保 dedupKey 与 ToolMonitor 侧（task-complete:${tool.displayName}）匹配
     const toolDisplayNames: Record<AIToolType, string> = {
       'codex': 'Codex CLI',
       'claude-code': 'Claude Code',
@@ -41,8 +43,7 @@ export function setupAITaskHandlers(mainWindow: BrowserWindow): void {
     }
 
     const toolName = toolDisplayNames[history.toolType]
-    // dedupKey = `task-complete:${toolName}`，与 ToolMonitor 的 `task-complete:${tool.displayName}` 一致
-    notificationService.notifyTaskComplete(toolName, history.duration)
+    notificationService.notifyTaskComplete(toolName, history.duration, taskAlias)
   })
 
   // Start tracking
@@ -126,6 +127,41 @@ export function setupAITaskHandlers(mainWindow: BrowserWindow): void {
       return aiTaskTracker.getTaskById(taskId)
     }
   ))
+
+  // ==================== AI Alias Handlers ====================
+
+  ipcMain.handle(IPC_CHANNELS_EXT.AI_ALIAS_GET_ALL, withRateLimit(
+    IPC_CHANNELS_EXT.AI_ALIAS_GET_ALL, RATE_LIMITS.QUERY,
+    async (): Promise<AIWindowAlias[]> => {
+      if (!aliasManager) return []
+      return aliasManager.getAll()
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.AI_ALIAS_SET, withRateLimit(
+    IPC_CHANNELS_EXT.AI_ALIAS_SET, RATE_LIMITS.ACTION,
+    async (_, alias: unknown): Promise<boolean> => {
+      if (!aliasManager) return false
+      validateObject(alias, 'alias')
+      const a = alias as unknown as AIWindowAlias
+      guardProtoPollution(alias)
+      validateString(a.id, 'alias.id')
+      validateString(a.alias, 'alias.alias', 100)
+      if (!a.matchCriteria || typeof a.matchCriteria !== 'object') {
+        throw new Error('Invalid alias: matchCriteria must be an object')
+      }
+      return aliasManager.set(a)
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.AI_ALIAS_REMOVE, withRateLimit(
+    IPC_CHANNELS_EXT.AI_ALIAS_REMOVE, RATE_LIMITS.ACTION,
+    async (_, aliasId: unknown): Promise<boolean> => {
+      if (!aliasManager) return false
+      validateString(aliasId, 'aliasId')
+      return aliasManager.remove(aliasId as string)
+    }
+  ))
 }
 
 export function cleanupAITaskHandlers(): void {
@@ -142,6 +178,9 @@ export function cleanupAITaskHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS_EXT.AI_TASK_STOP_TRACKING)
   ipcMain.removeHandler(IPC_CHANNELS_EXT.AI_TASK_GET_STATISTICS)
   ipcMain.removeHandler('ai-task:get-by-id')
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.AI_ALIAS_GET_ALL)
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.AI_ALIAS_SET)
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.AI_ALIAS_REMOVE)
 }
 
 export function getAITaskTracker(): AITaskTracker | null {

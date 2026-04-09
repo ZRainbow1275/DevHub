@@ -1,4 +1,5 @@
 import { useProjectStore } from '../../stores/projectStore'
+import { ResponsiveMetric } from './ResponsiveMetric'
 
 interface HeroStatProps {
   value: number
@@ -16,7 +17,9 @@ function HeroStat({ value, label, variant = 'default' }: HeroStatProps) {
 
   return (
     <div className={`hero-number ${variantClass} min-w-0 flex-1`}>
-      <span className="hero-number-value hero-number-update">{value}</span>
+      <span className="hero-number-value hero-number-update">
+        <ResponsiveMetric value={value} format="number" variant="hero" />
+      </span>
       <span className="hero-number-label">{label}</span>
     </div>
   )

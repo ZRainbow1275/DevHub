@@ -76,6 +76,15 @@ export function setupProcessHandlers(mainWindow: BrowserWindow, appStore: AppSto
       return processScanner.groupByProject(projects)
     }
   ))
+
+  ipcMain.handle('process:get-tree', withRateLimit(
+    'process:get-tree', RATE_LIMITS.QUERY,
+    async (_, pid: unknown): Promise<ProcessInfo[]> => {
+      if (!processScanner) return []
+      validatePid(pid)
+      return processScanner.getProcessTree(pid)
+    }
+  ))
 }
 
 export function cleanupProcessHandlers(): void {
@@ -87,6 +96,7 @@ export function cleanupProcessHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS_EXT.PROCESS_KILL)
   ipcMain.removeHandler(IPC_CHANNELS_EXT.PROCESS_CLEANUP_ZOMBIES)
   ipcMain.removeHandler('process:get-groups')
+  ipcMain.removeHandler('process:get-tree')
 }
 
 export function getProcessScanner(): SystemProcessScanner | null {

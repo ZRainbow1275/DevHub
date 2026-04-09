@@ -1,4 +1,6 @@
 import { memo } from 'react'
+import { ResponsiveMetric } from './ResponsiveMetric'
+import type { MetricFormat } from '../../utils/formatMetric'
 
 interface StatCardProps {
   icon: React.ReactNode
@@ -6,6 +8,8 @@ interface StatCardProps {
   value: string | number
   color?: 'default' | 'accent' | 'gold' | 'success' | 'info' | 'warning' | 'error' | 'steel'
   subValue?: string
+  /** When value is a number, specifies the format for responsive display. Defaults to 'number'. */
+  metricFormat?: MetricFormat
 }
 
 const COLOR_CLASSES: Record<NonNullable<StatCardProps['color']>, { border: string; bg: string }> = {
@@ -24,9 +28,18 @@ export const StatCard = memo(function StatCard({
   label,
   value,
   color = 'default',
-  subValue
+  subValue,
+  metricFormat = 'number'
 }: StatCardProps) {
   const colorConfig = COLOR_CLASSES[color]
+
+  const renderValue = () => {
+    if (typeof value === 'number') {
+      return <ResponsiveMetric value={value} format={metricFormat} variant="stat" />
+    }
+    // String values (pre-formatted like "23.5%") rendered directly
+    return value
+  }
 
   return (
     <div
@@ -45,14 +58,13 @@ export const StatCard = memo(function StatCard({
         </div>
         <div className="min-w-0 flex-1">
           <div
-            className="font-bold text-text-primary font-mono tabular-nums whitespace-nowrap"
+            className="stat-card-value font-bold text-text-primary tabular-nums overflow-hidden text-ellipsis"
             style={{
               fontFamily: 'var(--font-display)',
-              fontSize: String(value).length > 6 ? '16px' : String(value).length > 4 ? '20px' : '24px',
               lineHeight: '1.2'
             }}
           >
-            {value}
+            {renderValue()}
           </div>
           <div className="text-xs text-text-muted uppercase tracking-wider">{label}</div>
           {subValue && (

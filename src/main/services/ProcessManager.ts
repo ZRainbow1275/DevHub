@@ -1,7 +1,50 @@
 import { ChildProcess, spawn } from 'child_process'
 import kill from 'tree-kill'
-import { Project, LogEntry } from '@shared/types'
+import { Project, LogEntry, ProjectType } from '@shared/types'
 import { validateScriptName } from '../utils/security'
+
+/**
+ * Command mapping: project type + script name -> [executable, ...args]
+ */
+function resolveCommand(projectType: ProjectType, script: string): { cmd: string; args: string[] } {
+  switch (projectType) {
+    case 'npm':
+      return { cmd: 'npm', args: ['run', script] }
+    case 'pnpm':
+      return { cmd: 'pnpm', args: ['run', script] }
+    case 'yarn':
+      return { cmd: 'yarn', args: ['run', script] }
+    case 'rust':
+      // Map scripts to cargo subcommands
+      return { cmd: 'cargo', args: [script] }
+    case 'go':
+      // Map scripts to go subcommands
+      if (script === 'run') return { cmd: 'go', args: ['run', '.'] }
+      return { cmd: 'go', args: [script, './...'] }
+    case 'venv':
+      if (script === 'install') return { cmd: 'pip', args: ['install', '-r', 'requirements.txt'] }
+      if (script === 'run') return { cmd: 'python', args: ['main.py'] }
+      if (script === 'test') return { cmd: 'python', args: ['-m', 'pytest'] }
+      return { cmd: 'python', args: ['-m', script] }
+    case 'conda':
+      if (script === 'create') return { cmd: 'conda', args: ['env', 'create', '-f', 'environment.yml'] }
+      if (script === 'activate') return { cmd: 'conda', args: ['activate'] }
+      if (script === 'install') return { cmd: 'conda', args: ['install', '--file', 'requirements.txt'] }
+      return { cmd: 'conda', args: ['run', script] }
+    case 'poetry':
+      if (script === 'install') return { cmd: 'poetry', args: ['install'] }
+      if (script === 'build') return { cmd: 'poetry', args: ['build'] }
+      if (script === 'test') return { cmd: 'poetry', args: ['run', 'pytest'] }
+      return { cmd: 'poetry', args: ['run', script] }
+    case 'java-maven':
+      return { cmd: 'mvn', args: [script] }
+    case 'java-gradle':
+      return { cmd: 'gradle', args: [script] }
+    default:
+      // Fallback: attempt npm
+      return { cmd: 'npm', args: ['run', script] }
+  }
+}
 
 type LogCallback = (entry: LogEntry) => void
 type StatusCallback = (projectId: string, status: Project['status'], pid?: number) => void
@@ -78,7 +121,7 @@ export class ProcessManager {
 
     // Check if script exists in project
     if (!project.scripts.includes(script)) {
-      throw new Error(`Script "${script}" not found in package.json`)
+      throw new Error(`Script "${script}" not found in project configuration`)
     }
 
     // Check if already running or starting (race condition guard)
@@ -89,12 +132,32 @@ export class ProcessManager {
     // Mark as starting to prevent concurrent starts
     this._startingProjects.add(project.id)
 
+    // Add timeout insurance: prevent _startingProjects items from never being cleaned
+    const START_TIMEOUT_MS = 30000
+    const startTimeout = setTimeout(() => {
+      console.warn(`Start timeout for project ${project.id}, cleaning up`)
+      this._startingProjects.delete(project.id)
+    }, START_TIMEOUT_MS)
+
     return new Promise((resolve, reject) => {
+      // Define cleanup function to prevent duplicate deletion
+      let cleaned = false
+      const cleanup = () => {
+        if (!cleaned) {
+          clearTimeout(startTimeout)
+          this._startingProjects.delete(project.id)
+          cleaned = true
+        }
+      }
+
       try {
         // Filter environment variables to only safe, necessary ones
         const SAFE_ENV_KEYS = [
           'PATH', 'PATHEXT', 'SystemRoot', 'TEMP', 'TMP',
-          'HOME', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'ComSpec'
+          'HOME', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'ComSpec',
+          'GOPATH', 'GOROOT', 'CARGO_HOME', 'RUSTUP_HOME',
+          'JAVA_HOME', 'MAVEN_HOME', 'GRADLE_HOME',
+          'CONDA_PREFIX', 'VIRTUAL_ENV'
         ]
         const filteredEnv: Record<string, string> = {}
         for (const key of SAFE_ENV_KEYS) {
@@ -105,16 +168,23 @@ export class ProcessManager {
         filteredEnv['FORCE_COLOR'] = '1'
         filteredEnv['NODE_ENV'] = 'development'
 
-        // Use spawn with shell: false for security
-        const proc = spawn('npm', ['run', script], {
+        // Resolve command based on project type
+        const projectType = project.projectType || 'npm'
+        const { cmd, args } = resolveCommand(projectType, script)
+
+        // On Windows, many CLI tools (npm, pnpm, etc.) are .cmd scripts that
+        // require a shell to execute. Use shell: true on win32 since env vars
+        // are already filtered to a safe whitelist above.
+        const isWin = process.platform === 'win32'
+        const proc = spawn(cmd, args, {
           cwd: project.path,
-          shell: false,
+          shell: isWin,
           env: filteredEnv,
           windowsHide: false
         })
 
         // Log system message
-        this.emitLog(project.id, 'system', `Starting: npm run ${script}`)
+        this.emitLog(project.id, 'system', `Starting: ${cmd} ${args.join(' ')}`)
 
         // Handle stdout
         proc.stdout?.on('data', (data: Buffer) => {
@@ -134,6 +204,7 @@ export class ProcessManager {
 
         // Handle process exit
         proc.on('exit', (code, signal) => {
+          cleanup()
           this.processes.delete(project.id)
           // If we're stopping this project, skip duplicate status emit
           if (!this._stoppingProjects.has(project.id)) {
@@ -147,7 +218,7 @@ export class ProcessManager {
 
         // Handle errors
         proc.on('error', (error) => {
-          this._startingProjects.delete(project.id)
+          cleanup()
           this.processes.delete(project.id)
           this.emitLog(project.id, 'system', `Error: ${error.message}`)
           this.emitStatus(project.id, 'error')
@@ -156,13 +227,13 @@ export class ProcessManager {
 
         // Resolve once spawned
         proc.on('spawn', () => {
+          cleanup()
           this.processes.set(project.id, proc)
-          this._startingProjects.delete(project.id)
           this.emitStatus(project.id, 'running', proc.pid)
           resolve()
         })
       } catch (error) {
-        this._startingProjects.delete(project.id)
+        cleanup()
         reject(error)
       }
     })

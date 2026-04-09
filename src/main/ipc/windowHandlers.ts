@@ -11,9 +11,9 @@ export function setupWindowHandlers(_mainWindow: BrowserWindow): void {
 
   ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_SCAN, withRateLimit(
     IPC_CHANNELS_EXT.WINDOW_SCAN, RATE_LIMITS.SCAN,
-    async (): Promise<ServiceResult<WindowInfo[]>> => {
+    async (_, includeSystemWindows?: boolean): Promise<ServiceResult<WindowInfo[]>> => {
       if (!windowManager) return { success: false, data: [], error: 'Window manager not initialized' }
-      return windowManager.scanWindows()
+      return windowManager.scanWindows(includeSystemWindows ?? false)
     }
   ))
 

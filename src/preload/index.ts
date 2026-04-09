@@ -5,6 +5,7 @@ import {
   portApi,
   windowApi,
   aiTaskApi,
+  aiAliasApi,
   notificationApi,
   taskHistoryApi
 } from './extended'
@@ -168,6 +169,7 @@ contextBridge.exposeInMainWorld('devhub', {
   port: portApi,
   windowManager: windowApi,
   aiTask: aiTaskApi,
+  aiAlias: aiAliasApi,
   notification: notificationApi,
   taskHistory: taskHistoryApi
 })

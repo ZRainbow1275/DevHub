@@ -25,8 +25,13 @@ export class NotificationService {
   private recentNotifications = new Map<string, number>()
   private static readonly DEDUP_WINDOW_MS = 30000 // 30秒去重窗口
 
+  // 改进：添加定期清理机制
+  private cleanupInterval: NodeJS.Timeout | null = null
+  private static readonly CLEANUP_INTERVAL_MS = 30000  // 每 30 秒清理一次
+
   constructor(mainWindow?: BrowserWindow) {
     this.mainWindow = mainWindow || null
+    this.startCleanupTimer()
   }
 
   setMainWindow(window: BrowserWindow): void {
@@ -56,19 +61,36 @@ export class NotificationService {
     return (Date.now() - lastTime) < NotificationService.DEDUP_WINDOW_MS
   }
 
+  private startCleanupTimer(): void {
+    this.cleanupInterval = setInterval(() => {
+      this.cleanupRecentNotifications()
+    }, NotificationService.CLEANUP_INTERVAL_MS)
+
+    // 设置 unref 避免定时器阻止进程退出
+    if (this.cleanupInterval.unref) {
+      this.cleanupInterval.unref()
+    }
+  }
+
+  private cleanupRecentNotifications(): void {
+    const now = Date.now()
+    let cleaned = 0
+    for (const [key, time] of this.recentNotifications) {
+      if (now - time >= NotificationService.DEDUP_WINDOW_MS) {
+        this.recentNotifications.delete(key)
+        cleaned++
+      }
+    }
+    if (cleaned > 0) {
+      console.warn(`Cleaned ${cleaned} expired dedup entries`)
+    }
+  }
+
   /**
    * 记录已发送的通知用于去重
    */
   private recordNotification(dedupKey: string): void {
     this.recentNotifications.set(dedupKey, Date.now())
-
-    // 清理过期的去重记录
-    const now = Date.now()
-    for (const [key, time] of this.recentNotifications) {
-      if (now - time >= NotificationService.DEDUP_WINDOW_MS) {
-        this.recentNotifications.delete(key)
-      }
-    }
   }
 
   async notify(
@@ -132,11 +154,12 @@ export class NotificationService {
     }
   }
 
-  notifyTaskComplete(toolName: string, duration: number): void {
+  notifyTaskComplete(toolName: string, duration: number, alias?: string): void {
+    const displayName = alias ?? toolName
     this.notify(
       'task-complete',
-      `${toolName} 任务完成`,
-      `任务耗时: ${Math.round(duration / 1000)}秒`,
+      `[${displayName}] 任务完成`,
+      `${toolName} · 耗时: ${Math.round(duration / 1000)}秒`,
       { dedupKey: `task-complete:${toolName}` }
     )
   }
@@ -208,6 +231,14 @@ export class NotificationService {
 
   getUnreadCount(): number {
     return this.history.filter(n => !n.read).length
+  }
+
+  destroy(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval)
+      this.cleanupInterval = null
+    }
+    this.recentNotifications.clear()
   }
 }
 

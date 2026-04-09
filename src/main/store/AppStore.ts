@@ -6,7 +6,9 @@ import {
   AppConfig,
   AppSettings,
   DEFAULT_TOOLS,
-  DEFAULT_SETTINGS
+  DEFAULT_SETTINGS,
+  migrateSettings,
+  deepMergeSettings
 } from '@shared/types'
 import { guardProtoPollution } from '../utils/validation'
 
@@ -56,6 +58,17 @@ export class AppStore {
   getProjects(): Project[] {
     if (this._cache.projects) return this._cache.projects
     const projects = this.store.get('projects', [])
+    // Backward compatibility: ensure all projects have projectType
+    let needsPersist = false
+    for (const project of projects) {
+      if (!project.projectType) {
+        (project as Project).projectType = 'npm'
+        needsPersist = true
+      }
+    }
+    if (needsPersist) {
+      this.store.set('projects', projects)
+    }
     this._cache.projects = projects
     return projects
   }
@@ -184,26 +197,39 @@ export class AppStore {
 
   // Settings
   getSettings(): AppSettings {
-    return this.store.get('settings', DEFAULT_SETTINGS)
+    if (this._cache.settings) return this._cache.settings
+    const raw = this.store.get('settings', DEFAULT_SETTINGS) as unknown as Record<string, unknown>
+    // Migrate from legacy flat format if necessary
+    const migrated = migrateSettings(raw)
+    // Persist migrated settings if migration occurred (old flat format detected)
+    if (typeof raw.theme === 'string' && raw.appearance === undefined) {
+      this.store.set('settings', migrated)
+    }
+    this._cache.settings = migrated
+    return migrated
   }
 
   updateSettings(updates: Partial<AppSettings>): void {
     const settings = this.getSettings()
-    this.store.set('settings', { ...settings, ...updates })
+    const merged = deepMergeSettings(settings, updates)
+    this.store.set('settings', merged)
+    this.invalidateCache('settings')
   }
 
   // Allowed paths management
   addAllowedPath(path: string): void {
     const settings = this.getSettings()
-    if (!settings.allowedPaths.includes(path)) {
-      settings.allowedPaths.push(path)
+    if (!settings.scan.allowedPaths.includes(path)) {
+      settings.scan.allowedPaths.push(path)
       this.store.set('settings', settings)
+      this.invalidateCache('settings')
     }
   }
 
   removeAllowedPath(path: string): void {
     const settings = this.getSettings()
-    settings.allowedPaths = settings.allowedPaths.filter((p) => p !== path)
+    settings.scan.allowedPaths = settings.scan.allowedPaths.filter((p) => p !== path)
     this.store.set('settings', settings)
+    this.invalidateCache('settings')
   }
 }

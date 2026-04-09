@@ -397,6 +397,7 @@ public class WindowEnumerator {
         windows: g.windows.map(w => ({
           processName: w.processName,
           titlePattern: w.title,
+          className: w.className || undefined,
           rect: { ...w.rect }
         }))
       })),
@@ -416,16 +417,37 @@ public class WindowEnumerator {
     const scanResult = await this.scanWindows()
     const currentWindows = scanResult.data ?? []
 
+    // Track already-matched windows so each real window is used at most once
+    const matchedHwnds = new Set<number>()
+
     for (const group of layout.groups) {
       for (const savedWindow of group.windows) {
-        const matchingWindow = currentWindows.find(w =>
-          w.processName === savedWindow.processName &&
-          w.title.includes(savedWindow.titlePattern.slice(0, 20))
-        )
+        // Weighted matching: find the best matching current window
+        let bestMatch: WindowInfo | null = null
+        let bestScore = 0
 
-        if (matchingWindow) {
+        for (const w of currentWindows) {
+          if (matchedHwnds.has(w.hwnd)) continue
+
+          let score = 0
+          // processName must match (weight: 40)
+          if (w.processName === savedWindow.processName) score += 40
+          // title substring match (weight: 30)
+          if (savedWindow.titlePattern && w.title.includes(savedWindow.titlePattern.substring(0, 20))) score += 30
+          // className match (weight: 20)
+          if (savedWindow.className && savedWindow.className === w.className) score += 20
+
+          if (score > bestScore) {
+            bestScore = score
+            bestMatch = w
+          }
+        }
+
+        // Threshold: at least processName must match (score >= 40)
+        if (bestMatch && bestScore >= 40) {
+          matchedHwnds.add(bestMatch.hwnd)
           await this.moveWindow(
-            matchingWindow.hwnd,
+            bestMatch.hwnd,
             savedWindow.rect.x,
             savedWindow.rect.y,
             savedWindow.rect.width,

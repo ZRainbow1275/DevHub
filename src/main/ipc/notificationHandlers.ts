@@ -123,6 +123,7 @@ export function setupNotificationHandlers(mainWindow: BrowserWindow): void {
 }
 
 export function cleanupNotificationHandlers(): void {
+  notificationService?.destroy()
   ipcMain.removeHandler(IPC_CHANNELS_EXT.NOTIFICATION_GET_CONFIG)
   ipcMain.removeHandler(IPC_CHANNELS_EXT.NOTIFICATION_SET_CONFIG)
   ipcMain.removeHandler(IPC_CHANNELS_EXT.NOTIFICATION_GET_HISTORY)

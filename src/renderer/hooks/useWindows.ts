@@ -26,11 +26,11 @@ export function useWindows() {
     getWindowsByProcess
   } = useWindowStore()
 
-  const scan = useCallback(async (): Promise<WindowInfo[]> => {
+  const scan = useCallback(async (includeSystemWindows?: boolean): Promise<WindowInfo[]> => {
     if (!isElectron) return []
     setScanning(true)
     try {
-      const result = await window.devhub.windowManager?.scan?.()
+      const result = await window.devhub.windowManager?.scan?.(includeSystemWindows)
       const windowList = result?.data ?? []
       if (result && !result.success) {
         console.error('Window scan failed:', result.error)

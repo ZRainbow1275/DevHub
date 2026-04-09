@@ -1,6 +1,8 @@
 import { useEffect, memo, useState, useCallback, useMemo, useRef } from 'react'
 import { useWindows } from '../../hooks/useWindows'
 import { WindowInfo, WindowGroup, WindowLayout } from '@shared/types-extended'
+import { useToast } from '../ui/Toast'
+import { LayoutPreview } from './LayoutPreview'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { StatCard } from '../ui/StatCard'
 import { ViewModeToggle } from '../ui/ViewModeToggle'
@@ -780,6 +782,28 @@ export function WindowView() {
     selectGroup
   } = useWindows()
 
+  const { showToast } = useToast()
+
+  // Unified feedback wrapper for async operations
+  const withFeedback = useCallback(async (
+    operation: () => Promise<unknown>,
+    successMsg: string,
+    errorMsg: string
+  ): Promise<unknown> => {
+    try {
+      const result = await operation()
+      if (result !== false && result !== null && result !== undefined) {
+        showToast('success', successMsg)
+      } else {
+        showToast('error', errorMsg)
+      }
+      return result
+    } catch (err) {
+      showToast('error', `${errorMsg}: ${err instanceof Error ? err.message : '未知错误'}`)
+      return null
+    }
+  }, [showToast])
+
   const [viewTab, setViewTab] = useState<'windows' | 'groups' | 'layouts'>('windows')
   const [viewMode, setViewMode] = useState<'cards' | 'list' | 'process'>('cards')
   const [showCreateGroup, setShowCreateGroup] = useState(false)
@@ -825,20 +849,59 @@ export function WindowView() {
   }, [scan])
 
   const handleCreateGroup = useCallback(async () => {
-    if (!newGroupName.trim() || selectedWindows.size === 0) return
-    await createGroup(newGroupName, Array.from(selectedWindows))
-    setNewGroupName('')
-    setSelectedWindows(new Set())
-    setShowCreateGroup(false)
-  }, [newGroupName, selectedWindows, createGroup])
+    if (!newGroupName.trim()) {
+      showToast('warning', '请输入分组名称')
+      return
+    }
+
+    // Filter out stale hwnds that no longer exist in current window list
+    const validHwnds = Array.from(selectedWindows).filter(hwnd =>
+      windows.some(w => w.hwnd === hwnd)
+    )
+
+    if (validHwnds.length === 0) {
+      showToast('error', '所选窗口已关闭，请重新选择')
+      setSelectedWindows(new Set())
+      return
+    }
+
+    try {
+      const result = await createGroup(newGroupName.trim(), validHwnds)
+      if (result) {
+        showToast('success', `分组 "${newGroupName.trim()}" 创建成功 (${validHwnds.length} 个窗口)`)
+        setNewGroupName('')
+        setSelectedWindows(new Set())
+        setShowCreateGroup(false)
+        await fetchGroups()
+      } else {
+        showToast('error', '分组创建失败')
+      }
+    } catch (err) {
+      showToast('error', `分组创建失败: ${err instanceof Error ? err.message : '未知错误'}`)
+    }
+  }, [newGroupName, selectedWindows, windows, createGroup, fetchGroups, showToast])
 
   const handleSaveLayout = useCallback(async () => {
-    if (!newLayoutName.trim()) return
-    await saveLayout(newLayoutName, newLayoutDesc || undefined)
-    setNewLayoutName('')
-    setNewLayoutDesc('')
-    setShowSaveLayout(false)
-  }, [newLayoutName, newLayoutDesc, saveLayout])
+    if (!newLayoutName.trim()) {
+      showToast('warning', '请输入布局名称')
+      return
+    }
+
+    try {
+      const result = await saveLayout(newLayoutName.trim(), newLayoutDesc || undefined)
+      if (result) {
+        const windowCount = result.groups.reduce((sum, g) => sum + g.windows.length, 0)
+        showToast('success', `布局 "${newLayoutName.trim()}" 已保存 (${result.groups.length} 个分组, ${windowCount} 个窗口)`)
+        setNewLayoutName('')
+        setNewLayoutDesc('')
+        setShowSaveLayout(false)
+      } else {
+        showToast('error', '布局保存失败')
+      }
+    } catch (err) {
+      showToast('error', `布局保存失败: ${err instanceof Error ? err.message : '未知错误'}`)
+    }
+  }, [newLayoutName, newLayoutDesc, saveLayout, showToast])
 
   const toggleWindowSelection = (hwnd: number) => {
     const newSet = new Set(selectedWindows)
@@ -1179,8 +1242,16 @@ export function WindowView() {
                 group={group}
                 isSelected={selectedGroupId === group.id}
                 onSelect={() => selectGroup(group.id)}
-                onFocusGroup={() => focusGroup(group.id)}
-                onRemove={() => removeGroup(group.id)}
+                onFocusGroup={() => withFeedback(
+                  () => focusGroup(group.id),
+                  `已聚焦分组 "${group.name}"`,
+                  '聚焦分组失败'
+                )}
+                onRemove={() => withFeedback(
+                  () => removeGroup(group.id),
+                  `分组 "${group.name}" 已删除`,
+                  '删除分组失败'
+                )}
                 index={index}
               />
             ))}
@@ -1200,8 +1271,16 @@ export function WindowView() {
               <LayoutCard
                 key={layout.id}
                 layout={layout}
-                onRestore={() => restoreLayout(layout.id)}
-                onRemove={() => removeLayout(layout.id)}
+                onRestore={() => withFeedback(
+                  () => restoreLayout(layout.id),
+                  `布局 "${layout.name}" 已恢复`,
+                  '布局恢复失败'
+                )}
+                onRemove={() => withFeedback(
+                  () => removeLayout(layout.id),
+                  `布局 "${layout.name}" 已删除`,
+                  '删除布局失败'
+                )}
                 index={index}
               />
             ))}
@@ -1348,9 +1427,19 @@ export function WindowView() {
             >
               <AlertIcon size={18} className="text-info" />
               <span className="text-sm text-text-secondary">
-                将保存 <span className="font-bold text-accent">{groups.length}</span> 个分组
+                将保存 <span className="font-bold text-accent">{groups.length}</span> 个分组，
+                共 <span className="font-bold text-accent">{windows.length}</span> 个窗口
               </span>
             </div>
+
+            {/* Layout mini-map preview */}
+            <LayoutPreview
+              windows={windows.map(w => ({
+                title: w.title,
+                processName: w.processName,
+                rect: w.rect
+              }))}
+            />
 
             <div className="flex justify-end gap-3 mt-6 relative z-10">
               <button

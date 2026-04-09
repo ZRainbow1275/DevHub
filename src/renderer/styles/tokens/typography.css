@@ -1,8 +1,10 @@
 /* ========================================
-   Soviet Constructivism Typography System
+   DevHub Typography System
    ======================================== */
 
-/* Font Face Definitions */
+/* ---- Font Face Definitions ---- */
+
+/* Bebas Neue - Display font */
 @font-face {
   font-family: 'Bebas Neue';
   src: url('https://fonts.gstatic.com/s/bebasneue/v14/JTUSjIg69CK48gW7PXoo9Wlhyw.woff2') format('woff2');
@@ -11,6 +13,41 @@
   font-display: swap;
 }
 
+/* Inter - Primary body font */
+@font-face {
+  font-family: 'Inter';
+  src: url('https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfAZ9hiA.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuI6fAZ9hiA.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* JetBrains Mono - Monospace font */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('https://fonts.gstatic.com/s/jetbrainsmono/v18/tDbY2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKxjPVmUsaaDhw.woff2') format('woff2');
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('https://fonts.gstatic.com/s/jetbrainsmono/v18/tDbX2o-flEEny0FZhsfKu5WU4xD-IQ-PuZJJXxfpAO-Lf1MQk6OThxPA.woff2') format('woff2');
+  font-weight: 100 800;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* ---- Base Typography Tokens ---- */
 :root {
   /* ---- Font Families ---- */
   --font-display: 'Bebas Neue', 'Oswald', 'Anton', sans-serif;
@@ -47,6 +84,10 @@
   --tracking-normal: 0;
   --tracking-wide: 0.05em;
   --tracking-wider: 0.1em;
+
+  /* ---- CJK Optimizations ---- */
+  --leading-cjk-body: 1.75;
+  --leading-cjk-heading: 1.4;
 }
 
 /* ---- Typography Utility Classes ---- */
@@ -57,42 +98,42 @@
   font-size: var(--text-hero);
   line-height: var(--leading-hero);
   font-weight: var(--weight-regular);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
+  text-transform: var(--heading-transform, uppercase);
+  letter-spacing: var(--display-tracking, var(--tracking-wide));
 }
 
 .text-display-sm {
   font-family: var(--font-display);
   font-size: var(--text-h1);
   line-height: var(--leading-h1);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
+  text-transform: var(--heading-transform, uppercase);
+  letter-spacing: var(--display-tracking, var(--tracking-wide));
 }
 
-/* Dynamic Tilt - Decorative Headers */
+/* Dynamic Tilt - Decorative Headers (theme-aware rotation) */
 .title-dynamic {
-  transform: rotate(-12deg);
+  transform: rotate(var(--deco-rotation, -12deg));
   transform-origin: left center;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
+  text-transform: var(--heading-transform, uppercase);
+  letter-spacing: var(--heading-tracking, var(--tracking-wide));
   font-family: var(--font-display);
-  font-weight: var(--weight-bold);
+  font-weight: var(--heading-weight, var(--weight-bold));
 }
 
 .title-slogan {
-  transform: rotate(-8deg);
+  transform: rotate(var(--deco-slogan-rotation, -8deg));
   transform-origin: left center;
-  font-weight: var(--weight-bold);
-  text-transform: uppercase;
+  font-weight: var(--heading-weight, var(--weight-bold));
+  text-transform: var(--heading-transform, uppercase);
   letter-spacing: var(--tracking-wider);
 }
 
 /* Section Headers */
 .text-section {
   font-size: var(--text-small);
-  font-weight: var(--weight-bold);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wider);
+  font-weight: var(--heading-weight, var(--weight-bold));
+  text-transform: var(--heading-transform, uppercase);
+  letter-spacing: var(--heading-tracking, var(--tracking-wider));
   color: var(--text-muted);
 }
 
@@ -108,4 +149,10 @@
   font-size: var(--text-small);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
+}
+
+/* CJK body text optimization */
+.text-cjk {
+  line-height: var(--leading-cjk-body);
+  letter-spacing: var(--body-tracking, 0);
 }

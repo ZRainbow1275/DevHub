@@ -24,6 +24,7 @@ import type {
   AITask,
   AITaskHistory,
   AIToolType,
+  AIWindowAlias,
   TaskStatistics,
   TaskRecord,
   TaskType,
@@ -191,6 +192,13 @@ declare global {
         onStarted?: (callback: (task: AITask) => void) => () => void
         onStatusChanged?: (callback: (task: AITask) => void) => () => void
         onCompleted?: (callback: (entry: AITaskHistory) => void) => () => void
+      }
+
+      // AI Alias API
+      aiAlias: {
+        getAll: () => Promise<AIWindowAlias[]>
+        set: (alias: AIWindowAlias) => Promise<boolean>
+        remove: (aliasId: string) => Promise<boolean>
       }
 
       // Notification API

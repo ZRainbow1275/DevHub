@@ -1,5 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
+import os from 'os'
+
+// Mock electron's app module (required by AuditLogger via PortScanner import)
+vi.mock('electron', () => ({
+  app: {
+    getPath: vi.fn().mockReturnValue('/tmp/test-devhub')
+  }
+}))
+
 import { SystemProcessScanner } from './SystemProcessScanner'
 import { PortScanner } from './PortScanner'
 import { ProcessInfo } from '@shared/types-extended'
@@ -221,9 +230,9 @@ describe('SystemProcessScanner', () => {
       const zombieProcess: ProcessInfo = {
         pid: 1234,
         name: 'node.exe',
-        command: 'node server.js',
+        command: 'node dev-server.js',
         cpu: 0,
-        memory: 100,
+        memory: 5, // below 10 MB zombie threshold
         status: 'waiting',
         startTime: oldDate,
         type: 'dev-server'
@@ -285,6 +294,7 @@ describe('SystemProcessScanner', () => {
         status: 'stopped',
         tags: [],
         defaultScript: 'dev',
+        projectType: 'npm',
         createdAt: Date.now(),
         updatedAt: Date.now()
       }]
@@ -302,6 +312,7 @@ describe('SystemProcessScanner', () => {
         status: 'stopped',
         tags: [],
         defaultScript: 'dev',
+        projectType: 'npm',
         createdAt: Date.now(),
         updatedAt: Date.now()
       }]
@@ -335,6 +346,7 @@ describe('SystemProcessScanner', () => {
         status: 'stopped',
         tags: [],
         defaultScript: 'dev',
+        projectType: 'npm',
         createdAt: Date.now(),
         updatedAt: Date.now()
       }]
@@ -368,6 +380,7 @@ describe('SystemProcessScanner', () => {
         status: 'stopped',
         tags: [],
         defaultScript: 'dev',
+        projectType: 'npm',
         createdAt: Date.now(),
         updatedAt: Date.now()
       }]
@@ -503,6 +516,153 @@ describe('SystemProcessScanner', () => {
     it('should not match random processes', () => {
       const result = (scanner as any).isDevProcess('notepad.exe')
       expect(result).toBe(false)
+    })
+  })
+
+  describe('calculateCpuFromDelta', () => {
+    it('should return empty map on first call (cold start)', () => {
+      // First call: lastCpuSampleTime is 0, so no delta can be computed
+      const currentCpuTimes = new Map<number, number>([
+        [1234, 5.0],
+        [5678, 10.0]
+      ])
+
+      const result = (scanner as any).calculateCpuFromDelta(currentCpuTimes)
+
+      expect(result.size).toBe(0)
+      // But previousCpuTimes and lastCpuSampleTime should be stored for next cycle
+      expect((scanner as any).lastCpuSampleTime).toBeGreaterThan(0)
+      expect((scanner as any).previousCpuTimes.size).toBe(2)
+    })
+
+    it('should calculate CPU percentage on second call', () => {
+      const numCores = os.cpus().length
+
+      // Simulate first call to store baseline
+      const firstSample = new Map<number, number>([
+        [1234, 5.0],
+        [5678, 10.0]
+      ])
+      ;(scanner as any).calculateCpuFromDelta(firstSample)
+
+      // Simulate time passing (5 seconds)
+      const storedTime = (scanner as any).lastCpuSampleTime
+      ;(scanner as any).lastCpuSampleTime = storedTime - 5000
+
+      // Second call with increased CPU times
+      const secondSample = new Map<number, number>([
+        [1234, 5.5],  // 0.5 seconds of CPU in 5 seconds
+        [5678, 11.0]  // 1.0 seconds of CPU in 5 seconds
+      ])
+
+      const result = (scanner as any).calculateCpuFromDelta(secondSample)
+
+      expect(result.size).toBe(2)
+
+      // PID 1234: (0.5 / 5 / numCores) * 100
+      const expectedCpu1234 = Math.max(0, Math.round((0.5 / 5 / numCores) * 100 * 10) / 10)
+      expect(result.get(1234)).toBe(expectedCpu1234)
+
+      // PID 5678: (1.0 / 5 / numCores) * 100
+      const expectedCpu5678 = Math.max(0, Math.round((1.0 / 5 / numCores) * 100 * 10) / 10)
+      expect(result.get(5678)).toBe(expectedCpu5678)
+    })
+
+    it('should handle new PIDs that appear between cycles', () => {
+      // First call with PID 1234
+      const firstSample = new Map<number, number>([[1234, 5.0]])
+      ;(scanner as any).calculateCpuFromDelta(firstSample)
+
+      // Advance time
+      ;(scanner as any).lastCpuSampleTime = (scanner as any).lastCpuSampleTime - 5000
+
+      // Second call introduces PID 9999 (new process, no previous data)
+      const secondSample = new Map<number, number>([
+        [1234, 6.0],
+        [9999, 3.0]
+      ])
+
+      const result = (scanner as any).calculateCpuFromDelta(secondSample)
+
+      // PID 1234 should have CPU data
+      expect(result.has(1234)).toBe(true)
+      // PID 9999 is new, no previous data, should NOT be in result
+      expect(result.has(9999)).toBe(false)
+      // But it should be stored for next cycle
+      expect((scanner as any).previousCpuTimes.has(9999)).toBe(true)
+    })
+
+    it('should clean up PIDs that no longer exist', () => {
+      // First call with PIDs 1234 and 5678
+      const firstSample = new Map<number, number>([
+        [1234, 5.0],
+        [5678, 10.0]
+      ])
+      ;(scanner as any).calculateCpuFromDelta(firstSample)
+      expect((scanner as any).previousCpuTimes.size).toBe(2)
+
+      // Advance time
+      ;(scanner as any).lastCpuSampleTime = (scanner as any).lastCpuSampleTime - 5000
+
+      // Second call: PID 5678 is gone
+      const secondSample = new Map<number, number>([[1234, 6.0]])
+      ;(scanner as any).calculateCpuFromDelta(secondSample)
+
+      // PID 5678 should be cleaned up from previousCpuTimes
+      expect((scanner as any).previousCpuTimes.has(5678)).toBe(false)
+      expect((scanner as any).previousCpuTimes.has(1234)).toBe(true)
+    })
+
+    it('should never return negative CPU values', () => {
+      // First call
+      const firstSample = new Map<number, number>([[1234, 10.0]])
+      ;(scanner as any).calculateCpuFromDelta(firstSample)
+
+      // Advance time
+      ;(scanner as any).lastCpuSampleTime = (scanner as any).lastCpuSampleTime - 5000
+
+      // Second call with LOWER CPU time (e.g., PID reuse or counter reset)
+      const secondSample = new Map<number, number>([[1234, 5.0]])
+      const result = (scanner as any).calculateCpuFromDelta(secondSample)
+
+      // Should clamp to 0, not return negative
+      expect(result.get(1234)).toBe(0)
+    })
+
+    it('should handle empty input gracefully', () => {
+      const emptyMap = new Map<number, number>()
+      const result = (scanner as any).calculateCpuFromDelta(emptyMap)
+
+      expect(result.size).toBe(0)
+      // lastCpuSampleTime should remain 0 since no data was provided
+      expect((scanner as any).lastCpuSampleTime).toBe(0)
+    })
+  })
+
+  describe('parseCsvLine', () => {
+    it('should parse simple CSV line', () => {
+      const result = (scanner as any).parseCsvLine('"1234","node.exe","cmd","1024"')
+      expect(result).toEqual(['1234', 'node.exe', 'cmd', '1024'])
+    })
+
+    it('should handle fields with commas inside quotes', () => {
+      const result = (scanner as any).parseCsvLine('"1234","node.exe","node app.js, --flag","1024"')
+      expect(result).toEqual(['1234', 'node.exe', 'node app.js, --flag', '1024'])
+    })
+
+    it('should handle escaped quotes', () => {
+      const result = (scanner as any).parseCsvLine('"1234","node.exe","say ""hello""","1024"')
+      expect(result).toEqual(['1234', 'node.exe', 'say "hello"', '1024'])
+    })
+
+    it('should handle empty fields', () => {
+      const result = (scanner as any).parseCsvLine('"1234","node.exe","","1024"')
+      expect(result).toEqual(['1234', 'node.exe', '', '1024'])
+    })
+
+    it('should handle six-field CSV line (with KernelModeTime and UserModeTime)', () => {
+      const result = (scanner as any).parseCsvLine('"1234","node.exe","cmd","1024","50000000","30000000"')
+      expect(result).toEqual(['1234', 'node.exe', 'cmd', '1024', '50000000', '30000000'])
     })
   })
 })

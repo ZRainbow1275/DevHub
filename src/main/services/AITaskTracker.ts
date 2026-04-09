@@ -11,6 +11,7 @@ import {
   WindowInfo
 } from '@shared/types-extended'
 import { SystemProcessScanner } from './SystemProcessScanner'
+import { AIAliasManager } from './AIAliasManager'
 
 const execFileAsync = promisify(execFile)
 
@@ -56,6 +57,7 @@ export class AITaskTracker extends EventEmitter {
   private tasks = new Map<string, AITask>()
   private history: AITaskHistory[] = []
   private processScanner: SystemProcessScanner
+  private aliasManager: AIAliasManager
   private refreshInterval: number = 2000
   private refreshTimer: NodeJS.Timeout | null = null
   private config: AITaskDetectionConfig = {
@@ -67,10 +69,15 @@ export class AITaskTracker extends EventEmitter {
     completionThreshold: 0.7
   }
 
-  constructor(processScanner: SystemProcessScanner) {
+  constructor(processScanner: SystemProcessScanner, aliasManager?: AIAliasManager) {
     super()
     this.setMaxListeners(20)
     this.processScanner = processScanner
+    this.aliasManager = aliasManager ?? new AIAliasManager()
+  }
+
+  getAliasManager(): AIAliasManager {
+    return this.aliasManager
   }
 
   setConfig(config: Partial<AITaskDetectionConfig>): void {
@@ -128,14 +135,34 @@ export class AITaskTracker extends EventEmitter {
           }
         }
 
+        // Match alias
+        const matchedAlias = this.aliasManager.matchAlias(matchedWindow, process, toolType)
+        if (matchedAlias) {
+          task.alias = matchedAlias.alias
+          task.aliasColor = matchedAlias.color
+          this.aliasManager.updateLastMatched(matchedAlias.id)
+        }
+
         this.tasks.set(task.id, task)
         newTasks.push(task)
         this.emit('task-started', task)
-      } else if (!existingTask.windowHwnd && windows) {
-        // Try to assign windowHwnd if not yet set
-        const matchedWindow = windows.find(w => w.pid === process.pid)
-        if (matchedWindow) {
-          existingTask.windowHwnd = matchedWindow.hwnd
+      } else {
+        if (!existingTask.windowHwnd && windows) {
+          // Try to assign windowHwnd if not yet set
+          const matchedWindow = windows.find(w => w.pid === process.pid)
+          if (matchedWindow) {
+            existingTask.windowHwnd = matchedWindow.hwnd
+          }
+        }
+        // Re-check alias if not yet assigned
+        if (!existingTask.alias) {
+          const matchedWindow = windows?.find(w => w.pid === process.pid)
+          const matchedAlias = this.aliasManager.matchAlias(matchedWindow, process, toolType)
+          if (matchedAlias) {
+            existingTask.alias = matchedAlias.alias
+            existingTask.aliasColor = matchedAlias.color
+            this.aliasManager.updateLastMatched(matchedAlias.id)
+          }
         }
       }
     }
@@ -362,8 +389,9 @@ export class AITaskTracker extends EventEmitter {
     if (this.history.length > MAX_HISTORY) {
       this.history = this.history.slice(-MAX_HISTORY)
     }
+    const taskAlias = task.alias
     this.tasks.delete(taskId)
-    this.emit('task-completed', historyEntry)
+    this.emit('task-completed', historyEntry, taskAlias)
   }
 
   getActiveTasks(): AITask[] {
@@ -375,7 +403,7 @@ export class AITaskTracker extends EventEmitter {
   }
 
   getHistory(limit?: number): AITaskHistory[] {
-    const sorted = this.history.sort((a, b) =>
+    const sorted = [...this.history].sort((a, b) =>
       b.startTime - a.startTime
     )
     return limit ? sorted.slice(0, limit) : sorted

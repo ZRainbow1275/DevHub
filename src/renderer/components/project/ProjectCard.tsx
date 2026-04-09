@@ -3,6 +3,7 @@ import { Project } from '@shared/types'
 import { ScriptSelector } from '../ui/ScriptSelector'
 import { ContextMenu } from '../ui/ContextMenu'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
+import { ProjectTypeBadge } from './ProjectTypeBadge'
 import { PlayIcon, StopIcon, FolderIcon, CopyIcon, TagIcon, TrashIcon } from '../icons'
 
 interface ProjectCardProps {
@@ -116,6 +117,7 @@ export const ProjectCard = memo(function ProjectCard({
               <h3 className="text-sm font-semibold text-text-primary truncate">
                 {project.name}
               </h3>
+              <ProjectTypeBadge type={project.projectType} />
               {isRunning && (
                 <span className="status-badge status-badge-running">
                   运行中

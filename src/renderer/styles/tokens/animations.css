@@ -1,5 +1,5 @@
 /* ========================================
-   Soviet Constructivism Animation System
+   DevHub Animation System
    ======================================== */
 
 :root {
@@ -8,11 +8,34 @@
   --duration-normal: 200ms;
   --duration-slow: 300ms;
   --duration-slower: 400ms;
+  --duration-theme: 250ms;
 
   /* ---- Easing ---- */
   --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-linear: linear;
+}
+
+/* ========================================
+   Theme Transition - Smooth switching
+   ======================================== */
+
+/*
+ * Theme transition is applied via [data-theme-transitioning] attribute.
+ * The attribute is set before theme switch and removed after transition.
+ * This avoids permanent transition cost on every CSS var change.
+ */
+[data-theme-transitioning],
+[data-theme-transitioning] *,
+[data-theme-transitioning] *::before,
+[data-theme-transitioning] *::after {
+  transition:
+    background-color var(--duration-theme) var(--ease-in-out),
+    color var(--duration-theme) var(--ease-in-out),
+    border-color var(--duration-theme) var(--ease-in-out),
+    box-shadow var(--duration-theme) var(--ease-in-out),
+    fill var(--duration-theme) var(--ease-in-out),
+    stroke var(--duration-theme) var(--ease-in-out) !important;
 }
 
 /* ========================================
@@ -274,7 +297,7 @@
   position: absolute;
   left: 0;
   top: 0;
-  width: 3px;
+  width: var(--border-width-thick, 3px);
   height: 0;
   background: var(--gold-500);
   transition: height var(--duration-normal) var(--ease-out-expo);

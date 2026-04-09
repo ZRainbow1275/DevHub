@@ -9,6 +9,8 @@ import {
   AlertIcon
 } from '../icons'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
+import { ProjectTypeBadge } from './ProjectTypeBadge'
+import type { ProjectType } from '@shared/types'
 
 interface AddProjectDialogProps {
   isOpen: boolean
@@ -20,6 +22,7 @@ interface ScanResult {
   path: string
   name: string
   scripts: string[]
+  projectType?: ProjectType
 }
 
 const isElectron = typeof window !== 'undefined' && window.devhub !== undefined
@@ -53,7 +56,7 @@ export function AddProjectDialog({ isOpen, onClose, onAdd }: AddProjectDialogPro
       const results = await window.devhub.projects.scan()
       setScanResults(results)
       if (results.length === 0) {
-        setError('未发现任何npm项目')
+        setError('未发现任何项目')
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '扫描失败')
@@ -73,7 +76,7 @@ export function AddProjectDialog({ isOpen, onClose, onAdd }: AddProjectDialogPro
       const results = await window.devhub.projects.discover()
       setScanResults(results)
       if (results.length === 0) {
-        setError('未发现任何npm项目')
+        setError('未发现任何项目')
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '智能发现失败')
@@ -96,7 +99,7 @@ export function AddProjectDialog({ isOpen, onClose, onAdd }: AddProjectDialogPro
       const results = await window.devhub.projects.scanDirectory(selectedPath)
       setScanResults(results)
       if (results.length === 0) {
-        setError('该目录下未发现npm项目')
+        setError('该目录下未发现项目')
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '扫描失败')
@@ -317,7 +320,7 @@ export function AddProjectDialog({ isOpen, onClose, onAdd }: AddProjectDialogPro
               </div>
 
               <p className="mt-3 text-xs text-text-muted text-center">
-                智能发现会从 VSCode 历史、pnpm/npm 链接等多个来源查找项目
+                支持 npm/pnpm/yarn/Python/Rust/Go/Java 等多生态系统项目自动发现
               </p>
             </>
           ) : (
@@ -353,7 +356,10 @@ export function AddProjectDialog({ isOpen, onClose, onAdd }: AddProjectDialogPro
                       style={{ borderRadius: '2px', animationDelay: `${index * 30}ms` }}
                     >
                       <div className="flex-1 min-w-0 mr-4">
-                        <h4 className="text-sm font-medium text-text-primary truncate">{result.name}</h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-medium text-text-primary truncate">{result.name}</h4>
+                          {result.projectType && <ProjectTypeBadge type={result.projectType} />}
+                        </div>
                         <p className="text-xs text-text-muted truncate font-mono">{result.path}</p>
                         {result.scripts.length > 0 && (
                           <div className="flex gap-1 mt-1 flex-wrap">

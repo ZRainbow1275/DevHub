@@ -137,7 +137,8 @@ export class SystemProcessScanner {
   async killProcess(pid: number, force: boolean = false): Promise<boolean> {
     // Protected process check
     const proc = this.processes.get(pid)
-    if (proc && isProtectedProcess(proc.name)) {
+    if (!proc) return false
+    if (isProtectedProcess(proc.name)) {
       console.warn(`Refused to kill protected process: ${proc.name} (PID ${pid})`)
       return false
     }
@@ -203,6 +204,54 @@ export class SystemProcessScanner {
     }
   }
 
+  async getProcessTree(pid: number): Promise<ProcessInfo[]> {
+    if (!Number.isInteger(pid) || pid <= 0) return []
+    try {
+      const psCmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-CimInstance Win32_Process | Where-Object { $_.ParentProcessId -eq ${pid} } | Select-Object ProcessId,Name,CommandLine,WorkingSetSize | ConvertTo-Csv -NoTypeInformation`
+      const { stdout } = await execFileAsync(
+        'powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-Command', psCmd],
+        { windowsHide: true, maxBuffer: 5 * 1024 * 1024, encoding: 'utf8', timeout: 15000 }
+      )
+
+      const lines = stdout.split('\n').filter(l => l.trim())
+      const children: ProcessInfo[] = []
+
+      // First line is CSV header
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim()
+        if (!line) continue
+
+        const fields = this.parseCsvLine(line)
+        if (fields.length < 4) continue
+
+        const childPid = parseInt(fields[0], 10)
+        const name = fields[1] || 'Unknown'
+        const commandLine = fields[2] || ''
+        const memoryBytes = parseInt(fields[3], 10) || 0
+
+        if (isNaN(childPid) || childPid === 0) continue
+
+        children.push({
+          pid: childPid,
+          name,
+          command: commandLine,
+          cpu: 0,
+          memory: Math.round(memoryBytes / 1024 / 1024),
+          status: 'running',
+          startTime: Date.now(),
+          type: this.inferType(name, commandLine),
+          workingDir: this.extractWorkingDir(commandLine)
+        })
+      }
+
+      return children
+    } catch (err) {
+      console.error('getProcessTree failed:', err instanceof Error ? err.message : err)
+      return []
+    }
+  }
+
   groupByProject(projects: Project[]): ProcessGroup[] {
     const groups: ProcessGroup[] = []
     const processArray = Array.from(this.processes.values())
@@ -252,16 +301,20 @@ export class SystemProcessScanner {
 
   private async getRawProcesses(): Promise<RawProcessInfo[]> {
     try {
-      const psCmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-CimInstance Win32_Process | Select-Object ProcessId,Name,CommandLine,WorkingSetSize | ConvertTo-Csv -NoTypeInformation`
+      // Single PowerShell call: Get-CimInstance Win32_Process returns KernelModeTime + UserModeTime
+      // (100-nanosecond units) alongside process info, eliminating the need for a second Get-Process call
+      const psCmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-CimInstance Win32_Process | Select-Object ProcessId,Name,CommandLine,WorkingSetSize,KernelModeTime,UserModeTime | ConvertTo-Csv -NoTypeInformation`
       const { stdout } = await execFileAsync(
         'powershell.exe',
         ['-NoProfile', '-NonInteractive', '-Command', psCmd],
-        { windowsHide: true, maxBuffer: 10 * 1024 * 1024, encoding: 'utf8' }
+        { windowsHide: true, maxBuffer: 10 * 1024 * 1024, encoding: 'utf8', timeout: 30000 }
       )
       const lines = stdout.split('\n').filter(l => l.trim())
       const processes: RawProcessInfo[] = []
+      // Collect CPU times from this single query for dev processes
+      const currentCpuTimes = new Map<number, number>()
 
-      // First line is CSV header: "ProcessId","Name","CommandLine","WorkingSetSize"
+      // First line is CSV header: "ProcessId","Name","CommandLine","WorkingSetSize","KernelModeTime","UserModeTime"
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim()
         if (!line) continue
@@ -277,23 +330,34 @@ export class SystemProcessScanner {
 
         if (isNaN(pid) || pid === 0) continue
 
+        // KernelModeTime and UserModeTime are in 100-nanosecond units
+        // Convert to seconds for CPU delta calculation
+        // Handle locale: some locales use comma as decimal separator
+        const kernelTimeRaw = (fields[4] || '0').replace(',', '.')
+        const userTimeRaw = (fields[5] || '0').replace(',', '.')
+        const kernelTime = parseFloat(kernelTimeRaw) || 0
+        const userTime = parseFloat(userTimeRaw) || 0
+        // Convert 100-nanosecond units to seconds
+        const totalCpuSeconds = (kernelTime + userTime) / 10_000_000
+
+        const isDev = this.isDevProcess(name)
+        if (isDev) {
+          currentCpuTimes.set(pid, totalCpuSeconds)
+        }
+
         processes.push({
           pid,
           name,
           commandLine,
           workingDir: this.extractWorkingDir(commandLine),
           memoryMB: Math.round(memoryBytes / 1024 / 1024),
-          cpuPercent: 0 // Will be filled by measureCpuUsage
+          cpuPercent: 0 // Will be filled by CPU delta calculation below
         })
       }
 
-      // Measure CPU for dev processes only (to limit overhead)
-      const devPids = processes
-        .filter(p => this.isDevProcess(p.name))
-        .map(p => p.pid)
-
-      if (devPids.length > 0) {
-        const cpuMap = await this.measureCpuUsage(devPids)
+      // Calculate CPU usage from delta between current and previous samples
+      if (currentCpuTimes.size > 0) {
+        const cpuMap = this.calculateCpuFromDelta(currentCpuTimes)
         for (const proc of processes) {
           const cpu = cpuMap.get(proc.pid)
           if (cpu !== undefined) {
@@ -334,82 +398,56 @@ export class SystemProcessScanner {
     return fields
   }
 
-  private async measureCpuUsage(pids: number[]): Promise<Map<number, number>> {
+  /**
+   * Calculate CPU usage percentage from delta between current and previous CPU time samples.
+   *
+   * Cold start handling: On first call (lastCpuSampleTime === 0), we store the current
+   * samples but return an empty map (no delta data yet). The second call will have
+   * valid delta data and return real CPU percentages.
+   *
+   * This replaces the previous two-method approach (measureCpuUsage + getCpuTimes)
+   * that required a separate PowerShell process for Get-Process. CPU times are now
+   * obtained directly from Win32_Process KernelModeTime + UserModeTime fields.
+   */
+  private calculateCpuFromDelta(currentCpuTimes: Map<number, number>): Map<number, number> {
     const cpuMap = new Map<number, number>()
     const numCores = os.cpus().length
+    const now = Date.now()
 
-    try {
-      // Get current CPU times for all target PIDs
-      const currentCpuTimes = await this.getCpuTimes(pids)
-      const now = Date.now()
+    if (this.lastCpuSampleTime > 0 && currentCpuTimes.size > 0) {
+      const elapsedSec = (now - this.lastCpuSampleTime) / 1000
+      if (elapsedSec > 0) {
+        for (const [pid, currentTime] of currentCpuTimes) {
+          const previousTime = this.previousCpuTimes.get(pid)
 
-      if (this.lastCpuSampleTime > 0) {
-        const elapsedSec = (now - this.lastCpuSampleTime) / 1000
-        if (elapsedSec > 0) {
-          for (const pid of pids) {
-            const currentTime = currentCpuTimes.get(pid)
-            const previousTime = this.previousCpuTimes.get(pid)
-
-            if (currentTime !== undefined && previousTime !== undefined) {
-              const deltaCpu = currentTime - previousTime
-              const cpuPercent = (deltaCpu / elapsedSec / numCores) * 100
-              cpuMap.set(pid, Math.max(0, Math.round(cpuPercent * 10) / 10))
-            }
+          if (previousTime !== undefined) {
+            const deltaCpu = currentTime - previousTime
+            const cpuPercent = (deltaCpu / elapsedSec / numCores) * 100
+            cpuMap.set(pid, Math.max(0, Math.round(cpuPercent * 10) / 10))
           }
+          // If no previousTime, this PID is new — it will get data on the next cycle
         }
       }
+    }
 
-      // Store current values for next cycle (only if we got valid data)
-      if (currentCpuTimes.size > 0) {
-        this.previousCpuTimes = currentCpuTimes
-        this.lastCpuSampleTime = now
-      }
+    // Always store current values for next cycle, even on first call (cold start fix).
+    // Previously, the condition `if (currentCpuTimes.size > 0)` could be blocked by
+    // getCpuTimes returning empty Map due to PowerShell errors. Now that CPU times
+    // come from the same Win32_Process query as process info, this is much more reliable.
+    if (currentCpuTimes.size > 0) {
+      this.previousCpuTimes = new Map(currentCpuTimes)
+      this.lastCpuSampleTime = now
+    }
 
-      // Clean up PIDs that no longer exist
-      const pidSet = new Set(pids)
-      for (const pid of this.previousCpuTimes.keys()) {
-        if (!pidSet.has(pid)) {
-          this.previousCpuTimes.delete(pid)
-        }
+    // Clean up PIDs that no longer exist
+    const currentPidSet = new Set(currentCpuTimes.keys())
+    for (const pid of this.previousCpuTimes.keys()) {
+      if (!currentPidSet.has(pid)) {
+        this.previousCpuTimes.delete(pid)
       }
-    } catch (err) {
-      console.error('CPU measurement failed:', err instanceof Error ? err.message : err)
     }
 
     return cpuMap
-  }
-
-  private async getCpuTimes(pids: number[]): Promise<Map<number, number>> {
-    const result = new Map<number, number>()
-
-    try {
-      // Batch query: get CPU (total processor time in seconds) for all PIDs
-      const pidList = pids.join(',')
-      const psCmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; @(${pidList}) | ForEach-Object { try { $p = Get-Process -Id $_ -ErrorAction SilentlyContinue; if($p) { Write-Output "$($_.ToString())=$($p.TotalProcessorTime.TotalSeconds)" } } catch {} }`
-      const { stdout } = await execFileAsync(
-        'powershell.exe',
-        ['-NoProfile', '-NonInteractive', '-Command', psCmd],
-        { windowsHide: true, timeout: 10000, encoding: 'utf8' }
-      )
-
-      for (const line of stdout.split('\n')) {
-        const trimmed = line.trim()
-        if (!trimmed) continue
-        const eqIdx = trimmed.indexOf('=')
-        if (eqIdx === -1) continue
-
-        const pid = parseInt(trimmed.substring(0, eqIdx), 10)
-        const cpuTime = parseFloat(trimmed.substring(eqIdx + 1))
-
-        if (!isNaN(pid) && !isNaN(cpuTime)) {
-          result.set(pid, cpuTime)
-        }
-      }
-    } catch (err) {
-      console.error('getCpuTimes failed:', err instanceof Error ? err.message : err)
-    }
-
-    return result
   }
 
   private isDevProcess(name: string): boolean {

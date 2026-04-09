@@ -1,4 +1,4 @@
-import { useEffect, memo, useState } from 'react'
+import { useEffect, memo, useState, useMemo } from 'react'
 import { usePorts } from '../../hooks/usePorts'
 import { PortInfo, COMMON_DEV_PORTS } from '@shared/types-extended'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
@@ -14,8 +14,10 @@ import {
   SearchIcon,
   GridIcon,
   ListIcon,
-  AlertIcon
+  AlertIcon,
+  NetworkIcon
 } from '../icons'
+import { PortRelationshipGraph } from './PortRelationshipGraph'
 
 // 端口卡片组件
 interface PortCardProps {
@@ -65,8 +67,8 @@ const PortCard = memo(function PortCard({ port, index, isCommon, isSelected, onS
           {/* Port Number */}
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className={`w-14 h-14 bg-surface-700 flex items-center justify-center border-l-3 ${stateConfig.borderColor}`} style={{ borderRadius: '2px' }}>
-                <span className="text-2xl font-bold text-accent font-mono">:{port.port}</span>
+              <div className={`min-w-[4.5rem] h-14 px-2 bg-surface-700 flex items-center justify-center border-l-3 ${stateConfig.borderColor}`} style={{ borderRadius: '2px' }}>
+                <span className="text-2xl font-bold text-accent font-mono whitespace-nowrap">:{port.port}</span>
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-1">
@@ -105,6 +107,16 @@ const PortCard = memo(function PortCard({ port, index, isCommon, isSelected, onS
               {port.localAddress}
             </div>
           </div>
+
+          {/* Foreign Address - show for ESTABLISHED connections */}
+          {port.foreignAddress && port.foreignAddress !== '*:*' && port.foreignAddress !== '0.0.0.0:0' && (
+            <div className="mb-4">
+              <div className="text-[10px] text-text-tertiary uppercase tracking-wider mb-1">远程地址</div>
+              <div className="text-xs text-warning/80 font-mono bg-surface-800 px-2 py-1 border-l-2 border-warning/40 truncate" style={{ borderRadius: '2px' }} title={port.foreignAddress}>
+                {port.foreignAddress}
+              </div>
+            </div>
+          )}
 
           {/* Action Button */}
           <div className={`
@@ -180,8 +192,8 @@ const PortItem = memo(function PortItem({ port, index, isSelected, isCommon, onS
           <div className="flex items-center gap-4 min-w-0 flex-1">
             <div className="relative">
               <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 ${stateConfig.color} ${port.state === 'LISTENING' ? 'status-dot-running' : ''}`} style={{ borderRadius: '1px' }} />
-              <div className="w-12 h-12 bg-surface-700 flex items-center justify-center border-l-2 border-accent" style={{ borderRadius: '2px' }}>
-                <span className="text-lg font-bold text-accent font-mono">:{port.port}</span>
+              <div className="min-w-[3.5rem] h-12 px-1 bg-surface-700 flex items-center justify-center border-l-2 border-accent" style={{ borderRadius: '2px' }}>
+                <span className="text-lg font-bold text-accent font-mono whitespace-nowrap">:{port.port}</span>
               </div>
             </div>
             <div className="min-w-0 flex-1">
@@ -198,7 +210,15 @@ const PortItem = memo(function PortItem({ port, index, isSelected, isCommon, onS
                   </span>
                 )}
               </div>
-              <p className="text-xs text-text-tertiary font-mono">{port.localAddress}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-text-tertiary font-mono">{port.localAddress}</p>
+                {port.foreignAddress && port.foreignAddress !== '*:*' && port.foreignAddress !== '0.0.0.0:0' && (
+                  <>
+                    <span className="text-[10px] text-text-muted">&rarr;</span>
+                    <p className="text-xs text-warning/70 font-mono truncate" title={port.foreignAddress}>{port.foreignAddress}</p>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
@@ -279,10 +299,11 @@ export function PortView() {
     scan,
     releasePort,
     selectPort,
-    getActiveConflicts
+    getActiveConflicts,
+    getTopology
   } = usePorts()
 
-  const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards')
+  const [viewMode, setViewMode] = useState<'cards' | 'list' | 'relationship'>('cards')
   const [filter, setFilter] = useState<'all' | 'common' | 'listening'>('all')
   const [searchPort, setSearchPort] = useState('')
 
@@ -306,13 +327,13 @@ export function PortView() {
     }
   })
 
-  const activeConflicts = getActiveConflicts()
+  const activeConflicts = useMemo(() => getActiveConflicts(), [getActiveConflicts])
 
-  const portsByState = {
+  const portsByState = useMemo(() => ({
     listening: ports.filter(p => p.state === 'LISTENING').length,
     established: ports.filter(p => p.state === 'ESTABLISHED').length,
     other: ports.filter(p => !['LISTENING', 'ESTABLISHED'].includes(p.state)).length
-  }
+  }), [ports])
 
   return (
     <div className="h-full flex flex-col bg-surface-950">
@@ -381,7 +402,8 @@ export function PortView() {
             <ViewModeToggle
               modes={[
                 { key: 'cards', icon: <GridIcon size={16} />, label: '卡片' },
-                { key: 'list', icon: <ListIcon size={16} />, label: '列表' }
+                { key: 'list', icon: <ListIcon size={16} />, label: '列表' },
+                { key: 'relationship', icon: <NetworkIcon size={16} />, label: '关系图' }
               ]}
               current={viewMode}
               onChange={(mode) => setViewMode(mode as typeof viewMode)}
@@ -403,7 +425,7 @@ export function PortView() {
       </div>
 
       {/* Hero Stats */}
-      <div className="flex-shrink-0 px-5 py-4 grid grid-cols-4 gap-4 border-b border-surface-700/50 bg-surface-900/50">
+      <div className="flex-shrink-0 px-5 py-4 stat-grid border-b border-surface-700/50 bg-surface-900/50">
         <StatCard
           icon={<PortIcon size={20} className="text-accent" />}
           label="活跃端口"
@@ -451,61 +473,67 @@ export function PortView() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-5">
-        {viewMode === 'cards' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredPorts.map((port, index) => (
-              <PortCard
-                key={`${port.port}-${port.pid}`}
-                port={port}
-                index={index}
-                isCommon={COMMON_DEV_PORTS.includes(port.port as typeof COMMON_DEV_PORTS[number])}
-                isSelected={selectedPort === port.port}
-                onSelect={() => selectPort(port.port)}
-                onRelease={() => releasePort(port.port)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {filteredPorts.map((port, index) => (
-              <PortItem
-                key={`${port.port}-${port.pid}`}
-                port={port}
-                index={index}
-                isSelected={selectedPort === port.port}
-                isCommon={COMMON_DEV_PORTS.includes(port.port as typeof COMMON_DEV_PORTS[number])}
-                onSelect={() => selectPort(port.port)}
-                onRelease={() => releasePort(port.port)}
-              />
-            ))}
-          </div>
-        )}
-
-        {isScanning && filteredPorts.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
-            <LoadingSpinner size="md" className="mb-4" />
-            <p className="text-text-secondary">正在扫描端口...</p>
-          </div>
-        )}
-
-        {filteredPorts.length === 0 && !isScanning && (
-          <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
-            <div className="w-20 h-20 bg-surface-800 flex items-center justify-center mb-6 border-l-3 border-accent" style={{ borderRadius: '4px' }}>
-              <PortIcon size={40} className="text-text-muted" />
+      {viewMode === 'relationship' ? (
+        <div className="flex-1 overflow-hidden">
+          <PortRelationshipGraph getTopology={getTopology} />
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto p-5">
+          {viewMode === 'cards' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredPorts.map((port, index) => (
+                <PortCard
+                  key={`${port.port}-${port.pid}`}
+                  port={port}
+                  index={index}
+                  isCommon={COMMON_DEV_PORTS.includes(port.port as typeof COMMON_DEV_PORTS[number])}
+                  isSelected={selectedPort === port.port}
+                  onSelect={() => selectPort(port.port)}
+                  onRelease={() => releasePort(port.port)}
+                />
+              ))}
             </div>
-            <h3
-              className="text-lg font-bold text-text-primary mb-2 uppercase tracking-wider"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              {searchPort ? '未找到匹配的端口' : '没有检测到使用中的端口'}
-            </h3>
-            <p className="text-text-muted">
-              {searchPort ? '尝试其他搜索关键词' : '启动开发服务器后将在此显示'}
-            </p>
-          </div>
-        )}
-      </div>
+          ) : (
+            <div className="space-y-2">
+              {filteredPorts.map((port, index) => (
+                <PortItem
+                  key={`${port.port}-${port.pid}`}
+                  port={port}
+                  index={index}
+                  isSelected={selectedPort === port.port}
+                  isCommon={COMMON_DEV_PORTS.includes(port.port as typeof COMMON_DEV_PORTS[number])}
+                  onSelect={() => selectPort(port.port)}
+                  onRelease={() => releasePort(port.port)}
+                />
+              ))}
+            </div>
+          )}
+
+          {isScanning && filteredPorts.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
+              <LoadingSpinner size="md" className="mb-4" />
+              <p className="text-text-secondary">正在扫描端口...</p>
+            </div>
+          )}
+
+          {filteredPorts.length === 0 && !isScanning && (
+            <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
+              <div className="w-20 h-20 bg-surface-800 flex items-center justify-center mb-6 border-l-3 border-accent" style={{ borderRadius: '4px' }}>
+                <PortIcon size={40} className="text-text-muted" />
+              </div>
+              <h3
+                className="text-lg font-bold text-text-primary mb-2 uppercase tracking-wider"
+                style={{ fontFamily: 'var(--font-display)' }}
+              >
+                {searchPort ? '未找到匹配的端口' : '没有检测到使用中的端口'}
+              </h3>
+              <p className="text-text-muted">
+                {searchPort ? '尝试其他搜索关键词' : '启动开发服务器后将在此显示'}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

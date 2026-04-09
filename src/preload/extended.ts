@@ -10,6 +10,7 @@ import {
   WindowLayout,
   AITask,
   AITaskHistory,
+  AIWindowAlias,
   TaskRecord,
   TaskStatistics,
   NotificationConfig,
@@ -157,6 +158,17 @@ export const aiTaskApi = {
     ipcRenderer.on('ai-task:updated', handler)
     return () => ipcRenderer.removeListener('ai-task:updated', handler)
   }
+}
+
+export const aiAliasApi = {
+  getAll: (): Promise<AIWindowAlias[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.AI_ALIAS_GET_ALL),
+
+  set: (alias: AIWindowAlias): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.AI_ALIAS_SET, alias),
+
+  remove: (aliasId: string): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.AI_ALIAS_REMOVE, aliasId)
 }
 
 export const notificationApi = {

@@ -3,11 +3,12 @@ import { ProcessView } from './ProcessView'
 import { PortView } from './PortView'
 import { WindowView } from './WindowView'
 import { AITaskView } from './AITaskView'
+import { TopologyView } from './TopologyView'
 import { ErrorBoundary } from '../ErrorBoundary'
 import { ViewErrorFallback } from '../ui/ViewErrorFallback'
-import { ProcessIcon, PortIcon, WindowIcon, AIIcon, MonitorIcon } from '../icons'
+import { ProcessIcon, PortIcon, WindowIcon, AIIcon, MonitorIcon, TopologyIcon } from '../icons'
 
-type MonitorTab = 'process' | 'port' | 'window' | 'ai-task'
+type MonitorTab = 'process' | 'port' | 'window' | 'ai-task' | 'topology'
 
 const TABS: { id: MonitorTab; label: string; icon: React.ReactNode }[] = [
   {
@@ -29,6 +30,11 @@ const TABS: { id: MonitorTab; label: string; icon: React.ReactNode }[] = [
     id: 'ai-task',
     label: 'AI 任务',
     icon: <AIIcon size={16} />
+  },
+  {
+    id: 'topology',
+    label: '拓扑',
+    icon: <TopologyIcon size={16} />
   }
 ]
 
@@ -91,7 +97,7 @@ export function MonitorPanel() {
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden monitor-content">
         {activeTab === 'process' && (
           <ErrorBoundary fallbackRender={({ error, resetErrorBoundary }) => (
             <ViewErrorFallback viewName="进程监控" error={error} onRetry={resetErrorBoundary} />
@@ -118,6 +124,13 @@ export function MonitorPanel() {
             <ViewErrorFallback viewName="AI 任务" error={error} onRetry={resetErrorBoundary} />
           )}>
             <AITaskView />
+          </ErrorBoundary>
+        )}
+        {activeTab === 'topology' && (
+          <ErrorBoundary fallbackRender={({ error, resetErrorBoundary }) => (
+            <ViewErrorFallback viewName="关系拓扑" error={error} onRetry={resetErrorBoundary} />
+          )}>
+            <TopologyView />
           </ErrorBoundary>
         )}
       </div>

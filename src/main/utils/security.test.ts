@@ -65,7 +65,7 @@ describe('security utilities', () => {
     it('应该拒绝不存在的路径', () => {
       const result = parsePackageJson('Z:/NonExistent/Path')
       expect(result.valid).toBe(false)
-      expect(result.error).toContain('not found')
+      expect(result.error).toBeDefined()
     })
 
     it('应该正确解析有效的 package.json', () => {

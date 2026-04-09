@@ -29,9 +29,9 @@ describe('ProjectScanner', () => {
   describe('deduplicateResults', () => {
     it('should remove duplicate paths (case-insensitive)', () => {
       const results: ScanResult[] = [
-        { path: 'C:\\Projects\\App', name: 'app', scripts: [], hasPackageJson: true },
-        { path: 'c:\\projects\\app', name: 'app', scripts: [], hasPackageJson: true },
-        { path: 'C:\\Projects\\Other', name: 'other', scripts: [], hasPackageJson: true }
+        { path: 'C:\\Projects\\App', name: 'app', scripts: [], projectType: 'npm', hasPackageJson: true },
+        { path: 'c:\\projects\\app', name: 'app', scripts: [], projectType: 'npm', hasPackageJson: true },
+        { path: 'C:\\Projects\\Other', name: 'other', scripts: [], projectType: 'npm', hasPackageJson: true }
       ]
 
       const deduplicated = (scanner as any).deduplicateResults(results)
@@ -43,8 +43,8 @@ describe('ProjectScanner', () => {
 
     it('should preserve first occurrence when duplicates exist', () => {
       const results: ScanResult[] = [
-        { path: 'C:\\Projects\\First', name: 'first', scripts: ['dev'], hasPackageJson: true },
-        { path: 'c:\\projects\\first', name: 'second', scripts: ['build'], hasPackageJson: true }
+        { path: 'C:\\Projects\\First', name: 'first', scripts: ['dev'], projectType: 'npm', hasPackageJson: true },
+        { path: 'c:\\projects\\first', name: 'second', scripts: ['build'], projectType: 'npm', hasPackageJson: true }
       ]
 
       const deduplicated = (scanner as any).deduplicateResults(results)
@@ -63,10 +63,10 @@ describe('ProjectScanner', () => {
   describe('discoverProjectsIntelligently', () => {
     it('should combine results from multiple sources and deduplicate', async () => {
       const commonResults: ScanResult[] = [
-        { path: 'C:\\Projects\\app1', name: 'app1', scripts: ['dev'], hasPackageJson: true }
+        { path: 'C:\\Projects\\app1', name: 'app1', scripts: ['dev'], projectType: 'npm', hasPackageJson: true }
       ]
       const vscodeResults: ScanResult[] = [
-        { path: 'C:\\Projects\\app2', name: 'app2', scripts: ['start'], hasPackageJson: true }
+        { path: 'C:\\Projects\\app2', name: 'app2', scripts: ['start'], projectType: 'npm', hasPackageJson: true }
       ]
 
       vi.spyOn(scanner, 'scanCommonLocations').mockResolvedValue(commonResults)
@@ -84,7 +84,7 @@ describe('ProjectScanner', () => {
 
     it('should deduplicate results from different sources', async () => {
       const samePath = 'C:\\Projects\\shared'
-      const sharedResult: ScanResult = { path: samePath, name: 'shared', scripts: [], hasPackageJson: true }
+      const sharedResult: ScanResult = { path: samePath, name: 'shared', scripts: [], projectType: 'npm', hasPackageJson: true }
 
       vi.spyOn(scanner, 'scanCommonLocations').mockResolvedValue([sharedResult])
       vi.spyOn(scanner as any, 'getVSCodeRecentProjects').mockResolvedValue([samePath])
@@ -125,6 +125,7 @@ describe('ProjectScanner', () => {
         path: 'C:\\Projects\\test',
         name: 'test',
         scripts: ['dev'],
+        projectType: 'npm',
         hasPackageJson: true
       }
 

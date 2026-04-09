@@ -15,19 +15,19 @@ export function useLogs(projectId: string | null) {
 
     // Subscribe to log entries
     try {
-      window.devhub.logs.subscribe(currentProjectId)
+      window.devhub?.logs?.subscribe?.(currentProjectId)
     } catch (error) {
       console.warn('Failed to subscribe to logs:', error instanceof Error ? error.message : 'Unknown error')
     }
 
-    const unsubscribe = window.devhub.logs.onEntry((entry: LogEntry) => {
+    const unsubscribe = window.devhub?.logs?.onEntry?.((entry: LogEntry) => {
       if (entry.projectId === currentProjectId) {
         addLog(entry)
       }
     })
 
     return () => {
-      unsubscribe()
+      unsubscribe?.()
     }
   }, [projectId, addLog])
 
@@ -38,7 +38,7 @@ export function useLogs(projectId: string | null) {
       clearLogs(projectId)
       if (isElectron) {
         try {
-          window.devhub.logs.clear(projectId)
+          window.devhub?.logs?.clear?.(projectId)
         } catch (error) {
           console.warn('Failed to clear logs:', error instanceof Error ? error.message : 'Unknown error')
         }

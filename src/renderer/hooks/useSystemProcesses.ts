@@ -64,6 +64,11 @@ export function useSystemProcesses() {
     return cleaned
   }, [scan])
 
+  const getProcessTree = useCallback(async (pid: number): Promise<ProcessInfo[]> => {
+    if (!isElectron) return []
+    return window.devhub.systemProcess?.getProcessTree?.(pid) ?? []
+  }, [])
+
   useEffect(() => {
     if (!isElectron) return
 
@@ -95,6 +100,7 @@ export function useSystemProcesses() {
     selectProcess,
     getProcessesByProject,
     getProcessByPid,
-    getTotalResources
+    getTotalResources,
+    getProcessTree
   }
 }

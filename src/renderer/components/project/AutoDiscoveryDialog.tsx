@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { SearchIcon, CloseIcon, CheckIcon, FolderIcon } from '../icons'
+import { ProjectTypeBadge } from './ProjectTypeBadge'
+import type { ProjectType } from '@shared/types'
 
 interface DiscoveredProject {
   path: string
   name: string
   scripts: string[]
+  projectType?: ProjectType
 }
 
 interface AutoDiscoveryDialogProps {
@@ -177,7 +180,10 @@ export function AutoDiscoveryDialog({ isOpen, projects, onImport, onClose }: Aut
                     <FolderIcon size={18} className={isSelected ? 'text-accent' : 'text-text-muted'} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-medium text-text-primary truncate">{project.name}</h4>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-medium text-text-primary truncate">{project.name}</h4>
+                      {project.projectType && <ProjectTypeBadge type={project.projectType} />}
+                    </div>
                     <p className="text-xs text-text-muted truncate font-mono">{project.path}</p>
                     {project.scripts.length > 0 && (
                       <div className="flex gap-1 mt-1 flex-wrap">

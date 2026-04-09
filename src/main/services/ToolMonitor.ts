@@ -171,16 +171,15 @@ export class ToolMonitor {
     if (this.isStopped) return
 
     let hasActiveTools = false
+    const failedToolDetections: Map<string, string> = new Map()
 
     // 一次性获取所有进程列表，避免为每个工具单独调用 tasklist
     let allProcessNames: Set<string>
     try {
       allProcessNames = await this.getAllProcessNames()
     } catch (error) {
-      console.warn(
-        'Failed to get process list:',
-        error instanceof Error ? error.message : 'Unknown error'
-      )
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error'
+      console.warn(`Failed to get process list: ${errorMsg}`)
       // 关键修复：进程列表获取失败时，清除 previousStatus 以避免
       // 下次成功检查时误判"从 running 到 stopped"的状态转变
       this.previousStatus.clear()
@@ -197,7 +196,16 @@ export class ToolMonitor {
     // 预先获取命令行信息（仅在有 node 进程时才需要）
     let commandLines: string[] | null = null
     if (allProcessNames.has('node.exe')) {
-      commandLines = await this.getNodeCommandLines()
+      try {
+        commandLines = await this.getNodeCommandLines()
+      } catch (error) {
+        console.warn(
+          'Failed to get node command lines:',
+          error instanceof Error ? error.message : 'Unknown error'
+        )
+        // 如果无法获取详细命令行，则 node 进程检测会失败
+        // 这是可接受的，至少进程列表是可用的
+      }
     }
 
     for (const tool of this.tools) {
@@ -235,12 +243,22 @@ export class ToolMonitor {
 
         this.previousStatus.set(tool.id, isRunning)
       } catch (error) {
-        // 记录错误但不中断流程
-        console.warn(
-          `Tool detection failed for ${tool.id}:`,
-          error instanceof Error ? error.message : 'Unknown error'
-        )
+        // 改进：单个工具检测失败，记录但不中断其他工具检测
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error'
+        failedToolDetections.set(tool.id, errorMsg)
+        console.warn(`Tool detection failed for ${tool.id}: ${errorMsg}`)
+
+        // 改进：失败时保留原有状态，不更新
+        // 这样多次失败也不会造成虚假状态转变
       }
+    }
+
+    // 改进：在循环结束后统一日志输出失败信息
+    if (failedToolDetections.size > 0) {
+      const failedList = Array.from(failedToolDetections.entries())
+        .map(([id, err]) => `${id}(${err})`)
+        .join('; ')
+      console.warn(`Tool detection batch had ${failedToolDetections.size} failures: ${failedList}`)
     }
 
     // 根据活跃状态调整下次轮询间隔

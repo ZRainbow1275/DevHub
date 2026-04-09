@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from 'react'
 import { usePortStore } from '../stores/portStore'
-import { PortInfo } from '@shared/types-extended'
+import { PortInfo, PortTopologyData } from '@shared/types-extended'
 
 const isElectron = typeof window !== 'undefined' && window.devhub !== undefined
 
@@ -67,6 +67,11 @@ export function usePorts() {
     return result
   }, [addConflict])
 
+  const getTopology = useCallback(async (): Promise<PortTopologyData> => {
+    if (!isElectron) return { nodes: [], edges: [] }
+    return window.devhub.port?.getTopology?.() ?? { nodes: [], edges: [] }
+  }, [])
+
   useEffect(() => {
     if (!isElectron) return
 
@@ -99,6 +104,7 @@ export function usePorts() {
     getPortByNumber,
     getCommonPorts,
     getActiveConflicts,
-    isPortInUse
+    isPortInUse,
+    getTopology
   }
 }

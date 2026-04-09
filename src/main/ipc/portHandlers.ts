@@ -1,5 +1,5 @@
 import { ipcMain, BrowserWindow } from 'electron'
-import { IPC_CHANNELS_EXT, PortInfo } from '@shared/types-extended'
+import { IPC_CHANNELS_EXT, PortInfo, PortTopologyData } from '@shared/types-extended'
 import { PortScanner } from '../services/PortScanner'
 import { validatePort, validatePortArray } from '../utils/validation'
 import { withRateLimit, RATE_LIMITS } from '../utils/rateLimiter'
@@ -79,6 +79,14 @@ export function setupPortHandlers(mainWindow: BrowserWindow, scanner?: PortScann
       return portScanner.detectConflicts(ports)
     }
   ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.PORT_TOPOLOGY, withRateLimit(
+    IPC_CHANNELS_EXT.PORT_TOPOLOGY, RATE_LIMITS.SCAN,
+    async (): Promise<PortTopologyData> => {
+      if (!portScanner) return { nodes: [], edges: [] }
+      return portScanner.buildTopology()
+    }
+  ))
 }
 
 export function cleanupPortHandlers(): void {
@@ -89,4 +97,5 @@ export function cleanupPortHandlers(): void {
   ipcMain.removeHandler('port:is-available')
   ipcMain.removeHandler('port:find-available')
   ipcMain.removeHandler('port:detect-conflicts')
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.PORT_TOPOLOGY)
 }

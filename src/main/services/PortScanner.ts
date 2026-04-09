@@ -144,12 +144,12 @@ export class PortScanner {
   }
 
   private async enrichProcessNames(ports: PortInfo[]): Promise<void> {
-    const pids = [...new Set(ports.map(p => p.pid))].filter(p => Number.isInteger(p) && p > 0)
+    const pids = [...new Set(ports.map(p => p.pid))].filter(p => Number.isInteger(p) && p > 0 && p <= 4194304)
     if (pids.length === 0) return
 
     try {
-      // Build PowerShell filter for target PIDs
-      const pidFilter = pids.map(p => `ProcessId = ${p}`).join(' OR ')
+      // Build PowerShell filter for target PIDs (safe: all values validated as integers above)
+      const pidFilter = pids.map(p => `ProcessId = ${Math.floor(p)}`).join(' OR ')
       const psCmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-CimInstance Win32_Process -Filter '${pidFilter}' | Select-Object ProcessId,Name | ConvertTo-Csv -NoTypeInformation`
 
       const { stdout } = await execFileAsync(

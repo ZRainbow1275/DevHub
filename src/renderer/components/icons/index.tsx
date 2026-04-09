@@ -751,6 +751,199 @@ export function GlobeIcon({ className = '', size = 20 }: IconProps) {
   )
 }
 
+// Tree Icon - Process Tree / Hierarchy
+export function TreeIcon({ className = '', size = 20 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="square"
+      strokeLinejoin="miter"
+      className={className}
+    >
+      <path d="M6 3v8M6 7h6v4M6 11h10v4" />
+      <rect x="3" y="1" width="6" height="4" />
+      <rect x="9" y="9" width="6" height="4" />
+      <rect x="13" y="13" width="6" height="4" />
+    </svg>
+  )
+}
+
+// Network Graph Icon - Relationship / Topology
+export function NetworkIcon({ className = '', size = 20 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="square"
+      strokeLinejoin="miter"
+      className={className}
+    >
+      <rect x="2" y="2" width="6" height="6" />
+      <rect x="16" y="2" width="6" height="6" />
+      <rect x="9" y="16" width="6" height="6" />
+      <path d="M8 5h8M5 8v5l4 3M19 8v5l-4 3" />
+    </svg>
+  )
+}
+
+// Topology Icon - Process Relationship Graph
+export function TopologyIcon({ className = '', size = 20 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="square"
+      strokeLinejoin="miter"
+      className={className}
+    >
+      {/* Center process node */}
+      <rect x="9" y="9" width="6" height="6" fill="currentColor" />
+      {/* Top project node */}
+      <rect x="9" y="1" width="6" height="4" />
+      {/* Bottom-left port node */}
+      <rect x="1" y="17" width="6" height="4" />
+      {/* Bottom-right window node */}
+      <rect x="17" y="17" width="6" height="4" />
+      {/* Connecting lines */}
+      <path d="M12 5v4M7 15l-3 2M17 15l3 2" />
+    </svg>
+  )
+}
+
+// Palette Icon - Appearance/Theme
+export function PaletteIcon({ className = '', size = 20 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="square"
+      strokeLinejoin="miter"
+      className={className}
+    >
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="8" r="1.5" fill="currentColor" />
+      <circle cx="8" cy="12" r="1.5" fill="currentColor" />
+      <circle cx="16" cy="12" r="1.5" fill="currentColor" />
+      <circle cx="12" cy="16" r="1.5" fill="currentColor" />
+    </svg>
+  )
+}
+
+// Radar/Scan Icon
+export function ScanIcon({ className = '', size = 20 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="square"
+      strokeLinejoin="miter"
+      className={className}
+    >
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+    </svg>
+  )
+}
+
+// Bell Icon - Notifications
+export function BellIcon({ className = '', size = 20 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="square"
+      strokeLinejoin="miter"
+      className={className}
+    >
+      <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" />
+    </svg>
+  )
+}
+
+// Layout Icon - Window Management
+export function LayoutIcon({ className = '', size = 20 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="square"
+      strokeLinejoin="miter"
+      className={className}
+    >
+      <rect x="3" y="3" width="18" height="18" />
+      <path d="M3 9h18M9 21V9" />
+    </svg>
+  )
+}
+
+// Download Icon - Export
+export function DownloadIcon({ className = '', size = 20 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="square"
+      strokeLinejoin="miter"
+      className={className}
+    >
+      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+    </svg>
+  )
+}
+
+// Upload Icon - Import
+export function UploadIcon({ className = '', size = 20 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="square"
+      strokeLinejoin="miter"
+      className={className}
+    >
+      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+    </svg>
+  )
+}
+
 // Settings Icon
 export function SettingsIcon({ className = '', size = 20 }: IconProps) {
   return (

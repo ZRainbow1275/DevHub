@@ -47,7 +47,39 @@ export interface PortInfo {
   state: PortState
   protocol: PortProtocol
   localAddress: string
+  foreignAddress: string
   projectId?: string
+}
+
+// ============ Port Topology Types ============
+
+export type TopologyNodeType = 'process' | 'port' | 'external'
+
+export interface TopologyNode {
+  id: string
+  type: TopologyNodeType
+  label: string
+  metadata: {
+    pid?: number
+    processName?: string
+    port?: number
+    protocol?: PortProtocol
+    state?: PortState
+    address?: string
+    portCount?: number
+  }
+}
+
+export interface TopologyEdge {
+  id: string
+  source: string
+  target: string
+  label?: string
+}
+
+export interface PortTopologyData {
+  nodes: TopologyNode[]
+  edges: TopologyEdge[]
 }
 
 export const COMMON_DEV_PORTS = [
@@ -66,7 +98,18 @@ export interface WindowInfo {
   rect: { x: number; y: number; width: number; height: number }
   isVisible: boolean
   isMinimized: boolean
+  isSystemWindow: boolean
 }
+
+/** Window class names known to be system/shell windows — filtered by default */
+export const SYSTEM_WINDOW_CLASSNAMES: ReadonlySet<string> = new Set([
+  'Progman',
+  'WorkerW',
+  'Windows.UI.Core.CoreWindow',
+  'ApplicationFrameWindow',
+  'Shell_TrayWnd',
+  'Shell_SecondaryTrayWnd'
+])
 
 export interface WindowGroup {
   id: string
@@ -85,11 +128,38 @@ export interface WindowLayout {
     windows: {
       processName: string
       titlePattern: string
+      className?: string
+      workingDir?: string
       rect: { x: number; y: number; width: number; height: number }
     }[]
   }[]
   createdAt: number
   updatedAt: number
+}
+
+// ============ Process Relationship Graph Types ============
+
+export type ProcessTopologyNodeType = 'project' | 'process' | 'port' | 'window'
+
+export type ProcessTopologyEdgeType =
+  | 'project-owns-process'
+  | 'process-binds-port'
+  | 'process-owns-window'
+
+export interface ProcessTopologyNodeData extends Record<string, unknown> {
+  label: string
+  nodeType: ProcessTopologyNodeType
+  pid?: number
+  processInfo?: ProcessInfo
+  portInfo?: PortInfo
+  windowInfo?: WindowInfo
+  projectId?: string
+  projectName?: string
+}
+
+export interface ProcessTopologyEdgeData extends Record<string, unknown> {
+  edgeType: ProcessTopologyEdgeType
+  animated?: boolean
 }
 
 // ============ AI Task Tracking Types ============
@@ -113,12 +183,31 @@ export interface AITask {
   endTime?: number
   status: AITaskStatus
   projectId?: string
+  alias?: string
+  aliasColor?: string
   metrics: {
     cpuHistory: number[]
     outputLineCount: number
     lastOutputTime: number
     idleDuration: number
   }
+}
+
+// ============ AI Window Alias Types ============
+
+export interface AIWindowAlias {
+  id: string
+  alias: string
+  matchCriteria: {
+    pid?: number
+    commandHash?: string
+    titlePrefix?: string
+    toolType: AIToolType
+    workingDir?: string
+  }
+  createdAt: number
+  lastMatchedAt: number
+  color?: string
 }
 
 export interface AITaskHistory {
@@ -197,6 +286,7 @@ export const IPC_CHANNELS_EXT = {
   PORT_SCAN: 'port:scan',
   PORT_CHECK: 'port:check',
   PORT_RELEASE: 'port:release',
+  PORT_TOPOLOGY: 'port:topology',
   PORT_CONFLICT: 'port:conflict',
   WINDOW_SCAN: 'window:scan',
   WINDOW_FOCUS: 'window:focus',
@@ -223,6 +313,9 @@ export const IPC_CHANNELS_EXT = {
   AI_TASK_STATUS_CHANGED: 'ai-task:status-changed',
   AI_TASK_COMPLETE: 'ai-task:complete',
   AI_TASK_COMPLETED: 'ai-task:completed',
+  AI_ALIAS_GET_ALL: 'ai-alias:get-all',
+  AI_ALIAS_SET: 'ai-alias:set',
+  AI_ALIAS_REMOVE: 'ai-alias:remove',
   NOTIFICATION_GET_CONFIG: 'notification:get-config',
   NOTIFICATION_SET_CONFIG: 'notification:set-config',
   NOTIFICATION_GET_HISTORY: 'notification:get-history',

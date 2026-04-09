@@ -47,6 +47,13 @@ export class ProjectWatcher {
   }
 
   /**
+   * Clear the change callback.
+   */
+  clearChangeCallback(): void {
+    this.onChangeCallback = null
+  }
+
+  /**
    * Start watching the given root directories.
    * Watches for project marker files up to `watchDepth` levels deep.
    */

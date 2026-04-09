@@ -2,6 +2,8 @@ import * as fs from 'fs/promises'
 import * as path from 'path'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
+import type { ProjectType } from '@shared/types'
+import { detectProjectTypes, type DetectionResult } from './projectDetectors'
 
 const execFileAsync = promisify(execFile)
 
@@ -9,6 +11,7 @@ export interface ScanResult {
   path: string
   name: string
   scripts: string[]
+  projectType: ProjectType
   hasPackageJson: boolean
 }
 
@@ -30,6 +33,20 @@ async function isDirectory(p: string): Promise<boolean> {
   }
 }
 
+/**
+ * Convert a DetectionResult to a ScanResult bound to a specific directory.
+ */
+function detectionToScanResult(dirPath: string, detection: DetectionResult): ScanResult {
+  const nodeTypes: ProjectType[] = ['npm', 'pnpm', 'yarn']
+  return {
+    path: dirPath,
+    name: detection.name,
+    scripts: detection.scripts,
+    projectType: detection.projectType,
+    hasPackageJson: nodeTypes.includes(detection.projectType)
+  }
+}
+
 export class ProjectScanner {
   private readonly maxDepth = 4
   private readonly excludeDirs = new Set([
@@ -44,9 +61,17 @@ export class ProjectScanner {
     '.nuxt',
     'coverage',
     '__pycache__',
-    '.cache'
+    '.cache',
+    'target',       // Rust/Maven build output
+    'vendor',       // Go vendor
+    '.venv',        // Python venv
+    'venv',
   ])
 
+  /**
+   * Scan a directory recursively for projects of any supported type.
+   * Returns one ScanResult per detected project type per directory.
+   */
   async scanDirectory(rootPath: string, depth = 0): Promise<ScanResult[]> {
     const results: ScanResult[] = []
 
@@ -63,26 +88,18 @@ export class ProjectScanner {
         return results
       }
 
-      const pkgPath = path.join(normalizedRoot, 'package.json')
-      if (await pathExists(pkgPath)) {
-        try {
-          const pkgContent = await fs.readFile(pkgPath, 'utf-8')
-          const pkg = JSON.parse(pkgContent)
-          const scripts = pkg.scripts ? Object.keys(pkg.scripts) : []
+      // Detect all project types in this directory
+      const detections = await detectProjectTypes(normalizedRoot)
 
-          results.push({
-            path: normalizedRoot,
-            name: pkg.name || path.basename(normalizedRoot),
-            scripts,
-            hasPackageJson: true
-          })
-
-          return results
-        } catch {
-          // Invalid package.json, continue scanning
+      if (detections.length > 0) {
+        for (const detection of detections) {
+          results.push(detectionToScanResult(normalizedRoot, detection))
         }
+        // Found project(s) here, don't scan deeper into this directory
+        return results
       }
 
+      // No project found here, scan subdirectories
       const entries = await fs.readdir(normalizedRoot, { withFileTypes: true })
 
       for (const entry of entries) {
@@ -103,14 +120,22 @@ export class ProjectScanner {
 
   async getAvailableDrives(): Promise<string[]> {
     try {
-      const { stdout } = await execFileAsync('wmic', ['logicaldisk', 'get', 'name'], { windowsHide: true })
+      // Migrated from deprecated wmic to Get-CimInstance Win32_LogicalDisk
+      const psCmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-CimInstance Win32_LogicalDisk | Select-Object -ExpandProperty DeviceID`
+      const { stdout } = await execFileAsync(
+        'powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-Command', psCmd],
+        { windowsHide: true, timeout: 15000, encoding: 'utf8' }
+      )
       const drives = stdout
         .split('\n')
         .map(line => line.trim())
         .filter(line => /^[A-Z]:$/.test(line))
         .map(line => line.replace(':', ''))
       return drives
-    } catch {
+    } catch (err) {
+      console.error('getAvailableDrives failed:', err instanceof Error ? err.message : err)
+      // Fallback: probe common drive letters
       const commonDrives = ['C', 'D', 'E', 'F', 'G']
       const available: string[] = []
       for (const drive of commonDrives) {
@@ -162,7 +187,8 @@ export class ProjectScanner {
   private deduplicateResults(results: ScanResult[]): ScanResult[] {
     const seen = new Set<string>()
     return results.filter(r => {
-      const key = r.path.toLowerCase()
+      // Use path + projectType as the dedup key
+      const key = `${r.path.toLowerCase()}::${r.projectType}`
       if (seen.has(key)) return false
       seen.add(key)
       return true
@@ -175,45 +201,43 @@ export class ProjectScanner {
 
     const commonResults = await this.scanCommonLocations(customDrives)
     for (const r of commonResults) {
-      discoveredPaths.add(r.path.toLowerCase())
+      const key = `${r.path.toLowerCase()}::${r.projectType}`
+      discoveredPaths.add(key)
       results.push(r)
     }
 
     const vscodePaths = await this.getVSCodeRecentProjects()
     for (const projectPath of vscodePaths) {
-      if (!discoveredPaths.has(projectPath.toLowerCase())) {
-        const scanResults = await this.scanDirectory(projectPath, 0)
-        for (const r of scanResults) {
-          if (!discoveredPaths.has(r.path.toLowerCase())) {
-            discoveredPaths.add(r.path.toLowerCase())
-            results.push(r)
-          }
+      const scanResults = await this.scanDirectory(projectPath, 0)
+      for (const r of scanResults) {
+        const key = `${r.path.toLowerCase()}::${r.projectType}`
+        if (!discoveredPaths.has(key)) {
+          discoveredPaths.add(key)
+          results.push(r)
         }
       }
     }
 
     const pnpmPaths = await this.getPnpmLinkedProjects()
     for (const projectPath of pnpmPaths) {
-      if (!discoveredPaths.has(projectPath.toLowerCase())) {
-        const scanResults = await this.scanDirectory(projectPath, 0)
-        for (const r of scanResults) {
-          if (!discoveredPaths.has(r.path.toLowerCase())) {
-            discoveredPaths.add(r.path.toLowerCase())
-            results.push(r)
-          }
+      const scanResults = await this.scanDirectory(projectPath, 0)
+      for (const r of scanResults) {
+        const key = `${r.path.toLowerCase()}::${r.projectType}`
+        if (!discoveredPaths.has(key)) {
+          discoveredPaths.add(key)
+          results.push(r)
         }
       }
     }
 
     const npmPaths = await this.getNpmCacheProjects()
     for (const projectPath of npmPaths) {
-      if (!discoveredPaths.has(projectPath.toLowerCase())) {
-        const scanResults = await this.scanDirectory(projectPath, 0)
-        for (const r of scanResults) {
-          if (!discoveredPaths.has(r.path.toLowerCase())) {
-            discoveredPaths.add(r.path.toLowerCase())
-            results.push(r)
-          }
+      const scanResults = await this.scanDirectory(projectPath, 0)
+      for (const r of scanResults) {
+        const key = `${r.path.toLowerCase()}::${r.projectType}`
+        if (!discoveredPaths.has(key)) {
+          discoveredPaths.add(key)
+          results.push(r)
         }
       }
     }
@@ -242,12 +266,12 @@ export class ProjectScanner {
             for (const item of storage.openedPathsList.workspaces3) {
               if (typeof item === 'string' && item.startsWith('file://')) {
                 const projectPath = decodeURIComponent(item.replace('file:///', '').replace(/\//g, '\\'))
-                if (await pathExists(projectPath) && await pathExists(path.join(projectPath, 'package.json'))) {
+                if (await pathExists(projectPath)) {
                   paths.push(projectPath)
                 }
               } else if (item?.folderUri?.startsWith('file://')) {
                 const projectPath = decodeURIComponent(item.folderUri.replace('file:///', '').replace(/\//g, '\\'))
-                if (await pathExists(projectPath) && await pathExists(path.join(projectPath, 'package.json'))) {
+                if (await pathExists(projectPath)) {
                   paths.push(projectPath)
                 }
               }
@@ -277,7 +301,7 @@ export class ProjectScanner {
             if (entry.isSymbolicLink()) {
               try {
                 const realPath = await fs.realpath(path.join(linksPath, entry.name))
-                if (await pathExists(path.join(realPath, 'package.json'))) {
+                if (await pathExists(realPath)) {
                   paths.push(realPath)
                 }
               } catch {
@@ -310,7 +334,7 @@ export class ProjectScanner {
             if (entry.isSymbolicLink()) {
               try {
                 const realPath = await fs.realpath(path.join(globalModules, entry.name))
-                if (await pathExists(path.join(realPath, 'package.json'))) {
+                if (await pathExists(realPath)) {
                   paths.push(realPath)
                 }
               } catch {
