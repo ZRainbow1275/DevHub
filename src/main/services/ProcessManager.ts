@@ -83,7 +83,11 @@ export class ProcessManager {
   }
 
   private emitStatus(projectId: string, status: Project['status'], pid?: number): void {
-    this.statusCallback?.(projectId, status, pid)
+    if (pid !== undefined) {
+      this.statusCallback?.(projectId, status, pid)
+    } else {
+      this.statusCallback?.(projectId, status)
+    }
   }
 
   isRunning(projectId: string): boolean {
