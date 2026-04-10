@@ -390,3 +390,67 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 6: Code Review & Auto-Fix
+
+**Date**: 2026-04-10
+**Task**: Code Review & Auto-Fix
+**Branch**: `master`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## Code Review + 自修复
+
+对 devhub 项目进行全面 code review，发现并修复 7 个真实 bug。
+
+### 已修复问题
+
+| # | 严重度 | 文件 | 问题 |
+|---|--------|------|------|
+| 1 | HIGH | ProcessManager.test.ts | ESM mock 缺少 default 导出导致测试套件失败 |
+| 2 | HIGH | ProcessManager.test.ts | shell 断言在 Windows 上永远失败 |
+| 3 | HIGH | AITaskTracker.ts | getHistory() 就地变异 this.history 数组 |
+| 4 | MEDIUM | ipc/index.ts | log:subscribe 切换项目时旧回调未清理(内存泄漏) |
+| 5 | MEDIUM | projectStore.ts | addLog 在 zustand set 中直接变异 state |
+| 6 | LOW | PortScanner.ts | PID 缺少上界校验 |
+| 7 | LOW | ProcessManager.ts | emitStatus 参数传递不一致 |
+
+### 验证结果
+- Lint: 通过
+- TypeCheck: 通过
+- Tests: 12/12 文件，254/254 用例通过
+
+### 修改文件
+- `src/main/services/ProcessManager.ts`
+- `src/main/services/ProcessManager.test.ts`
+- `src/main/services/AITaskTracker.ts`
+- `src/main/services/PortScanner.ts`
+- `src/main/ipc/index.ts`
+- `src/renderer/stores/projectStore.ts`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5451c6e` | (see git log) |
+| `48f8096` | (see git log) |
+| `45069be` | (see git log) |
+| `3d0d8da` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
