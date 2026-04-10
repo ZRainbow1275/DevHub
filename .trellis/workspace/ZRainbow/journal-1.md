@@ -454,3 +454,63 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 7: DevHub v2 手动测试 & 设计文档编制
+
+**Date**: 2026-04-10
+**Task**: DevHub v2 手动测试 & 设计文档编制
+**Branch**: `master`
+
+### Summary
+
+启动应用进行手动体验测试，发现5大类问题，编制总领PRD和4份技术设计Spec
+
+### Main Changes
+
+## 会话内容
+
+### 测试执行
+- 启动 DevHub Electron 应用 (`pnpm dev`)，进行实地操作体验
+- 自动化测试全部通过 (12 test files, 254 tests passed)
+- 运行期间发现 `focusWindow` PowerShell C# 兼容性 Bug
+
+### 发现的问题 (5大类)
+
+| 优先级 | 问题区域 | 核心问题 |
+|--------|---------|---------|
+| P0 | 窗口管理 | AI窗口无法自命名、通知无法区分来源、分组/布局不可用、进度监控不足 |
+| P0 | Bug | focusWindow PowerShell `out _` 语法不兼容 Windows PS 5.1 |
+| P1 | 进程管理 | 关系图需从静态拓扑升级为动态神经流线图、列表排序/勘探/卡片密度不足 |
+| P1 | 端口拓扑 | 无法聚焦单端口、缺少进程-端口-流量交叉关联 |
+| P2 | 主题系统 | 主题应是完整视觉传达体系(排版/布局/动效/形状)，不仅是换颜色 |
+
+### 产出文档 (prompts/0410/)
+
+| 文档 | 说明 |
+|------|------|
+| `00-testing-findings-prd.md` | 总领PRD，含完整问题清单与优先级 |
+| `01-process-management-spec.md` | 进程动态神经流线图 + 列表/卡片增强设计 |
+| `02-port-topology-spec.md` | 端口聚焦视图 + 端口-进程交叉关系图设计 |
+| `03-window-management-spec.md` | AI窗口命名/通知/分组布局/进度监控/focusWindow修复 |
+| `04-theme-system-spec.md` | 主题Token架构 + 3套主题方案(Soviet/Cyberpunk/Swiss) |
+
+### 创建的 Trellis 任务
+- `04-10-devhub-v2-testing-findings` — 归档所有发现，供后续开发
+
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
