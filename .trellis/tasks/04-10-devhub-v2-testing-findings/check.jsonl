@@ -1,7 +1,8 @@
 {"file": ".claude/commands/trellis/finish-work.md", "reason": "Finish work checklist"}
 {"file": ".claude/commands/trellis/check.md", "reason": "Code quality check spec"}
-{"file": "prompts/0409/prd-master.md", "reason": "验收标准对照"}
-{"file": "prompts/0409/spec-02-process-enhancement.md", "reason": "进程验收标准"}
-{"file": "prompts/0409/spec-03-port-topology.md", "reason": "端口验收标准"}
-{"file": "prompts/0409/spec-04-window-management.md", "reason": "窗口验收标准"}
-{"file": "prompts/0409/spec-05-theme-visual.md", "reason": "主题验收标准"}
+{"file": "prompts/0410-2/00-prd-round2.md", "reason": "验收标准来源"}
+{"file": "prompts/0410-2/01-startup-probing-spec.md", "reason": "启动勘探验收"}
+{"file": "prompts/0410-2/02-process-deep-probing-spec.md", "reason": "进程勘探验收"}
+{"file": "prompts/0410-2/03-window-management-spec.md", "reason": "窗口管理验收"}
+{"file": "prompts/0410-2/04-theme-visual-system-spec.md", "reason": "主题视觉验收"}
+{"file": "prompts/0410-2/05-responsive-layout-spec.md", "reason": "响应式布局验收"}

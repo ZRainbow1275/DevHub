@@ -1,9 +1,10 @@
 {"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
 {"file": ".trellis/spec/backend/index.md", "reason": "Backend development guide"}
 {"file": ".trellis/spec/frontend/index.md", "reason": "Frontend development guide"}
-{"file": "prompts/0409/prd-master.md", "reason": "总领PRD"}
-{"file": "prompts/0409/spec-02-process-enhancement.md", "reason": "进程增强设计规格"}
-{"file": "prompts/0409/spec-03-port-topology.md", "reason": "端口拓扑设计规格"}
-{"file": "prompts/0409/spec-04-window-management.md", "reason": "窗口管理设计规格"}
-{"file": "prompts/0409/spec-05-theme-visual.md", "reason": "主题视觉设计规格"}
-{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "跨层思考指南"}
+{"file": "prompts/0410-2/00-prd-round2.md", "reason": "Round2 PRD - 全部需求汇总"}
+{"file": "prompts/0410-2/01-startup-probing-spec.md", "reason": "启动时主动勘探 spec"}
+{"file": "prompts/0410-2/02-process-deep-probing-spec.md", "reason": "进程深层勘探 spec"}
+{"file": "prompts/0410-2/03-window-management-spec.md", "reason": "窗口管理三大功能 spec"}
+{"file": "prompts/0410-2/04-theme-visual-system-spec.md", "reason": "主题视觉体系 spec"}
+{"file": "prompts/0410-2/05-responsive-layout-spec.md", "reason": "响应式布局 spec"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "跨层思维指南"}
