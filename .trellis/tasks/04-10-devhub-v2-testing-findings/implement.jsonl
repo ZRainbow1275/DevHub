@@ -1,0 +1,9 @@
+{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend development guide"}
+{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend development guide"}
+{"file": "prompts/0409/prd-master.md", "reason": "总领PRD"}
+{"file": "prompts/0409/spec-02-process-enhancement.md", "reason": "进程增强设计规格"}
+{"file": "prompts/0409/spec-03-port-topology.md", "reason": "端口拓扑设计规格"}
+{"file": "prompts/0409/spec-04-window-management.md", "reason": "窗口管理设计规格"}
+{"file": "prompts/0409/spec-05-theme-visual.md", "reason": "主题视觉设计规格"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "跨层思考指南"}

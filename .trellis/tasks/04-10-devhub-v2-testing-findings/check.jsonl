@@ -1,0 +1,7 @@
+{"file": ".claude/commands/trellis/finish-work.md", "reason": "Finish work checklist"}
+{"file": ".claude/commands/trellis/check.md", "reason": "Code quality check spec"}
+{"file": "prompts/0409/prd-master.md", "reason": "验收标准对照"}
+{"file": "prompts/0409/spec-02-process-enhancement.md", "reason": "进程验收标准"}
+{"file": "prompts/0409/spec-03-port-topology.md", "reason": "端口验收标准"}
+{"file": "prompts/0409/spec-04-window-management.md", "reason": "窗口验收标准"}
+{"file": "prompts/0409/spec-05-theme-visual.md", "reason": "主题验收标准"}
