@@ -139,20 +139,42 @@ DevHub 基础框架运行正常（Electron 启动、React 渲染、IPC 通信）
 
 ---
 
-## 四、优先级排序
+## 四、测试轮次文档索引
+
+| 轮次 | 日期 | 文档路径 | 主要发现 |
+|------|------|---------|---------|
+| Round 1 | 2026-04-10 | `prompts/0410/` | 基础问题发现（进程/端口/窗口/主题） |
+| Round 2 | 2026-04-10 | `prompts/0410-2/` | 深化确认（启动勘探/深层探查/布局自适应） |
+| **Round 3** | **2026-04-11** | **`prompts/0411/`** | **启动黑屏/端口慢/性能安全/感测不准** |
+
+## 五、优先级排序（Round 3 更新）
 
 ```
-P0 (Must Fix)
-├── 2.1 AI 窗口自命名 + 通知标识
-├── 2.2 分组/布局功能修复
-├── 2.3 监控进度增强
-└── 2.4 focusWindow bug
+P0-Blocker (阻塞启动)
+└── 3.1 启动黑屏/缺少加载页 → prompts/0411/01-startup-splash-spec.md
 
-P1 (Should Improve)
-├── 2.5 进程动态神经流线图
-├── 2.6 进程列表/卡片增强
-└── 2.7 端口拓扑完善
+P0-Critical (阻塞核心功能)
+├── 3.3.1 AI 窗口自命名（三轮未修复）
+├── 3.3.2 通知携带窗口名称（三轮未修复）
+├── 3.3.3 AI 任务完成感测不准（三轮误报/漏报/错报）
+├── 3.3.4 分组/布局不可用（三轮未修复）
+├── 3.3.5 监控进度太粗（三轮仍仅两态）
+├── 3.6 性能与安全问题 → prompts/0411/06-performance-security-spec.md
+└── R1-2.4 focusWindow C#5 兼容性
+     → 窗口全部: prompts/0411/03-window-management-spec.md
 
-P2 (Nice to Have)
-└── 2.8 主题视觉体系重设计
+P0 (阻塞可用性)
+├── 3.4 端口探查极慢 → prompts/0411/04-port-performance-spec.md
+├── R2-2.0 启动时主动勘探 → prompts/0411/01-startup-splash-spec.md
+└── R2-2.1 进程深层勘探 → prompts/0411/02-process-deep-probing-spec.md
+
+P1 (体验关键)
+├── 3.2 UI 显示过于局促 → prompts/0411/05-responsive-layout-spec.md
+├── 3.3.6 窗口功能有限 → prompts/0411/03-window-management-spec.md
+├── R1-2.5 进程动态神经流线图
+├── R1-2.6 进程列表/卡片增强
+└── R1-2.7 端口拓扑完善
+
+P2 (视觉层)
+└── 3.5 主题视觉传达体系 → prompts/0411/07-theme-visual-system-spec.md
 ```
