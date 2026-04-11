@@ -784,3 +784,70 @@ Code changes complete, pending user code-review and commit.
 ### Next Steps
 
 - None - task complete
+
+
+## Session 11: Round 3 Manual Testing & Spec Documentation
+
+**Date**: 2026-04-11
+**Task**: Round 3 Manual Testing & Spec Documentation
+**Branch**: `master`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## 工作内容
+
+第三轮手动测试 DevHub v2 应用，记录全部发现并生成完整的 PRD + 7 份 Spec 文档。
+
+### 测试发现（6 大问题域）
+
+| 编号 | 问题 | 优先级 | 状态 |
+|------|------|--------|------|
+| 3.1 | 启动黑屏 — 无加载页/闪屏 | P0-Blocker | 新增 |
+| 3.2 | UI 显示过于局促 | P1 | 强化(R2已提) |
+| 3.3 | 窗口管理核心功能全面失效(5个子问题) | P0-Critical | 三轮未修复 |
+| 3.4 | 端口探查极慢 | P0 | 新增 |
+| 3.5 | 主题系统仅换颜色 | P2 | 三轮未修复 |
+| 3.6 | 性能与安全深度问题 | P0-Critical | 新增 |
+
+### 输出文件
+
+| 文件 | 内容 |
+|------|------|
+| `prompts/0411/00-prd-round3.md` | 第三轮 PRD（含三轮累积未解决问题汇总） |
+| `prompts/0411/01-startup-splash-spec.md` | 启动闪屏与加载优化 spec |
+| `prompts/0411/02-process-deep-probing-spec.md` | 进程深层勘探 spec |
+| `prompts/0411/03-window-management-spec.md` | 窗口管理系统全面修复 spec（最大文档） |
+| `prompts/0411/04-port-performance-spec.md` | 端口探查性能优化 spec |
+| `prompts/0411/05-responsive-layout-spec.md` | 响应式布局与信息密度 spec |
+| `prompts/0411/06-performance-security-spec.md` | 性能优化与安全加固 spec |
+| `prompts/0411/07-theme-visual-system-spec.md` | 主题视觉传达体系 spec |
+| `.trellis/tasks/.../prd.md` | 更新任务 PRD 的优先级排序与轮次索引 |
+
+### 关键发现
+
+- **启动黑屏根因**：扫描器全部 stopped + InitializationScreen 背景色与黑屏无差异
+- **窗口管理**：三轮测试持续反映的第一优先级问题，AI 感测误报/漏报/错报严重
+- **性能安全**：首次系统性提出，涵盖 CSP/IPC 校验/PowerShell 注入/进程保护
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6bbf180` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
