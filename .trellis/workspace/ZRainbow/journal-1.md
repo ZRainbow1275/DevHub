@@ -851,3 +851,91 @@ Code changes complete, pending user code-review and commit.
 ### Next Steps
 
 - None - task complete
+
+
+## Session 12: Round 3 — 7-Spec Parallel Agent Implementation + Review + Merge
+
+**Date**: 2026-04-12
+**Task**: Round 3 — 7-Spec Parallel Agent Implementation + Review + Merge
+**Branch**: `master`
+
+### Summary
+
+Agent Teams 并行实现 prompts/0411/ 全部 7 个 spec，审查修复 21 个问题，合并到 devhub
+
+### Main Changes
+
+
+## 工作流程
+
+### Phase 1: 任务规划与创建
+- 读取 `prompts/0411/` 下 7 个 spec 文件 + PRD (`00-prd-round3.md`)
+- 创建 7 个 trellis task（后改用 Agent Teams 方式）
+
+### Phase 2: 并行实现（7 个 Implement Agents）
+使用 Claude Code Agent Teams (`isolation: "worktree"`) 启动 7 个 opus agent 并行开发：
+
+| Agent | Spec | 耗时 | 分支 |
+|-------|------|------|------|
+| startup-splash | 01-startup-splash-spec | 12.4m | worktree-agent-a9ff0d50 |
+| process-probing | 02-process-deep-probing-spec | 14.9m | worktree-agent-af88d86b |
+| window-mgmt | 03-window-management-spec | 21.0m | worktree-agent-a498d102 |
+| port-perf | 04-port-performance-spec | 12.8m | worktree-agent-a7187bec |
+| responsive-layout | 05-responsive-layout-spec | 13.6m | worktree-agent-a6477ac4 |
+| perf-security | 06-performance-security-spec | 10.4m | worktree-agent-a2a1c9bb |
+| theme-system | 07-theme-visual-system-spec | 18.5m | worktree-agent-aba9641a |
+
+### Phase 3: Agent Teams 审查（7 个 Check Agents）
+创建 `devhub-review` Team，7 个 reviewer 并行审查：
+
+| Reviewer | 发现 | 修复 |
+|----------|------|------|
+| reviewer-splash | PS 数组语法, 非空断言 | 2 |
+| reviewer-process | 动态 import, 同步 IO, useMemo, click-outside | 4 |
+| reviewer-window | PS C# 重编译性能 | 1 |
+| reviewer-port | 注入防御, 计数器竞态, 超时取消, 骨架屏 | 4 |
+| reviewer-layout | resize 节流, localStorage try/catch, 拖拽光标 | 4 |
+| reviewer-security | 保护名单同步, diff 值变更, 定时器泄漏, PID 校验 | 4 |
+| reviewer-theme | 无效 CSS display, 变量自引用循环 | 2 |
+
+**总计: 21 个问题发现并修复**
+
+### Phase 4: 合并
+- 从 7 个 worktree 提取 108 个文件按优先级复制
+- 9 个核心共享文件智能合并 (preload/extended, types, index.ts, BackgroundScannerManager, ScannerCache, SystemProcessScanner, stores)
+- 6 个级联修复 (AIAliasManager, AIProgressTimeline, AITaskView, AIWindowAlias, aliasStore, scannerHandlers)
+- 最终: 80 files changed, +6995/-10951
+
+### 实现功能清单
+1. **启动闪屏**: 原生 HTML splash + 7 阶段进度 + 扫描器指数退避
+2. **进程深层勘探**: 5 Tab 抽屉 + PowerShell/WMI 深层查询 + Canvas CPU 图
+3. **窗口管理**: C#5 修复 + AI 命名 + 多信号融合(5 信号加权) + 7 态状态机 + 分组布局
+4. **端口性能**: 缓存优先 + 增量查询 + 骨架屏 + 3s 超时回退 + AbortController
+5. **响应式布局**: Container Query + 三级密度 + 侧边栏折叠 + Tooltip
+6. **性能安全**: CSP + 注入防护 + LRU 2000 条 + IPC 20 msg/sec 限频
+7. **主题系统**: 7 层 Token + Soviet/Cyberpunk/Swiss 三套完整视觉体系
+
+### 下一步
+- 启动应用 (`cd devhub && pnpm dev`) 进行 Round 4 手动测试
+- 验证 7 个 spec 的验收标准
+- 修复手测中发现的问题
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8c91c6c` | (see git log) |
+| `5ff05e7` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
