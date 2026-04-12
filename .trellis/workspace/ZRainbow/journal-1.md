@@ -1175,3 +1175,96 @@ Completed ALL 6 modules from prompts/0411 specs using a 6-agent parallel team (d
 ### Next Steps
 
 - None - task complete
+
+
+## Session 16: Code Review: 5-Agent 并行审查 + 35 Issue 修复 + 7 设计文档
+
+**Date**: 2026-04-13
+**Task**: Code Review: 5-Agent 并行审查 + 35 Issue 修复 + 7 设计文档
+**Branch**: `master`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## 概览
+
+对 DevHub v2 进行了完整的 code review，对照 prompts/0411/ 的 7 个 spec 文件，使用 15 个并行 agent 分两轮执行。
+
+## Phase 1: Review (5 并行 agent)
+
+| Agent | 审查范围 | 发现 |
+|-------|---------|------|
+| review-backend | 17 个后端服务文件 | 7 个问题 |
+| review-ipc | 10 个 IPC/preload 文件 | 7 个问题 |
+| review-frontend | 30+ 个前端组件 | 16 个问题 |
+| review-stores | 22 个 store/hook 文件 | 10 个问题 |
+| review-types-config | 15+ 个类型/配置文件 | 11 个问题 |
+
+**总发现: 42 个问题 (1 CRITICAL, 14 HIGH, 22 MEDIUM, 5 LOW)**
+
+## Phase 2: Fix (4 并行 agent + 1 追加)
+
+**已修复 35 个问题，涉及 54 个文件，+2928/-494 行**
+
+关键修复:
+- 创建缺失的 splash.html + splash-preload.js
+- 为 ProcessGroupCard/PortCard/WindowCard 添加 Error Boundary
+- 修复 BackgroundScannerManager max retries 后 timer 未停止
+- 修复 PortScanner.checkPort() 全量扫描性能问题
+- 修复 scannerStore 初始化失败卡死
+- 修复 portStore 无缓存回写
+- 修复多处防御性渲染缺失 (可选链/空值合并)
+- 补全 dark/light 主题 Layer 2-7 token
+- 修复 useLogs 内存泄漏、useProjects memo 失效
+- 10 个中小项修复 (布局预设/自动 hydration/断点对齐等)
+
+## Phase 3: Design Documents (5 并行 research agent)
+
+为剩余 7 个需要设计讨论的大项编写了完整设计文档:
+
+| 文档 | 主题 | 推荐方案 |
+|------|------|---------|
+| prompts/0413/01 | Zustand selector 重构 | useShallow + 逐字段混用 |
+| prompts/0413/02 | 终端信号融合 | I/O delta + 进程树 + UI Automation |
+| prompts/0413/03 | 主题运行时管理器 | 字体状态感知 + token 工具函数 |
+| prompts/0413/04 | 字体本地打包 | @fontsource NPM 包 |
+| prompts/0413/05 | Scanner 订阅生命周期 | 已修复 (移除 dedup) |
+| prompts/0413/06 | Window rename 链路 | 修复 alias 查找逻辑 |
+| prompts/0413/07 | AI 任务置信度状态 | 两步走: 缓存 config → 扩展 AITask |
+
+## 修改文件
+
+devhub 子模块 54 文件 (commit 1508543):
+- `src/main/services/` — AITaskTracker, BackgroundScannerManager, PortScanner, NotificationService 等
+- `src/main/ipc/` — aiTaskHandlers, notificationHandlers, scannerHandlers, portHandlers 等
+- `src/renderer/components/monitor/` — ProcessView, PortView, WindowView, ProcessDetailPanel 等
+- `src/renderer/stores/` — scannerStore, portStore, windowStore, aliasStore 等
+- `src/renderer/hooks/` — useLogs, usePorts, useProjects 等
+- `src/renderer/styles/tokens/` — theme-tokens.css, typography.css, colors.css 等
+- `resources/` — splash.html, splash-preload.js (新建)
+
+主仓库 (commit 46d2879):
+- `prompts/0413/*.md` — 8 个设计/概览文档
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `46d2879` | (see git log) |
+| `1508543` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
