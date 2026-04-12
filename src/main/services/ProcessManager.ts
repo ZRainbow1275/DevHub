@@ -224,7 +224,8 @@ export class ProcessManager {
         proc.on('error', (error) => {
           cleanup()
           this.processes.delete(project.id)
-          this.emitLog(project.id, 'system', `Error: ${error.message}`)
+          const errorDetail = error.stack ? `${error.message}\n${error.stack}` : error.message
+          this.emitLog(project.id, 'system', `Error: ${errorDetail}`)
           this.emitStatus(project.id, 'error')
           reject(error)
         })

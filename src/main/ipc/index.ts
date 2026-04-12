@@ -14,6 +14,8 @@ import { setupWindowHandlers, cleanupWindowHandlers } from './windowHandlers'
 import { setupAITaskHandlers, cleanupAITaskHandlers } from './aiTaskHandlers'
 import { setupNotificationHandlers, cleanupNotificationHandlers } from './notificationHandlers'
 import { setupTaskHistoryHandlers, cleanupTaskHistoryHandlers } from './taskHistoryHandlers'
+import { setupScannerHandlers, cleanupScannerHandlers } from './scannerHandlers'
+import { BackgroundScannerManager } from '../services/BackgroundScannerManager'
 
 const projectScanner = new ProjectScanner()
 const projectWatcher = new ProjectWatcher()
@@ -22,7 +24,8 @@ export function registerIpcHandlers(
   appStore: AppStore,
   processManager: ProcessManager,
   toolMonitor: ToolMonitor,
-  getMainWindow: () => BrowserWindow | null
+  getMainWindow: () => BrowserWindow | null,
+  scannerManager?: BackgroundScannerManager
 ): void {
   // ==================== Project Handlers ====================
 
@@ -251,7 +254,7 @@ export function registerIpcHandlers(
   function validateSettingsFields(sanitized: Record<string, unknown>): void {
     const appearance = sanitized.appearance as Record<string, unknown> | undefined
     if (appearance) {
-      if ('theme' in appearance && !['constructivism', 'modern-light', 'warm-light', 'dark', 'light'].includes(appearance.theme as string)) {
+      if ('theme' in appearance && !['constructivism', 'modern-light', 'warm-light', 'cyberpunk', 'swiss', 'dark', 'light'].includes(appearance.theme as string)) {
         throw new Error('theme must be a valid theme name')
       }
       if ('fontSize' in appearance && !['small', 'medium', 'large'].includes(appearance.fontSize as string)) {
@@ -589,6 +592,9 @@ export function registerIpcHandlers(
         setupAITaskHandlers(mainWin)
         setupNotificationHandlers(mainWin)
         setupTaskHistoryHandlers(mainWin)
+        if (scannerManager) {
+          setupScannerHandlers(mainWin, scannerManager)
+        }
         extendedHandlersInitialized = true
       } catch (error) {
         console.error('Failed to initialize extended handlers:', error)
@@ -609,10 +615,12 @@ export function registerIpcHandlers(
 export async function cleanupIpcHandlers(): Promise<void> {
   projectWatcher.clearChangeCallback()
   await projectWatcher.stop()
+  ipcMain.removeAllListeners('log:subscribe')
   cleanupProcessHandlers()
   cleanupPortHandlers()
   cleanupWindowHandlers()
   cleanupAITaskHandlers()
   cleanupNotificationHandlers()
   cleanupTaskHistoryHandlers()
+  cleanupScannerHandlers()
 }

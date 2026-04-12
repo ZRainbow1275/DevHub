@@ -1,0 +1,369 @@
+/* ========================================
+   DevHub Theme Token System
+   Non-color design tokens that vary per theme:
+   spacing, geometry, borders, shadows, decorations,
+   motion, typography overrides, and density.
+   8 dimensions: color, layout, typography, radius,
+   elevation, motion, decoration, density.
+   ======================================== */
+
+/* ---- Default Theme = Constructivism (Soviet) ---- */
+:root,
+[data-theme="constructivism"] {
+  /* ---- Spacing / Layout ---- */
+  --space-card-padding: 12px 16px;
+  --space-section-gap: 8px;
+  --space-content-gap: 4px;
+  --spacing-base: 4px;
+  --density-factor: 0.85;
+  --container-padding: 12px;
+  --card-gap: 8px;
+  --sidebar-width: 240px;
+
+  /* ---- Grid Layout ---- */
+  --grid-cols-sm: 1;
+  --grid-cols-md: 2;
+  --grid-cols-lg: 3;
+  --grid-cols-xl: 4;
+
+  /* ---- Geometry / Radius ---- */
+  --radius-card: 2px;
+  --radius-button: 2px;
+  --radius-input: 2px;
+  --radius-badge: 0px;
+
+  /* ---- Borders ---- */
+  --border-card: 1px solid var(--surface-700);
+  --border-card-accent: 3px solid var(--red-500);
+  --border-section: 2px solid var(--gold-500);
+  --border-width: 2px;
+
+  /* ---- Shadows / Elevation ---- */
+  --shadow-card: 2px 2px 0 rgba(0,0,0,0.3);
+  --shadow-card-hover: 4px 4px 0 rgba(0,0,0,0.4);
+  --shadow-elevated: 6px 6px 0 rgba(0,0,0,0.5);
+  --elevation-type: border;
+  --elevation-1: inset 0 0 0 2px rgba(214, 69, 69, 0.2);
+  --elevation-2: inset 0 0 0 2px rgba(214, 69, 69, 0.4);
+
+  /* ---- Decorations ---- */
+  --deco-clip-card: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
+  --deco-background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 10px,
+    rgba(255,255,255,0.02) 10px,
+    rgba(255,255,255,0.02) 11px
+  );
+  --deco-divider: linear-gradient(135deg, var(--red-500) 33%, var(--gold-500) 33%, var(--gold-500) 66%, var(--steel-500) 66%);
+  --deco-divider-height: 3px;
+  --deco-accent-bar-width: 3px;
+  --deco-accent-bar-style: solid;
+
+  /* ---- Motion / Animation ---- */
+  --motion-duration-fast: 100ms;
+  --motion-duration-normal: 150ms;
+  --motion-duration-slow: 400ms;
+  --motion-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-hover: translateX(2px);
+
+  /* ---- Typography Overrides ---- */
+  --typo-heading-transform: uppercase;
+  --typo-heading-spacing: 0.1em;
+  --typo-heading-weight: 800;
+  --typo-heading-family: var(--font-display);
+  --typo-body-spacing: 0.02em;
+  --font-display-theme: 'JetBrains Mono', monospace;
+  --line-height-body-theme: 1.4;
+
+  /* ---- Information Density ---- */
+  --density-card-min-height: 60px;
+  --density-list-row-height: 36px;
+  --density-grid-gap: 8px;
+}
+
+/* ---- Modern Light Theme ---- */
+[data-theme="modern-light"] {
+  /* ---- Spacing / Layout ---- */
+  --space-card-padding: 16px 20px;
+  --space-section-gap: 16px;
+  --space-content-gap: 8px;
+  --spacing-base: 6px;
+  --density-factor: 1.0;
+  --container-padding: 16px;
+  --card-gap: 12px;
+  --sidebar-width: 260px;
+
+  /* ---- Grid Layout ---- */
+  --grid-cols-sm: 1;
+  --grid-cols-md: 2;
+  --grid-cols-lg: 3;
+  --grid-cols-xl: 4;
+
+  /* ---- Geometry / Radius ---- */
+  --radius-card: 12px;
+  --radius-button: 8px;
+  --radius-input: 8px;
+  --radius-badge: 999px;
+
+  /* ---- Borders ---- */
+  --border-card: 1px solid rgba(0,0,0,0.08);
+  --border-card-accent: none;
+  --border-section: none;
+  --border-width: 1px;
+
+  /* ---- Shadows / Elevation ---- */
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-card-hover: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+  --shadow-elevated: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+  --elevation-type: shadow;
+  --elevation-1: 0 1px 3px rgba(0,0,0,0.08);
+  --elevation-2: 0 4px 6px rgba(0,0,0,0.1);
+
+  /* ---- Decorations ---- */
+  --deco-clip-card: none;
+  --deco-background: none;
+  --deco-divider: var(--surface-300);
+  --deco-divider-height: 1px;
+  --deco-accent-bar-width: 0px;
+  --deco-accent-bar-style: none;
+
+  /* ---- Motion / Animation ---- */
+  --motion-duration-fast: 100ms;
+  --motion-duration-normal: 200ms;
+  --motion-duration-slow: 350ms;
+  --motion-easing: cubic-bezier(0.2, 0, 0, 1);
+  --motion-hover: scale(1.02);
+
+  /* ---- Typography Overrides ---- */
+  --typo-heading-transform: none;
+  --typo-heading-spacing: -0.01em;
+  --typo-heading-weight: 600;
+  --typo-heading-family: var(--font-sans);
+  --typo-body-spacing: 0;
+  --font-display-theme: 'Inter', sans-serif;
+  --line-height-body-theme: 1.5;
+
+  /* ---- Information Density ---- */
+  --density-card-min-height: 80px;
+  --density-list-row-height: 44px;
+  --density-grid-gap: 16px;
+}
+
+/* ---- Warm Light Theme ---- */
+[data-theme="warm-light"] {
+  /* ---- Spacing / Layout ---- */
+  --space-card-padding: 20px 24px;
+  --space-section-gap: 20px;
+  --space-content-gap: 12px;
+  --spacing-base: 8px;
+  --density-factor: 1.1;
+  --container-padding: 20px;
+  --card-gap: 16px;
+  --sidebar-width: 300px;
+
+  /* ---- Grid Layout ---- */
+  --grid-cols-sm: 1;
+  --grid-cols-md: 2;
+  --grid-cols-lg: 3;
+  --grid-cols-xl: 3;
+
+  /* ---- Geometry / Radius ---- */
+  --radius-card: 16px;
+  --radius-button: 12px;
+  --radius-input: 10px;
+  --radius-badge: 999px;
+
+  /* ---- Borders ---- */
+  --border-card: 1px solid rgba(139,90,43,0.12);
+  --border-card-accent: none;
+  --border-section: none;
+  --border-width: 1px;
+
+  /* ---- Shadows / Elevation ---- */
+  --shadow-card: 0 2px 8px rgba(139,90,43,0.08);
+  --shadow-card-hover: 0 4px 12px rgba(139,90,43,0.12);
+  --shadow-elevated: 0 8px 24px rgba(139,90,43,0.15);
+  --elevation-type: shadow;
+  --elevation-1: 0 2px 8px rgba(139,90,43,0.08);
+  --elevation-2: 0 4px 12px rgba(139,90,43,0.12);
+
+  /* ---- Decorations ---- */
+  --deco-clip-card: none;
+  --deco-background: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  --deco-divider: repeating-linear-gradient(
+    90deg,
+    var(--surface-400) 0,
+    var(--surface-400) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+  --deco-divider-height: 2px;
+  --deco-accent-bar-width: 0px;
+  --deco-accent-bar-style: none;
+
+  /* ---- Motion / Animation ---- */
+  --motion-duration-fast: 200ms;
+  --motion-duration-normal: 350ms;
+  --motion-duration-slow: 500ms;
+  --motion-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-hover: scale(1.01) translateY(-1px);
+
+  /* ---- Typography Overrides ---- */
+  --typo-heading-transform: none;
+  --typo-heading-spacing: 0;
+  --typo-heading-weight: 500;
+  --typo-heading-family: var(--font-serif);
+  --typo-body-spacing: 0.01em;
+  --font-display-theme: 'Playfair Display', serif;
+  --line-height-body-theme: 1.6;
+
+  /* ---- Information Density ---- */
+  --density-card-min-height: 100px;
+  --density-list-row-height: 52px;
+  --density-grid-gap: 20px;
+}
+
+/* ==============================================================================
+   Cyberpunk Neon Theme — Futuristic, neon glow, holographic
+   ============================================================================== */
+[data-theme="cyberpunk"] {
+  /* ---- Spacing / Layout ---- */
+  --space-card-padding: 14px 18px;
+  --space-section-gap: 12px;
+  --space-content-gap: 8px;
+  --spacing-base: 8px;
+  --density-factor: 1.0;
+  --container-padding: 16px;
+  --card-gap: 12px;
+  --sidebar-width: 280px;
+
+  /* ---- Grid Layout ---- */
+  --grid-cols-sm: 1;
+  --grid-cols-md: 2;
+  --grid-cols-lg: 3;
+  --grid-cols-xl: 3;
+
+  /* ---- Geometry / Radius ---- */
+  --radius-card: 6px;
+  --radius-button: 4px;
+  --radius-input: 4px;
+  --radius-badge: 4px;
+
+  /* ---- Borders ---- */
+  --border-card: 1px solid rgba(0, 255, 255, 0.15);
+  --border-card-accent: 2px solid rgba(0, 255, 255, 0.4);
+  --border-section: 1px solid rgba(0, 255, 255, 0.2);
+  --border-width: 1px;
+
+  /* ---- Shadows / Elevation (Glow) ---- */
+  --shadow-card: 0 0 8px rgba(0, 255, 255, 0.08), 0 0 2px rgba(0, 255, 255, 0.12);
+  --shadow-card-hover: 0 0 15px rgba(0, 255, 255, 0.15), 0 0 4px rgba(0, 255, 255, 0.2);
+  --shadow-elevated: 0 0 25px rgba(0, 255, 255, 0.2), 0 0 8px rgba(255, 0, 170, 0.1);
+  --elevation-type: glow;
+  --elevation-1: 0 0 10px rgba(0, 255, 255, 0.15);
+  --elevation-2: 0 0 20px rgba(0, 255, 255, 0.3);
+
+  /* ---- Decorations ---- */
+  --deco-clip-card: none;
+  --deco-background: linear-gradient(
+    rgba(0, 255, 255, 0.02) 1px, transparent 1px
+  ), linear-gradient(
+    90deg, rgba(0, 255, 255, 0.02) 1px, transparent 1px
+  );
+  --deco-divider: linear-gradient(90deg, rgba(0, 255, 255, 0.4), rgba(255, 0, 170, 0.4), rgba(0, 255, 255, 0.4));
+  --deco-divider-height: 1px;
+  --deco-accent-bar-width: 2px;
+  --deco-accent-bar-style: solid;
+
+  /* ---- Motion / Animation ---- */
+  --motion-duration-fast: 150ms;
+  --motion-duration-normal: 250ms;
+  --motion-duration-slow: 400ms;
+  --motion-easing: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --motion-hover: translateY(-2px);
+
+  /* ---- Typography Overrides ---- */
+  --typo-heading-transform: uppercase;
+  --typo-heading-spacing: 0.05em;
+  --typo-heading-weight: 600;
+  --typo-heading-family: 'Orbitron', 'Exo 2', var(--font-sans);
+  --typo-body-spacing: 0.01em;
+  --font-display-theme: 'Orbitron', 'Exo 2', sans-serif;
+  --line-height-body-theme: 1.5;
+
+  /* ---- Information Density ---- */
+  --density-card-min-height: 72px;
+  --density-list-row-height: 40px;
+  --density-grid-gap: 12px;
+}
+
+/* ==============================================================================
+   Swiss Minimal Theme — Precision, restraint, function over form
+   ============================================================================== */
+[data-theme="swiss"] {
+  /* ---- Spacing / Layout ---- */
+  --space-card-padding: 20px 24px;
+  --space-section-gap: 24px;
+  --space-content-gap: 12px;
+  --spacing-base: 8px;
+  --density-factor: 1.2;
+  --container-padding: 24px;
+  --card-gap: 16px;
+  --sidebar-width: 320px;
+
+  /* ---- Grid Layout ---- */
+  --grid-cols-sm: 1;
+  --grid-cols-md: 1;
+  --grid-cols-lg: 2;
+  --grid-cols-xl: 3;
+
+  /* ---- Geometry / Radius (Pure square) ---- */
+  --radius-card: 0px;
+  --radius-button: 0px;
+  --radius-input: 0px;
+  --radius-badge: 0px;
+
+  /* ---- Borders ---- */
+  --border-card: 1px solid var(--surface-700);
+  --border-card-accent: none;
+  --border-section: 1px solid var(--surface-700);
+  --border-width: 1px;
+
+  /* ---- Shadows / Elevation (None / Ultra-subtle) ---- */
+  --shadow-card: none;
+  --shadow-card-hover: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-elevated: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --elevation-type: none;
+  --elevation-1: none;
+  --elevation-2: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+  /* ---- Decorations ---- */
+  --deco-clip-card: none;
+  --deco-background: none;
+  --deco-divider: var(--surface-700);
+  --deco-divider-height: 1px;
+  --deco-accent-bar-width: 0px;
+  --deco-accent-bar-style: none;
+
+  /* ---- Motion / Animation (Minimal, functional only) ---- */
+  --motion-duration-fast: 100ms;
+  --motion-duration-normal: 150ms;
+  --motion-duration-slow: 250ms;
+  --motion-easing: ease;
+  --motion-hover: none;
+
+  /* ---- Typography Overrides ---- */
+  --typo-heading-transform: none;
+  --typo-heading-spacing: 0;
+  --typo-heading-weight: 400;
+  --typo-heading-family: 'Helvetica Neue', 'Inter', var(--font-sans);
+  --typo-body-spacing: 0;
+  --font-display-theme: 'Helvetica Neue', 'Inter', sans-serif;
+  --line-height-body-theme: 1.6;
+
+  /* ---- Information Density ---- */
+  --density-card-min-height: 96px;
+  --density-list-row-height: 48px;
+  --density-grid-gap: 16px;
+}

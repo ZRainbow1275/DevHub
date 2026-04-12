@@ -97,7 +97,7 @@ export function MonitorPanel() {
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 overflow-hidden monitor-content">
+      <div className="flex-1 overflow-hidden monitor-content panel-container">
         {activeTab === 'process' && (
           <ErrorBoundary fallbackRender={({ error, resetErrorBoundary }) => (
             <ViewErrorFallback viewName="进程监控" error={error} onRetry={resetErrorBoundary} />

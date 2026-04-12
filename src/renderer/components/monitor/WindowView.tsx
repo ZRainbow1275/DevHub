@@ -497,6 +497,8 @@ interface WindowGroupCardProps {
   isSelected: boolean
   onSelect: () => void
   onFocusGroup: () => void
+  onMinimizeGroup: () => void
+  onCloseGroup: () => void
   onRemove: () => void
   index: number
 }
@@ -506,6 +508,8 @@ const WindowGroupCard = memo(function WindowGroupCard({
   isSelected,
   onSelect,
   onFocusGroup,
+  onMinimizeGroup,
+  onCloseGroup,
   onRemove,
   index
 }: WindowGroupCardProps) {
@@ -581,6 +585,26 @@ const WindowGroupCard = memo(function WindowGroupCard({
               title="聚焦全部"
             >
               <GridIcon size={16} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onMinimizeGroup()
+              }}
+              className="btn-icon-sm bg-warning/10 text-warning/70 hover:bg-warning hover:text-white"
+              title="全部最小化"
+            >
+              <WindowIcon size={16} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onCloseGroup()
+              }}
+              className="btn-icon-sm bg-orange-500/10 text-orange-400/70 hover:bg-orange-500 hover:text-white"
+              title="关闭全部窗口"
+            >
+              <CloseIcon size={16} />
             </button>
             <button
               onClick={(e) => {
@@ -774,6 +798,8 @@ export function WindowView() {
     createGroup,
     fetchGroups,
     removeGroup,
+    minimizeGroup,
+    closeGroup,
     saveLayout,
     restoreLayout,
     fetchLayouts,
@@ -1043,8 +1069,8 @@ export function WindowView() {
               </button>
             )}
 
-            {/* Save Layout Button */}
-            {viewTab === 'groups' && groups.length > 0 && (
+            {/* Save Layout Button - available in both windows and groups tabs */}
+            {(viewTab === 'groups' || viewTab === 'windows') && windows.length > 0 && (
               <button
                 onClick={() => setShowSaveLayout(true)}
                 className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-success/20 text-success hover:bg-success hover:text-white transition-all duration-200 border-l-2 border-success"
@@ -1127,7 +1153,7 @@ export function WindowView() {
       {/* Statistics (only for windows tab) */}
       {viewTab === 'windows' && (
         <div className="flex-shrink-0 px-5 py-4 border-b border-surface-700/50">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="stat-grid">
             <StatCard
               icon={<WindowIcon size={20} className="text-info" />}
               label="总窗口数"
@@ -1159,7 +1185,7 @@ export function WindowView() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-5">
         {viewTab === 'windows' && viewMode === 'cards' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="monitor-card-grid" style={{ display: 'grid', gap: 'var(--density-grid-gap, 8px)' }}>
             {filteredWindows.map((window, index) => (
               <WindowCard
                 key={window.hwnd}
@@ -1246,6 +1272,16 @@ export function WindowView() {
                   () => focusGroup(group.id),
                   `已聚焦分组 "${group.name}"`,
                   '聚焦分组失败'
+                )}
+                onMinimizeGroup={() => withFeedback(
+                  () => minimizeGroup(group.id),
+                  `分组 "${group.name}" 已最小化`,
+                  '最小化分组失败'
+                )}
+                onCloseGroup={() => withFeedback(
+                  () => closeGroup(group.id),
+                  `分组 "${group.name}" 窗口已关闭`,
+                  '关闭分组窗口失败'
                 )}
                 onRemove={() => withFeedback(
                   () => removeGroup(group.id),

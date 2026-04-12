@@ -101,6 +101,7 @@ export class NotificationService {
       icon?: string
       actions?: { label: string; action: string }[]
       dedupKey?: string  // 可选的去重键
+      metadata?: Record<string, unknown>  // arbitrary metadata for click-to-navigate etc.
     }
   ): Promise<void> {
     if (!this.isTypeEnabled(type)) return
@@ -135,6 +136,9 @@ export class NotificationService {
       this.mainWindow.webContents.send('notification:new', notification)
     }
 
+    // Capture metadata for click handler closure
+    const metadata = options?.metadata
+
     // Show system notification
     if (Notification.isSupported()) {
       const systemNotif = new Notification({
@@ -147,6 +151,16 @@ export class NotificationService {
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
           this.mainWindow.show()
           this.mainWindow.focus()
+
+          // If metadata contains a taskId, send navigate-to-task to renderer
+          if (metadata?.taskId && typeof metadata.taskId === 'string') {
+            this.mainWindow.webContents.send('navigate-to-task', metadata.taskId)
+          }
+
+          // If metadata contains windowHwnd, tell renderer to focus that external window
+          if (metadata?.windowHwnd && typeof metadata.windowHwnd === 'number') {
+            this.mainWindow.webContents.send('notification:focus-window', metadata.windowHwnd)
+          }
         }
       })
 
@@ -154,13 +168,63 @@ export class NotificationService {
     }
   }
 
-  notifyTaskComplete(toolName: string, duration: number, alias?: string): void {
+  notifyTaskComplete(
+    toolName: string,
+    duration: number,
+    alias?: string,
+    taskId?: string,
+    windowHwnd?: number,
+    pid?: number
+  ): void {
+    const displayName = alias ?? toolName
+    const durationSec = Math.round(duration / 1000)
+    const durationMin = Math.floor(durationSec / 60)
+    const durationRemSec = durationSec % 60
+    const durationStr = durationMin > 0
+      ? `${durationMin}分${durationRemSec}秒`
+      : `${durationSec}秒`
+
+    const title = `[${displayName}] 任务完成`
+    const bodyParts = [`${toolName}`]
+    if (pid) bodyParts[0] += ` (PID:${pid})`
+    bodyParts.push(`持续时间: ${durationStr}`)
+
+    this.notify(
+      'task-complete',
+      title,
+      bodyParts.join('\n'),
+      {
+        dedupKey: `task-complete:${toolName}:${taskId ?? ''}`,
+        metadata: {
+          taskId,
+          windowHwnd,
+          aliasOrToolName: displayName
+        }
+      }
+    )
+  }
+
+  /** Notify about an AI task error */
+  notifyTaskError(
+    toolName: string,
+    alias?: string,
+    taskId?: string,
+    windowHwnd?: number,
+    pid?: number
+  ): void {
     const displayName = alias ?? toolName
     this.notify(
       'task-complete',
-      `[${displayName}] 任务完成`,
-      `${toolName} · 耗时: ${Math.round(duration / 1000)}秒`,
-      { dedupKey: `task-complete:${toolName}` }
+      `[${displayName}] 检测到错误`,
+      `${toolName}${pid ? ` (PID:${pid})` : ''}`,
+      {
+        dedupKey: `task-error:${taskId ?? toolName}`,
+        metadata: {
+          taskId,
+          windowHwnd,
+          aliasOrToolName: displayName
+        }
+      }
     )
   }
 
@@ -252,6 +316,9 @@ export function getNotificationService(): NotificationService {
 }
 
 export function initNotificationService(mainWindow: BrowserWindow): NotificationService {
+  if (notificationService) {
+    notificationService.destroy()
+  }
   notificationService = new NotificationService(mainWindow)
   return notificationService
 }

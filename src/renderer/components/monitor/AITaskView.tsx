@@ -4,6 +4,7 @@ import { useAliasStore } from '../../stores/aliasStore'
 import { useToast } from '../ui/Toast'
 import { AITask, AITaskHistory, AIToolType, AITaskState, AIWindowAlias } from '@shared/types-extended'
 import { AIWindowAliasEditor } from './AIWindowAlias'
+import { AIProgressTimeline } from './AIProgressTimeline'
 import { formatDuration, formatDurationCN } from '../../utils/formatDuration'
 
 const TOOL_INFO: Record<AIToolType, { name: string; icon: string; color: string }> = {
@@ -11,12 +12,16 @@ const TOOL_INFO: Record<AIToolType, { name: string; icon: string; color: string 
   'claude-code': { name: 'Claude Code', icon: '🤖', color: 'text-orange-400' },
   'gemini-cli': { name: 'Gemini CLI', icon: '✨', color: 'text-blue-400' },
   'cursor': { name: 'Cursor', icon: '📝', color: 'text-purple-400' },
+  'opencode': { name: 'OpenCode', icon: '💻', color: 'text-cyan-400' },
   'other': { name: 'Other', icon: '⚙️', color: 'text-gray-400' }
 }
 
 const STATE_INFO: Record<AITaskState, { label: string; color: string; bgColor: string }> = {
   'running': { label: '运行中', color: 'text-success', bgColor: 'bg-success/10' },
-  'waiting': { label: '等待中', color: 'text-warning', bgColor: 'bg-warning/10' },
+  'thinking': { label: '思考中', color: 'text-blue-400', bgColor: 'bg-blue-500/10' },
+  'coding': { label: '编码中', color: 'text-green-400', bgColor: 'bg-green-500/10' },
+  'compiling': { label: '编译中', color: 'text-orange-400', bgColor: 'bg-orange-500/10' },
+  'waiting': { label: '等待输入', color: 'text-warning', bgColor: 'bg-warning/10' },
   'completed': { label: '已完成', color: 'text-accent-300', bgColor: 'bg-accent/10' },
   'error': { label: '错误', color: 'text-error', bgColor: 'bg-error/10' },
   'idle': { label: '空闲', color: 'text-text-muted', bgColor: 'bg-surface-700' }
@@ -35,6 +40,7 @@ const TaskCard = memo(function TaskCard({ task, isSelected, onSelect, onSaveAlia
   const stateInfo = STATE_INFO[task.status.state]
   const [now, setNow] = useState(Date.now())
   const [isEditingAlias, setIsEditingAlias] = useState(false)
+  const [showTimeline, setShowTimeline] = useState(false)
 
   useEffect(() => {
     if (task.status.state !== 'running' && task.status.state !== 'waiting') return
@@ -87,6 +93,11 @@ const TaskCard = memo(function TaskCard({ task, isSelected, onSelect, onSaveAlia
               <span className={`text-xs px-2 py-0.5 rounded ${stateInfo.bgColor} ${stateInfo.color}`}>
                 {stateInfo.label}
               </span>
+              {task.status.phase && task.status.state === 'running' && (
+                <span className="text-xs px-2 py-0.5 rounded bg-surface-700 text-text-secondary">
+                  {task.status.phaseLabel}
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-3 mt-1 text-xs text-text-muted">
               <span>PID: {task.pid}</span>
@@ -96,6 +107,17 @@ const TaskCard = memo(function TaskCard({ task, isSelected, onSelect, onSaveAlia
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowTimeline(!showTimeline)
+            }}
+            className="px-2 py-1 text-xs text-text-muted hover:text-text-primary
+                       hover:bg-surface-600 rounded transition-colors opacity-0 group-hover:opacity-100"
+            title="Progress Timeline"
+          >
+            {showTimeline ? 'Hide Timeline' : 'Timeline'}
+          </button>
           <button
             onClick={(e) => {
               e.stopPropagation()
@@ -121,8 +143,40 @@ const TaskCard = memo(function TaskCard({ task, isSelected, onSelect, onSaveAlia
         </div>
       </div>
 
-      {/* Alias color indicator bar */}
-      {aliasColor && (
+      {/* Phase + Progress Section */}
+      {task.status.progressEstimate && task.status.state !== 'completed' && task.status.state !== 'error' && (
+        <div className="mt-3 space-y-1.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-text-secondary font-medium">
+              {task.status.phaseLabel || task.status.progressEstimate.phaseLabel}
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-text-muted font-mono">
+                {task.status.progressEstimate.percentage}%
+              </span>
+              {task.status.progressEstimate.estimatedRemaining != null &&
+                task.status.progressEstimate.estimatedRemaining > 0 && (
+                <span className="text-text-tertiary">
+                  ~{formatDuration(task.status.progressEstimate.estimatedRemaining)}
+                </span>
+              )}
+            </div>
+          </div>
+          {/* Progress bar */}
+          <div className="h-1.5 bg-surface-700 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-700 ease-out"
+              style={{
+                width: `${task.status.progressEstimate.percentage}%`,
+                backgroundColor: aliasColor || 'var(--color-accent)',
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Alias color indicator bar (only when no progress bar) */}
+      {aliasColor && (!task.status.progressEstimate || task.status.state === 'completed' || task.status.state === 'error') && (
         <div
           className="h-0.5 mt-2 rounded-full opacity-60"
           style={{ backgroundColor: aliasColor }}
@@ -152,6 +206,16 @@ const TaskCard = memo(function TaskCard({ task, isSelected, onSelect, onSaveAlia
               style={{ height: `${Math.min(cpu * 2, 100)}%` }}
             />
           ))}
+        </div>
+      )}
+
+      {/* Progress Timeline */}
+      {showTimeline && (
+        <div className="mt-3">
+          <AIProgressTimeline
+            taskId={task.id}
+            taskAlias={displayAlias}
+          />
         </div>
       )}
     </div>

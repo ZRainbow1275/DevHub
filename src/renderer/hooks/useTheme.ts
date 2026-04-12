@@ -1,16 +1,42 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 
-export type ThemeName = 'constructivism' | 'modern-light' | 'warm-light'
+export type ThemeName = 'constructivism' | 'modern-light' | 'warm-light' | 'cyberpunk' | 'swiss'
 
 /** Duration in ms for theme transition animation (matches --duration-theme in CSS) */
 const THEME_TRANSITION_MS = 250
 
+/**
+ * Fonts required per theme. Preloaded on theme switch so glyphs are
+ * ready before the transition ends.  Uses the Font Loading API
+ * (FontFace.load) which is non-blocking and returns a Promise.
+ */
+const THEME_FONTS: Record<ThemeName, string[]> = {
+  constructivism: ['400 1em "Bebas Neue"', '400 1em "JetBrains Mono"'],
+  'modern-light': ['400 1em "Inter"'],
+  'warm-light': ['400 1em "Playfair Display"'],
+  cyberpunk: ['400 1em "Orbitron"', '400 1em "Exo 2"'],
+  swiss: ['400 1em "Inter"'],
+}
+
+/** Best-effort font preload; never throws. */
+function preloadFontsForTheme(name: ThemeName): void {
+  const specs = THEME_FONTS[name] ?? []
+  for (const spec of specs) {
+    // document.fonts.load is available in Chromium (Electron).
+    document.fonts?.load(spec).catch(() => {
+      /* Swallow: font may already be loaded or unavailable */
+    })
+  }
+}
+
 const THEME_MAP: Record<string, ThemeName> = {
-  dark: 'constructivism',
-  light: 'modern-light',
+  dark: 'cyberpunk',
+  light: 'swiss',
   constructivism: 'constructivism',
   'modern-light': 'modern-light',
   'warm-light': 'warm-light',
+  cyberpunk: 'cyberpunk',
+  swiss: 'swiss',
 }
 
 /** Type guard for legacy flat settings that store `theme` at the top level. */
@@ -57,6 +83,9 @@ export function useTheme() {
 
   const setTheme = useCallback(async (name: ThemeName) => {
     const root = document.documentElement
+
+    // Preload fonts for the target theme before switching
+    preloadFontsForTheme(name)
 
     // Enable transition animation attribute before switching
     root.dataset.themeTransitioning = ''

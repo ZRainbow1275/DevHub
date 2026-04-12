@@ -7,7 +7,8 @@ import {
   aiTaskApi,
   aiAliasApi,
   notificationApi,
-  taskHistoryApi
+  taskHistoryApi,
+  scannerApi
 } from './extended'
 
 // Expose protected methods to renderer
@@ -171,5 +172,6 @@ contextBridge.exposeInMainWorld('devhub', {
   aiTask: aiTaskApi,
   aiAlias: aiAliasApi,
   notification: notificationApi,
-  taskHistory: taskHistoryApi
+  taskHistory: taskHistoryApi,
+  scanner: scannerApi
 })

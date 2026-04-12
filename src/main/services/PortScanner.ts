@@ -3,7 +3,8 @@ import { promisify } from 'util'
 import kill from 'tree-kill'
 import {
   PortInfo, PortState, COMMON_DEV_PORTS, DEV_PROCESS_PATTERNS, isProtectedProcess,
-  PortTopologyData, TopologyNode, TopologyEdge
+  PortTopologyData, TopologyNode, TopologyEdge,
+  PortFocusData, PortConnection, ProcessInfo, ProcessInfoExtended
 } from '@shared/types-extended'
 import { auditLogger } from './AuditLogger'
 
@@ -295,6 +296,61 @@ export class PortScanner {
     }
 
     return { nodes, edges }
+  }
+
+  /**
+   * Get detailed focus data for a specific port: owning process info,
+   * sibling ports (same PID), active connections, and child processes.
+   */
+  async getPortFocusData(
+    targetPort: number,
+    processScanner?: { getFullRelationship(pid: number): Promise<import('@shared/types-extended').ProcessRelationship | null> }
+  ): Promise<PortFocusData | null> {
+    const allPorts = await this.scanAll()
+    const portInfo = allPorts.find(p => p.port === targetPort && p.state === 'LISTENING')
+      ?? allPorts.find(p => p.port === targetPort)
+    if (!portInfo) return null
+
+    // Sibling ports (same PID, different port)
+    const siblingPorts = allPorts.filter(p => p.pid === portInfo.pid && p.port !== targetPort)
+
+    // Connections: all entries for this port across all states
+    const connections: PortConnection[] = allPorts
+      .filter(p => p.port === targetPort)
+      .map(p => {
+        const isInbound = p.state === 'LISTENING' || (p.localAddress.includes(`:${targetPort}`))
+        return {
+          localAddress: p.localAddress,
+          foreignAddress: p.foreignAddress,
+          state: p.state,
+          foreignProcessName: undefined,
+          direction: isInbound ? 'inbound' as const : 'outbound' as const
+        }
+      })
+
+    // Try to get extended process info via the process scanner
+    let process: ProcessInfoExtended | null = null
+    let processChildren: ProcessInfo[] = []
+
+    if (processScanner) {
+      try {
+        const rel = await processScanner.getFullRelationship(portInfo.pid)
+        if (rel) {
+          process = rel.self
+          processChildren = rel.children
+        }
+      } catch {
+        // Process scanner unavailable, return basic info
+      }
+    }
+
+    return {
+      port: portInfo,
+      process,
+      siblingPorts,
+      connections,
+      processChildren
+    }
   }
 
   getCommonDevPorts(): readonly number[] {

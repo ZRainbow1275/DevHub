@@ -31,11 +31,17 @@
 [data-theme-transitioning] *::after {
   transition:
     background-color var(--duration-theme) var(--ease-in-out),
+    background var(--duration-theme) var(--ease-in-out),
     color var(--duration-theme) var(--ease-in-out),
     border-color var(--duration-theme) var(--ease-in-out),
+    border-radius var(--duration-theme) var(--ease-in-out),
     box-shadow var(--duration-theme) var(--ease-in-out),
+    padding var(--duration-theme) var(--ease-in-out),
+    gap var(--duration-theme) var(--ease-in-out),
     fill var(--duration-theme) var(--ease-in-out),
-    stroke var(--duration-theme) var(--ease-in-out) !important;
+    stroke var(--duration-theme) var(--ease-in-out),
+    letter-spacing var(--duration-theme) var(--ease-in-out),
+    font-weight var(--duration-theme) var(--ease-in-out) !important;
 }
 
 /* ========================================
@@ -305,4 +311,476 @@
 
 .hover-bar:hover::before {
   height: 100%;
+}
+
+/* ========================================
+   Theme-Aware Card Enter Animations
+   Each theme has a distinct entry style.
+   ======================================== */
+
+/* Constructivism: mechanical slide from left */
+@keyframes card-enter-constructivism {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Modern Light: elastic scale up */
+@keyframes card-enter-modern {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Warm Light: gentle rise with blur */
+@keyframes card-enter-warm {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+    filter: blur(4px);
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+[data-theme="constructivism"] .card-enter {
+  animation: card-enter-constructivism var(--motion-duration-normal, 250ms) var(--motion-easing, linear);
+}
+
+[data-theme="modern-light"] .card-enter {
+  animation: card-enter-modern var(--motion-duration-normal, 200ms) var(--motion-easing, cubic-bezier(0.2, 0, 0, 1));
+}
+
+[data-theme="warm-light"] .card-enter {
+  animation: card-enter-warm var(--motion-duration-slow, 500ms) var(--motion-easing, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+/* ========================================
+   Theme-Aware Panel Enter Animations
+   ======================================== */
+
+/* Constructivism: diagonal mechanical slide */
+@keyframes panel-enter-constructivism {
+  from {
+    transform: translate(-20px, 10px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+}
+
+/* Modern Light: smooth scale from center */
+@keyframes panel-enter-modern {
+  from {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Warm Light: gentle float up with blur */
+@keyframes panel-enter-warm {
+  from {
+    transform: translateY(15px);
+    opacity: 0;
+    filter: blur(6px);
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+[data-theme="constructivism"] .panel-enter-themed {
+  animation: panel-enter-constructivism var(--motion-duration-slow, 400ms) var(--motion-easing, linear);
+}
+
+[data-theme="modern-light"] .panel-enter-themed {
+  animation: panel-enter-modern var(--motion-duration-normal, 200ms) var(--motion-easing, cubic-bezier(0.2, 0, 0, 1));
+}
+
+[data-theme="warm-light"] .panel-enter-themed {
+  animation: panel-enter-warm var(--motion-duration-slow, 500ms) var(--motion-easing, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+/* ========================================
+   Theme-Aware Button Hover Effects
+   Applied via CSS variables; no JS needed.
+   ======================================== */
+
+.btn-hover-themed {
+  transition: transform var(--motion-duration-fast, 150ms) var(--motion-easing, linear),
+              box-shadow var(--motion-duration-fast, 150ms) var(--motion-easing, linear);
+}
+
+.btn-hover-themed:hover {
+  transform: var(--motion-hover, translateX(2px));
+}
+
+.btn-hover-themed:active {
+  transform: scale(0.98);
+}
+
+/* ========================================
+   Theme-Aware Dialog Animations
+   ======================================== */
+
+@keyframes dialog-enter-constructivism {
+  from {
+    transform: translate(-10px, -10px) scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes dialog-enter-modern {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes dialog-enter-warm {
+  from {
+    transform: translateY(20px) scale(0.98);
+    opacity: 0;
+    filter: blur(4px);
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+[data-theme="constructivism"] .dialog-enter-themed {
+  animation: dialog-enter-constructivism var(--motion-duration-slow, 400ms) var(--motion-easing, linear);
+}
+
+[data-theme="modern-light"] .dialog-enter-themed {
+  animation: dialog-enter-modern var(--motion-duration-normal, 200ms) var(--motion-easing, cubic-bezier(0.2, 0, 0, 1));
+}
+
+[data-theme="warm-light"] .dialog-enter-themed {
+  animation: dialog-enter-warm var(--motion-duration-slow, 500ms) var(--motion-easing, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+/* ========================================
+   Theme-Aware Status Indicators
+   ======================================== */
+
+/* Constructivism: square LED blink */
+[data-theme="constructivism"] .status-dot {
+  border-radius: 2px;
+}
+
+/* Modern Light: round with subtle glow */
+[data-theme="modern-light"] .status-dot-running {
+  box-shadow: 0 0 6px var(--success);
+}
+
+/* Warm Light: soft organic pulse */
+@keyframes status-breathe-warm {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.15);
+  }
+}
+
+[data-theme="warm-light"] .status-dot-running {
+  animation: status-breathe-warm 3s ease-in-out infinite;
+}
+
+/* ========================================
+   Theme-Aware Progress Bar Fills
+   ======================================== */
+
+/* Constructivism: striped industrial fill */
+[data-theme="constructivism"] .progress-bar-fill {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--red-500),
+    var(--red-500) 8px,
+    var(--gold-500) 8px,
+    var(--gold-500) 16px
+  );
+}
+
+/* Modern Light: smooth gradient with shine sweep */
+@keyframes progress-shine {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+
+[data-theme="modern-light"] .progress-bar-fill {
+  background: linear-gradient(
+    90deg,
+    var(--red-500),
+    var(--red-400),
+    var(--red-500)
+  );
+  background-size: 200% 100%;
+  animation: progress-shine 2s ease-in-out infinite;
+  border-radius: var(--radius-badge, 999px);
+}
+
+[data-theme="modern-light"] .progress-bar {
+  border-radius: var(--radius-badge, 999px);
+}
+
+/* Warm Light: soft gradient with gentle pulse */
+@keyframes progress-pulse-warm {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
+[data-theme="warm-light"] .progress-bar-fill {
+  background: linear-gradient(
+    90deg,
+    var(--red-400),
+    var(--gold-400)
+  );
+  border-radius: var(--radius-badge, 999px);
+  animation: progress-pulse-warm 2.5s ease-in-out infinite;
+}
+
+[data-theme="warm-light"] .progress-bar {
+  border-radius: var(--radius-badge, 999px);
+}
+
+/* ========================================
+   Cyberpunk Theme — Neon Animations
+   ======================================== */
+
+/* Scanline sweep effect */
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+/* Glitch flicker effect (used sparingly) */
+@keyframes glitch-flicker {
+  0%, 100% { opacity: 1; }
+  32% { opacity: 1; }
+  33% { opacity: 0.8; transform: translateX(2px); }
+  34% { opacity: 1; transform: translateX(0); }
+  66% { opacity: 1; }
+  67% { opacity: 0.9; transform: translateX(-1px); }
+  68% { opacity: 1; transform: translateX(0); }
+}
+
+/* Neon border pulse */
+@keyframes neon-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(0, 255, 255, 0.1), 0 0 2px rgba(0, 255, 255, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.2), 0 0 4px rgba(0, 255, 255, 0.3);
+  }
+}
+
+/* Cyberpunk text glow */
+@keyframes text-glow {
+  0%, 100% {
+    text-shadow: 0 0 4px rgba(0, 255, 255, 0.3);
+  }
+  50% {
+    text-shadow: 0 0 8px rgba(0, 255, 255, 0.5), 0 0 16px rgba(0, 255, 255, 0.2);
+  }
+}
+
+/* Cyberpunk card enter — slide up with glow */
+@keyframes card-enter-cyberpunk {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+    box-shadow: 0 0 0 rgba(0, 255, 255, 0);
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+    box-shadow: 0 0 8px rgba(0, 255, 255, 0.1);
+  }
+}
+
+/* Cyberpunk panel enter — scale with glow */
+@keyframes panel-enter-cyberpunk {
+  from {
+    transform: scale(0.97);
+    opacity: 0;
+    box-shadow: 0 0 0 rgba(0, 255, 255, 0);
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.15);
+  }
+}
+
+/* Cyberpunk dialog enter — glitch in */
+@keyframes dialog-enter-cyberpunk {
+  0% {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.01) translateX(1px);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1) translateX(0);
+    opacity: 1;
+  }
+}
+
+[data-theme="cyberpunk"] .card-enter {
+  animation: card-enter-cyberpunk var(--motion-duration-normal, 250ms) var(--motion-easing);
+}
+
+[data-theme="cyberpunk"] .panel-enter-themed {
+  animation: panel-enter-cyberpunk var(--motion-duration-normal, 250ms) var(--motion-easing);
+}
+
+[data-theme="cyberpunk"] .dialog-enter-themed {
+  animation: dialog-enter-cyberpunk var(--motion-duration-normal, 250ms) var(--motion-easing);
+}
+
+/* Cyberpunk status indicator — neon glow pulse */
+[data-theme="cyberpunk"] .status-dot {
+  border-radius: 4px;
+}
+
+[data-theme="cyberpunk"] .status-dot-running {
+  box-shadow: 0 0 8px var(--success);
+  animation: neon-pulse 2s ease-in-out infinite;
+}
+
+/* Cyberpunk progress bar — neon gradient */
+[data-theme="cyberpunk"] .progress-bar-fill {
+  background: linear-gradient(
+    90deg,
+    var(--red-500),
+    var(--gold-500),
+    var(--red-500)
+  );
+  background-size: 200% 100%;
+  animation: progress-shine 2s ease-in-out infinite;
+}
+
+/* Cyberpunk heading glow */
+[data-theme="cyberpunk"] .text-display,
+[data-theme="cyberpunk"] .text-display-sm {
+  text-shadow: 0 0 6px rgba(0, 255, 255, 0.3);
+}
+
+/* ========================================
+   Swiss Minimal Theme — Pure functional
+   ======================================== */
+
+/* Swiss card enter — minimal fade */
+@keyframes card-enter-swiss {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Swiss panel enter — clean fade */
+@keyframes panel-enter-swiss {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Swiss dialog enter — simple fade */
+@keyframes dialog-enter-swiss {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+[data-theme="swiss"] .card-enter {
+  animation: card-enter-swiss var(--motion-duration-normal, 150ms) var(--motion-easing, ease);
+}
+
+[data-theme="swiss"] .panel-enter-themed {
+  animation: panel-enter-swiss var(--motion-duration-normal, 150ms) var(--motion-easing, ease);
+}
+
+[data-theme="swiss"] .dialog-enter-themed {
+  animation: dialog-enter-swiss var(--motion-duration-normal, 150ms) var(--motion-easing, ease);
+}
+
+/* Swiss status indicator — minimal */
+[data-theme="swiss"] .status-dot {
+  border-radius: 0;
+}
+
+[data-theme="swiss"] .status-dot-running {
+  box-shadow: none;
+  animation: none;
+}
+
+/* Swiss progress bar — monochrome */
+[data-theme="swiss"] .progress-bar-fill {
+  background: var(--red-500);
+  border-radius: 0;
+  animation: none;
+}
+
+[data-theme="swiss"] .progress-bar {
+  border-radius: 0;
+}
+
+/* Swiss — no decorative animations */
+[data-theme="swiss"] .gear-spin,
+[data-theme="swiss"] .lightning-pulse {
+  animation: none;
+}
+
+/* Swiss — no hover transform */
+[data-theme="swiss"] .hover-lift:hover {
+  transform: none;
+}
+
+[data-theme="swiss"] .hover-bar::before {
+  display: none;
 }

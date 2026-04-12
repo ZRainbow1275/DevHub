@@ -1,5 +1,6 @@
 /* Import Token System - must be before @tailwind */
 @import './tokens/colors.css';
+@import './tokens/theme-tokens.css';
 @import './tokens/typography.css';
 @import './tokens/animations.css';
 
@@ -15,12 +16,21 @@
   body {
     @apply bg-surface-950 text-text-primary antialiased;
     font-family: var(--font-sans);
-    letter-spacing: var(--body-tracking, 0);
+    letter-spacing: var(--typo-body-spacing, 0);
+    line-height: var(--line-height-body-theme, 1.5);
   }
 
   * {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Theme-aware heading styles applied at base layer */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--typo-heading-family, var(--font-display));
+    letter-spacing: var(--typo-heading-spacing, 0);
+    text-transform: var(--typo-heading-transform, none);
+    font-weight: var(--typo-heading-weight, 700);
   }
 }
 
@@ -110,51 +120,56 @@
 }
 
 /* ========================================
-   Button Components - Constructivist
+   Button Components - Theme-Aware
    ======================================== */
 
 .btn-primary {
-  @apply relative overflow-hidden bg-accent text-white px-5 py-2.5 font-semibold;
-  @apply transition-all duration-200;
+  @apply relative overflow-hidden bg-accent text-white px-5 py-2.5;
+  font-weight: var(--typo-heading-weight, 700);
+  transition: all var(--motion-duration-fast, 150ms) var(--motion-easing, linear);
   @apply hover:bg-accent-400;
   @apply active:bg-accent-600;
   @apply disabled:opacity-50 disabled:cursor-not-allowed;
-  border-radius: var(--radius-sm);
-  border-left: var(--border-width-thick) solid var(--gold-500);
+  border-radius: var(--radius-button, 2px);
+  border-left: var(--deco-accent-bar-width, 3px) var(--deco-accent-bar-style, solid) var(--gold-500);
 }
 
 .btn-primary:hover {
-  transform: translateX(2px);
+  transform: var(--motion-hover, translateX(2px));
 }
 
 .btn-primary:active {
-  transform: translateX(0);
+  transform: scale(0.98);
 }
 
 .btn-secondary {
   @apply bg-transparent border border-surface-600 text-text-secondary px-5 py-2.5 font-semibold;
-  @apply transition-all duration-200;
+  transition: all var(--motion-duration-fast, 150ms) var(--motion-easing, linear);
   @apply hover:bg-surface-700 hover:border-surface-500 hover:text-text-primary;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-button, 2px);
+}
+
+.btn-secondary:hover {
+  transform: var(--motion-hover, translateX(2px));
 }
 
 .btn-ghost {
   @apply text-text-tertiary px-4 py-2.5;
-  @apply transition-all duration-200;
+  transition: all var(--motion-duration-fast, 150ms) var(--motion-easing, linear);
   @apply hover:bg-surface-800 hover:text-text-primary;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-button, 2px);
 }
 
 .btn-icon {
   @apply w-8 h-8 flex items-center justify-center;
   @apply text-text-secondary;
-  @apply transition-all duration-200;
+  transition: all var(--motion-duration-fast, 150ms) var(--motion-easing, linear);
   @apply hover:bg-surface-700 hover:text-text-primary;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-button, 2px);
 }
 
 .btn-icon:hover {
-  transform: scale(1.1);
+  transform: var(--motion-hover, scale(1.1));
 }
 
 .btn-icon:active {
@@ -164,42 +179,48 @@
 .btn-icon-sm {
   @apply w-7 h-7 flex items-center justify-center;
   @apply text-text-secondary;
-  @apply transition-all duration-200;
+  transition: all var(--motion-duration-fast, 150ms) var(--motion-easing, linear);
   @apply hover:bg-surface-700 hover:text-text-primary;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-button, 2px);
 }
 
 .btn-danger {
   @apply bg-transparent text-error border px-4 py-2 font-semibold;
   border-color: color-mix(in srgb, var(--error) 50%, transparent);
-  @apply transition-all duration-200;
+  transition: all var(--motion-duration-fast, 150ms) var(--motion-easing, linear);
   @apply hover:bg-error hover:text-white hover:border-error;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-button, 2px);
 }
 
 .btn-success {
   @apply bg-transparent text-success border px-4 py-2 font-semibold;
   border-color: color-mix(in srgb, var(--success) 50%, transparent);
-  @apply transition-all duration-200;
+  transition: all var(--motion-duration-fast, 150ms) var(--motion-easing, linear);
   @apply hover:bg-success hover:text-white hover:border-success;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-button, 2px);
 }
 
 /* ========================================
-   Card Components - Industrial
+   Card Components - Theme-Aware
    ======================================== */
 
 .card {
-  @apply bg-surface-800 border border-surface-700;
-  @apply transition-all duration-200;
-  border-radius: var(--radius-md);
-  border-left: var(--border-width-thick) solid transparent;
+  @apply bg-surface-800;
+  padding: var(--space-card-padding, 12px 16px);
+  border: var(--border-card, 1px solid var(--surface-700));
+  transition: all var(--motion-duration-normal, 250ms) var(--motion-easing, linear);
+  border-radius: var(--radius-card, 2px);
+  border-left: var(--deco-accent-bar-width, 3px) var(--deco-accent-bar-style, solid) transparent;
   box-shadow: var(--shadow-card);
+  clip-path: var(--deco-clip-card, none);
+  min-height: var(--density-card-min-height, 60px);
 }
 
 .card:hover {
   @apply border-surface-600;
   border-left-color: var(--gold-500);
+  box-shadow: var(--shadow-card-hover);
+  transform: var(--motion-hover, translateX(2px));
 }
 
 .card-active {
@@ -217,16 +238,22 @@
 
 /* Monitor Card */
 .monitor-card {
-  @apply relative bg-surface-800 border border-surface-700 p-4;
-  @apply transition-all duration-200;
-  border-radius: var(--radius-md);
-  border-left: var(--border-width-thick) solid transparent;
+  @apply relative bg-surface-800;
+  padding: var(--space-card-padding, 12px 16px);
+  border: var(--border-card, 1px solid var(--surface-700));
+  transition: all var(--motion-duration-normal, 250ms) var(--motion-easing, linear);
+  border-radius: var(--radius-card, 2px);
+  border-left: var(--deco-accent-bar-width, 3px) var(--deco-accent-bar-style, solid) transparent;
   box-shadow: var(--shadow-card);
+  clip-path: var(--deco-clip-card, none);
+  min-height: var(--density-card-min-height, 60px);
 }
 
 .monitor-card:hover {
-  @apply bg-surface-750 border-surface-600;
+  @apply bg-surface-750;
   border-left-color: var(--gold-500);
+  box-shadow: var(--shadow-card-hover);
+  transform: var(--motion-hover, translateX(2px));
 }
 
 .monitor-card-selected {
@@ -235,13 +262,14 @@
 }
 
 /* ========================================
-   Status Badges - Trapezoid Style
+   Status Badges - Theme-Aware
    ======================================== */
 
 .status-badge {
   @apply inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold;
-  @apply transition-all duration-200;
-  clip-path: polygon(0 0, 100% 0, 95% 100%, 0 100%);
+  transition: all var(--motion-duration-fast, 150ms) var(--motion-easing, linear);
+  border-radius: var(--radius-badge, 0px);
+  clip-path: var(--deco-clip-card, polygon(0 0, 100% 0, 95% 100%, 0 100%));
 }
 
 .status-badge-running {
@@ -277,15 +305,15 @@
 }
 
 /* ========================================
-   Input Components - Underline Style
+   Input Components - Theme-Aware
    ======================================== */
 
 .input {
   @apply bg-surface-900 border-0 border-b-2 border-b-surface-600 px-4 py-2.5;
   @apply text-text-primary placeholder:text-text-muted;
-  @apply transition-all duration-200;
+  transition: all var(--motion-duration-fast, 150ms) var(--motion-easing, linear);
   @apply focus:border-b-accent focus:outline-none;
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border-radius: var(--radius-input, 2px) var(--radius-input, 2px) 0 0;
 }
 
 .input:focus {
@@ -295,19 +323,19 @@
 .input-sm {
   @apply bg-surface-900 border-0 border-b-2 border-b-surface-600 px-3 py-2;
   @apply text-sm text-text-primary placeholder:text-text-muted;
-  @apply transition-all duration-200;
+  transition: all var(--motion-duration-fast, 150ms) var(--motion-easing, linear);
   @apply focus:border-b-accent focus:outline-none;
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border-radius: var(--radius-input, 2px) var(--radius-input, 2px) 0 0;
 }
 
 /* ========================================
-   Tag Components
+   Tag Components - Theme-Aware
    ======================================== */
 
 .tag {
   @apply inline-flex items-center px-2.5 py-1 text-xs font-medium;
-  @apply transition-all duration-150;
-  border-radius: var(--radius-sm);
+  transition: all var(--motion-duration-fast, 150ms) var(--motion-easing, linear);
+  border-radius: var(--radius-badge, 0px);
 }
 
 .tag-default {
@@ -336,8 +364,9 @@ input[type="checkbox"] {
   @apply checked:bg-accent checked:border-accent;
   @apply focus:ring-2 focus:ring-offset-0;
   --tw-ring-color: color-mix(in srgb, var(--red-500) 30%, transparent);
-  @apply cursor-pointer relative transition-all duration-150;
-  border-radius: var(--radius-sm);
+  @apply cursor-pointer relative;
+  transition: all var(--motion-duration-fast, 150ms) var(--motion-easing, linear);
+  border-radius: var(--radius-button, 2px);
 }
 
 input[type="checkbox"]:checked::after {
@@ -367,9 +396,9 @@ input[type="checkbox"]:checked:hover {
 select {
   @apply bg-surface-900 border-0 border-b-2 border-b-surface-600 px-4 py-2.5 pr-10;
   @apply text-text-primary cursor-pointer;
-  @apply transition-all duration-200;
+  transition: all var(--motion-duration-fast, 150ms) var(--motion-easing, linear);
   @apply focus:border-b-accent focus:outline-none;
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border-radius: var(--radius-input, 2px) var(--radius-input, 2px) 0 0;
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%238a8279' stroke-linecap='square' stroke-linejoin='miter' stroke-width='2' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
   background-position: right 0.75rem center;
   background-repeat: no-repeat;
@@ -408,8 +437,23 @@ select option {
 }
 
 /* ========================================
-   Monitor Container Query Infrastructure
+   Container Query Infrastructure
    ======================================== */
+
+.panel-container {
+  container-type: inline-size;
+  container-name: panel;
+}
+
+.sidebar-container {
+  container-type: inline-size;
+  container-name: sidebar;
+}
+
+.main-content {
+  container-type: inline-size;
+  container-name: main;
+}
 
 .monitor-content {
   container-type: inline-size;
@@ -417,24 +461,119 @@ select option {
 }
 
 /* ========================================
-   Hero Number Display
+   Responsive Auto Grid — Container Query Based
+   ======================================== */
+
+.auto-grid {
+  display: grid;
+  gap: calc(var(--density-grid-gap, 8px) * 2);
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(280px, 1fr)
+  );
+}
+
+/* Container Query Precise Card Grid */
+.card-grid {
+  display: grid;
+  gap: var(--density-grid-gap, 8px);
+}
+
+@container panel (width < 600px) {
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@container panel (600px <= width < 900px) {
+  .card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@container panel (900px <= width < 1200px) {
+  .card-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@container panel (width >= 1200px) {
+  .card-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Monitor container card grids */
+@container monitor (width < 600px) {
+  .monitor-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@container monitor (600px <= width < 900px) {
+  .monitor-card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@container monitor (900px <= width < 1200px) {
+  .monitor-card-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@container monitor (width >= 1200px) {
+  .monitor-card-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ========================================
+   Responsive View Switching — Monitor Container
+   Shows/hides elements based on container width
+   ======================================== */
+
+.monitor-show-xl { display: none; }
+.monitor-show-lg { display: none; }
+
+@container monitor (width >= 1200px) {
+  .monitor-show-xl { display: block; }
+  .monitor-hide-xl { display: none; }
+}
+
+@container monitor (width >= 900px) {
+  .monitor-show-lg { display: block; }
+  .monitor-hide-lg { display: none; }
+}
+
+@container monitor (width < 600px) {
+  .monitor-hide-sm { display: none; }
+}
+
+/* ========================================
+   Hero Number Display - Theme-Aware
    ======================================== */
 
 .hero-number {
-  @apply flex flex-col items-center justify-center p-4;
-  border-bottom: 2px solid var(--surface-600);
+  @apply flex flex-col items-center justify-center;
+  padding: var(--space-card-padding, 12px 16px);
+  border-bottom: var(--deco-divider-height, 2px) solid var(--surface-600);
 }
 
 .hero-number-value {
-  font-family: var(--font-display);
+  font-family: var(--typo-heading-family, var(--font-display));
   font-size: clamp(36px, 5cqi, 56px);
   line-height: 1.2;
   @apply text-text-primary;
   font-variant-numeric: tabular-nums;
+  text-transform: var(--typo-heading-transform, uppercase);
+  letter-spacing: var(--typo-heading-spacing, 0.1em);
 }
 
 .hero-number-label {
-  @apply text-xs text-text-muted uppercase tracking-wider mt-1;
+  @apply text-xs text-text-muted mt-1;
+  text-transform: var(--typo-heading-transform, uppercase);
+  letter-spacing: var(--typo-heading-spacing, 0.1em);
 }
 
 .hero-number-accent {
@@ -449,7 +588,28 @@ select option {
   border-bottom-color: var(--error);
 }
 
-/* Hero responsive — container queries */
+/* Hero Stats responsive grid */
+.hero-stats-grid {
+  display: flex;
+  align-items: stretch;
+}
+
+@container panel (width < 200px) {
+  .hero-stats-grid {
+    flex-direction: column;
+  }
+  .hero-number {
+    padding: 4px;
+  }
+  .hero-number-value {
+    font-size: clamp(14px, 6cqi, 20px);
+  }
+  .hero-number-label {
+    font-size: 10px;
+  }
+}
+
+/* Hero responsive — container queries (monitor context) */
 @container monitor (width < 800px) {
   .hero-number-value {
     font-size: clamp(24px, 4cqi, 36px);
@@ -469,13 +629,13 @@ select option {
 }
 
 /* ========================================
-   Stat Grid — Container Query Layout
+   Stat Grid — Container Query Layout - Theme-Aware
    ======================================== */
 
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
+  gap: var(--density-grid-gap, 8px);
 }
 
 @container monitor (width < 800px) {
@@ -575,7 +735,7 @@ select option {
 }
 
 /* ========================================
-   Dialog / Modal
+   Dialog / Modal - Theme-Aware
    ======================================== */
 
 .backdrop {
@@ -584,18 +744,22 @@ select option {
 }
 
 .dialog {
-  @apply bg-surface-900 border border-surface-700;
+  @apply bg-surface-900;
+  border: var(--border-card, 1px solid var(--surface-700));
   @apply max-h-[85vh] overflow-hidden;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-card, 2px);
   box-shadow: var(--shadow-elevated);
+  clip-path: var(--deco-clip-card, none);
 }
 
 /* ========================================
-   Dividers
+   Dividers - Theme-Aware
    ======================================== */
 
 .divider {
-  @apply border-t border-surface-700;
+  height: var(--deco-divider-height, 1px);
+  background: var(--deco-divider, var(--surface-700));
+  border: none;
 }
 
 .divider-vertical {
@@ -603,27 +767,33 @@ select option {
 }
 
 .divider-accent {
-  @apply border-t-2 border-accent;
+  height: var(--deco-divider-height, 2px);
+  background: var(--deco-divider, var(--red-500));
+  border: none;
 }
 
 /* Diagonal Divider */
 .divider-diagonal {
-  height: 2px;
-  background: linear-gradient(
+  height: var(--deco-divider-height, 2px);
+  background: var(--deco-divider, linear-gradient(
     -12deg,
     transparent 45%,
     var(--surface-600) 45%,
     var(--surface-600) 55%,
     transparent 55%
-  );
+  ));
 }
 
 /* ========================================
-   Section Headers
+   Section Headers - Theme-Aware
    ======================================== */
 
 .section-header {
-  @apply flex items-center gap-2 px-4 text-xs font-bold text-text-muted uppercase tracking-wider;
+  @apply flex items-center gap-2 px-4 text-xs text-text-muted;
+  font-family: var(--typo-heading-family, var(--font-display));
+  font-weight: var(--typo-heading-weight, 800);
+  text-transform: var(--typo-heading-transform, uppercase);
+  letter-spacing: var(--typo-heading-spacing, 0.1em);
 }
 
 .section-header-bar {
@@ -636,21 +806,21 @@ select option {
   left: 0;
   top: 50%;
   transform: translateY(-50%);
-  width: var(--border-width-thick);
+  width: var(--deco-accent-bar-width, 3px);
   height: 16px;
   background: var(--red-500);
 }
 
 /* ========================================
-   Nav Items
+   Nav Items - Theme-Aware
    ======================================== */
 
 .nav-item {
   @apply relative w-full px-4 py-2.5 text-left flex items-center gap-3 text-sm;
-  @apply transition-all duration-200;
+  transition: all var(--motion-duration-fast, 150ms) var(--motion-easing, linear);
   @apply text-text-tertiary hover:bg-surface-800 hover:text-text-secondary;
   border-radius: 0;
-  border-left: var(--border-width-thick) solid transparent;
+  border-left: var(--deco-accent-bar-width, 3px) var(--deco-accent-bar-style, solid) transparent;
 }
 
 .nav-item:hover {
@@ -664,14 +834,14 @@ select option {
 }
 
 /* ========================================
-   Tab Navigation
+   Tab Navigation - Theme-Aware
    ======================================== */
 
 .tab {
   @apply flex items-center gap-2 px-4 py-2 text-sm font-medium;
-  @apply transition-all duration-200;
+  transition: all var(--motion-duration-fast, 150ms) var(--motion-easing, linear);
   @apply text-text-muted hover:bg-surface-700 hover:text-text-secondary;
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border-radius: var(--radius-button, 2px) var(--radius-button, 2px) 0 0;
   border-bottom: var(--border-width-default) solid transparent;
 }
 
@@ -682,36 +852,39 @@ select option {
 }
 
 /* ========================================
-   Progress Bar
+   Progress Bar - Theme-Aware
    ======================================== */
 
 .progress-bar {
   @apply h-2 bg-surface-700 overflow-hidden;
-  border-radius: 0;
+  border-radius: var(--radius-badge, 0px);
 }
 
 .progress-bar-fill {
-  @apply h-full transition-all duration-300;
+  @apply h-full;
+  transition: all var(--motion-duration-normal, 250ms) var(--motion-easing, linear);
   background: linear-gradient(90deg, var(--red-500), var(--gold-500));
 }
 
 /* ========================================
-   Tooltip
+   Tooltip - Theme-Aware
    ======================================== */
 
 .tooltip {
   @apply absolute z-50 px-3 py-1.5 text-xs font-medium;
-  @apply bg-surface-800 text-text-primary border border-surface-600;
-  border-radius: var(--radius-sm);
+  @apply bg-surface-800 text-text-primary;
+  border: var(--border-card, 1px solid var(--surface-600));
+  border-radius: var(--radius-button, 2px);
   box-shadow: var(--shadow-elevated);
 }
 
 /* ========================================
-   Action Group (hover reveal)
+   Action Group (hover reveal) - Theme-Aware
    ======================================== */
 
 .action-group {
-  @apply flex items-center gap-1 opacity-0 transition-all duration-200;
+  @apply flex items-center gap-1 opacity-0;
+  transition: all var(--motion-duration-normal, 250ms) var(--motion-easing, linear);
   transform: translateX(8px);
 }
 
@@ -722,18 +895,90 @@ select option {
 }
 
 /* ========================================
-   Metric Display (Process/Port cards)
+   Metric Display (Process/Port cards) - Theme-Aware
    ======================================== */
 
 .metric-display {
   @apply flex flex-col items-center justify-center p-2 min-w-0;
   background-color: color-mix(in srgb, var(--surface-900) 50%, transparent);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-button, 2px);
 }
 
 .metric-display span {
   @apply max-w-full text-center;
   overflow-wrap: break-word;
   word-break: break-all;
+}
+
+/* ========================================
+   Panel Splitter
+   ======================================== */
+
+.panel-splitter {
+  flex-shrink: 0;
+  background: var(--surface-800);
+  position: relative;
+  z-index: 5;
+  transition: background-color var(--motion-duration-fast, 150ms) var(--motion-easing, linear);
+}
+
+.panel-splitter::after {
+  content: '';
+  position: absolute;
+  background: transparent;
+  transition: background-color var(--motion-duration-fast, 150ms);
+}
+
+.panel-splitter--horizontal {
+  width: 4px;
+  cursor: col-resize;
+}
+
+.panel-splitter--horizontal::after {
+  top: 0;
+  left: -3px;
+  right: -3px;
+  bottom: 0;
+}
+
+.panel-splitter--vertical {
+  height: 4px;
+  cursor: row-resize;
+}
+
+.panel-splitter--vertical::after {
+  left: 0;
+  top: -3px;
+  bottom: -3px;
+  right: 0;
+}
+
+.panel-splitter:hover,
+.panel-splitter--dragging {
+  background: var(--red-500);
+}
+
+.panel-splitter--dragging {
+  opacity: 0.8;
+}
+
+/* ========================================
+   Sidebar Collapse/Expand Transition
+   ======================================== */
+
+.sidebar-transition {
+  transition: width var(--motion-duration-normal, 250ms) var(--motion-easing, linear),
+              min-width var(--motion-duration-normal, 250ms) var(--motion-easing, linear);
+  overflow: hidden;
+}
+
+.sidebar-collapsed {
+  width: 48px;
+  min-width: 48px;
+}
+
+.sidebar-expanded {
+  width: var(--sidebar-width, 224px);
+  min-width: var(--sidebar-width, 224px);
 }
 

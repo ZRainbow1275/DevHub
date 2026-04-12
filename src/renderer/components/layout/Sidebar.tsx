@@ -69,8 +69,8 @@ export function Sidebar({ onSettingsClick }: SidebarProps) {
     <aside
       className={`
         bg-surface-900 border-r-2 border-surface-700 flex flex-col h-full relative
-        transition-all duration-300 ease-out animate-sidebar-enter
-        ${collapsed ? 'w-14' : 'w-56'}
+        sidebar-transition animate-sidebar-enter
+        ${collapsed ? 'sidebar-collapsed' : 'sidebar-expanded'}
       `}
     >
       {/* Collapse Toggle Button */}

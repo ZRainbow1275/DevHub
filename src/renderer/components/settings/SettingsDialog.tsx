@@ -52,9 +52,11 @@ const CATEGORIES: CategoryDef[] = [
 ]
 
 const THEMES: { key: ThemeName; name: string; desc: string; colors: [string, string, string] }[] = [
-  { key: 'constructivism', name: '构成主义', desc: '暗色·红金·工业', colors: ['#1a1814', '#d64545', '#c9a227'] },
-  { key: 'modern-light', name: '现代明亮', desc: '亮色·蓝白·专业', colors: ['#f8f9fa', '#3b82f6', '#f59e0b'] },
-  { key: 'warm-light', name: '暖光', desc: '亮色·铜金·温暖', colors: ['#faf8f5', '#b85c38', '#c9a227'] },
+  { key: 'constructivism', name: '构成主义', desc: '暗色·红金·工业·紧凑', colors: ['#1a1814', '#d64545', '#c9a227'] },
+  { key: 'cyberpunk', name: '赛博朋克', desc: '暗色·霓虹·发光·未来', colors: ['#0a0a12', '#00ffff', '#ff00aa'] },
+  { key: 'swiss', name: '瑞士极简', desc: '亮色·黑白·方角·克制', colors: ['#ffffff', '#1a1a1a', '#ff0000'] },
+  { key: 'modern-light', name: '现代明亮', desc: '亮色·蓝白·圆角·专业', colors: ['#f8f9fa', '#3b82f6', '#f59e0b'] },
+  { key: 'warm-light', name: '暖光', desc: '亮色·铜金·柔和·温暖', colors: ['#faf8f5', '#b85c38', '#c9a227'] },
 ]
 
 // ============ Props ============
@@ -91,14 +93,19 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
   }, [isOpen])
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingUpdatesRef = useRef<Partial<AppSettings>>({})
   const handleSave = useCallback(async (updates: Partial<AppSettings>): Promise<void> => {
     const devhub = window.devhub
-    if (!devhub?.settings?.update || !settings) return
+    if (!devhub?.settings?.update) return
+    // Merge pending updates to avoid lost writes when debouncing
+    pendingUpdatesRef.current = { ...pendingUpdatesRef.current, ...updates }
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     return new Promise<void>((resolve) => {
       saveTimerRef.current = setTimeout(async () => {
+        const merged = pendingUpdatesRef.current
+        pendingUpdatesRef.current = {}
         try {
-          const updated = await devhub.settings.update(updates)
+          const updated = await devhub.settings.update(merged)
           setSettings(updated)
         } catch (error) {
           console.error('Failed to save settings:', error)
@@ -107,7 +114,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
         }
       }, 300)
     })
-  }, [settings])
+  }, [])
 
   const handleResetDefaults = useCallback(async () => {
     const devhub = window.devhub

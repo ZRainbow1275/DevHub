@@ -56,7 +56,7 @@ export interface AppConfig {
   settings: AppSettings
 }
 
-export type ThemeOption = 'constructivism' | 'modern-light' | 'warm-light' | 'dark' | 'light'
+export type ThemeOption = 'constructivism' | 'modern-light' | 'warm-light' | 'cyberpunk' | 'swiss' | 'dark' | 'light'
 export type FontSize = 'small' | 'medium' | 'large'
 export type SidebarPosition = 'left' | 'right'
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error'

@@ -1,297 +1,288 @@
-import { useCallback, useMemo, useEffect, useRef } from 'react'
-import {
-  ReactFlow,
-  Background,
-  Controls,
-  useNodesState,
-  useEdgesState,
-  BackgroundVariant
-} from '@xyflow/react'
-import type { NodeMouseHandler } from '@xyflow/react'
-import dagre from '@dagrejs/dagre'
-import '@xyflow/react/dist/style.css'
+/**
+ * TopologyView — Process/Port/Window neural relationship graph.
+ *
+ * Replaces the previous dagre + ReactFlow implementation with a d3-force
+ * powered NeuralGraph that shows live, animated relationships.
+ */
 
-import { useProcessTopology } from '../../hooks/useProcessTopology'
-import type { TopologyGraphNode, TopologyGraphEdge } from '../../hooks/useProcessTopology'
-import { ProcessNode } from './topology/ProcessNode'
-import { PortNode } from './topology/PortNode'
-import { WindowNode } from './topology/WindowNode'
-import { ProjectNode } from './topology/ProjectNode'
-import { TopologyEdge } from './topology/TopologyEdge'
+import { useMemo, useCallback, useState, useEffect, useRef } from 'react'
+import { useProcessStore } from '../../stores/processStore'
+import { usePortStore } from '../../stores/portStore'
+import { useWindowStore } from '../../stores/windowStore'
+import { NeuralGraphWithControls } from './topology/NeuralGraph'
 import { TopologyDetailPanel } from './topology/TopologyDetailPanel'
-import { StatCard } from '../ui/StatCard'
-import { ProcessIcon, PortIcon, WindowIcon, FolderIcon } from '../icons'
+import type { GraphNode, GraphEdge } from './topology/NeuralGraphEngine'
+import type { ProcessInfo, PortInfo, WindowInfo } from '@shared/types-extended'
 
-// Custom node types registration
-const nodeTypes = {
-  processNode: ProcessNode,
-  portNode: PortNode,
-  windowNode: WindowNode,
-  projectNode: ProjectNode
+// ============ Data Transform ============
+
+function clampResource(cpu: number, memMB: number): number {
+  return Math.sqrt(cpu * 2 + memMB / 50) * 5
 }
 
-// Custom edge types registration
-const edgeTypes = {
-  topologyEdge: TopologyEdge
+interface SelectedNodeInfo {
+  nodeType: 'project' | 'process' | 'port' | 'window'
+  processInfo?: ProcessInfo
+  portInfo?: PortInfo
+  windowInfo?: WindowInfo
+  projectId?: string
+  projectName?: string
 }
-
-// Layout constants
-const NODE_WIDTH = 180
-const NODE_HEIGHT = 70
-const RANK_SEP = 80
-const NODE_SEP = 40
 
 /**
- * Apply dagre layout algorithm to position nodes hierarchically.
- * Project nodes at top, Process in middle, Port/Window at bottom.
+ * Build NeuralGraph nodes and edges from process/port/window data.
  */
-function applyDagreLayout(
-  nodes: TopologyGraphNode[],
-  edges: TopologyGraphEdge[]
-): TopologyGraphNode[] {
-  if (nodes.length === 0) return nodes
+function buildGraphData(
+  processes: ProcessInfo[],
+  ports: PortInfo[],
+  windows: WindowInfo[]
+): { nodes: GraphNode[]; edges: GraphEdge[] } {
+  const nodes: GraphNode[] = []
+  const edges: GraphEdge[] = []
+  const processMap = new Map<number, ProcessInfo>()
 
-  const g = new dagre.graphlib.Graph()
-  g.setDefaultEdgeLabel(() => ({}))
-  g.setGraph({
-    rankdir: 'TB',
-    ranksep: RANK_SEP,
-    nodesep: NODE_SEP,
-    marginx: 40,
-    marginy: 40
-  })
-
-  // Add nodes with dimension hints
-  for (const node of nodes) {
-    g.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT })
+  for (const proc of processes) {
+    processMap.set(proc.pid, proc)
   }
 
-  // Add edges
-  for (const edge of edges) {
-    g.setEdge(edge.source, edge.target)
+  // 1. Project nodes
+  const projectIds = new Set<string>()
+  for (const proc of processes) {
+    if (proc.projectId) projectIds.add(proc.projectId)
+  }
+  for (const pid of projectIds) {
+    nodes.push({
+      id: `project-${pid}`,
+      label: pid,
+      nodeType: 'project',
+      resourceWeight: 10,
+      depth: 0,
+      metadata: { projectId: pid, projectName: pid }
+    })
   }
 
-  dagre.layout(g)
-
-  return nodes.map((node) => {
-    const dagreNode = g.node(node.id)
-    if (!dagreNode) return node
-    return {
-      ...node,
-      position: {
-        x: dagreNode.x - NODE_WIDTH / 2,
-        y: dagreNode.y - NODE_HEIGHT / 2
+  // 2. Process nodes
+  for (const proc of processes) {
+    nodes.push({
+      id: `process-${proc.pid}`,
+      label: proc.name,
+      nodeType: 'process',
+      resourceWeight: clampResource(proc.cpu, proc.memory),
+      depth: 1,
+      cpu: proc.cpu,
+      metadata: {
+        pid: proc.pid,
+        processType: proc.type,
+        memory: proc.memory,
+        status: proc.status,
+        command: proc.command,
+        workingDir: proc.workingDir,
+        startTime: proc.startTime,
+        port: proc.port,
+        projectId: proc.projectId
       }
+    })
+
+    // Edge: project -> process
+    if (proc.projectId) {
+      edges.push({
+        id: `edge-project-${proc.projectId}-process-${proc.pid}`,
+        source: `project-${proc.projectId}`,
+        target: `process-${proc.pid}`,
+        edgeType: 'project-owns-process',
+        weight: 0.8
+      })
     }
-  })
+  }
+
+  // 3. Port nodes + edges
+  for (const port of ports) {
+    nodes.push({
+      id: `port-${port.port}-${port.pid}`,
+      label: `:${port.port}`,
+      nodeType: port.state === 'LISTENING' ? 'port-listening'
+        : port.state === 'ESTABLISHED' ? 'port-established'
+        : port.state === 'TIME_WAIT' ? 'port-timewait'
+        : 'port',
+      resourceWeight: 3,
+      depth: 2,
+      metadata: {
+        port: port.port,
+        pid: port.pid,
+        processName: port.processName,
+        state: port.state,
+        protocol: port.protocol,
+        localAddress: port.localAddress,
+        foreignAddress: port.foreignAddress
+      }
+    })
+
+    if (processMap.has(port.pid)) {
+      edges.push({
+        id: `edge-process-${port.pid}-port-${port.port}`,
+        source: `process-${port.pid}`,
+        target: `port-${port.port}-${port.pid}`,
+        edgeType: 'process-binds-port',
+        weight: 0.6
+      })
+    }
+
+    // External connection node for ESTABLISHED
+    if (
+      port.state === 'ESTABLISHED' &&
+      port.foreignAddress &&
+      port.foreignAddress !== '*:*' &&
+      port.foreignAddress !== '0.0.0.0:0'
+    ) {
+      const extId = `external-${port.foreignAddress.replace(/[:.]/g, '-')}`
+      if (!nodes.find(n => n.id === extId)) {
+        nodes.push({
+          id: extId,
+          label: port.foreignAddress,
+          nodeType: 'external',
+          resourceWeight: 2,
+          depth: 3,
+          metadata: { address: port.foreignAddress }
+        })
+      }
+      edges.push({
+        id: `edge-port-${port.port}-${port.pid}-ext-${port.foreignAddress.replace(/[:.]/g, '-')}`,
+        source: `port-${port.port}-${port.pid}`,
+        target: extId,
+        edgeType: 'port-connected',
+        weight: 0.4
+      })
+    }
+  }
+
+  // 4. Window nodes + edges
+  for (const win of windows) {
+    nodes.push({
+      id: `window-${win.hwnd}`,
+      label: win.title || win.processName,
+      nodeType: 'window',
+      resourceWeight: 2,
+      depth: 2,
+      metadata: {
+        hwnd: win.hwnd,
+        title: win.title,
+        processName: win.processName,
+        pid: win.pid,
+        className: win.className
+      }
+    })
+
+    if (processMap.has(win.pid)) {
+      edges.push({
+        id: `edge-process-${win.pid}-window-${win.hwnd}`,
+        source: `process-${win.pid}`,
+        target: `window-${win.hwnd}`,
+        edgeType: 'process-owns-window',
+        weight: 0.4
+      })
+    }
+  }
+
+  return { nodes, edges }
 }
 
+// ============ Component ============
+
 export function TopologyView() {
-  const {
-    nodes: rawNodes,
-    edges: rawEdges,
-    stats,
-    selectedNode,
-    selectNode,
-    highlightedNodeIds,
-    highlightedEdgeIds,
-    setHoveredNodeId
-  } = useProcessTopology()
+  const processes = useProcessStore((s) => s.processes)
+  const ports = usePortStore((s) => s.ports)
+  const windows = useWindowStore((s) => s.windows)
 
-  // Apply layout to raw nodes
-  const layoutedNodes = useMemo(
-    () => applyDagreLayout(rawNodes, rawEdges),
-    [rawNodes, rawEdges]
-  )
+  const [selectedNode, setSelectedNode] = useState<SelectedNodeInfo | null>(null)
 
-  // Apply highlight styling to nodes
-  const styledNodes = useMemo(() => {
-    if (highlightedNodeIds.size === 0) return layoutedNodes
-    return layoutedNodes.map((node) => ({
-      ...node,
-      style: {
-        ...node.style,
-        opacity: highlightedNodeIds.has(node.id) ? 1 : 0.3,
-        transition: 'opacity 150ms ease'
-      }
-    }))
-  }, [layoutedNodes, highlightedNodeIds])
-
-  // Apply highlight styling to edges
-  const styledEdges = useMemo(() => {
-    if (highlightedEdgeIds.size === 0) return rawEdges
-    return rawEdges.map((edge) => ({
-      ...edge,
-      selected: highlightedEdgeIds.has(edge.id)
-    }))
-  }, [rawEdges, highlightedEdgeIds])
-
-  const [nodes, setNodes, onNodesChange] = useNodesState(styledNodes)
-  const [edges, setEdges, onEdgesChange] = useEdgesState(styledEdges)
-
-  // Track previous layout to only update positions when structure changes
-  const prevStructureRef = useRef<string>('')
+  // Debounce data to avoid thrashing
+  const [stableData, setStableData] = useState({ processes: [] as ProcessInfo[], ports: [] as PortInfo[], windows: [] as WindowInfo[] })
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    // Compute a structure key based on node ids and edge ids
-    const structureKey = [
-      ...styledNodes.map((n) => n.id).sort(),
-      '|',
-      ...styledEdges.map((e) => e.id).sort()
-    ].join(',')
-
-    if (structureKey !== prevStructureRef.current) {
-      // Structure changed: full update with new layout positions
-      prevStructureRef.current = structureKey
-      setNodes(styledNodes)
-      setEdges(styledEdges)
-    } else {
-      // Only style changes (highlight): update in-place without resetting positions
-      setNodes((prev) =>
-        prev.map((n) => {
-          const updated = styledNodes.find((sn) => sn.id === n.id)
-          if (!updated) return n
-          return { ...n, style: updated.style, data: updated.data }
-        })
-      )
-      setEdges((prev) =>
-        prev.map((e) => {
-          const updated = styledEdges.find((se) => se.id === e.id)
-          if (!updated) return e
-          return { ...e, selected: updated.selected }
-        })
-      )
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      setStableData({ processes, ports, windows })
+    }, 300)
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [styledNodes, styledEdges, setNodes, setEdges])
+  }, [processes, ports, windows])
 
-  const onNodeClick: NodeMouseHandler = useCallback(
-    (_event, node) => {
-      selectNode(node.id)
-    },
-    [selectNode]
+  // Build graph data
+  const { nodes, edges } = useMemo(
+    () => buildGraphData(stableData.processes, stableData.ports, stableData.windows),
+    [stableData]
   )
 
-  const onNodeMouseEnter: NodeMouseHandler = useCallback(
-    (_event, node) => {
-      setHoveredNodeId(node.id)
-    },
-    [setHoveredNodeId]
-  )
+  // Stats
+  const stats = useMemo(() => {
+    const projectIds = new Set<string>()
+    for (const p of stableData.processes) {
+      if (p.projectId) projectIds.add(p.projectId)
+    }
+    return [
+      { label: 'Processes', value: stableData.processes.length, color: '#c9a227' },
+      { label: 'Ports', value: stableData.ports.length, color: '#22c55e' },
+      { label: 'Windows', value: stableData.windows.length, color: '#6b7d8a' },
+      { label: 'Projects', value: projectIds.size, color: '#d64545' }
+    ]
+  }, [stableData])
 
-  const onNodeMouseLeave: NodeMouseHandler = useCallback(
-    () => {
-      setHoveredNodeId(null)
-    },
-    [setHoveredNodeId]
-  )
-
-  const onPaneClick = useCallback(() => {
-    selectNode(null)
-  }, [selectNode])
-
-  const isEmpty = rawNodes.length === 0
+  const handleNodeClick = useCallback((node: GraphNode) => {
+    const meta = node.metadata ?? {}
+    if (node.nodeType === 'process' || node.nodeType === 'port' || node.nodeType.startsWith('port-')) {
+      // Map to SelectedNodeInfo
+      if (node.nodeType === 'process') {
+        const proc = stableData.processes.find(p => p.pid === meta.pid)
+        if (proc) {
+          setSelectedNode({ nodeType: 'process', processInfo: proc })
+          return
+        }
+      } else if (node.nodeType.startsWith('port')) {
+        const port = stableData.ports.find(p => p.port === meta.port && p.pid === meta.pid)
+        if (port) {
+          setSelectedNode({ nodeType: 'port', portInfo: port })
+          return
+        }
+      }
+    }
+    if (node.nodeType === 'window') {
+      const win = stableData.windows.find(w => w.hwnd === meta.hwnd)
+      if (win) {
+        setSelectedNode({ nodeType: 'window', windowInfo: win })
+        return
+      }
+    }
+    if (node.nodeType === 'project') {
+      setSelectedNode({
+        nodeType: 'project',
+        projectId: meta.projectId as string,
+        projectName: meta.projectName as string
+      })
+      return
+    }
+    setSelectedNode(null)
+  }, [stableData])
 
   return (
-    <div className="h-full flex flex-col bg-surface-950">
-      {/* Stats Bar */}
-      <div className="flex-shrink-0 px-4 py-3 border-b-2 border-surface-700">
-        <div
-          className="grid gap-3"
-          style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}
-        >
-          <StatCard
-            icon={<ProcessIcon size={16} className="text-gold" />}
-            label="PROCESSES"
-            value={stats.processCount}
-            color="gold"
-          />
-          <StatCard
-            icon={<PortIcon size={16} className="text-info" />}
-            label="PORTS"
-            value={stats.portCount}
-            color="info"
-          />
-          <StatCard
-            icon={<WindowIcon size={16} className="text-steel" />}
-            label="WINDOWS"
-            value={stats.windowCount}
-            color="steel"
-          />
-          <StatCard
-            icon={<FolderIcon size={16} className="text-accent" />}
-            label="PROJECTS"
-            value={stats.projectCount}
-            color="accent"
-          />
-        </div>
-      </div>
+    <div className="h-full relative">
+      <NeuralGraphWithControls
+        title="PROCESS TOPOLOGY"
+        nodes={nodes}
+        edges={edges}
+        stats={stats}
+        onNodeClick={handleNodeClick}
+        emptyMessage="No topology data"
+      />
 
-      {/* Graph Area */}
-      <div className="flex-1 relative overflow-hidden">
-        {isEmpty ? (
-          <div className="h-full flex flex-col items-center justify-center p-8">
-            <div
-              className="w-16 h-16 bg-surface-800 flex items-center justify-center mb-4 border-l-3 border-surface-600"
-              style={{ borderRadius: '2px' }}
-            >
-              <ProcessIcon size={32} className="text-text-muted" />
-            </div>
-            <h3
-              className="text-lg font-bold text-text-primary mb-2 uppercase tracking-wider"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              NO TOPOLOGY DATA
-            </h3>
-            <p className="text-sm text-text-muted max-w-sm text-center">
-              No process data available. Start scanning processes to view the relationship topology.
-            </p>
-          </div>
-        ) : (
-          <>
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onNodeClick={onNodeClick}
-              onNodeMouseEnter={onNodeMouseEnter}
-              onNodeMouseLeave={onNodeMouseLeave}
-              onPaneClick={onPaneClick}
-              nodeTypes={nodeTypes}
-              edgeTypes={edgeTypes}
-              fitView
-              fitViewOptions={{ padding: 0.2 }}
-              minZoom={0.3}
-              maxZoom={2}
-              proOptions={{ hideAttribution: true }}
-              style={{ background: 'transparent' }}
-            >
-              <Background
-                variant={BackgroundVariant.Dots}
-                gap={20}
-                size={1}
-                color="var(--color-surface-700, #334155)"
-              />
-              <Controls
-                showInteractive={false}
-                style={{
-                  borderRadius: '2px',
-                  border: '1px solid var(--color-surface-600, #475569)',
-                  backgroundColor: 'var(--color-surface-800, #1e293b)'
-                }}
-              />
-            </ReactFlow>
-
-            {/* Detail Panel */}
-            {selectedNode && (
-              <TopologyDetailPanel
-                node={selectedNode}
-                onClose={() => selectNode(null)}
-              />
-            )}
-          </>
-        )}
-      </div>
+      {/* Detail Panel (reuse existing) */}
+      {selectedNode && (
+        <TopologyDetailPanel
+          node={selectedNode}
+          onClose={() => setSelectedNode(null)}
+        />
+      )}
     </div>
   )
 }

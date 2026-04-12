@@ -1,4 +1,4 @@
-import { useEffect, memo, useState, useMemo } from 'react'
+import { useEffect, memo, useState, useMemo, useCallback } from 'react'
 import { usePorts } from '../../hooks/usePorts'
 import { PortInfo, COMMON_DEV_PORTS } from '@shared/types-extended'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
@@ -18,6 +18,7 @@ import {
   NetworkIcon
 } from '../icons'
 import { PortRelationshipGraph } from './PortRelationshipGraph'
+import { PortFocusPanel } from './PortFocusPanel'
 
 // 端口卡片组件
 interface PortCardProps {
@@ -300,12 +301,30 @@ export function PortView() {
     releasePort,
     selectPort,
     getActiveConflicts,
-    getTopology
+    getTopology,
+    getPortFocusData
   } = usePorts()
 
   const [viewMode, setViewMode] = useState<'cards' | 'list' | 'relationship'>('cards')
   const [filter, setFilter] = useState<'all' | 'common' | 'listening'>('all')
   const [searchPort, setSearchPort] = useState('')
+  const [focusedPort, setFocusedPort] = useState<PortInfo | null>(null)
+
+  // Handle graph node click -> open focus panel for port nodes
+  const handleGraphNodeClick = useCallback((nodeData: { type: string; port?: number; pid?: number }) => {
+    if (nodeData.type.startsWith('port') && nodeData.port !== undefined) {
+      const portInfo = ports.find(p => p.port === nodeData.port)
+      if (portInfo) {
+        setFocusedPort(portInfo)
+        selectPort(portInfo.port)
+      }
+    }
+  }, [ports, selectPort])
+
+  // Close focus panel
+  const closeFocusPanel = useCallback(() => {
+    setFocusedPort(null)
+  }, [])
 
   useEffect(() => {
     scan()
@@ -474,63 +493,109 @@ export function PortView() {
 
       {/* Content */}
       {viewMode === 'relationship' ? (
-        <div className="flex-1 overflow-hidden">
-          <PortRelationshipGraph getTopology={getTopology} />
+        <div className="flex-1 overflow-hidden flex">
+          <div className="flex-1">
+            <PortRelationshipGraph
+              getTopology={getTopology}
+              focusPort={selectedPort}
+              onNodeClick={handleGraphNodeClick}
+            />
+          </div>
+          {focusedPort && (
+            <PortFocusPanel
+              port={focusedPort}
+              onClose={closeFocusPanel}
+              getPortFocusData={getPortFocusData}
+              onFocusProcess={(pid) => {
+                // Navigate to process view (placeholder — could emit event)
+                // TODO: Navigate to process view when cross-tab navigation is implemented
+void pid
+              }}
+              onViewInGraph={(port) => {
+                selectPort(port)
+              }}
+            />
+          )}
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto p-5">
-          {viewMode === 'cards' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredPorts.map((port, index) => (
-                <PortCard
-                  key={`${port.port}-${port.pid}`}
-                  port={port}
-                  index={index}
-                  isCommon={COMMON_DEV_PORTS.includes(port.port as typeof COMMON_DEV_PORTS[number])}
-                  isSelected={selectedPort === port.port}
-                  onSelect={() => selectPort(port.port)}
-                  onRelease={() => releasePort(port.port)}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {filteredPorts.map((port, index) => (
-                <PortItem
-                  key={`${port.port}-${port.pid}`}
-                  port={port}
-                  index={index}
-                  isSelected={selectedPort === port.port}
-                  isCommon={COMMON_DEV_PORTS.includes(port.port as typeof COMMON_DEV_PORTS[number])}
-                  onSelect={() => selectPort(port.port)}
-                  onRelease={() => releasePort(port.port)}
-                />
-              ))}
-            </div>
-          )}
-
-          {isScanning && filteredPorts.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
-              <LoadingSpinner size="md" className="mb-4" />
-              <p className="text-text-secondary">正在扫描端口...</p>
-            </div>
-          )}
-
-          {filteredPorts.length === 0 && !isScanning && (
-            <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
-              <div className="w-20 h-20 bg-surface-800 flex items-center justify-center mb-6 border-l-3 border-accent" style={{ borderRadius: '4px' }}>
-                <PortIcon size={40} className="text-text-muted" />
+        <div className="flex-1 flex">
+          <div className="flex-1 overflow-y-auto p-5">
+            {viewMode === 'cards' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredPorts.map((port, index) => (
+                  <PortCard
+                    key={`${port.port}-${port.pid}`}
+                    port={port}
+                    index={index}
+                    isCommon={COMMON_DEV_PORTS.includes(port.port as typeof COMMON_DEV_PORTS[number])}
+                    isSelected={selectedPort === port.port}
+                    onSelect={() => {
+                      selectPort(port.port)
+                      setFocusedPort(port)
+                    }}
+                    onRelease={() => releasePort(port.port)}
+                  />
+                ))}
               </div>
-              <h3
-                className="text-lg font-bold text-text-primary mb-2 uppercase tracking-wider"
-                style={{ fontFamily: 'var(--font-display)' }}
-              >
-                {searchPort ? '未找到匹配的端口' : '没有检测到使用中的端口'}
-              </h3>
-              <p className="text-text-muted">
-                {searchPort ? '尝试其他搜索关键词' : '启动开发服务器后将在此显示'}
-              </p>
-            </div>
+            ) : (
+              <div className="space-y-2">
+                {filteredPorts.map((port, index) => (
+                  <PortItem
+                    key={`${port.port}-${port.pid}`}
+                    port={port}
+                    index={index}
+                    isSelected={selectedPort === port.port}
+                    isCommon={COMMON_DEV_PORTS.includes(port.port as typeof COMMON_DEV_PORTS[number])}
+                    onSelect={() => {
+                      selectPort(port.port)
+                      setFocusedPort(port)
+                    }}
+                    onRelease={() => releasePort(port.port)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {isScanning && filteredPorts.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
+                <LoadingSpinner size="md" className="mb-4" />
+                <p className="text-text-secondary">正在扫描端口...</p>
+              </div>
+            )}
+
+            {filteredPorts.length === 0 && !isScanning && (
+              <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
+                <div className="w-20 h-20 bg-surface-800 flex items-center justify-center mb-6 border-l-3 border-accent" style={{ borderRadius: '4px' }}>
+                  <PortIcon size={40} className="text-text-muted" />
+                </div>
+                <h3
+                  className="text-lg font-bold text-text-primary mb-2 uppercase tracking-wider"
+                  style={{ fontFamily: 'var(--font-display)' }}
+                >
+                  {searchPort ? '未找到匹配的端口' : '没有检测到使用中的端口'}
+                </h3>
+                <p className="text-text-muted">
+                  {searchPort ? '尝试其他搜索关键词' : '启动开发服务器后将在此显示'}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Focus Panel for card/list modes */}
+          {focusedPort && (
+            <PortFocusPanel
+              port={focusedPort}
+              onClose={closeFocusPanel}
+              getPortFocusData={getPortFocusData}
+              onFocusProcess={(pid) => {
+                // TODO: Navigate to process view when cross-tab navigation is implemented
+void pid
+              }}
+              onViewInGraph={(port) => {
+                setViewMode('relationship')
+                selectPort(port)
+              }}
+            />
           )}
         </div>
       )}

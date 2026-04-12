@@ -66,9 +66,10 @@ export default {
         }
       },
       fontFamily: {
-        display: ['Bebas Neue', 'Oswald', 'Anton', 'sans-serif'],
+        display: ['var(--typo-heading-family)', 'Bebas Neue', 'Oswald', 'Anton', 'sans-serif'],
         sans: ['Inter', 'Noto Sans SC', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Fira Code', 'Consolas', 'monospace']
+        mono: ['JetBrains Mono', 'Fira Code', 'Consolas', 'monospace'],
+        serif: ['Playfair Display', 'Noto Serif SC', 'Georgia', 'serif']
       },
       fontSize: {
         'hero': ['48px', { lineHeight: '56px', fontWeight: '400' }],
@@ -84,7 +85,11 @@ export default {
         '18': '4.5rem',
         '22': '5.5rem',
         '88': '22rem',
-        '128': '32rem'
+        '128': '32rem',
+        'base': 'var(--spacing-base, 4px)',
+        'container': 'var(--container-padding, 12px)',
+        'card-gap': 'var(--card-gap, 8px)',
+        'sidebar': 'var(--sidebar-width, 240px)'
       },
       borderRadius: {
         'sm': 'var(--radius-sm, 2px)',
@@ -93,7 +98,11 @@ export default {
         'lg': 'var(--radius-lg, 4px)',
         'xl': 'var(--radius-xl, 4px)',
         '2xl': 'var(--radius-xl, 4px)',
-        'full': 'var(--radius-full, 9999px)'
+        'full': 'var(--radius-full, 9999px)',
+        'card': 'var(--radius-card, 2px)',
+        'button': 'var(--radius-button, 2px)',
+        'input': 'var(--radius-input, 2px)',
+        'badge': 'var(--radius-badge, 0px)'
       },
       boxShadow: {
         'glow': 'var(--shadow-glow)',
@@ -104,6 +113,8 @@ export default {
         'card-hover': 'var(--shadow-card-hover)',
         'elevated': 'var(--shadow-elevated)',
         'inner-glow': 'var(--shadow-inner)',
+        'elevation-1': 'var(--elevation-1, none)',
+        'elevation-2': 'var(--elevation-2, none)',
         'none': 'none'
       },
       animation: {
@@ -196,6 +207,25 @@ export default {
       },
       borderWidth: {
         '3': 'var(--border-width-thick, 3px)'
+      },
+      transitionDuration: {
+        'theme-fast': 'var(--motion-duration-fast, 150ms)',
+        'theme-normal': 'var(--motion-duration-normal, 250ms)',
+        'theme-slow': 'var(--motion-duration-slow, 400ms)'
+      },
+      transitionTimingFunction: {
+        'theme': 'var(--motion-easing, linear)'
+      },
+      gap: {
+        'density': 'var(--density-grid-gap, 8px)',
+        'section': 'var(--space-section-gap, 8px)',
+        'content': 'var(--space-content-gap, 4px)'
+      },
+      minHeight: {
+        'card': 'var(--density-card-min-height, 60px)'
+      },
+      height: {
+        'list-row': 'var(--density-list-row-height, 36px)'
       }
     }
   },

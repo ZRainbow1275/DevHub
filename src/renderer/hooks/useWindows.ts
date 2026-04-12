@@ -94,6 +94,24 @@ export function useWindows() {
     return success
   }, [removeGroupFromStore])
 
+  const minimizeGroup = useCallback(async (groupId: string): Promise<boolean> => {
+    if (!isElectron) return false
+    const result = await window.devhub.windowManager?.minimizeGroup?.(groupId)
+    if (result && !result.success) {
+      console.error('Minimize group failed:', result.error)
+    }
+    return result?.success ?? false
+  }, [])
+
+  const closeGroup = useCallback(async (groupId: string): Promise<boolean> => {
+    if (!isElectron) return false
+    const result = await window.devhub.windowManager?.closeGroup?.(groupId)
+    if (result && !result.success) {
+      console.error('Close group failed:', result.error)
+    }
+    return result?.success ?? false
+  }, [])
+
   const saveLayout = useCallback(async (name: string, description?: string): Promise<WindowLayout | null> => {
     if (!isElectron) return null
     const layout = await window.devhub.windowManager?.saveLayout?.(name, description) ?? null
@@ -142,6 +160,8 @@ export function useWindows() {
     createGroup,
     fetchGroups,
     removeGroup,
+    minimizeGroup,
+    closeGroup,
     saveLayout,
     restoreLayout,
     fetchLayouts,

@@ -7,6 +7,13 @@ import { ProcessManager } from './services/ProcessManager'
 import { ToolMonitor } from './services/ToolMonitor'
 import { ProjectScanner } from './services/ProjectScanner'
 import { getNotificationService } from './services/NotificationService'
+import { BackgroundScannerManager } from './services/BackgroundScannerManager'
+import { ScannerCache } from './services/ScannerCache'
+import { SystemProcessScanner } from './services/SystemProcessScanner'
+import { PortScanner } from './services/PortScanner'
+import { WindowManager as WindowManagerService } from './services/WindowManager'
+import { AITaskTracker } from './services/AITaskTracker'
+import { AIAliasManager } from './services/AIAliasManager'
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -21,6 +28,22 @@ if (!gotTheLock) {
 const appStore = new AppStore()
 const processManager = new ProcessManager()
 const toolMonitor = new ToolMonitor()
+
+// Initialize background scanner infrastructure
+const scannerCache = new ScannerCache()
+const scannerPortScanner = new PortScanner()
+const scannerProcessScanner = new SystemProcessScanner(scannerPortScanner)
+const scannerWindowManager = new WindowManagerService()
+const scannerAliasManager = new AIAliasManager()
+const scannerAITaskTracker = new AITaskTracker(scannerProcessScanner, scannerAliasManager)
+
+const scannerManager = new BackgroundScannerManager(scannerCache)
+scannerManager.setScanners({
+  processScanner: scannerProcessScanner,
+  portScanner: scannerPortScanner,
+  windowManager: scannerWindowManager,
+  aiTaskTracker: scannerAITaskTracker
+})
 
 function createWindow(): void {
   const preloadPath = join(__dirname, '../preload/index.cjs')
@@ -156,7 +179,13 @@ app.whenReady().then(() => {
   }
 
   // Register IPC handlers AFTER window is created
-  registerIpcHandlers(appStore, processManager, toolMonitor, () => mainWindow)
+  scannerManager.setMainWindowGetter(() => mainWindow)
+  registerIpcHandlers(appStore, processManager, toolMonitor, () => mainWindow, scannerManager)
+
+  // Start background scanners (non-blocking)
+  scannerManager.startAll().catch((err) => {
+    console.error('Failed to start background scanners:', err)
+  })
 
   // Auto-discover projects on first launch
   if (appStore.getProjects().length === 0 && !settings.firstLaunchDone) {
@@ -216,9 +245,12 @@ app.on('before-quit', (event) => {
   isQuitting = true
   event.preventDefault()
 
-  // 关键：先停止 toolMonitor，避免 processManager.stopAll() 终止进程时
-  // 被 toolMonitor 误判为"任务正常完成"而发出虚假通知
+  // 关键：先停止 toolMonitor 和 background scanners，
+  // 避免 processManager.stopAll() 终止进程时被误判为"任务正常完成"
   toolMonitor.stop()
+  scannerManager.stopAll()
+  scannerAITaskTracker.cleanup()
+  scannerWindowManager.cleanup()
 
   Promise.all([
     processManager.stopAll(),

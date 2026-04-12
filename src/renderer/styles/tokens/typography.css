@@ -4,12 +4,47 @@
 
 /* ---- Font Face Definitions ---- */
 
-/* Bebas Neue - Display font */
+/* Orbitron - Display font (Cyberpunk) */
+@font-face {
+  font-family: 'Orbitron';
+  src: url('https://fonts.gstatic.com/s/orbitron/v31/yMJMMIlzdpvBhQQL_SC3X9yhF25-T1nyGy6xpmIyXjU1pg.woff2') format('woff2');
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Exo 2 - Secondary display font (Cyberpunk fallback) */
+@font-face {
+  font-family: 'Exo 2';
+  src: url('https://fonts.gstatic.com/s/exo2/v21/7cH1v4okm5zmbvwkAx_sfcEuiD8jvvOcPtq-rpvLpQ.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Bebas Neue - Display font (Constructivism) */
 @font-face {
   font-family: 'Bebas Neue';
   src: url('https://fonts.gstatic.com/s/bebasneue/v14/JTUSjIg69CK48gW7PXoo9Wlhyw.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
+  font-display: swap;
+}
+
+/* Playfair Display - Serif heading font (Warm Light) */
+@font-face {
+  font-family: 'Playfair Display';
+  src: url('https://fonts.gstatic.com/s/playfairdisplay/v37/nuFvD-vYSZviVYUb_rj3ij__anPXJzDwcbmjWBN2PKdFvUDQZNLo_U2r.woff2') format('woff2');
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Playfair Display';
+  src: url('https://fonts.gstatic.com/s/playfairdisplay/v37/nuFRD-vYSZviVYUb_rj3ij__anPXDTnCjmHKM4nYO7KN_qiTbtbK-F2rA0s.woff2') format('woff2');
+  font-weight: 400 900;
+  font-style: italic;
   font-display: swap;
 }
 
@@ -53,6 +88,7 @@
   --font-display: 'Bebas Neue', 'Oswald', 'Anton', sans-serif;
   --font-sans: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  --font-serif: 'Playfair Display', 'Noto Serif SC', Georgia, serif;
 
   /* ---- Font Sizes ---- */
   --text-hero: 48px;
@@ -94,19 +130,19 @@
 
 /* Display / Hero Text */
 .text-display {
-  font-family: var(--font-display);
+  font-family: var(--typo-heading-family, var(--font-display));
   font-size: var(--text-hero);
   line-height: var(--leading-hero);
-  font-weight: var(--weight-regular);
-  text-transform: var(--heading-transform, uppercase);
+  font-weight: var(--typo-heading-weight, var(--weight-regular));
+  text-transform: var(--typo-heading-transform, uppercase);
   letter-spacing: var(--display-tracking, var(--tracking-wide));
 }
 
 .text-display-sm {
-  font-family: var(--font-display);
+  font-family: var(--typo-heading-family, var(--font-display));
   font-size: var(--text-h1);
   line-height: var(--leading-h1);
-  text-transform: var(--heading-transform, uppercase);
+  text-transform: var(--typo-heading-transform, uppercase);
   letter-spacing: var(--display-tracking, var(--tracking-wide));
 }
 
@@ -114,26 +150,26 @@
 .title-dynamic {
   transform: rotate(var(--deco-rotation, -12deg));
   transform-origin: left center;
-  text-transform: var(--heading-transform, uppercase);
-  letter-spacing: var(--heading-tracking, var(--tracking-wide));
-  font-family: var(--font-display);
-  font-weight: var(--heading-weight, var(--weight-bold));
+  text-transform: var(--typo-heading-transform, uppercase);
+  letter-spacing: var(--typo-heading-spacing, var(--tracking-wide));
+  font-family: var(--typo-heading-family, var(--font-display));
+  font-weight: var(--typo-heading-weight, var(--weight-bold));
 }
 
 .title-slogan {
   transform: rotate(var(--deco-slogan-rotation, -8deg));
   transform-origin: left center;
-  font-weight: var(--heading-weight, var(--weight-bold));
-  text-transform: var(--heading-transform, uppercase);
+  font-weight: var(--typo-heading-weight, var(--weight-bold));
+  text-transform: var(--typo-heading-transform, uppercase);
   letter-spacing: var(--tracking-wider);
 }
 
 /* Section Headers */
 .text-section {
   font-size: var(--text-small);
-  font-weight: var(--heading-weight, var(--weight-bold));
-  text-transform: var(--heading-transform, uppercase);
-  letter-spacing: var(--heading-tracking, var(--tracking-wider));
+  font-weight: var(--typo-heading-weight, var(--weight-bold));
+  text-transform: var(--typo-heading-transform, uppercase);
+  letter-spacing: var(--typo-heading-spacing, var(--tracking-wider));
   color: var(--text-muted);
 }
 

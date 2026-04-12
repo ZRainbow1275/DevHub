@@ -1,6 +1,7 @@
 import { ipcMain, BrowserWindow } from 'electron'
-import { IPC_CHANNELS_EXT, PortInfo, PortTopologyData } from '@shared/types-extended'
+import { IPC_CHANNELS_EXT, PortInfo, PortTopologyData, PortFocusData } from '@shared/types-extended'
 import { PortScanner } from '../services/PortScanner'
+import { SystemProcessScanner } from '../services/SystemProcessScanner'
 import { validatePort, validatePortArray } from '../utils/validation'
 import { withRateLimit, RATE_LIMITS } from '../utils/rateLimiter'
 
@@ -87,6 +88,22 @@ export function setupPortHandlers(mainWindow: BrowserWindow, scanner?: PortScann
       return portScanner.buildTopology()
     }
   ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.PORT_GET_FOCUS_DATA, withRateLimit(
+    IPC_CHANNELS_EXT.PORT_GET_FOCUS_DATA, RATE_LIMITS.QUERY,
+    async (_, port: unknown): Promise<PortFocusData | null> => {
+      if (!portScanner) return null
+      validatePort(port)
+      // Try to create a process scanner for extended info
+      let processScanner: SystemProcessScanner | undefined
+      try {
+        processScanner = new SystemProcessScanner()
+      } catch {
+        // Fallback: no extended process info
+      }
+      return portScanner.getPortFocusData(port, processScanner)
+    }
+  ))
 }
 
 export function cleanupPortHandlers(): void {
@@ -98,4 +115,5 @@ export function cleanupPortHandlers(): void {
   ipcMain.removeHandler('port:find-available')
   ipcMain.removeHandler('port:detect-conflicts')
   ipcMain.removeHandler(IPC_CHANNELS_EXT.PORT_TOPOLOGY)
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.PORT_GET_FOCUS_DATA)
 }
