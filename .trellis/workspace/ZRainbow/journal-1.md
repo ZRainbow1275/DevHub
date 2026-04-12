@@ -1015,3 +1015,85 @@ Loading/splash screen should complete system scanning (ports, processes) BEFORE 
 ### Next Steps
 
 - None - task complete
+
+
+## Session 14: Round 4 Testing Findings & Task Planning
+
+**Date**: 2026-04-12
+**Task**: Round 4 Testing Findings & Task Planning
+**Branch**: `master`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## 会话内容
+
+本次会话聚焦 DevHub v2 第四轮手动测试发现记录与任务规划。
+
+### 完成事项
+
+| 事项 | 描述 |
+|------|------|
+| PRD 更新 | `prompts/0411/00-prd-round3.md` 升级为 R3+R4 文档，新增 3.7 进程渲染报错 |
+| 进程 Spec 更新 | `prompts/0411/02-process-deep-probing-spec.md` 新增 §5 Error Boundary + 数据清洗方案 |
+| 安全/性能后置 | `prompts/0411/06-performance-security-spec.md` 标记为[已后置]，不在当前批次开发 |
+| Trellis 任务更新 | task.json 描述更新，主任务 prd.md 添加 R4 条目与新优先级排序 |
+| Memory MCP | 创建 DevHub-V2-Testing-Round4 和 DevHub-Process-Render-Error 实体 |
+
+### R4 新增问题
+- **3.7 进程扫描成功但前端报错无法显示 (P0)**：后端扫描到数据但前端渲染崩溃
+
+### R4 关键决策
+- 安全加固与性能优化 **降级后置**，不在当前开发批次
+- 当前聚焦功能可用性：窗口管理、启动黑屏、进程渲染
+
+### 下一步开发批次划分
+
+**第一批 (P0-Blocker + P0-Critical)** — 解决"能不能用"：
+1. 启动闪屏 + 加载页
+2. 进程渲染报错修复 (Error Boundary + 数据清洗)
+3. AI 任务完成感测重构 (多信号融合)
+4. AI 窗口自命名 + 通知携带名称
+5. focusWindow C#5 兼容性修复
+6. 分组/布局功能修复
+
+**第二批 (P0 + P1)** — 解决"好不好用"：
+1. 端口探查性能优化
+2. UI 响应式布局
+3. 监控进度状态机
+4. 窗口高级功能
+5. 进程深层勘探
+
+**第三批 (P1增强 + P2)** — 解决"有没有亮点"：
+1. 进程动态神经流线图
+2. 端口拓扑完善
+3. 主题视觉传达体系
+
+### 修改文件
+- `prompts/0411/00-prd-round3.md` — R4 更新
+- `prompts/0411/02-process-deep-probing-spec.md` — 渲染报错修复章节
+- `prompts/0411/06-performance-security-spec.md` — 标记后置
+- `.trellis/tasks/04-10-devhub-v2-testing-findings/prd.md` — R4 条目
+- `.trellis/tasks/04-10-devhub-v2-testing-findings/task.json` — 描述更新
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `none` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
