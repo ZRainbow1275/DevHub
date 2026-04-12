@@ -1,7 +1,7 @@
 # Spec: 进程深层勘探
 
-> 关联 PRD: `00-prd-round3.md` § R2-2.1 + R1-2.5/2.6
-> 优先级: P0 (勘探) + P1 (可视化)
+> 关联 PRD: `00-prd-round3.md` § R2-2.1 + R1-2.5/2.6 + R4-3.7
+> 优先级: P0 (勘探 + 渲染报错) + P1 (可视化)
 > 层级: Full Stack
 
 ---
@@ -12,6 +12,7 @@
 - 进程关系图仅为静态拓扑，缺乏动态性
 - 进程列表排列显示差于 Windows 任务管理器
 - 进程卡片信息密度不足
+- **[R4 新增] 进程扫描成功但前端报错无法显示**：后端扫描器已获取进程数据，但前端渲染时报错崩溃，部分或全部进程卡片无法渲染
 
 ---
 
@@ -93,7 +94,65 @@
 
 ---
 
-## 5. 验收标准
+## 5. [R4 新增] 进程渲染报错修复
+
+### 5.1 问题
+后端扫描器成功获取进程数据，但前端渲染时报错，部分或全部进程卡片无法显示。
+
+### 5.2 Error Boundary 方案
+```tsx
+// ProcessCardErrorBoundary — 包裹每个进程卡片
+class ProcessCardErrorBoundary extends React.Component {
+  state = { hasError: false, error: null }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error }
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('[ProcessCard] Render error:', error, info)
+    // 收集失败的进程数据用于调试
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <DegradedProcessCard pid={this.props.pid} error={this.state.error} />
+    }
+    return this.props.children
+  }
+}
+```
+
+### 5.3 降级卡片 UI
+- 显示：进程名（如可获取）+ PID + "信息不完整" 灰色标记
+- 提供"重试"按钮：重新请求该进程数据
+- 提供"报告"按钮：将错误信息复制到剪贴板
+
+### 5.4 数据清洗层
+```typescript
+// 后端返回进程数据前进行标准化
+function sanitizeProcessData(raw: unknown): ProcessInfo {
+  return {
+    pid: raw?.pid ?? 0,
+    name: raw?.name ?? 'Unknown',
+    cpu: typeof raw?.cpu === 'number' ? raw.cpu : 0,
+    memory: typeof raw?.memory === 'number' ? raw.memory : 0,
+    status: raw?.status ?? 'unknown',
+    ppid: raw?.ppid ?? 0,
+    // ... 所有字段都有安全默认值
+  }
+}
+```
+
+### 5.5 覆盖范围
+- [ ] 进程卡片 — Error Boundary
+- [ ] 端口卡片 — Error Boundary
+- [ ] 窗口卡片 — Error Boundary
+- [ ] 所有卡片数据字段 — 可选链 + 空值合并
+
+---
+
+## 6. 验收标准
 
 - [ ] 点击任意进程可打开详情面板
 - [ ] 详情面板 5 个 Tab 均可正常展示数据
@@ -102,10 +161,13 @@
 - [ ] 列表排序功能正常
 - [ ] 操作按钮（结束进程等）有二次确认
 - [ ] 系统关键进程（PID < 100 等）禁止结束操作
+- [ ] **[R4] 单个进程卡片渲染失败不影响其余卡片**
+- [ ] **[R4] 渲染失败的卡片显示降级 UI 而非崩溃**
+- [ ] **[R4] 后端返回的进程数据经过清洗标准化**
 
 ---
 
-## 6. 涉及文件
+## 7. 涉及文件
 
 | 文件 | 操作 | 说明 |
 |------|------|------|
