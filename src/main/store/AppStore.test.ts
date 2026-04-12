@@ -156,6 +156,7 @@ describe('AppStore Logic Tests', () => {
         sidebarPosition: 'left',
         compactMode: false,
         enableAnimations: true,
+        informationDensity: 'standard',
       },
       scan: {
         scanDrives: ['C', 'D'],

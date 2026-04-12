@@ -4,6 +4,13 @@ export default {
     './src/renderer/**/*.{js,ts,jsx,tsx,html}'
   ],
   theme: {
+    screens: {
+      'xs': '0px',
+      'sm': '640px',
+      'md': '1000px',
+      'lg': '1400px',
+      'xl': '1800px',
+    },
     extend: {
       colors: {
         // All colors reference CSS custom properties for multi-theme support
@@ -66,8 +73,9 @@ export default {
         }
       },
       fontFamily: {
-        display: ['var(--typo-heading-family)', 'Bebas Neue', 'Oswald', 'Anton', 'sans-serif'],
-        sans: ['Inter', 'Noto Sans SC', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        display: ['var(--typo-heading-family)', 'Oswald', 'Bebas Neue', 'Anton', 'sans-serif'],
+        body: ['var(--typo-body-family)', 'Inter', 'sans-serif'],
+        sans: ['var(--typo-body-family)', 'Inter', 'Noto Sans SC', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'Consolas', 'monospace'],
         serif: ['Playfair Display', 'Noto Serif SC', 'Georgia', 'serif']
       },

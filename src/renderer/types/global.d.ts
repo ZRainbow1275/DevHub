@@ -23,6 +23,7 @@ import type {
   PortInfo,
   PortTopologyData,
   PortFocusData,
+  PortDetailIncrementalResult,
   WindowInfo,
   WindowGroup,
   WindowLayout,
@@ -45,6 +46,8 @@ import type {
   ScannerStatus
 } from '@shared/types-extended'
 
+/** AI task-specific statistics (active/completed/error counts by tool).
+ *  Distinct from TaskStatistics in types-extended.ts which tracks historical duration metrics. */
 interface AITaskStatistics {
   totalTasks: number
   completedTasks: number
@@ -175,6 +178,8 @@ declare global {
         detectConflicts: (ports: number[]) => Promise<PortInfo[]>
         getTopology: () => Promise<PortTopologyData>
         getPortFocusData: (port: number) => Promise<PortFocusData | null>
+        getPortDetailIncremental: (port: number) => Promise<PortDetailIncrementalResult>
+        cancelPortQuery: (port: number) => Promise<boolean>
         onConflict: (callback: (data: { port: number; resolved: boolean }) => void) => () => void
       }
 
@@ -186,6 +191,16 @@ declare global {
         minimize: (hwnd: number) => Promise<ServiceResult>
         maximize: (hwnd: number) => Promise<ServiceResult>
         close: (hwnd: number) => Promise<ServiceResult>
+        restore: (hwnd: number) => Promise<ServiceResult>
+        setTopmost: (hwnd: number, topmost: boolean) => Promise<ServiceResult>
+        setOpacity: (hwnd: number, opacity: number) => Promise<ServiceResult>
+        sendKeys: (hwnd: number, keys: string) => Promise<ServiceResult>
+        tileLayout: (hwnds: number[]) => Promise<ServiceResult>
+        cascadeLayout: (hwnds: number[]) => Promise<ServiceResult>
+        minimizeAll: () => Promise<ServiceResult>
+        restoreAll: () => Promise<ServiceResult>
+        addToGroup: (groupId: string, hwnd: number) => Promise<ServiceResult>
+        restoreGroup: (groupId: string) => Promise<ServiceResult>
         createGroup: (name: string, windowHwnds: number[], projectId?: string) => Promise<WindowGroup>
         getGroups: () => Promise<WindowGroup[]>
         removeGroup: (groupId: string) => Promise<boolean>
@@ -226,6 +241,7 @@ declare global {
         getAll: () => Promise<AIWindowAlias[]>
         set: (alias: AIWindowAlias) => Promise<boolean>
         remove: (aliasId: string) => Promise<boolean>
+        rename: (aliasId: string, newName: string) => Promise<boolean>
       }
 
       // Notification API
@@ -270,12 +286,14 @@ declare global {
         subscribe: () => void
         getSnapshot: () => Promise<ScannerCacheSnapshot | null>
         getStatus: () => Promise<ScannerStatus | null>
+        retryScanner: (type: string) => Promise<{ success: boolean; error?: string }>
         onProcessesDiff: (callback: (diff: ScannerDiff<ProcessInfo>) => void) => () => void
         onPortsDiff: (callback: (diff: ScannerDiff<PortInfo>) => void) => () => void
         onWindowsDiff: (callback: (diff: ScannerDiff<WindowInfo>) => void) => () => void
         onAiTasksDiff: (callback: (diff: ScannerDiff<AITask>) => void) => () => void
         onSummaryUpdate: (callback: (summary: SystemSummary) => void) => () => void
         onSnapshotPush: (callback: (snapshot: ScannerCacheSnapshot) => void) => () => void
+        onScannerFailed: (callback: (data: { type: string; retries: number }) => void) => () => void
       }
     }
   }

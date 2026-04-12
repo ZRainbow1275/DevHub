@@ -204,7 +204,7 @@ export function registerIpcHandlers(
 
   // 每个分类允许的字段白名单
   const ALLOWED_CATEGORY_FIELDS: Record<string, readonly string[]> = {
-    appearance: ['theme', 'fontSize', 'sidebarPosition', 'compactMode', 'enableAnimations'],
+    appearance: ['theme', 'fontSize', 'sidebarPosition', 'compactMode', 'enableAnimations', 'informationDensity'],
     scan: ['scanDrives', 'allowedPaths', 'excludePaths', 'checkInterval', 'maxScanDepth', 'fileTypeFilters'],
     process: ['enabled', 'scanInterval', 'autoCleanZombies', 'zombieThresholdMinutes', 'cpuWarningThreshold', 'memoryWarningThresholdMB', 'whitelist', 'blacklist'],
     notification: ['enabled', 'typeToggles', 'sound', 'persistent', 'quietHoursEnabled', 'quietHoursStart', 'quietHoursEnd'],
@@ -587,7 +587,7 @@ export function registerIpcHandlers(
     if (mainWin) {
       try {
         setupProcessHandlers(mainWin, appStore)
-        setupPortHandlers(mainWin)
+        setupPortHandlers(mainWin, undefined, scannerManager?.getCache())
         setupWindowHandlers(mainWin)
         setupAITaskHandlers(mainWin)
         setupNotificationHandlers(mainWin)

@@ -124,7 +124,7 @@ export function formatMetric(value: number, format: MetricFormat, mode: MetricMo
         case 'compact': return formatCompactNumber(value)
         case 'minimal': return formatMinimalNumber(value)
       }
-      break
+      return formatFullNumber(value)
     case 'percent':
       return formatPercent(value, mode)
     case 'bytes':

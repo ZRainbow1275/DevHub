@@ -16,6 +16,8 @@ import { InitializationScreen } from './components/ui/InitializationScreen'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { useProjects } from './hooks/useProjects'
 import { useTheme } from './hooks/useTheme'
+import { useBreakpoint } from './hooks/useBreakpoint'
+import { useDensity } from './hooks/useDensity'
 import { useScannerStore } from './stores/scannerStore'
 import { LogIcon, MonitorIcon } from './components/icons'
 
@@ -37,6 +39,8 @@ function AppContent() {
   const { selectedProject, selectedProjectId, addProject } = useProjects()
   const { showToast } = useToast()
   useTheme() // 初始化主题：从设置加载并应用到 DOM
+  useBreakpoint() // Set data-breakpoint on <html> based on window width
+  useDensity() // Set data-density on <html> from settings
 
   // Scanner initialization
   const scannerInitialize = useScannerStore(s => s.initialize)

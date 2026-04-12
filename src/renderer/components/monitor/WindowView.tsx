@@ -1,11 +1,15 @@
 import { useEffect, memo, useState, useCallback, useMemo, useRef } from 'react'
 import { useWindows } from '../../hooks/useWindows'
-import { WindowInfo, WindowGroup, WindowLayout } from '@shared/types-extended'
+import { useAITasks } from '../../hooks/useAITasks'
+import { useAliasStore } from '../../stores/aliasStore'
+import { WindowInfo, WindowGroup, WindowLayout, AITask, AIMonitorState, AI_MONITOR_STATE_INFO, ALIAS_FORBIDDEN_CHARS, ALIAS_MAX_LENGTH } from '@shared/types-extended'
+import { ProcessCardErrorBoundary } from './ProcessCardErrorBoundary'
 import { useToast } from '../ui/Toast'
 import { LayoutPreview } from './LayoutPreview'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { StatCard } from '../ui/StatCard'
 import { ViewModeToggle } from '../ui/ViewModeToggle'
+import { TruncatedText } from '../ui/TruncatedText'
 import {
   WindowIcon,
   FolderIcon,
@@ -23,7 +27,12 @@ import {
   GlobeIcon,
   TerminalIcon,
   AlertIcon,
-  ProcessIcon
+  ProcessIcon,
+  AIIcon,
+  MinimizeIcon,
+  MaximizeIcon,
+  LayoutIcon,
+  GearIcon
 } from '../icons'
 
 // ============================================
@@ -171,14 +180,12 @@ const ProcessGroupCard = memo(function ProcessGroupCard({
 
                 {/* Title */}
                 <div className="flex-1 min-w-0">
-                  <span className="text-xs text-text-secondary truncate block" title={w.title}>
-                    {w.title.length > 50 ? w.title.slice(0, 50) + '...' : w.title}
-                  </span>
+                  <TruncatedText text={w.title} className="text-xs text-text-secondary" />
                 </div>
 
                 {/* Size */}
                 <span className="text-xs text-text-tertiary font-mono flex-shrink-0">
-                  {w.rect.width}x{w.rect.height}
+                  {w.rect?.width ?? 0}x{w.rect?.height ?? 0}
                 </span>
 
                 {w.isMinimized && (
@@ -316,12 +323,7 @@ const WindowCard = memo(function WindowCard({
               }`}
               style={{ borderRadius: '1px' }}
             />
-            <h3
-              className="text-sm font-semibold text-text-primary truncate"
-              title={window.title}
-            >
-              {window.title.length > 50 ? window.title.slice(0, 50) + '...' : window.title}
-            </h3>
+            <TruncatedText text={window.title} className="text-sm font-semibold text-text-primary" />
           </div>
 
           <div className="flex items-center gap-3 text-xs text-text-muted">
@@ -340,7 +342,7 @@ const WindowCard = memo(function WindowCard({
               className="text-xs text-text-tertiary font-mono bg-surface-800/50 px-2 py-0.5 border-l-2 border-surface-600"
               style={{ borderRadius: '2px' }}
             >
-              {window.rect.width} × {window.rect.height}
+              {window.rect?.width ?? 0} × {window.rect?.height ?? 0}
             </span>
             {window.isMinimized && (
               <span className="status-badge bg-warning/20 text-warning border-warning/30">
@@ -447,9 +449,7 @@ const WindowItem = memo(function WindowItem({
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-text-primary truncate" title={window.title}>
-            {window.title.length > 40 ? window.title.slice(0, 40) + '...' : window.title}
-          </span>
+          <TruncatedText text={window.title} className="text-sm font-medium text-text-primary" />
         </div>
         <div className="flex items-center gap-2 mt-0.5">
           <span className="text-xs text-text-muted">{window.processName}</span>
@@ -460,7 +460,7 @@ const WindowItem = memo(function WindowItem({
       {/* Size & Status */}
       <div className="flex items-center gap-2 flex-shrink-0">
         <span className="text-xs text-text-tertiary font-mono">
-          {window.rect.width}×{window.rect.height}
+          {window.rect?.width ?? 0}×{window.rect?.height ?? 0}
         </span>
         {window.isMinimized && (
           <span className="status-badge bg-warning/10 text-warning text-xs">
@@ -629,9 +629,7 @@ const WindowGroupCard = memo(function WindowGroupCard({
                 style={{ borderRadius: '2px' }}
               >
                 <span className="w-1.5 h-1.5 bg-success" style={{ borderRadius: '1px' }} />
-                <span className="text-xs text-text-secondary truncate flex-1" title={window.title}>
-                  {window.title}
-                </span>
+                <TruncatedText text={window.title} className="text-xs text-text-secondary flex-1" />
                 <span className="text-xs text-text-muted font-mono">
                   {window.processName}
                 </span>
@@ -782,6 +780,320 @@ const EmptyState = memo(function EmptyState({
 })
 
 // ============================================
+// AI Window Card - Pinned section for AI tools
+// ============================================
+interface AIWindowCardProps {
+  window: WindowInfo
+  task?: AITask
+  displayName: string
+  monitorState: AIMonitorState
+  isSelected: boolean
+  onSelect: () => void
+  onFocus: () => void
+  onRename: (newName: string) => void
+  onMinimize: () => void
+  onMaximize: () => void
+  onRestore: () => void
+  onClose: () => void
+  index: number
+}
+
+const AIWindowCard = memo(function AIWindowCard({
+  window: win,
+  task,
+  displayName,
+  monitorState,
+  isSelected,
+  onSelect,
+  onFocus,
+  onRename,
+  onMinimize,
+  onMaximize,
+  onRestore,
+  onClose,
+  index
+}: AIWindowCardProps) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState(displayName)
+  const [isHovered, setIsHovered] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const stateInfo = AI_MONITOR_STATE_INFO[monitorState] || AI_MONITOR_STATE_INFO.idle
+  const stateColorMap: Record<string, string> = {
+    gray: 'bg-gray-500',
+    blue: 'bg-blue-500',
+    green: 'bg-green-500',
+    orange: 'bg-orange-500',
+    yellow: 'bg-yellow-500',
+    red: 'bg-red-500',
+  }
+  const dotColor = stateColorMap[stateInfo.color] || 'bg-gray-500'
+  const isActive = monitorState === 'thinking' || monitorState === 'coding' || monitorState === 'compiling'
+
+  const handleStartEdit = useCallback(() => {
+    setEditValue(displayName)
+    setIsEditing(true)
+    setTimeout(() => inputRef.current?.select(), 50)
+  }, [displayName])
+
+  const handleConfirmEdit = useCallback(() => {
+    const trimmed = editValue.trim()
+    if (trimmed && trimmed.length <= ALIAS_MAX_LENGTH && !ALIAS_FORBIDDEN_CHARS.test(trimmed)) {
+      onRename(trimmed)
+    }
+    setIsEditing(false)
+  }, [editValue, onRename])
+
+  const handleCancelEdit = useCallback(() => {
+    setEditValue(displayName)
+    setIsEditing(false)
+  }, [displayName])
+
+  const avgCpu = task?.metrics.cpuHistory.length
+    ? (task.metrics.cpuHistory.reduce((a, b) => a + b, 0) / task.metrics.cpuHistory.length)
+    : 0
+
+  return (
+    <div
+      onClick={onSelect}
+      onDoubleClick={onFocus}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className={`
+        monitor-card group relative p-4 cursor-pointer animate-card-stagger
+        border-l-3
+        ${isSelected
+          ? 'ring-1 ring-accent/50 border-l-accent'
+          : 'border-l-blue-500'
+        }
+      `}
+      style={{ animationDelay: `${index * 30}ms` }}
+    >
+      <div className="absolute inset-0 deco-diagonal opacity-5 pointer-events-none" style={{ borderRadius: '2px' }} />
+
+      <div className="flex items-start gap-4 relative z-10">
+        {/* AI Icon with status indicator */}
+        <div className="relative flex-shrink-0">
+          <div
+            className="w-12 h-12 bg-blue-500/20 flex items-center justify-center border-l-3 border-blue-500"
+            style={{ borderRadius: '2px' }}
+          >
+            <AIIcon size={20} className="text-blue-400" />
+          </div>
+          <span
+            className={`absolute -bottom-1 -right-1 w-3 h-3 ${dotColor} border-2 border-surface-900 ${isActive ? 'animate-pulse' : ''}`}
+            style={{ borderRadius: '50%' }}
+          />
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            {/* Editable name */}
+            {isEditing ? (
+              <input
+                ref={inputRef}
+                type="text"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleConfirmEdit()
+                  if (e.key === 'Escape') handleCancelEdit()
+                }}
+                onBlur={handleConfirmEdit}
+                maxLength={ALIAS_MAX_LENGTH}
+                className="text-sm font-semibold bg-surface-800 border border-accent/50 px-2 py-0.5 text-text-primary focus:outline-none focus:border-accent"
+                style={{ borderRadius: '2px', minWidth: '120px' }}
+                autoFocus
+              />
+            ) : (
+              <span
+                className="text-sm font-semibold text-text-primary cursor-text"
+                onDoubleClick={(e) => { e.stopPropagation(); handleStartEdit() }}
+                title="Double-click to rename"
+              >
+                {displayName}
+              </span>
+            )}
+
+            {/* AI badge */}
+            <span
+              className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 font-medium"
+              style={{ borderRadius: '2px' }}
+            >
+              AI
+            </span>
+
+            {/* Monitor state badge */}
+            <span
+              className="text-xs px-1.5 py-0.5 font-medium"
+              style={{
+                borderRadius: '2px',
+                color: `var(--color-${stateInfo.color === 'gray' ? 'text-muted' : stateInfo.color === 'green' ? 'success' : stateInfo.color === 'red' ? 'error' : stateInfo.color === 'orange' ? 'warning' : stateInfo.color === 'yellow' ? 'warning' : 'info'}, currentColor)`,
+                backgroundColor: `${stateColorMap[stateInfo.color]?.replace('bg-', 'rgba(') || 'rgba(128,128,128,'}0.15)`
+              }}
+            >
+              {stateInfo.label}
+            </span>
+
+            {/* Rename pencil icon */}
+            {!isEditing && (
+              <button
+                onClick={(e) => { e.stopPropagation(); handleStartEdit() }}
+                className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-surface-700 transition-all"
+                style={{ borderRadius: '2px' }}
+                title="Rename"
+              >
+                <GearIcon size={12} className="text-text-muted" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3 text-xs text-text-muted">
+            <span className="font-mono bg-surface-800 px-2 py-0.5 border-l-2 border-blue-500" style={{ borderRadius: '2px' }}>
+              {win.processName}
+            </span>
+            <span className="text-text-tertiary font-mono">PID: {win.pid}</span>
+            {task && (
+              <span className="text-text-tertiary font-mono">CPU: {avgCpu.toFixed(1)}%</span>
+            )}
+          </div>
+
+          {/* Window title */}
+          <div className="mt-1">
+            <TruncatedText text={win.title} className="text-xs text-text-tertiary" />
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className={`
+          flex items-center gap-1 transition-all duration-200 flex-shrink-0
+          ${isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'}
+        `}>
+          <button
+            onClick={(e) => { e.stopPropagation(); onFocus() }}
+            className="btn-icon-sm bg-accent/20 text-accent hover:bg-accent hover:text-white"
+            title="Focus"
+          >
+            <EyeIcon size={14} />
+          </button>
+          {win.isMinimized ? (
+            <button
+              onClick={(e) => { e.stopPropagation(); onRestore() }}
+              className="btn-icon-sm bg-success/10 text-success/70 hover:bg-success hover:text-white"
+              title="Restore"
+            >
+              <MaximizeIcon size={14} />
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); onMinimize() }}
+                className="btn-icon-sm bg-warning/10 text-warning/70 hover:bg-warning hover:text-white"
+                title="Minimize"
+              >
+                <MinimizeIcon size={14} />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onMaximize() }}
+                className="btn-icon-sm bg-info/10 text-info/70 hover:bg-info hover:text-white"
+                title="Maximize"
+              >
+                <MaximizeIcon size={14} />
+              </button>
+            </>
+          )}
+          <button
+            onClick={(e) => { e.stopPropagation(); onClose() }}
+            className="btn-icon-sm bg-error/10 text-error/70 hover:bg-error hover:text-white"
+            title="Close"
+          >
+            <CloseIcon size={14} />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+})
+
+// ============================================
+// Batch Operations Toolbar
+// ============================================
+interface BatchToolbarProps {
+  selectedCount: number
+  onTile: () => void
+  onCascade: () => void
+  onMinimizeAll: () => void
+  onRestoreAll: () => void
+  onClearSelection: () => void
+}
+
+const BatchToolbar = memo(function BatchToolbar({
+  selectedCount,
+  onTile,
+  onCascade,
+  onMinimizeAll,
+  onRestoreAll,
+  onClearSelection
+}: BatchToolbarProps) {
+  if (selectedCount === 0) return null
+
+  return (
+    <div
+      className="flex items-center gap-2 px-4 py-2 bg-surface-800 border-b border-surface-700 animate-fade-in"
+    >
+      <span className="text-xs text-text-muted">
+        {selectedCount} selected
+      </span>
+      <div className="h-4 w-px bg-surface-600" />
+      <button
+        onClick={onTile}
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-info/10 text-info hover:bg-info hover:text-white transition-all"
+        style={{ borderRadius: '2px' }}
+        title="Tile selected windows"
+      >
+        <GridIcon size={12} />
+        Tile
+      </button>
+      <button
+        onClick={onCascade}
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-info/10 text-info hover:bg-info hover:text-white transition-all"
+        style={{ borderRadius: '2px' }}
+        title="Cascade selected windows"
+      >
+        <LayoutIcon size={12} />
+        Cascade
+      </button>
+      <button
+        onClick={onMinimizeAll}
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-warning/10 text-warning hover:bg-warning hover:text-white transition-all"
+        style={{ borderRadius: '2px' }}
+        title="Minimize selected"
+      >
+        <MinimizeIcon size={12} />
+        Minimize
+      </button>
+      <button
+        onClick={onRestoreAll}
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-success/10 text-success hover:bg-success hover:text-white transition-all"
+        style={{ borderRadius: '2px' }}
+        title="Restore selected"
+      >
+        <MaximizeIcon size={12} />
+        Restore
+      </button>
+      <div className="flex-1" />
+      <button
+        onClick={onClearSelection}
+        className="text-xs text-text-muted hover:text-text-primary transition-colors"
+      >
+        Clear
+      </button>
+    </div>
+  )
+})
+
+// ============================================
 // Main WindowView Component
 // ============================================
 export function WindowView() {
@@ -805,8 +1117,18 @@ export function WindowView() {
     fetchLayouts,
     removeLayout,
     selectWindow,
-    selectGroup
+    selectGroup,
+    // Advanced operations
+    minimizeWindow,
+    maximizeWindow,
+    restoreWindow,
+    closeWindow,
+    tileWindows,
+    cascadeWindows
   } = useWindows()
+
+  const { activeTasks, fetchActiveTasks } = useAITasks()
+  const { aliases, fetchAliases, saveAlias } = useAliasStore()
 
   const { showToast } = useToast()
 
@@ -850,9 +1172,17 @@ export function WindowView() {
     scan(showSystemWindows)
     fetchGroups()
     fetchLayouts()
+    fetchActiveTasks()
+    fetchAliases()
     // showSystemWindows intentionally excluded — handleToggleSystemWindows drives re-scan on toggle
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scan, fetchGroups, fetchLayouts])
+  }, [scan, fetchGroups, fetchLayouts, fetchActiveTasks, fetchAliases])
+
+  // Periodically refresh AI tasks to keep status in sync
+  useEffect(() => {
+    const interval = setInterval(() => { fetchActiveTasks() }, 3000)
+    return () => clearInterval(interval)
+  }, [fetchActiveTasks])
 
   // Rescan when showSystemWindows changes, with race condition protection.
   // If scan() completes and discovers its version is stale (user toggled again while the
@@ -939,8 +1269,139 @@ export function WindowView() {
     setSelectedWindows(newSet)
   }
 
+  // ==================== AI Window Identification ====================
+  // Match windows to AI tasks by PID to identify AI tool windows
+  const aiWindowPids = useMemo(() => {
+    return new Set(activeTasks.map(t => t.pid))
+  }, [activeTasks])
+
+  // Split windows into AI windows (pinned) and regular windows
+  const { aiWindows, regularWindows } = useMemo(() => {
+    const ai: WindowInfo[] = []
+    const regular: WindowInfo[] = []
+    for (const w of windows) {
+      if (aiWindowPids.has(w.pid)) {
+        ai.push(w)
+      } else {
+        regular.push(w)
+      }
+    }
+    return { aiWindows: ai, regularWindows: regular }
+  }, [windows, aiWindowPids])
+
+  // Get display name for an AI window (alias > autoName > processName)
+  const getAIWindowDisplayName = useCallback((win: WindowInfo): string => {
+    const task = activeTasks.find(t => t.pid === win.pid)
+    if (task?.alias) return task.alias
+    if (task?.autoName) return task.autoName
+    // Check stored aliases
+    const alias = aliases.find(a =>
+      a.matchCriteria.pid === win.pid ||
+      (a.matchCriteria.toolType && a.matchCriteria.titlePrefix && win.title.startsWith(a.matchCriteria.titlePrefix))
+    )
+    if (alias) return alias.alias
+    return win.processName
+  }, [activeTasks, aliases])
+
+  // Get monitor state for an AI window
+  const getAIWindowMonitorState = useCallback((win: WindowInfo): AIMonitorState => {
+    const task = activeTasks.find(t => t.pid === win.pid)
+    return task?.monitorState ?? 'idle'
+  }, [activeTasks])
+
+  // Handle AI window rename
+  const handleAIWindowRename = useCallback(async (win: WindowInfo, newName: string) => {
+    const task = activeTasks.find(t => t.pid === win.pid)
+    // Find existing alias or create new one
+    const existingAlias = aliases.find(a => a.matchCriteria.pid === win.pid)
+    if (existingAlias) {
+      // Use rename API
+      try {
+        const isElectron = typeof window !== 'undefined' && window.devhub !== undefined
+        if (isElectron) {
+          const success = await window.devhub.aiAlias?.rename?.(existingAlias.id, newName)
+          if (success) {
+            showToast('success', `Renamed to "${newName}"`)
+            fetchAliases()
+          } else {
+            showToast('error', 'Rename failed')
+          }
+        }
+      } catch {
+        showToast('error', 'Rename failed')
+      }
+    } else {
+      // Create new alias
+      const newAlias = {
+        id: `alias_${Date.now()}`,
+        alias: newName,
+        matchCriteria: {
+          pid: win.pid,
+          toolType: task?.toolType ?? ('other' as const),
+          titlePrefix: win.title.substring(0, 30),
+        },
+        createdAt: Date.now(),
+        lastMatchedAt: Date.now(),
+        autoGenerated: false,
+      }
+      const result = await saveAlias(newAlias)
+      if (result) {
+        showToast('success', `Named as "${newName}"`)
+      } else {
+        showToast('error', 'Save failed')
+      }
+    }
+  }, [activeTasks, aliases, saveAlias, fetchAliases, showToast])
+
+  // ==================== Batch Operations ====================
+  const handleBatchTile = useCallback(async () => {
+    const hwnds = Array.from(selectedWindows)
+    if (hwnds.length === 0) return
+    const success = await tileWindows(hwnds)
+    if (success) showToast('success', `${hwnds.length} windows tiled`)
+    else showToast('error', 'Tile failed')
+  }, [selectedWindows, tileWindows, showToast])
+
+  const handleBatchCascade = useCallback(async () => {
+    const hwnds = Array.from(selectedWindows)
+    if (hwnds.length === 0) return
+    const success = await cascadeWindows(hwnds)
+    if (success) showToast('success', `${hwnds.length} windows cascaded`)
+    else showToast('error', 'Cascade failed')
+  }, [selectedWindows, cascadeWindows, showToast])
+
+  const handleBatchMinimize = useCallback(async () => {
+    const hwnds = Array.from(selectedWindows)
+    for (const hwnd of hwnds) {
+      await minimizeWindow(hwnd)
+    }
+    showToast('success', `${hwnds.length} windows minimized`)
+  }, [selectedWindows, minimizeWindow, showToast])
+
+  const handleBatchRestore = useCallback(async () => {
+    const hwnds = Array.from(selectedWindows)
+    for (const hwnd of hwnds) {
+      await restoreWindow(hwnd)
+    }
+    showToast('success', `${hwnds.length} windows restored`)
+  }, [selectedWindows, restoreWindow, showToast])
+
   // Filter windows
   const filteredWindows = windows.filter(w =>
+    searchQuery === '' ||
+    w.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    w.processName.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  // Filtered AI and regular windows for display
+  const filteredAIWindows = aiWindows.filter(w =>
+    searchQuery === '' ||
+    w.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    w.processName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    getAIWindowDisplayName(w).toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const filteredRegularWindows = regularWindows.filter(w =>
     searchQuery === '' ||
     w.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     w.processName.toLowerCase().includes(searchQuery.toLowerCase())
@@ -983,7 +1444,8 @@ export function WindowView() {
     active: windows.filter(w => !w.isMinimized).length,
     groups: groups.length,
     systemCount: windows.filter(w => w.isSystemWindow).length,
-    processCount: new Set(windows.map(w => w.pid)).size
+    processCount: new Set(windows.map(w => w.pid)).size,
+    aiToolCount: aiWindows.length
   }
 
   // Tab items
@@ -1173,64 +1635,178 @@ export function WindowView() {
               color="warning"
             />
             <StatCard
-              icon={<ProcessIcon size={20} className="text-accent" />}
-              label="进程数"
-              value={stats.processCount}
-              color="accent"
+              icon={<AIIcon size={20} className="text-blue-400" />}
+              label="AI Tools"
+              value={stats.aiToolCount}
+              color="info"
             />
           </div>
         </div>
       )}
 
+      {/* Batch Operations Toolbar */}
+      {viewTab === 'windows' && (
+        <BatchToolbar
+          selectedCount={selectedWindows.size}
+          onTile={handleBatchTile}
+          onCascade={handleBatchCascade}
+          onMinimizeAll={handleBatchMinimize}
+          onRestoreAll={handleBatchRestore}
+          onClearSelection={() => setSelectedWindows(new Set())}
+        />
+      )}
+
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-5">
         {viewTab === 'windows' && viewMode === 'cards' && (
-          <div className="monitor-card-grid" style={{ display: 'grid', gap: 'var(--density-grid-gap, 8px)' }}>
-            {filteredWindows.map((window, index) => (
-              <WindowCard
-                key={window.hwnd}
-                window={window}
-                isSelected={selectedHwnd === window.hwnd}
-                isChecked={selectedWindows.has(window.hwnd)}
-                onSelect={() => selectWindow(window.hwnd)}
-                onFocus={() => focusWindow(window.hwnd)}
-                onToggleCheck={() => toggleWindowSelection(window.hwnd)}
-                index={index}
-              />
-            ))}
-            {filteredWindows.length === 0 && (
-              <div className="col-span-full">
+          <div className="space-y-6">
+            {/* AI Windows Pinned Section */}
+            {filteredAIWindows.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <AIIcon size={16} className="text-blue-400" />
+                  <span
+                    className="text-xs font-bold uppercase tracking-wider text-blue-400"
+                    style={{ fontFamily: 'var(--font-display)' }}
+                  >
+                    AI Tools ({filteredAIWindows.length})
+                  </span>
+                  <div className="flex-1 h-px bg-blue-500/20" />
+                </div>
+                <div className="monitor-card-grid" style={{ display: 'grid', gap: 'var(--density-grid-gap, 8px)' }}>
+                  {filteredAIWindows.map((win, index) => (
+                    <ProcessCardErrorBoundary key={win.hwnd} pid={win.pid} processName={win.processName}>
+                      <AIWindowCard
+                        window={win}
+                        task={activeTasks.find(t => t.pid === win.pid)}
+                        displayName={getAIWindowDisplayName(win)}
+                        monitorState={getAIWindowMonitorState(win)}
+                        isSelected={selectedHwnd === win.hwnd}
+                        onSelect={() => selectWindow(win.hwnd)}
+                        onFocus={() => focusWindow(win.hwnd)}
+                        onRename={(name) => handleAIWindowRename(win, name)}
+                        onMinimize={() => minimizeWindow(win.hwnd)}
+                        onMaximize={() => maximizeWindow(win.hwnd)}
+                        onRestore={() => restoreWindow(win.hwnd)}
+                        onClose={() => closeWindow(win.hwnd)}
+                        index={index}
+                      />
+                    </ProcessCardErrorBoundary>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Regular Windows */}
+            {(filteredAIWindows.length > 0 && filteredRegularWindows.length > 0) && (
+              <div className="flex items-center gap-2">
+                <WindowIcon size={16} className="text-text-muted" />
+                <span
+                  className="text-xs font-bold uppercase tracking-wider text-text-muted"
+                  style={{ fontFamily: 'var(--font-display)' }}
+                >
+                  Other Windows ({filteredRegularWindows.length})
+                </span>
+                <div className="flex-1 h-px bg-surface-700" />
+              </div>
+            )}
+
+            <div className="monitor-card-grid" style={{ display: 'grid', gap: 'var(--density-grid-gap, 8px)' }}>
+              {filteredRegularWindows.map((window, index) => (
+                <ProcessCardErrorBoundary key={window.hwnd} pid={window.pid} processName={window.processName}>
+                  <WindowCard
+                    window={window}
+                    isSelected={selectedHwnd === window.hwnd}
+                    isChecked={selectedWindows.has(window.hwnd)}
+                    onSelect={() => selectWindow(window.hwnd)}
+                    onFocus={() => focusWindow(window.hwnd)}
+                    onToggleCheck={() => toggleWindowSelection(window.hwnd)}
+                    index={index}
+                  />
+                </ProcessCardErrorBoundary>
+              ))}
+              {filteredWindows.length === 0 && (
+                <div className="col-span-full">
+                  <EmptyState
+                    icon={<SearchIcon size={40} className="text-text-muted" />}
+                    title="未找到窗口"
+                    description={searchQuery ? '尝试其他搜索关键词' : '系统中没有可用窗口'}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {viewTab === 'windows' && viewMode === 'list' && (
+          <div className="space-y-4">
+            {/* AI Windows Pinned Section (List) */}
+            {filteredAIWindows.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <AIIcon size={16} className="text-blue-400" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-blue-400" style={{ fontFamily: 'var(--font-display)' }}>
+                    AI Tools ({filteredAIWindows.length})
+                  </span>
+                  <div className="flex-1 h-px bg-blue-500/20" />
+                </div>
+                <div className="space-y-1">
+                  {filteredAIWindows.map((win, index) => (
+                    <ProcessCardErrorBoundary key={win.hwnd} pid={win.pid} processName={win.processName}>
+                      <AIWindowCard
+                        window={win}
+                        task={activeTasks.find(t => t.pid === win.pid)}
+                        displayName={getAIWindowDisplayName(win)}
+                        monitorState={getAIWindowMonitorState(win)}
+                        isSelected={selectedHwnd === win.hwnd}
+                        onSelect={() => selectWindow(win.hwnd)}
+                        onFocus={() => focusWindow(win.hwnd)}
+                        onRename={(name) => handleAIWindowRename(win, name)}
+                        onMinimize={() => minimizeWindow(win.hwnd)}
+                        onMaximize={() => maximizeWindow(win.hwnd)}
+                        onRestore={() => restoreWindow(win.hwnd)}
+                        onClose={() => closeWindow(win.hwnd)}
+                        index={index}
+                      />
+                    </ProcessCardErrorBoundary>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Regular Windows (List) */}
+            {(filteredAIWindows.length > 0 && filteredRegularWindows.length > 0) && (
+              <div className="flex items-center gap-2 mt-2">
+                <WindowIcon size={16} className="text-text-muted" />
+                <span className="text-xs font-bold uppercase tracking-wider text-text-muted" style={{ fontFamily: 'var(--font-display)' }}>
+                  Other Windows ({filteredRegularWindows.length})
+                </span>
+                <div className="flex-1 h-px bg-surface-700" />
+              </div>
+            )}
+
+            <div className="space-y-1">
+              {filteredRegularWindows.map((window, index) => (
+                <ProcessCardErrorBoundary key={window.hwnd} pid={window.pid} processName={window.processName}>
+                  <WindowItem
+                    window={window}
+                    isSelected={selectedHwnd === window.hwnd}
+                    isChecked={selectedWindows.has(window.hwnd)}
+                    onSelect={() => selectWindow(window.hwnd)}
+                    onFocus={() => focusWindow(window.hwnd)}
+                    onToggleCheck={() => toggleWindowSelection(window.hwnd)}
+                    index={index}
+                  />
+                </ProcessCardErrorBoundary>
+              ))}
+              {filteredWindows.length === 0 && (
                 <EmptyState
                   icon={<SearchIcon size={40} className="text-text-muted" />}
                   title="未找到窗口"
                   description={searchQuery ? '尝试其他搜索关键词' : '系统中没有可用窗口'}
                 />
-              </div>
-            )}
-          </div>
-        )}
-
-        {viewTab === 'windows' && viewMode === 'list' && (
-          <div className="space-y-1">
-            {filteredWindows.map((window, index) => (
-              <WindowItem
-                key={window.hwnd}
-                window={window}
-                isSelected={selectedHwnd === window.hwnd}
-                isChecked={selectedWindows.has(window.hwnd)}
-                onSelect={() => selectWindow(window.hwnd)}
-                onFocus={() => focusWindow(window.hwnd)}
-                onToggleCheck={() => toggleWindowSelection(window.hwnd)}
-                index={index}
-              />
-            ))}
-            {filteredWindows.length === 0 && (
-              <EmptyState
-                icon={<SearchIcon size={40} className="text-text-muted" />}
-                title="未找到窗口"
-                description={searchQuery ? '尝试其他搜索关键词' : '系统中没有可用窗口'}
-              />
-            )}
+              )}
+            </div>
           </div>
         )}
 

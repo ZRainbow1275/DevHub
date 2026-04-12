@@ -10,6 +10,7 @@ import type {
   ThemeOption,
   FontSize,
   SidebarPosition,
+  InformationDensity,
   LogLevel,
 } from '@shared/types'
 import { DEFAULT_SETTINGS } from '@shared/types'
@@ -648,6 +649,20 @@ function AppearancePanel({
               { value: 'right', label: '右侧' },
             ]}
             onChange={(v) => updateAppearance({ sidebarPosition: v })}
+          />
+          <SettingSelect<InformationDensity>
+            label="信息密度"
+            value={appearance.informationDensity ?? 'standard'}
+            options={[
+              { value: 'compact', label: '紧凑 - 更多内容' },
+              { value: 'standard', label: '标准' },
+              { value: 'comfortable', label: '舒适 - 更大间距' },
+            ]}
+            onChange={(v) => {
+              updateAppearance({ informationDensity: v })
+              document.documentElement.dataset.density = v
+              localStorage.setItem('devhub:density', v)
+            }}
           />
           <SettingToggle
             label="紧凑模式"

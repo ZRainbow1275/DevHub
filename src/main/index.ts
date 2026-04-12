@@ -16,6 +16,7 @@ import { AITaskTracker } from './services/AITaskTracker'
 import { AIAliasManager } from './services/AIAliasManager'
 
 let mainWindow: BrowserWindow | null = null
+let splashWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 
 // 单实例锁：防止启动多个窗口
@@ -45,6 +46,55 @@ scannerManager.setScanners({
   aiTaskTracker: scannerAITaskTracker
 })
 
+// ============ Splash Window ============
+
+function sendSplashProgress(percent: number, text: string): void {
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    splashWindow.webContents.send('splash:progress', { percent, text })
+  }
+}
+
+function createSplashWindow(): void {
+  const splashPreloadPath = join(__dirname, '../../resources/splash-preload.js')
+  const splashHtmlPath = join(__dirname, '../../resources/splash.html')
+
+  splashWindow = new BrowserWindow({
+    width: 400,
+    height: 300,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: false,
+    center: true,
+    skipTaskbar: true,
+    show: false,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: splashPreloadPath
+    }
+  })
+
+  splashWindow.loadFile(splashHtmlPath)
+  splashWindow.once('ready-to-show', () => {
+    splashWindow?.show()
+  })
+}
+
+function closeSplashWindow(): void {
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    splashWindow.webContents.send('splash:fadeOut')
+    setTimeout(() => {
+      if (splashWindow && !splashWindow.isDestroyed()) {
+        splashWindow.destroy()
+      }
+      splashWindow = null
+    }, 250)
+  }
+}
+
+// ============ Main Window ============
+
 function createWindow(): void {
   const preloadPath = join(__dirname, '../preload/index.cjs')
 
@@ -65,9 +115,8 @@ function createWindow(): void {
     }
   })
 
-  mainWindow.on('ready-to-show', () => {
-    mainWindow?.show()
-  })
+  // Note: show is handled by the splash→main transition in app.whenReady()
+  // mainWindow.show() is called after splash closes
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     try {
@@ -103,7 +152,12 @@ function createWindow(): void {
 
   // 窗口关闭行为 - 直接关闭，不最小化到托盘
   mainWindow.on('close', () => {
-    // 正常关闭窗口，不阻止
+    const currentSettings = appStore.getSettings()
+    if (currentSettings.window.saveLayoutOnExit && !mainWindow!.isMinimized()) {
+      const bounds = mainWindow!.getBounds()
+      // Persist bounds so next launch can restore window position/size
+      appStore.saveBounds(bounds)
+    }
   })
 }
 
@@ -148,9 +202,13 @@ app.on('second-instance', () => {
 })
 
 // App lifecycle
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Set app user model id for windows notifications
   electronApp.setAppUserModelId('com.devhub.app')
+
+  // Stage 1: Show splash immediately
+  createSplashWindow()
+  sendSplashProgress(10, 'Initializing application...')
 
   // Optimize shortcuts
   app.on('browser-window-created', (_, window) => {
@@ -170,10 +228,15 @@ app.whenReady().then(() => {
     })
   })
 
+  // Stage 2: Load configuration
+  sendSplashProgress(25, 'Loading configuration...')
+  const settings = appStore.getSettings()
+
+  // Stage 3: Create main window (hidden) and init scanners
+  sendSplashProgress(40, 'Starting scan engine...')
   createWindow()
 
   // Only create tray if minimizeToTray is enabled
-  const settings = appStore.getSettings()
   if (settings.advanced.minimizeToTray) {
     createTray()
   }
@@ -182,9 +245,24 @@ app.whenReady().then(() => {
   scannerManager.setMainWindowGetter(() => mainWindow)
   registerIpcHandlers(appStore, processManager, toolMonitor, () => mainWindow, scannerManager)
 
-  // Start background scanners (non-blocking)
+  // Wire up splash progress reporting from scanner manager (MUST be before startAll)
+  scannerManager.onProgress((_stage: string, percent: number, text: string) => {
+    sendSplashProgress(percent, text)
+  })
+
+  // Start background scanners (non-blocking) — onProgress registered above before this call
   scannerManager.startAll().catch((err) => {
     console.error('Failed to start background scanners:', err)
+  })
+
+  // Stage 7: Wait for main window ready-to-show, then transition
+  mainWindow?.once('ready-to-show', () => {
+    sendSplashProgress(100, 'Ready')
+    // Small delay so the user sees "Ready" before transition
+    setTimeout(() => {
+      closeSplashWindow()
+      mainWindow?.show()
+    }, 300)
   })
 
   // Auto-discover projects on first launch

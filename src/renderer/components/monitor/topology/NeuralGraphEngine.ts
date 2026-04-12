@@ -114,16 +114,48 @@ function clamp(min: number, val: number, max: number): number {
 }
 
 function computeVisualRadius(node: GraphNode): number {
-  return clamp(15, Math.sqrt(node.resourceWeight * 2 + 10) * 5, 60)
+  // CPU-proportional: higher CPU -> larger node
+  const cpuFactor = (node.cpu ?? 0) / 100 // 0-1
+  const baseSqrt = Math.sqrt(node.resourceWeight * 2 + 10) * 5
+  // Scale up by up to 40% for high-CPU processes
+  const cpuBoost = 1 + cpuFactor * 0.4
+  return clamp(15, baseSqrt * cpuBoost, 60)
+}
+
+/**
+ * Interpolate a hex color from `from` toward `to` by ratio (0-1).
+ */
+function lerpColor(from: string, to: string, ratio: number): string {
+  const r = Math.round(parseInt(from.slice(1, 3), 16) * (1 - ratio) + parseInt(to.slice(1, 3), 16) * ratio)
+  const g = Math.round(parseInt(from.slice(3, 5), 16) * (1 - ratio) + parseInt(to.slice(3, 5), 16) * ratio)
+  const b = Math.round(parseInt(from.slice(5, 7), 16) * (1 - ratio) + parseInt(to.slice(5, 7), 16) * ratio)
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
 }
 
 function getNodeColor(node: GraphNode): { base: string; glow: string } {
   // Check metadata.processType first (for process nodes)
   const processType = node.metadata?.processType as string | undefined
+  let colors = NODE_COLOR_MAP[node.nodeType] ?? NODE_COLOR_MAP['other']
   if (processType && NODE_COLOR_MAP[processType]) {
-    return NODE_COLOR_MAP[processType]
+    colors = NODE_COLOR_MAP[processType]
   }
-  return NODE_COLOR_MAP[node.nodeType] ?? NODE_COLOR_MAP['other']
+
+  // Memory-based tint: high memory shifts color toward red/warning
+  const memoryMB = Number(node.metadata?.memory ?? 0)
+  if (memoryMB > 0 && (node.nodeType === 'process' || processType)) {
+    // 0-500MB normal, 500-2000MB warm, 2000+ hot
+    const memRatio = clamp(0, memoryMB / 2000, 1)
+    if (memRatio > 0.2) {
+      const hotBase = '#d64545'
+      const hotGlow = '#ff6b6b'
+      return {
+        base: lerpColor(colors.base, hotBase, memRatio * 0.6),
+        glow: lerpColor(colors.glow, hotGlow, memRatio * 0.4),
+      }
+    }
+  }
+
+  return colors
 }
 
 function getEdgeColor(edge: GraphEdge): string {
@@ -350,8 +382,10 @@ export class NeuralGraphEngine {
 
     enter.merge(edgeSel as Selection<SVGLineElement, GraphEdge, SVGGElement, unknown>)
       .attr('stroke', (d) => getEdgeColor(d))
-      .attr('stroke-width', (d) => clamp(1, d.weight * 3, 5))
-      .attr('stroke-opacity', 0.6)
+      .attr('stroke-width', (d) => clamp(1, d.weight * 4, 6))
+      .attr('stroke-opacity', (d) => clamp(0.3, d.weight * 0.7, 0.8))
+      // Higher weight = faster flow animation
+      .style('animation-duration', (d) => `${clamp(0.3, 1.5 - d.weight, 1.5)}s`)
   }
 
   private renderNodes(enterIds: Set<string>): void {

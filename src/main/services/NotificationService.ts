@@ -10,6 +10,7 @@ export class NotificationService {
     enabled: true,
     types: {
       'task-complete': true,
+      'task-error': true,
       'port-conflict': true,
       'zombie-process': true,
       'high-resource': true,
@@ -214,7 +215,7 @@ export class NotificationService {
   ): void {
     const displayName = alias ?? toolName
     this.notify(
-      'task-complete',
+      'task-error',
       `[${displayName}] 检测到错误`,
       `${toolName}${pid ? ` (PID:${pid})` : ''}`,
       {

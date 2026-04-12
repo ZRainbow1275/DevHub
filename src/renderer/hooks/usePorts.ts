@@ -1,6 +1,6 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useRef } from 'react'
 import { usePortStore } from '../stores/portStore'
-import { PortInfo, PortTopologyData, PortFocusData } from '@shared/types-extended'
+import { PortInfo, PortTopologyData, PortFocusData, PortDetailIncrementalResult } from '@shared/types-extended'
 
 const isElectron = typeof window !== 'undefined' && window.devhub !== undefined
 
@@ -22,6 +22,8 @@ export function usePorts() {
     getActiveConflicts,
     isPortInUse
   } = usePortStore()
+
+  const updatePortDetail = usePortStore((s) => s.updatePortDetail)
 
   const scan = useCallback(async (): Promise<PortInfo[]> => {
     if (!isElectron) return []
@@ -77,6 +79,35 @@ export function usePorts() {
     return window.devhub.port?.getPortFocusData?.(port) ?? null
   }, [])
 
+  // Track the last queried port for cancellation
+  const lastQueriedPortRef = useRef<number | null>(null)
+
+  const getPortDetailIncremental = useCallback(async (port: number): Promise<PortDetailIncrementalResult> => {
+    if (!isElectron) return { data: null, source: 'cache', isStale: true }
+
+    // Cancel previous query if different port
+    const prevPort = lastQueriedPortRef.current
+    if (prevPort !== null && prevPort !== port) {
+      window.devhub.port?.cancelPortQuery?.(prevPort)
+    }
+    lastQueriedPortRef.current = port
+
+    try {
+      const result = await window.devhub.port?.getPortDetailIncremental?.(port) ?? { data: null, source: 'cache', isStale: true }
+      if (result.data) {
+        updatePortDetail(port, result.data)
+      }
+      return result
+    } catch {
+      return { data: null, source: 'cache', isStale: true }
+    }
+  }, [updatePortDetail])
+
+  const cancelPortQuery = useCallback(async (port: number): Promise<boolean> => {
+    if (!isElectron) return false
+    return window.devhub.port?.cancelPortQuery?.(port) ?? false
+  }, [])
+
   useEffect(() => {
     if (!isElectron) return
 
@@ -111,6 +142,8 @@ export function usePorts() {
     getActiveConflicts,
     isPortInUse,
     getTopology,
-    getPortFocusData
+    getPortFocusData,
+    getPortDetailIncremental,
+    cancelPortQuery
   }
 }

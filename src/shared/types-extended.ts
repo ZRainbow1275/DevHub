@@ -11,7 +11,7 @@ export interface ServiceResult<T = undefined> {
 // ============ Process Monitoring Types ============
 
 export type ProcessType = 'dev-server' | 'ai-tool' | 'build' | 'database' | 'other'
-export type ProcessStatusType = 'running' | 'idle' | 'waiting'
+export type ProcessStatusType = 'running' | 'idle' | 'waiting' | 'unknown'
 
 export interface ProcessInfo {
   pid: number
@@ -174,6 +174,13 @@ export interface PortFocusData {
   siblingPorts: PortInfo[]
   connections: PortConnection[]
   processChildren: ProcessInfo[]
+}
+
+/** Response from the incremental port detail query (cache-first strategy). */
+export interface PortDetailIncrementalResult {
+  data: PortFocusData | null
+  source: 'cache' | 'incremental' | 'timeout'
+  isStale: boolean
 }
 
 // ============ Port Topology Types ============
@@ -484,6 +491,7 @@ export interface TaskCompletionNotification {
 
 export type NotificationType =
   | 'task-complete'
+  | 'task-error'
   | 'port-conflict'
   | 'zombie-process'
   | 'high-resource'

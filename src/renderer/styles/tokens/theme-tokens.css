@@ -1,17 +1,27 @@
 /* ========================================
    DevHub Theme Token System
-   Non-color design tokens that vary per theme:
-   spacing, geometry, borders, shadows, decorations,
-   motion, typography overrides, and density.
-   8 dimensions: color, layout, typography, radius,
-   elevation, motion, decoration, density.
+   Non-color design tokens that vary per theme.
+   7 Layers: color (in colors.css), typography, space,
+   effects, motion, components, decoration.
    ======================================== */
 
 /* ---- Default Theme = Constructivism (Soviet) ---- */
 :root,
 [data-theme="constructivism"] {
-  /* ---- Spacing / Layout ---- */
-  --space-card-padding: 12px 16px;
+  /* ===== LAYER 2: TYPOGRAPHY ===== */
+  --typo-heading-transform: uppercase;
+  --typo-heading-spacing: 0.12em;
+  --typo-heading-weight: 800;
+  --typo-heading-family: 'Oswald', 'Bebas Neue', 'Anton', var(--font-display);
+  --typo-body-family: 'Inter', var(--font-sans);
+  --typo-body-spacing: 0.02em;
+  --typo-body-weight: 400;
+  --font-display-theme: 'JetBrains Mono', monospace;
+  --line-height-body-theme: 1.4;
+  --line-height-heading-theme: 1.1;
+
+  /* ===== LAYER 3: SPACE ===== */
+  --space-card-padding: 10px 14px;
   --space-section-gap: 8px;
   --space-content-gap: 4px;
   --spacing-base: 4px;
@@ -20,33 +30,51 @@
   --card-gap: 8px;
   --sidebar-width: 240px;
 
-  /* ---- Grid Layout ---- */
+  /* Grid Layout */
   --grid-cols-sm: 1;
   --grid-cols-md: 2;
   --grid-cols-lg: 3;
   --grid-cols-xl: 4;
 
-  /* ---- Geometry / Radius ---- */
+  /* Geometry / Radius */
+  --radius-sm: 0px;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
   --radius-card: 2px;
   --radius-button: 2px;
   --radius-input: 2px;
   --radius-badge: 0px;
 
-  /* ---- Borders ---- */
-  --border-card: 1px solid var(--surface-700);
+  /* ===== LAYER 4: EFFECTS ===== */
+  /* Borders */
+  --border-card: 2px solid var(--surface-700);
   --border-card-accent: 3px solid var(--red-500);
   --border-section: 2px solid var(--gold-500);
   --border-width: 2px;
 
-  /* ---- Shadows / Elevation ---- */
-  --shadow-card: 2px 2px 0 rgba(0,0,0,0.3);
-  --shadow-card-hover: 4px 4px 0 rgba(0,0,0,0.4);
+  /* Shadows / Elevation - No shadows, hard offsets for industrial feel */
+  --shadow-card: 3px 3px 0 rgba(0,0,0,0.35);
+  --shadow-card-hover: 5px 5px 0 rgba(0,0,0,0.45);
   --shadow-elevated: 6px 6px 0 rgba(0,0,0,0.5);
   --elevation-type: border;
   --elevation-1: inset 0 0 0 2px rgba(214, 69, 69, 0.2);
   --elevation-2: inset 0 0 0 2px rgba(214, 69, 69, 0.4);
 
-  /* ---- Decorations ---- */
+  /* ===== LAYER 5: MOTION ===== */
+  --motion-duration-fast: 100ms;
+  --motion-duration-normal: 150ms;
+  --motion-duration-slow: 400ms;
+  --motion-easing: cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-hover: translateX(2px);
+
+  /* ===== LAYER 6: COMPONENTS ===== */
+  --component-btn-padding: 8px 16px;
+  --component-btn-font-weight: 700;
+  --component-input-border-bottom: 2px;
+  --component-tab-border-bottom: 2px;
+
+  /* ===== LAYER 7: DECORATION ===== */
   --deco-clip-card: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
   --deco-background: repeating-linear-gradient(
     -45deg,
@@ -59,26 +87,11 @@
   --deco-divider-height: 3px;
   --deco-accent-bar-width: 3px;
   --deco-accent-bar-style: solid;
+  --deco-stripe-opacity: 0.035;
 
-  /* ---- Motion / Animation ---- */
-  --motion-duration-fast: 100ms;
-  --motion-duration-normal: 150ms;
-  --motion-duration-slow: 400ms;
-  --motion-easing: cubic-bezier(0.4, 0, 0.2, 1);
-  --motion-hover: translateX(2px);
-
-  /* ---- Typography Overrides ---- */
-  --typo-heading-transform: uppercase;
-  --typo-heading-spacing: 0.1em;
-  --typo-heading-weight: 800;
-  --typo-heading-family: var(--font-display);
-  --typo-body-spacing: 0.02em;
-  --font-display-theme: 'JetBrains Mono', monospace;
-  --line-height-body-theme: 1.4;
-
-  /* ---- Information Density ---- */
-  --density-card-min-height: 60px;
-  --density-list-row-height: 36px;
+  /* ===== DENSITY ===== */
+  --density-card-min-height: 56px;
+  --density-list-row-height: 34px;
   --density-grid-gap: 8px;
 }
 
@@ -101,6 +114,10 @@
   --grid-cols-xl: 4;
 
   /* ---- Geometry / Radius ---- */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
   --radius-card: 12px;
   --radius-button: 8px;
   --radius-input: 8px;
@@ -169,6 +186,10 @@
   --grid-cols-xl: 3;
 
   /* ---- Geometry / Radius ---- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
   --radius-card: 16px;
   --radius-button: 12px;
   --radius-input: 10px;
@@ -228,7 +249,19 @@
    Cyberpunk Neon Theme — Futuristic, neon glow, holographic
    ============================================================================== */
 [data-theme="cyberpunk"] {
-  /* ---- Spacing / Layout ---- */
+  /* ===== LAYER 2: TYPOGRAPHY ===== */
+  --typo-heading-transform: uppercase;
+  --typo-heading-spacing: 0.15em;
+  --typo-heading-weight: 700;
+  --typo-heading-family: 'Orbitron', 'Share Tech Mono', 'Exo 2', var(--font-sans);
+  --typo-body-family: 'Share Tech Mono', 'Roboto Mono', var(--font-mono);
+  --typo-body-spacing: 0.03em;
+  --typo-body-weight: 400;
+  --font-display-theme: 'Orbitron', 'Exo 2', sans-serif;
+  --line-height-body-theme: 1.55;
+  --line-height-heading-theme: 1.2;
+
+  /* ===== LAYER 3: SPACE ===== */
   --space-card-padding: 14px 18px;
   --space-section-gap: 12px;
   --space-content-gap: 8px;
@@ -238,61 +271,66 @@
   --card-gap: 12px;
   --sidebar-width: 280px;
 
-  /* ---- Grid Layout ---- */
+  /* Grid Layout */
   --grid-cols-sm: 1;
   --grid-cols-md: 2;
   --grid-cols-lg: 3;
   --grid-cols-xl: 3;
 
-  /* ---- Geometry / Radius ---- */
+  /* Geometry / Radius */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
   --radius-card: 6px;
   --radius-button: 4px;
   --radius-input: 4px;
   --radius-badge: 4px;
 
-  /* ---- Borders ---- */
-  --border-card: 1px solid rgba(0, 255, 255, 0.15);
-  --border-card-accent: 2px solid rgba(0, 255, 255, 0.4);
+  /* ===== LAYER 4: EFFECTS ===== */
+  /* Borders - Neon-tinted, thin */
+  --border-card: 1px solid rgba(0, 255, 255, 0.18);
+  --border-card-accent: 1px solid rgba(0, 255, 255, 0.5);
   --border-section: 1px solid rgba(0, 255, 255, 0.2);
   --border-width: 1px;
 
-  /* ---- Shadows / Elevation (Glow) ---- */
-  --shadow-card: 0 0 8px rgba(0, 255, 255, 0.08), 0 0 2px rgba(0, 255, 255, 0.12);
-  --shadow-card-hover: 0 0 15px rgba(0, 255, 255, 0.15), 0 0 4px rgba(0, 255, 255, 0.2);
-  --shadow-elevated: 0 0 25px rgba(0, 255, 255, 0.2), 0 0 8px rgba(255, 0, 170, 0.1);
+  /* Shadows / Elevation - GLOW is the defining characteristic */
+  --shadow-card: 0 0 8px rgba(0, 255, 255, 0.08), 0 0 2px rgba(0, 255, 255, 0.15), inset 0 1px 0 rgba(0, 255, 255, 0.05);
+  --shadow-card-hover: 0 0 20px rgba(0, 255, 255, 0.2), 0 0 6px rgba(0, 255, 255, 0.3), 0 0 40px rgba(0, 255, 255, 0.05);
+  --shadow-elevated: 0 0 30px rgba(0, 255, 255, 0.25), 0 0 10px rgba(255, 0, 170, 0.12);
   --elevation-type: glow;
-  --elevation-1: 0 0 10px rgba(0, 255, 255, 0.15);
-  --elevation-2: 0 0 20px rgba(0, 255, 255, 0.3);
+  --elevation-1: 0 0 12px rgba(0, 255, 255, 0.15);
+  --elevation-2: 0 0 24px rgba(0, 255, 255, 0.3), 0 0 4px rgba(255, 0, 170, 0.1);
 
-  /* ---- Decorations ---- */
-  --deco-clip-card: none;
-  --deco-background: linear-gradient(
-    rgba(0, 255, 255, 0.02) 1px, transparent 1px
-  ), linear-gradient(
-    90deg, rgba(0, 255, 255, 0.02) 1px, transparent 1px
-  );
-  --deco-divider: linear-gradient(90deg, rgba(0, 255, 255, 0.4), rgba(255, 0, 170, 0.4), rgba(0, 255, 255, 0.4));
-  --deco-divider-height: 1px;
-  --deco-accent-bar-width: 2px;
-  --deco-accent-bar-style: solid;
-
-  /* ---- Motion / Animation ---- */
+  /* ===== LAYER 5: MOTION ===== */
   --motion-duration-fast: 150ms;
   --motion-duration-normal: 250ms;
   --motion-duration-slow: 400ms;
-  --motion-easing: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --motion-easing: cubic-bezier(0.34, 1.56, 0.64, 1);
   --motion-hover: translateY(-2px);
 
-  /* ---- Typography Overrides ---- */
-  --typo-heading-transform: uppercase;
-  --typo-heading-spacing: 0.05em;
-  --typo-heading-weight: 600;
-  --typo-heading-family: 'Orbitron', 'Exo 2', var(--font-sans);
-  --typo-body-spacing: 0.01em;
-  --font-display-theme: 'Orbitron', 'Exo 2', sans-serif;
-  --line-height-body-theme: 1.5;
+  /* ===== LAYER 6: COMPONENTS ===== */
+  --component-btn-padding: 10px 20px;
+  --component-btn-font-weight: 600;
+  --component-input-border-bottom: 1px;
+  --component-tab-border-bottom: 2px;
 
-  /* ---- Information Density ---- */
+  /* ===== LAYER 7: DECORATION ===== */
+  --deco-clip-card: none;
+  --deco-background: radial-gradient(
+    circle, rgba(0, 255, 255, 0.04) 1px, transparent 1px
+  );
+  --deco-background-size: 24px 24px;
+  --deco-divider: linear-gradient(90deg, rgba(0, 255, 255, 0.5), rgba(255, 0, 170, 0.5), rgba(0, 255, 255, 0.5));
+  --deco-divider-height: 1px;
+  --deco-accent-bar-width: 2px;
+  --deco-accent-bar-style: solid;
+  --deco-stripe-opacity: 0;
+  --deco-scanline-opacity: 0.03;
+  --deco-glow-color: rgba(0, 255, 255, 0.3);
+  --deco-glow-color-alt: rgba(255, 0, 170, 0.2);
+
+  /* ===== DENSITY ===== */
   --density-card-min-height: 72px;
   --density-list-row-height: 40px;
   --density-grid-gap: 12px;
@@ -302,68 +340,342 @@
    Swiss Minimal Theme — Precision, restraint, function over form
    ============================================================================== */
 [data-theme="swiss"] {
-  /* ---- Spacing / Layout ---- */
-  --space-card-padding: 20px 24px;
-  --space-section-gap: 24px;
-  --space-content-gap: 12px;
+  /* ===== LAYER 2: TYPOGRAPHY ===== */
+  --typo-heading-transform: none;
+  --typo-heading-spacing: -0.02em;
+  --typo-heading-weight: 600;
+  --typo-heading-family: 'Helvetica Neue', 'Inter', var(--font-sans);
+  --typo-body-family: 'Inter', var(--font-sans);
+  --typo-body-spacing: -0.01em;
+  --typo-body-weight: 400;
+  --font-display-theme: 'Helvetica Neue', 'Inter', sans-serif;
+  --line-height-body-theme: 1.65;
+  --line-height-heading-theme: 1.25;
+
+  /* ===== LAYER 3: SPACE ===== */
+  --space-card-padding: 24px 28px;
+  --space-section-gap: 28px;
+  --space-content-gap: 16px;
   --spacing-base: 8px;
-  --density-factor: 1.2;
-  --container-padding: 24px;
-  --card-gap: 16px;
+  --density-factor: 1.25;
+  --container-padding: 28px;
+  --card-gap: 20px;
   --sidebar-width: 320px;
 
-  /* ---- Grid Layout ---- */
+  /* Grid Layout */
   --grid-cols-sm: 1;
   --grid-cols-md: 1;
   --grid-cols-lg: 2;
   --grid-cols-xl: 3;
 
-  /* ---- Geometry / Radius (Pure square) ---- */
+  /* Geometry / Radius - ALL square, no rounding */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
   --radius-card: 0px;
   --radius-button: 0px;
   --radius-input: 0px;
   --radius-badge: 0px;
 
-  /* ---- Borders ---- */
+  /* ===== LAYER 4: EFFECTS ===== */
+  /* Borders - Ultra-thin, subtle */
   --border-card: 1px solid var(--surface-700);
   --border-card-accent: none;
   --border-section: 1px solid var(--surface-700);
   --border-width: 1px;
 
-  /* ---- Shadows / Elevation (None / Ultra-subtle) ---- */
+  /* Shadows - NONE or nearly invisible */
   --shadow-card: none;
-  --shadow-card-hover: 0 1px 3px rgba(0, 0, 0, 0.05);
-  --shadow-elevated: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-card-hover: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-elevated: 0 2px 4px rgba(0, 0, 0, 0.05);
   --elevation-type: none;
   --elevation-1: none;
-  --elevation-2: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --elevation-2: 0 1px 3px rgba(0, 0, 0, 0.04);
 
-  /* ---- Decorations ---- */
+  /* ===== LAYER 5: MOTION ===== */
+  --motion-duration-fast: 80ms;
+  --motion-duration-normal: 150ms;
+  --motion-duration-slow: 200ms;
+  --motion-easing: ease;
+  --motion-hover: none;
+
+  /* ===== LAYER 6: COMPONENTS ===== */
+  --component-btn-padding: 12px 24px;
+  --component-btn-font-weight: 500;
+  --component-input-border-bottom: 1px;
+  --component-tab-border-bottom: 2px;
+
+  /* ===== LAYER 7: DECORATION ===== */
   --deco-clip-card: none;
   --deco-background: none;
   --deco-divider: var(--surface-700);
   --deco-divider-height: 1px;
   --deco-accent-bar-width: 0px;
   --deco-accent-bar-style: none;
+  --deco-stripe-opacity: 0;
 
-  /* ---- Motion / Animation (Minimal, functional only) ---- */
-  --motion-duration-fast: 100ms;
-  --motion-duration-normal: 150ms;
-  --motion-duration-slow: 250ms;
-  --motion-easing: ease;
-  --motion-hover: none;
-
-  /* ---- Typography Overrides ---- */
-  --typo-heading-transform: none;
-  --typo-heading-spacing: 0;
-  --typo-heading-weight: 400;
-  --typo-heading-family: 'Helvetica Neue', 'Inter', var(--font-sans);
-  --typo-body-spacing: 0;
-  --font-display-theme: 'Helvetica Neue', 'Inter', sans-serif;
-  --line-height-body-theme: 1.6;
-
-  /* ---- Information Density ---- */
+  /* ===== DENSITY ===== */
   --density-card-min-height: 96px;
   --density-list-row-height: 48px;
-  --density-grid-gap: 16px;
+  --density-grid-gap: 20px;
+}
+
+/* ==============================================================================
+   Dark Theme — Neutral dark, standard system defaults
+   ============================================================================== */
+[data-theme="dark"] {
+  /* ===== LAYER 2: TYPOGRAPHY ===== */
+  --typo-heading-transform: none;
+  --typo-heading-spacing: -0.01em;
+  --typo-heading-weight: 600;
+  --typo-heading-family: 'Inter', system-ui, sans-serif;
+  --typo-body-family: 'Inter', system-ui, sans-serif;
+  --typo-body-spacing: 0;
+  --typo-body-weight: 400;
+  --font-display-theme: 'Inter', sans-serif;
+  --line-height-body-theme: 1.5;
+  --line-height-heading-theme: 1.25;
+
+  /* ===== LAYER 3: SPACE ===== */
+  --space-card-padding: 16px 20px;
+  --space-section-gap: 16px;
+  --space-content-gap: 8px;
+  --spacing-base: 6px;
+  --density-factor: 1.0;
+  --container-padding: 16px;
+  --card-gap: 12px;
+  --sidebar-width: 260px;
+
+  /* Grid Layout */
+  --grid-cols-sm: 1;
+  --grid-cols-md: 2;
+  --grid-cols-lg: 3;
+  --grid-cols-xl: 4;
+
+  /* Geometry / Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-card: 8px;
+  --radius-button: 6px;
+  --radius-input: 6px;
+  --radius-badge: 4px;
+
+  /* ===== LAYER 4: EFFECTS ===== */
+  --border-card: 1px solid rgba(255,255,255,0.08);
+  --border-card-accent: none;
+  --border-section: none;
+  --border-width: 1px;
+
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-card-hover: 0 4px 6px rgba(0,0,0,0.25), 0 2px 4px rgba(0,0,0,0.2);
+  --shadow-elevated: 0 10px 15px rgba(0,0,0,0.35), 0 4px 6px rgba(0,0,0,0.2);
+  --elevation-type: shadow;
+  --elevation-1: 0 1px 3px rgba(0,0,0,0.3);
+  --elevation-2: 0 4px 6px rgba(0,0,0,0.35);
+
+  /* ===== LAYER 5: MOTION ===== */
+  --motion-duration-fast: 100ms;
+  --motion-duration-normal: 200ms;
+  --motion-duration-slow: 350ms;
+  --motion-easing: cubic-bezier(0.2, 0, 0, 1);
+  --motion-hover: scale(1.02);
+
+  /* ===== LAYER 6: COMPONENTS ===== */
+  --component-btn-padding: 8px 16px;
+  --component-btn-font-weight: 500;
+  --component-input-border-bottom: 1px;
+  --component-tab-border-bottom: 2px;
+
+  /* ===== LAYER 7: DECORATION ===== */
+  --deco-clip-card: none;
+  --deco-background: none;
+  --deco-divider: rgba(255,255,255,0.08);
+  --deco-divider-height: 1px;
+  --deco-accent-bar-width: 0px;
+  --deco-accent-bar-style: none;
+  --deco-stripe-opacity: 0;
+
+  /* ===== DENSITY ===== */
+  --density-card-min-height: 72px;
+  --density-list-row-height: 40px;
+  --density-grid-gap: 12px;
+}
+
+/* ==============================================================================
+   Light Theme — Neutral light, standard system defaults
+   ============================================================================== */
+[data-theme="light"] {
+  /* ===== LAYER 2: TYPOGRAPHY ===== */
+  --typo-heading-transform: none;
+  --typo-heading-spacing: -0.01em;
+  --typo-heading-weight: 600;
+  --typo-heading-family: 'Inter', system-ui, sans-serif;
+  --typo-body-family: 'Inter', system-ui, sans-serif;
+  --typo-body-spacing: 0;
+  --typo-body-weight: 400;
+  --font-display-theme: 'Inter', sans-serif;
+  --line-height-body-theme: 1.5;
+  --line-height-heading-theme: 1.25;
+
+  /* ===== LAYER 3: SPACE ===== */
+  --space-card-padding: 16px 20px;
+  --space-section-gap: 16px;
+  --space-content-gap: 8px;
+  --spacing-base: 6px;
+  --density-factor: 1.0;
+  --container-padding: 16px;
+  --card-gap: 12px;
+  --sidebar-width: 260px;
+
+  /* Grid Layout */
+  --grid-cols-sm: 1;
+  --grid-cols-md: 2;
+  --grid-cols-lg: 3;
+  --grid-cols-xl: 4;
+
+  /* Geometry / Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-card: 8px;
+  --radius-button: 6px;
+  --radius-input: 6px;
+  --radius-badge: 4px;
+
+  /* ===== LAYER 4: EFFECTS ===== */
+  --border-card: 1px solid rgba(0,0,0,0.08);
+  --border-card-accent: none;
+  --border-section: none;
+  --border-width: 1px;
+
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-card-hover: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+  --shadow-elevated: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+  --elevation-type: shadow;
+  --elevation-1: 0 1px 3px rgba(0,0,0,0.08);
+  --elevation-2: 0 4px 6px rgba(0,0,0,0.1);
+
+  /* ===== LAYER 5: MOTION ===== */
+  --motion-duration-fast: 100ms;
+  --motion-duration-normal: 200ms;
+  --motion-duration-slow: 350ms;
+  --motion-easing: cubic-bezier(0.2, 0, 0, 1);
+  --motion-hover: scale(1.02);
+
+  /* ===== LAYER 6: COMPONENTS ===== */
+  --component-btn-padding: 8px 16px;
+  --component-btn-font-weight: 500;
+  --component-input-border-bottom: 1px;
+  --component-tab-border-bottom: 2px;
+
+  /* ===== LAYER 7: DECORATION ===== */
+  --deco-clip-card: none;
+  --deco-background: none;
+  --deco-divider: rgba(0,0,0,0.08);
+  --deco-divider-height: 1px;
+  --deco-accent-bar-width: 0px;
+  --deco-accent-bar-style: none;
+  --deco-stripe-opacity: 0;
+
+  /* ===== DENSITY ===== */
+  --density-card-min-height: 72px;
+  --density-list-row-height: 40px;
+  --density-grid-gap: 12px;
+}
+
+/* ==============================================================================
+   Information Density Overrides
+   Applied via data-density attribute on <html>.
+   These override per-theme defaults so density preference works across themes.
+   ============================================================================== */
+
+[data-density="compact"] {
+  --density-card-min-height: 52px;
+  --density-list-row-height: 32px;
+  --density-grid-gap: 8px;
+  --space-card-padding: 8px 12px;
+  --space-section-gap: 6px;
+  --space-content-gap: 4px;
+  --container-padding: 8px;
+  --card-gap: 8px;
+  --density-factor: 0.8;
+  --density-font-scale: 0.875;
+  --density-line-height: 1.25;
+}
+
+[data-density="standard"] {
+  /* Uses theme defaults -- no overrides needed */
+  --density-font-scale: 1;
+  --density-line-height: 1.5;
+}
+
+[data-density="comfortable"] {
+  --density-card-min-height: 100px;
+  --density-list-row-height: 52px;
+  --density-grid-gap: 20px;
+  --space-card-padding: 20px 24px;
+  --space-section-gap: 20px;
+  --space-content-gap: 12px;
+  --container-padding: 24px;
+  --card-gap: 16px;
+  --density-factor: 1.2;
+  --density-font-scale: 1;
+  --density-line-height: 1.75;
+}
+
+/* ==============================================================================
+   Responsive Breakpoint CSS Variables
+   Applied via data-breakpoint attribute on <html>, set by useBreakpoint hook.
+   ============================================================================== */
+
+:root {
+  --responsive-columns: 3;
+  --responsive-card-min-width: 280px;
+  --responsive-font-scale: 1;
+  --responsive-gap: var(--density-grid-gap, 12px);
+  --responsive-padding: var(--container-padding, 16px);
+}
+
+[data-breakpoint="xs"] {
+  --responsive-columns: 1;
+  --responsive-card-min-width: 200px;
+  --responsive-font-scale: 0.875;
+  --responsive-gap: 8px;
+  --responsive-padding: 8px;
+}
+
+[data-breakpoint="sm"] {
+  --responsive-columns: 2;
+  --responsive-card-min-width: 240px;
+  --responsive-font-scale: 0.9375;
+  --responsive-gap: 10px;
+  --responsive-padding: 12px;
+}
+
+[data-breakpoint="md"] {
+  --responsive-columns: 3;
+  --responsive-card-min-width: 260px;
+  --responsive-font-scale: 1;
+  --responsive-gap: 12px;
+  --responsive-padding: 16px;
+}
+
+[data-breakpoint="lg"] {
+  --responsive-columns: 4;
+  --responsive-card-min-width: 280px;
+  --responsive-font-scale: 1;
+  --responsive-gap: 16px;
+  --responsive-padding: 20px;
+}
+
+[data-breakpoint="xl"] {
+  --responsive-columns: 5;
+  --responsive-card-min-width: 300px;
+  --responsive-font-scale: 1;
+  --responsive-gap: 20px;
+  --responsive-padding: 24px;
 }

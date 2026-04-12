@@ -17,6 +17,30 @@ interface RawProcessInfo {
   cpuPercent: number
 }
 
+/**
+ * Sanitize process data to ensure all fields have safe defaults.
+ * Prevents renderer crashes from unexpected null/undefined/NaN values.
+ */
+function sanitizeProcessData(raw: Partial<ProcessInfo>): ProcessInfo {
+  return {
+    pid: (typeof raw.pid === 'number' && Number.isFinite(raw.pid)) ? raw.pid : 0,
+    name: (typeof raw.name === 'string' && raw.name.length > 0) ? raw.name : 'Unknown',
+    command: (typeof raw.command === 'string') ? raw.command : '',
+    port: (typeof raw.port === 'number' && Number.isFinite(raw.port)) ? raw.port : undefined,
+    cpu: (typeof raw.cpu === 'number' && Number.isFinite(raw.cpu)) ? Math.max(0, raw.cpu) : 0,
+    memory: (typeof raw.memory === 'number' && Number.isFinite(raw.memory)) ? Math.max(0, raw.memory) : 0,
+    status: (['running', 'idle', 'waiting'] as ProcessStatusType[]).includes(raw.status as ProcessStatusType)
+      ? raw.status as ProcessStatusType
+      : 'running',
+    startTime: (typeof raw.startTime === 'number' && Number.isFinite(raw.startTime)) ? raw.startTime : Date.now(),
+    type: (['dev-server', 'ai-tool', 'build', 'database', 'other'] as ProcessType[]).includes(raw.type as ProcessType)
+      ? raw.type as ProcessType
+      : 'other',
+    workingDir: (typeof raw.workingDir === 'string') ? raw.workingDir : undefined,
+    projectId: (typeof raw.projectId === 'string') ? raw.projectId : undefined,
+  }
+}
+
 export class SystemProcessScanner {
   private processes = new Map<number, ProcessInfo>()
   private processFirstSeen = new Map<number, number>()
@@ -120,7 +144,7 @@ export class SystemProcessScanner {
           this.processFirstSeen.set(raw.pid, Date.now())
         }
 
-        const processInfo: ProcessInfo = {
+        const processInfo: ProcessInfo = sanitizeProcessData({
           pid: raw.pid,
           name: raw.name,
           command: raw.commandLine,
@@ -131,7 +155,7 @@ export class SystemProcessScanner {
           startTime: this.processFirstSeen.get(raw.pid)!,
           type: this.inferType(raw.name, raw.commandLine),
           workingDir: raw.workingDir
-        }
+        })
 
         this.processes.set(raw.pid, processInfo)
         processes.push(processInfo)
@@ -286,7 +310,7 @@ export class SystemProcessScanner {
 
         if (isNaN(childPid) || childPid === 0) continue
 
-        children.push({
+        children.push(sanitizeProcessData({
           pid: childPid,
           name,
           command: commandLine,
@@ -296,7 +320,7 @@ export class SystemProcessScanner {
           startTime: Date.now(),
           type: this.inferType(name, commandLine),
           workingDir: this.extractWorkingDir(commandLine)
-        })
+        }))
       }
 
       return children
@@ -382,10 +406,10 @@ export class SystemProcessScanner {
       const target = allProcs.get(pid)
       if (!target) return null
 
-      // Helper: convert FullProcInfo to ProcessInfo
+      // Helper: convert FullProcInfo to ProcessInfo (sanitized)
       const toProcessInfo = (fp: FullProcInfo): ProcessInfo => {
         const existing = this.processes.get(fp.pid)
-        return existing || {
+        return existing || sanitizeProcessData({
           pid: fp.pid,
           name: fp.name,
           command: fp.commandLine,
@@ -395,7 +419,7 @@ export class SystemProcessScanner {
           startTime: this.processFirstSeen.get(fp.pid) || Date.now(),
           type: this.inferType(fp.name, fp.commandLine),
           workingDir: this.extractWorkingDir(fp.commandLine)
-        }
+        })
       }
 
       // Build ancestors chain (walk up parent pointers)

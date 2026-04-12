@@ -106,7 +106,8 @@ export class AIAliasManager {
       id: `auto_${toolType}_${process.pid}_${Date.now()}`,
       alias: autoName,
       matchCriteria: {
-        pid: process.pid,
+        // pid is intentionally NOT persisted: PIDs are recycled across restarts
+        // and would cause false matches. Use autoNamedPids set for in-session dedup.
         toolType,
         workingDir: process.workingDir,
         commandHash: hashCommand(process.command),

@@ -83,6 +83,10 @@ export function setupAITaskHandlers(mainWindow: BrowserWindow): void {
     }
   ))
 
+  // Known limitation: AI_TASK_GET_ALL currently returns only active tasks
+  // (same as AI_TASK_GET_ACTIVE). Historical completed tasks are typed as
+  // AITaskHistory[] and are not compatible with AITask[]. Use
+  // AI_TASK_GET_HISTORY to retrieve completed task records.
   ipcMain.handle(IPC_CHANNELS_EXT.AI_TASK_GET_ALL, withRateLimit(
     IPC_CHANNELS_EXT.AI_TASK_GET_ALL, RATE_LIMITS.QUERY,
     async (): Promise<AITask[]> => {
@@ -118,8 +122,12 @@ export function setupAITaskHandlers(mainWindow: BrowserWindow): void {
 
   ipcMain.handle(IPC_CHANNELS_EXT.AI_TASK_STOP_TRACKING, withRateLimit(
     IPC_CHANNELS_EXT.AI_TASK_STOP_TRACKING, RATE_LIMITS.ACTION,
-    async (): Promise<boolean> => {
+    async (_, pid: number): Promise<boolean> => {
       if (!aiTaskTracker) return false
+      if (typeof pid === 'number' && pid > 0) {
+        return aiTaskTracker.stopTask(pid)
+      }
+      // No valid pid provided — stop the global tracking loop
       aiTaskTracker.stopTracking()
       return true
     }

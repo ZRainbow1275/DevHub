@@ -17,6 +17,8 @@ export function setupWindowHandlers(_mainWindow: BrowserWindow): void {
     }
   ))
 
+  // TODO(I3): Add Zod schema validation for window:focus when zod is added to dependencies
+  // Schema: z.object({ hwnd: z.number().int().positive() })
   ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_FOCUS, withRateLimit(
     IPC_CHANNELS_EXT.WINDOW_FOCUS, RATE_LIMITS.ACTION,
     async (_, hwnd: number): Promise<ServiceResult> => {

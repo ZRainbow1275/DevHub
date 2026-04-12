@@ -12,9 +12,10 @@ export function useProjects() {
     addProject,
     updateProject,
     removeProject,
-    selectProject,
-    getFilteredProjects
+    selectProject
   } = useProjectStore()
+
+  const filter = useProjectStore((s) => s.filter)
 
   // 追踪正在进行的操作，防止竞态条件
   const pendingOperations = useRef<Set<string>>(new Set())
@@ -232,7 +233,19 @@ export function useProjects() {
   }, [projects])
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId)
-  const filteredProjects = useMemo(() => getFilteredProjects(), [getFilteredProjects])
+  const filteredProjects = useMemo(() => {
+    return projects.filter((project) => {
+      if (filter.tag && !project.tags.includes(filter.tag)) return false
+      if (filter.group && project.group !== filter.group) return false
+      if (filter.search) {
+        const searchLower = filter.search.toLowerCase()
+        if (!project.name.toLowerCase().includes(searchLower) && !project.path.toLowerCase().includes(searchLower)) {
+          return false
+        }
+      }
+      return true
+    })
+  }, [projects, filter])
 
   return {
     projects,

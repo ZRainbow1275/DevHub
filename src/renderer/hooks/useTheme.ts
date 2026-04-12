@@ -11,11 +11,11 @@ const THEME_TRANSITION_MS = 250
  * (FontFace.load) which is non-blocking and returns a Promise.
  */
 const THEME_FONTS: Record<ThemeName, string[]> = {
-  constructivism: ['400 1em "Bebas Neue"', '400 1em "JetBrains Mono"'],
+  constructivism: ['400 1em "Oswald"', '400 1em "Bebas Neue"', '400 1em "JetBrains Mono"'],
   'modern-light': ['400 1em "Inter"'],
   'warm-light': ['400 1em "Playfair Display"'],
-  cyberpunk: ['400 1em "Orbitron"', '400 1em "Exo 2"'],
-  swiss: ['400 1em "Inter"'],
+  cyberpunk: ['400 1em "Orbitron"', '400 1em "Share Tech Mono"', '400 1em "Exo 2"'],
+  swiss: ['400 1em "Inter"', '600 1em "Inter"'],
 }
 
 /** Best-effort font preload; never throws. */

@@ -99,7 +99,7 @@ function CompactProcessRow({ proc, onClick }: { proc: ProcessInfo; onClick?: () 
         </span>
       </div>
       <div className="flex items-center gap-3 text-[10px] flex-shrink-0">
-        <span className="font-mono text-text-secondary">{proc.cpu.toFixed(1)}%</span>
+        <span className="font-mono text-text-secondary">{(Number.isFinite(proc.cpu) ? proc.cpu : 0).toFixed(1)}%</span>
         <span className="font-mono text-text-secondary">{proc.memory}MB</span>
       </div>
     </div>
@@ -216,7 +216,7 @@ export const ProcessDetailPanel = memo(function ProcessDetailPanel({
     setShowKillTreeConfirm(false)
     // Kill descendants first, then self
     if (relationship) {
-      for (const desc of [...relationship.descendants].reverse()) {
+      for (const desc of [...(relationship.descendants ?? [])].reverse()) {
         await onKillProcess(desc.pid)
       }
     }
@@ -254,7 +254,7 @@ export const ProcessDetailPanel = memo(function ProcessDetailPanel({
 
   const self = relationship.self
   const cpuColor = getResourceColor(self.cpu)
-  const memPercent = self.memory > 0 ? Math.min((self.memory / Math.max(self.memory, 100)) * 100, 100) : 0
+  const memPercent = self.memory > 0 ? Math.min((self.memory / 1024) * 100, 100) : 0
   const memColor = getMemoryResourceColor(memPercent)
 
   const toggleSection = (section: string) => {
@@ -390,7 +390,7 @@ export const ProcessDetailPanel = memo(function ProcessDetailPanel({
           {expandedSection === 'relations' && (
             <div className="space-y-2 animate-fade-in">
               {/* Ports */}
-              {self.ports.length > 0 && (
+              {(self.ports?.length ?? 0) > 0 && (
                 <div>
                   <div className="flex items-center gap-1 mb-1">
                     <PortIcon size={12} className="text-gold" />

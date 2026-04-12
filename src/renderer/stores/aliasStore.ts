@@ -72,3 +72,8 @@ export const useAliasStore = create<AliasState>((set, get) => ({
     }
   }
 }))
+
+// Auto-hydrate on startup
+if (typeof window !== 'undefined') {
+  queueMicrotask(() => useAliasStore.getState().fetchAliases())
+}

@@ -35,6 +35,8 @@ export function setupProcessHandlers(mainWindow: BrowserWindow, appStore: AppSto
     }
   ))
 
+  // TODO(I3): Add Zod schema validation for process:kill when zod is added to dependencies
+  // Schema: z.object({ pid: z.number().int().positive(), force: z.boolean().optional() })
   ipcMain.handle(IPC_CHANNELS_EXT.PROCESS_KILL, withRateLimit(
     IPC_CHANNELS_EXT.PROCESS_KILL, RATE_LIMITS.DESTRUCTIVE,
     async (_, pid: unknown): Promise<boolean> => {

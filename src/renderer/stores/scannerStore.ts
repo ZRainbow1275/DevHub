@@ -11,7 +11,7 @@ import {
 
 // ============ Init Status ============
 
-export type InitStatus = 'loading' | 'partial' | 'ready'
+export type InitStatus = 'loading' | 'partial' | 'ready' | 'error'
 
 interface ScannerTypeStatus {
   ready: boolean
@@ -169,7 +169,7 @@ export const useScannerStore = create<ScannerState>((set, get) => ({
       })
     } catch (err) {
       console.error('Scanner store initialization failed:', err)
-      set({ initStatus: 'loading' })
+      set({ initStatus: 'error' })
     }
   },
 
@@ -284,6 +284,7 @@ export const useScannerStore = create<ScannerState>((set, get) => ({
         [type]: { ...state.scannerStatus[type], error }
       }
     }))
+    checkAndTransitionToReady(get, set)
   }
 }))
 

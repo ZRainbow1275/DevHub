@@ -47,19 +47,38 @@ const SovietDecoration: React.FC = () => (
   </>
 )
 
-/** Cyberpunk Neon: grid background + scanline sweep */
+/** Cyberpunk Neon: dot-grid background + scanline sweep + vignette */
 const CyberpunkDecoration: React.FC = () => (
   <>
-    {/* Grid-line background */}
+    {/* Dot-grid background */}
     <div
       className="absolute inset-0 pointer-events-none"
       style={{
-        opacity: 0.04,
+        opacity: 0.06,
+        backgroundImage: 'radial-gradient(circle, rgba(0, 255, 255, 0.2) 1px, transparent 1px)',
+        backgroundSize: '24px 24px',
+      }}
+      aria-hidden="true"
+    />
+    {/* Faint grid lines */}
+    <div
+      className="absolute inset-0 pointer-events-none"
+      style={{
+        opacity: 0.025,
         backgroundImage: [
-          'linear-gradient(rgba(0, 255, 255, 0.15) 1px, transparent 1px)',
-          'linear-gradient(90deg, rgba(0, 255, 255, 0.15) 1px, transparent 1px)',
+          'linear-gradient(rgba(0, 255, 255, 0.2) 1px, transparent 1px)',
+          'linear-gradient(90deg, rgba(0, 255, 255, 0.2) 1px, transparent 1px)',
         ].join(', '),
-        backgroundSize: '40px 40px',
+        backgroundSize: '80px 80px',
+      }}
+      aria-hidden="true"
+    />
+    {/* Scanline overlay */}
+    <div
+      className="absolute inset-0 pointer-events-none"
+      style={{
+        opacity: 0.03,
+        backgroundImage: 'repeating-linear-gradient(to bottom, transparent, transparent 2px, rgba(0, 0, 0, 0.15) 2px, rgba(0, 0, 0, 0.15) 4px)',
       }}
       aria-hidden="true"
     />
@@ -76,7 +95,7 @@ const CyberpunkDecoration: React.FC = () => (
           right: 0,
           height: '2px',
           background:
-            'linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.25), transparent)',
+            'linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.3), transparent)',
           animation: 'scanline 6s linear infinite',
         }}
       />

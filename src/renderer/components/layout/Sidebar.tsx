@@ -22,9 +22,10 @@ export function Sidebar({ onSettingsClick }: SidebarProps) {
   const { startGroup, stopGroup, startByTag, stopByTag, getGroupStats, getTagStats } = useProjects()
   const { width } = useWindowSize()
 
-  // Auto-collapse on narrow windows
+  // Auto-collapse on narrow windows (xs: <640px, sm: <1000px)
+  // Auto-expand on wider windows (md+: >=1000px) only if user hasn't manually collapsed
   useEffect(() => {
-    if (width < 1024 && !collapsed) {
+    if (width < 1000 && !collapsed) {
       setCollapsed(true)
       localStorage.setItem(SIDEBAR_STORAGE_KEY, 'true')
     }

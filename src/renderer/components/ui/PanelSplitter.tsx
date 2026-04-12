@@ -149,6 +149,18 @@ export function PanelSplitter({
     [direction, sizes, minSizes, maxSizes, onResize, children.length],
   )
 
+  // Double-click splitter to reset to default sizes
+  const handleDoubleClick = useCallback(
+    () => {
+      setSizes(defaultSizes)
+      onResize?.(defaultSizes)
+      if (storageKey) {
+        localStorage.setItem(storageKey, JSON.stringify(defaultSizes))
+      }
+    },
+    [defaultSizes, onResize, storageKey],
+  )
+
   const isHorizontal = direction === 'horizontal'
 
   return (
@@ -177,6 +189,8 @@ export function PanelSplitter({
                 draggingIndex === i ? 'panel-splitter--dragging' : ''
               }`}
               onPointerDown={(e) => handleDragStart(i, e)}
+              onDoubleClick={handleDoubleClick}
+              title="Double-click to reset"
             />
           )}
         </PanelPane>

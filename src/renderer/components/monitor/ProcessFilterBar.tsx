@@ -20,13 +20,15 @@ const SORT_COLUMN_LABELS: Record<SortColumn, string> = {
 const STATUS_LABELS: Record<ProcessStatusType, string> = {
   running: '运行中',
   idle: '空闲',
-  waiting: '等待中'
+  waiting: '等待中',
+  unknown: '未知'
 }
 
 const STATUS_COLORS: Record<ProcessStatusType, string> = {
   running: 'bg-success',
   idle: 'bg-warning',
-  waiting: 'bg-surface-400'
+  waiting: 'bg-surface-400',
+  unknown: 'bg-surface-400'
 }
 
 const TYPE_LABELS: Record<ProcessType, string> = {

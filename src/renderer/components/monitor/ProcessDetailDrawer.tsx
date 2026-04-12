@@ -375,6 +375,8 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
   const [envSearch, setEnvSearch] = useState('')
   const [drawerWidth, setDrawerWidth] = useState(480)
   const [isDragging, setIsDragging] = useState(false)
+  const [connSortCol, setConnSortCol] = useState<'protocol' | 'localPort' | 'remotePort' | 'state' | null>(null)
+  const [connSortAsc, setConnSortAsc] = useState(true)
 
   const drawerRef = useRef<HTMLDivElement>(null)
   const dragStartX = useRef(0)
@@ -617,6 +619,31 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
     return { listening, established, other, total: connections.length }
   }, [connections])
 
+  // Sorted connections
+  const sortedConnections = useMemo(() => {
+    if (!connSortCol) return connections
+    const sorted = [...connections].sort((a, b) => {
+      let cmp = 0
+      switch (connSortCol) {
+        case 'protocol': cmp = (a.protocol ?? '').localeCompare(b.protocol ?? ''); break
+        case 'localPort': cmp = (a.localPort ?? 0) - (b.localPort ?? 0); break
+        case 'remotePort': cmp = (a.remotePort ?? 0) - (b.remotePort ?? 0); break
+        case 'state': cmp = (a.state ?? '').localeCompare(b.state ?? ''); break
+      }
+      return connSortAsc ? cmp : -cmp
+    })
+    return sorted
+  }, [connections, connSortCol, connSortAsc])
+
+  const handleConnSort = useCallback((col: typeof connSortCol) => {
+    if (connSortCol === col) {
+      setConnSortAsc(prev => !prev)
+    } else {
+      setConnSortCol(col)
+      setConnSortAsc(true)
+    }
+  }, [connSortCol])
+
   return (
     <>
       {/* Overlay backdrop — click to close */}
@@ -724,10 +751,10 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
                 <div className="space-y-3 animate-fade-in">
                   {/* Basic Info Grid */}
                   <div className="grid grid-cols-2 gap-2">
-                    <DetailField label="PID" value={String(detail.pid)} mono />
-                    <DetailField label="PPID" value={detail.ancestorChain.length > 0 ? String(detail.ancestorChain[detail.ancestorChain.length - 1].pid) : '-'} mono />
-                    <DetailField label="用户" value={detail.userName} />
-                    <DetailField label="启动时间" value={formatStartTime(detail.startTime)} />
+                    <DetailField label="PID" value={String(detail?.pid ?? pid)} mono />
+                    <DetailField label="PPID" value={(detail?.ancestorChain?.length ?? 0) > 0 ? String(detail.ancestorChain[detail.ancestorChain.length - 1]?.pid ?? '-') : '-'} mono />
+                    <DetailField label="用户" value={detail?.userName ?? '-'} />
+                    <DetailField label="启动时间" value={formatStartTime(detail?.startTime ?? '')} />
                     {detail.scriptPath && (
                       <DetailField label="脚本路径" value={detail.scriptPath} mono copyable />
                     )}
@@ -762,16 +789,16 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
 
                   {/* Quick stats links to other tabs */}
                   <div className="flex flex-wrap gap-2 text-[10px]">
-                    {detail.networkConnections.length > 0 && (
+                    {(detail?.networkConnections?.length ?? 0) > 0 && (
                       <button onClick={() => setActiveTab('network')} className="flex items-center gap-1.5 bg-surface-800 px-2 py-1 hover:bg-surface-700 transition-colors" style={{ borderRadius: '2px' }}>
                         <PortIcon size={12} className="text-gold" />
-                        <span className="text-text-muted">{detail.networkConnections.length} 个网络连接</span>
+                        <span className="text-text-muted">{detail?.networkConnections?.length ?? 0} 个网络连接</span>
                       </button>
                     )}
-                    {detail.relatedProcesses.length > 0 && (
+                    {(detail?.relatedProcesses?.length ?? 0) > 0 && (
                       <button onClick={() => setActiveTab('network')} className="flex items-center gap-1.5 bg-surface-800 px-2 py-1 hover:bg-surface-700 transition-colors" style={{ borderRadius: '2px' }}>
                         <ProcessIcon size={12} className="text-steel" />
-                        <span className="text-text-muted">{detail.relatedProcesses.length} 个关联进程</span>
+                        <span className="text-text-muted">{detail?.relatedProcesses?.length ?? 0} 个关联进程</span>
                       </button>
                     )}
                     {totalChildren > 0 && (
@@ -849,12 +876,12 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
 
                   {/* Resource Details Grid */}
                   <div className="grid grid-cols-2 gap-2">
-                    <DetailField label="内存 (RSS)" value={`${detail.memoryRSS} MB`} mono />
-                    <DetailField label="内存 (VMS)" value={`${detail.memoryVMS} MB`} mono />
-                    <DetailField label="线程数" value={String(detail.threadCount)} mono />
-                    <DetailField label="句柄数" value={String(detail.handleCount)} mono />
-                    <DetailField label="IO 读取" value={formatBytes(detail.ioReadBytes)} mono />
-                    <DetailField label="IO 写入" value={formatBytes(detail.ioWriteBytes)} mono />
+                    <DetailField label="内存 (RSS)" value={`${detail?.memoryRSS ?? 0} MB`} mono />
+                    <DetailField label="内存 (VMS)" value={`${detail?.memoryVMS ?? 0} MB`} mono />
+                    <DetailField label="线程数" value={String(detail?.threadCount ?? 0)} mono />
+                    <DetailField label="句柄数" value={String(detail?.handleCount ?? 0)} mono />
+                    <DetailField label="IO 读取" value={formatBytes(detail?.ioReadBytes ?? 0)} mono />
+                    <DetailField label="IO 写入" value={formatBytes(detail?.ioWriteBytes ?? 0)} mono />
                   </div>
                 </div>
               )}
@@ -878,13 +905,29 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
                     </div>
                   </div>
 
-                  {/* Connection List */}
+                  {/* Connection List — sortable */}
                   {connections.length > 0 ? (
                     <div className="space-y-1">
-                      <span className="text-[10px] text-text-muted uppercase tracking-wider block mb-1">
-                        连接列表 ({connections.length})
+                      {/* Column Headers */}
+                      <div className="flex items-center gap-2 px-3 py-1 text-[10px] text-text-muted uppercase tracking-wider">
+                        <button onClick={() => handleConnSort('protocol')} className="w-8 flex-shrink-0 hover:text-text-primary cursor-pointer select-none">
+                          协议{connSortCol === 'protocol' ? (connSortAsc ? ' ^' : ' v') : ''}
+                        </button>
+                        <button onClick={() => handleConnSort('localPort')} className="flex-1 text-left hover:text-text-primary cursor-pointer select-none">
+                          本地地址{connSortCol === 'localPort' ? (connSortAsc ? ' ^' : ' v') : ''}
+                        </button>
+                        <span className="flex-shrink-0 w-4" />
+                        <button onClick={() => handleConnSort('remotePort')} className="flex-1 text-left hover:text-text-primary cursor-pointer select-none">
+                          远程地址{connSortCol === 'remotePort' ? (connSortAsc ? ' ^' : ' v') : ''}
+                        </button>
+                        <button onClick={() => handleConnSort('state')} className="flex-shrink-0 hover:text-text-primary cursor-pointer select-none">
+                          状态{connSortCol === 'state' ? (connSortAsc ? ' ^' : ' v') : ''}
+                        </button>
+                      </div>
+                      <span className="text-[10px] text-text-muted block mb-1">
+                        {connections.length} 个连接
                       </span>
-                      {connections.map((conn, i) => (
+                      {sortedConnections.map((conn, i) => (
                         <ConnectionRow key={`${conn.protocol}-${conn.localPort}-${conn.remotePort}-${i}`} conn={conn} />
                       ))}
                     </div>

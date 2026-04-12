@@ -97,11 +97,11 @@
 
   /* ---- Typography (theme-variant) ---- */
   /* NOTE: Heading/body typography tokens are now in theme-tokens.css */
-  --heading-weight: 700;
+  --heading-weight: 800;
   --heading-transform: uppercase;
-  --heading-tracking: 0.05em;
-  --body-tracking: 0;
-  --display-tracking: 0.05em;
+  --heading-tracking: 0.12em;
+  --body-tracking: 0.02em;
+  --display-tracking: 0.12em;
   --deco-rotation: -12deg;
   --deco-slogan-rotation: -8deg;
 }
@@ -296,11 +296,11 @@
   --shadow-inner: inset 0 1px 0 0 rgba(0, 255, 255, 0.05);
 
   /* ---- Typography (theme-variant) ---- */
-  --heading-weight: 600;
+  --heading-weight: 700;
   --heading-transform: uppercase;
-  --heading-tracking: 0.05em;
-  --body-tracking: 0.01em;
-  --display-tracking: 0.05em;
+  --heading-tracking: 0.15em;
+  --body-tracking: 0.03em;
+  --display-tracking: 0.15em;
   --deco-rotation: 0deg;
   --deco-slogan-rotation: 0deg;
 }
@@ -393,11 +393,11 @@
   --shadow-inner: none;
 
   /* ---- Typography (theme-variant) ---- */
-  --heading-weight: 400;
+  --heading-weight: 600;
   --heading-transform: none;
-  --heading-tracking: 0;
-  --body-tracking: 0;
-  --display-tracking: 0;
+  --heading-tracking: -0.02em;
+  --body-tracking: -0.01em;
+  --display-tracking: -0.02em;
   --deco-rotation: 0deg;
   --deco-slogan-rotation: 0deg;
 }

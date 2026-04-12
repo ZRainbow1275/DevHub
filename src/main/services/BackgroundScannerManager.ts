@@ -14,13 +14,27 @@ const SCANNER_INTERVALS: Record<ScannerType, number> = {
   aiTasks: 1000
 }
 
+// ============ Retry Config ============
+
+const MAX_RETRIES = 5
+const MAX_RETRY_DELAY_MS = 30000
+
+type ProgressCallback = (stage: string, percent: number, text: string) => void
+
 // ============ Background Scanner Manager ============
 
 export class BackgroundScannerManager {
   private timers = new Map<ScannerType, NodeJS.Timeout>()
+  private retryTimers = new Map<ScannerType, NodeJS.Timeout>()
   private scanningGuards = new Set<ScannerType>()
   private cache: ScannerCache
   private isRunning = false
+
+  // Retry state
+  private retryCounts = new Map<ScannerType, number>()
+
+  // Progress callback for splash screen
+  private progressCallback: ProgressCallback | null = null
 
   // External scanners (may be shared with existing IPC handlers)
   private processScanner: SystemProcessScanner | null = null
@@ -56,6 +70,17 @@ export class BackgroundScannerManager {
   }
 
   /**
+   * Register a callback for progress updates (used by splash screen).
+   */
+  onProgress(callback: ProgressCallback): void {
+    this.progressCallback = callback
+  }
+
+  private emitProgress(stage: string, percent: number, text: string): void {
+    this.progressCallback?.(stage, percent, text)
+  }
+
+  /**
    * Start all background scanners in parallel.
    * Each scanner does a first full scan, then enters a periodic polling loop.
    */
@@ -66,20 +91,35 @@ export class BackgroundScannerManager {
     // Wire cache events to IPC push
     this.setupCacheEventForwarding()
 
-    // Launch all first scans in parallel (best-effort)
-    const results = await Promise.allSettled([
-      this.startScanner('processes'),
-      this.startScanner('ports'),
+    // Launch first scans with progress reporting
+    // Process scan (Stage 4)
+    this.emitProgress('processes', 50, 'Scanning system processes...')
+    const processResult = await Promise.allSettled([this.startScanner('processes')])
+    if (processResult[0].status === 'rejected') {
+      console.error('BackgroundScannerManager: process scan failed:', processResult[0].reason)
+    }
+    this.emitProgress('processes-done', 60, 'Scanning system processes... done')
+
+    // Port scan (Stage 5)
+    this.emitProgress('ports', 65, 'Scanning ports...')
+    const portResult = await Promise.allSettled([this.startScanner('ports')])
+    if (portResult[0].status === 'rejected') {
+      console.error('BackgroundScannerManager: port scan failed:', portResult[0].reason)
+    }
+    this.emitProgress('ports-done', 75, 'Scanning ports... done')
+
+    // Window and AI scans (Stage 6)
+    this.emitProgress('windows', 80, 'Scanning windows...')
+    const remaining = await Promise.allSettled([
       this.startScanner('windows'),
       this.startScanner('aiTasks')
     ])
-
-    // Log any first-scan failures (non-fatal)
-    for (const result of results) {
+    for (const result of remaining) {
       if (result.status === 'rejected') {
-        console.error('BackgroundScannerManager: first scan failed:', result.reason)
+        console.error('BackgroundScannerManager: scan failed:', result.reason)
       }
     }
+    this.emitProgress('windows-done', 90, 'Scanning windows... done')
   }
 
   /**
@@ -92,6 +132,9 @@ export class BackgroundScannerManager {
       console.warn(`BackgroundScannerManager: stopped ${type} scanner`)
     })
     this.timers.clear()
+    this.retryTimers.forEach((timer) => clearTimeout(timer))
+    this.retryTimers.clear()
+    this.retryCounts.clear()
     this.scanningGuards.clear()
     // Stop sub-scanner timers
     this.aiTaskTracker?.stopTracking()
@@ -116,10 +159,14 @@ export class BackgroundScannerManager {
     // First full scan
     try {
       await this.runScan(type)
+      // Reset retry count on success
+      this.retryCounts.set(type, 0)
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       console.error(`BackgroundScannerManager: first scan for ${type} failed:`, msg)
       this.cache.setError(type, msg)
+      // Schedule retry for failed first scan
+      this.scheduleRetry(type)
     }
 
     // Set up interval with overlap guard
@@ -130,15 +177,83 @@ export class BackgroundScannerManager {
       this.scanningGuards.add(type)
       try {
         await this.runScan(type)
+        // Reset retry count on successful scan
+        this.retryCounts.set(type, 0)
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
         this.cache.setError(type, msg)
+        this.scheduleRetry(type)
       } finally {
         this.scanningGuards.delete(type)
       }
     }, interval)
 
     this.timers.set(type, timer)
+  }
+
+  /**
+   * Schedule a retry with exponential backoff for a failed scanner.
+   */
+  private scheduleRetry(type: ScannerType): void {
+    if (!this.isRunning) return
+
+    const currentRetries = this.retryCounts.get(type) || 0
+    if (currentRetries >= MAX_RETRIES) {
+      console.error(`BackgroundScannerManager: ${type} scanner exhausted ${MAX_RETRIES} retries, giving up`)
+      this.cache.setError(type, `Scanner failed after ${MAX_RETRIES} retries`)
+      // Stop the interval timer so it doesn't keep firing
+      const timer = this.timers.get(type)
+      if (timer) {
+        clearInterval(timer)
+        this.timers.delete(type)
+      }
+      // Emit to renderer so UI can show retry button
+      const win = this.getMainWindow?.()
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('scanner:failed', { type, retries: currentRetries })
+      }
+      return
+    }
+
+    const nextRetry = currentRetries + 1
+    this.retryCounts.set(type, nextRetry)
+    const delay = Math.min(1000 * Math.pow(2, nextRetry), MAX_RETRY_DELAY_MS)
+    console.warn(`BackgroundScannerManager: scheduling retry ${nextRetry}/${MAX_RETRIES} for ${type} in ${delay}ms`)
+
+    // Clear existing retry timer if any
+    const existingTimer = this.retryTimers.get(type)
+    if (existingTimer) clearTimeout(existingTimer)
+
+    const retryTimer = setTimeout(async () => {
+      if (!this.isRunning) return
+      try {
+        await this.runScan(type)
+        this.retryCounts.set(type, 0)
+        console.log(`BackgroundScannerManager: ${type} scanner recovered after retry ${nextRetry}`)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        this.cache.setError(type, msg)
+        this.scheduleRetry(type)
+      }
+    }, delay)
+
+    this.retryTimers.set(type, retryTimer)
+  }
+
+  /**
+   * Manual retry for a specific scanner (called from renderer via IPC).
+   */
+  async retryScanner(type: ScannerType): Promise<{ success: boolean; error?: string }> {
+    this.retryCounts.set(type, 0)
+    this.cache.setScanning(type, true)
+    try {
+      await this.runScan(type)
+      return { success: true }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      this.cache.setError(type, msg)
+      return { success: false, error: msg }
+    }
   }
 
   private async runScan(type: ScannerType): Promise<void> {

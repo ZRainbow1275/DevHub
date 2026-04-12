@@ -216,6 +216,17 @@ export class AppStore {
     this.invalidateCache('settings')
   }
 
+  // Window bounds persistence (for saveLayoutOnExit)
+  saveBounds(bounds: { x: number; y: number; width: number; height: number }): void {
+    this.store.set('windowBounds', bounds)
+  }
+
+  getBounds(): { x: number; y: number; width: number; height: number } | undefined {
+    return (this.store as unknown as Store<Record<string, unknown>>).get('windowBounds') as
+      | { x: number; y: number; width: number; height: number }
+      | undefined
+  }
+
   // Allowed paths management
   addAllowedPath(path: string): void {
     const settings = this.getSettings()

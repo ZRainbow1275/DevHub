@@ -202,6 +202,17 @@ export class AITaskTracker extends EventEmitter {
     }
   }
 
+  /** Stop tracking a single task by PID. Marks it as cancelled. */
+  stopTask(pid: number): boolean {
+    for (const [taskId, task] of this.tasks) {
+      if (task.pid === pid) {
+        this.completeTask(taskId, 'cancelled')
+        return true
+      }
+    }
+    return false
+  }
+
   async scanForAITasks(cachedProcesses?: ProcessInfo[], windows?: WindowInfo[]): Promise<AITask[]> {
     const processes = cachedProcesses ?? await this.processScanner.getAll()
     const newTasks: AITask[] = []
@@ -358,19 +369,32 @@ export class AITaskTracker extends EventEmitter {
         // Enter confirmation window if not already in one
         if (!this.confirmationTimers.has(taskId)) {
           const confirmMs = toolConfig?.confirmationWindowMs ?? this.config.confirmationWindowMs
-          const timer = setTimeout(() => {
-            // After confirmation window, check if still looks completed
+          const timer = setTimeout(async () => {
+            // After confirmation window, re-compute the full confidence score
             const currentTask = this.tasks.get(taskId)
             if (currentTask) {
-              const stillIdle = currentTask.metrics.idleDuration > confirmMs
-              const cpuStillLow = (currentTask.metrics.cpuHistory.slice(-3).reduce((a, b) => a + b, 0) / 3) < cpuThreshold
-              if (stillIdle && cpuStillLow) {
+              const { isComplete, isError, hasPrompt } = await this.detectWindowTitlePattern(currentTask)
+              let reScore = 0
+              if (isComplete) reScore += this.config.outputPatternWeight
+              const recentCpuSlice = currentTask.metrics.cpuHistory.slice(-5)
+              const recentAvgRe = recentCpuSlice.length > 0
+                ? recentCpuSlice.reduce((a, b) => a + b, 0) / recentCpuSlice.length
+                : 0
+              const reToolConfig = this.toolConfigs.get(currentTask.toolType)
+              const reCpuThreshold = reToolConfig?.cpuBaselineThreshold ?? 3
+              if (recentAvgRe < reCpuThreshold) reScore += this.config.cpuIdleWeight
+              if (currentTask.metrics.idleDuration > this.config.idleThresholdMs) reScore += this.config.cursorWaitWeight
+              if (hasPrompt) reScore += this.config.promptDetectionWeight
+              if (currentTask.metrics.idleDuration > 30000) reScore += this.config.childProcessWeight
+
+              if (!isError && reScore >= this.config.completionThreshold) {
                 currentTask.status.state = 'completed'
                 currentTask.monitorState = 'completed'
                 this.recordTimelineEntry(taskId, 'completed', currentTask.status.currentAction)
                 this.emit('task-status-changed', currentTask)
                 this.completeTask(taskId, 'completed')
               }
+              // If re-score drops below threshold, cancel (don't complete)
             }
             this.confirmationTimers.delete(taskId)
           }, confirmMs)

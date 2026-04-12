@@ -44,7 +44,8 @@ interface ProcessState {
 const STATUS_PRIORITY: Record<ProcessStatusType, number> = {
   running: 3,
   idle: 2,
-  waiting: 1
+  waiting: 1,
+  unknown: 0
 }
 
 // Type priority for sorting

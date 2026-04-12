@@ -697,10 +697,35 @@
   animation: progress-shine 2s ease-in-out infinite;
 }
 
-/* Cyberpunk heading glow */
+/* Cyberpunk heading glow — stronger neon effect */
 [data-theme="cyberpunk"] .text-display,
 [data-theme="cyberpunk"] .text-display-sm {
-  text-shadow: 0 0 6px rgba(0, 255, 255, 0.3);
+  text-shadow: 0 0 8px rgba(0, 255, 255, 0.4), 0 0 20px rgba(0, 255, 255, 0.15);
+}
+
+/* Cyberpunk — holographic shimmer on accent elements */
+@keyframes holographic-shimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+[data-theme="cyberpunk"] .deco-divider,
+[data-theme="cyberpunk"] .divider-accent {
+  background-size: 200% 100%;
+  animation: holographic-shimmer 4s ease-in-out infinite;
+}
+
+/* Cyberpunk body text — subtle monospace terminal feel */
+[data-theme="cyberpunk"] body {
+  font-family: var(--typo-body-family, 'Share Tech Mono', monospace);
+  letter-spacing: var(--typo-body-spacing, 0.03em);
+}
+
+/* Cyberpunk — neon border pulse on card hover */
+[data-theme="cyberpunk"] .card:hover,
+[data-theme="cyberpunk"] .monitor-card:hover {
+  animation: neon-pulse 2s ease-in-out infinite;
 }
 
 /* ========================================

@@ -59,6 +59,7 @@ export interface AppConfig {
 export type ThemeOption = 'constructivism' | 'modern-light' | 'warm-light' | 'cyberpunk' | 'swiss' | 'dark' | 'light'
 export type FontSize = 'small' | 'medium' | 'large'
 export type SidebarPosition = 'left' | 'right'
+export type InformationDensity = 'compact' | 'standard' | 'comfortable'
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 
 export interface AppearanceSettings {
@@ -67,6 +68,7 @@ export interface AppearanceSettings {
   sidebarPosition: SidebarPosition
   compactMode: boolean
   enableAnimations: boolean
+  informationDensity: InformationDensity
 }
 
 export interface ScanSettings {
@@ -201,6 +203,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     sidebarPosition: 'left',
     compactMode: false,
     enableAnimations: true,
+    informationDensity: 'standard',
   },
   scan: {
     scanDrives: ['C', 'D'],

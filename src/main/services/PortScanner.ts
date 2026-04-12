@@ -29,8 +29,8 @@ export class PortScanner {
   }
 
   async checkPort(port: number): Promise<PortInfo | null> {
-    const ports = await this.scanAll()
-    return ports.find(p => p.port === port) || null
+    const focusData = await this.getPortDetailIncremental(port)
+    return focusData?.port ?? null
   }
 
   async isPortAvailable(port: number): Promise<boolean> {
@@ -350,6 +350,106 @@ export class PortScanner {
       siblingPorts,
       connections,
       processChildren
+    }
+  }
+
+  /**
+   * Incremental port detail query — only scans a single port using filtered netstat.
+   * Much faster than full scanAll() for per-port detail views.
+   */
+  async getPortDetailIncremental(
+    targetPort: number,
+    processScanner?: { getFullRelationship(pid: number): Promise<import('@shared/types-extended').ProcessRelationship | null> }
+  ): Promise<PortFocusData | null> {
+    try {
+      // Filtered netstat: only rows matching this port
+      const { stdout } = await execFileAsync(
+        'netstat', ['-ano', '-p', 'TCP'],
+        { windowsHide: true, timeout: 5000 }
+      )
+
+      const lines = stdout.split('\n').slice(4)
+      const portEntries: PortInfo[] = []
+
+      for (const line of lines) {
+        const parts = line.trim().split(/\s+/)
+        if (parts.length < 5) continue
+        const [protocol, localAddr, foreignAddr, state, pidStr] = parts
+        if (protocol !== 'TCP') continue
+
+        const localParts = localAddr.split(':')
+        const port = parseInt(localParts[localParts.length - 1], 10)
+        const pid = parseInt(pidStr, 10)
+        if (isNaN(port) || isNaN(pid) || pid === 0) continue
+
+        // Only keep entries matching the target port (local or remote)
+        const foreignParts = foreignAddr.split(':')
+        const foreignPort = parseInt(foreignParts[foreignParts.length - 1], 10)
+        if (port !== targetPort && foreignPort !== targetPort) continue
+
+        const normalizedState = this.normalizeState(state)
+        if (normalizedState === null) continue
+
+        portEntries.push({
+          port,
+          pid,
+          processName: this.getProcessName(pid),
+          state: normalizedState,
+          protocol: 'TCP',
+          localAddress: localAddr,
+          foreignAddress: foreignAddr || '*:*'
+        })
+      }
+
+      // Enrich process names for matching entries
+      await this.enrichProcessNames(portEntries)
+
+      // Find the primary port entry (prefer LISTENING)
+      const portInfo = portEntries.find(p => p.port === targetPort && p.state === 'LISTENING')
+        ?? portEntries.find(p => p.port === targetPort)
+      if (!portInfo) return null
+
+      // Sibling ports: other ports held by same PID (from cache or quick lookup)
+      const siblingPorts = portEntries.filter(p => p.pid === portInfo.pid && p.port !== targetPort)
+
+      // Connections for this port
+      const connections: PortConnection[] = portEntries
+        .filter(p => p.port === targetPort)
+        .map(p => ({
+          localAddress: p.localAddress,
+          foreignAddress: p.foreignAddress,
+          state: p.state,
+          foreignProcessName: undefined,
+          direction: (p.state === 'LISTENING' || p.localAddress.includes(`:${targetPort}`))
+            ? 'inbound' as const
+            : 'outbound' as const
+        }))
+
+      // Extended process info (optional, may be slow)
+      let process: ProcessInfoExtended | null = null
+      let processChildren: ProcessInfo[] = []
+
+      if (processScanner) {
+        try {
+          const rel = await processScanner.getFullRelationship(portInfo.pid)
+          if (rel) {
+            process = rel.self
+            processChildren = rel.children
+          }
+        } catch {
+          // Process scanner unavailable — return basic info
+        }
+      }
+
+      return {
+        port: portInfo,
+        process,
+        siblingPorts,
+        connections,
+        processChildren
+      }
+    } catch {
+      return null
     }
   }
 

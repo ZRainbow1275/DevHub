@@ -13,7 +13,9 @@ import { formatBytes } from '../../utils/formatNumber'
 import { ProcessFilterBar, SortIndicator } from './ProcessFilterBar'
 import { ProcessDetailPanel } from './ProcessDetailPanel'
 import { ProcessDetailDrawer } from './ProcessDetailDrawer'
+import { ProcessCardErrorBoundary } from './ProcessCardErrorBoundary'
 import { Sparkline } from './Sparkline'
+import { TruncatedText } from '../ui/TruncatedText'
 import {
   ProcessIcon,
   GearIcon,
@@ -137,16 +139,29 @@ const ProcessCard = memo(function ProcessCard({ process, index, maxMemory, cpuHi
   const [commandExpanded, setCommandExpanded] = useState(false)
   const { showToast } = useToast()
 
-  const typeConfig = TYPE_ICONS[process.type] || TYPE_ICONS['other']
+  // Defensive: safely access process fields with fallbacks
+  const pName = process?.name ?? 'Unknown'
+  const pPid = process?.pid ?? 0
+  const pCpu = Number.isFinite(process?.cpu) ? process.cpu : 0
+  const pMemory = Number.isFinite(process?.memory) ? process.memory : 0
+  const pStatus = process?.status ?? 'running'
+  const pType = process?.type ?? 'other'
+  const pCommand = process?.command ?? ''
+  const pPort = process?.port
+  const pWorkingDir = process?.workingDir
+  const pStartTime = process?.startTime ?? 0
+
+  const typeConfig = TYPE_ICONS[pType] || TYPE_ICONS['other']
 
   const statusConfig = {
     running: { color: 'bg-success', text: '运行中', textColor: 'text-success' },
     idle: { color: 'bg-warning', text: '空闲', textColor: 'text-warning' },
-    waiting: { color: 'bg-surface-400', text: '等待中', textColor: 'text-text-muted' }
-  }[process.status] ?? { color: 'bg-surface-400', text: process.status || 'unknown', textColor: 'text-text-muted' }
+    waiting: { color: 'bg-surface-400', text: '等待中', textColor: 'text-text-muted' },
+    unknown: { color: 'bg-surface-400', text: '未知', textColor: 'text-text-muted' }
+  }[pStatus] ?? { color: 'bg-surface-400', text: pStatus || 'unknown', textColor: 'text-text-muted' }
 
-  const cpuColor = getResourceColor(process.cpu)
-  const memPercent = calcMemoryPercent(process.memory, maxMemory)
+  const cpuColor = getResourceColor(pCpu)
+  const memPercent = calcMemoryPercent(pMemory, maxMemory)
   const memColor = getMemoryResourceColor(memPercent)
 
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -155,25 +170,25 @@ const ProcessCard = memo(function ProcessCard({ process, index, maxMemory, cpuHi
   }
 
   const handleCopyCommand = async () => {
-    if (process.command) {
-      await navigator.clipboard.writeText(process.command)
+    if (pCommand) {
+      await navigator.clipboard.writeText(pCommand)
       showToast('success', '命令已复制到剪贴板')
     }
   }
 
   const handleOpenDir = () => {
-    if (process.workingDir) {
-      window.devhub.shell.openPath(process.workingDir)
+    if (pWorkingDir) {
+      window.devhub.shell.openPath(pWorkingDir)
     } else {
       showToast('warning', '该进程没有工作目录信息')
     }
   }
 
   const contextMenuItems = [
-    { label: '查看详情', icon: <EyeIcon size={16} />, onClick: () => onShowDetail(process.pid) },
-    { label: '打开目录', icon: <FolderIcon size={16} />, onClick: handleOpenDir, disabled: !process.workingDir },
-    { label: '复制命令', icon: <CopyIcon size={16} />, onClick: handleCopyCommand, disabled: !process.command },
-    { label: '进程树', icon: <TreeIcon size={16} />, onClick: () => onShowTree(process.pid) },
+    { label: '查看详情', icon: <EyeIcon size={16} />, onClick: () => onShowDetail(pPid) },
+    { label: '打开目录', icon: <FolderIcon size={16} />, onClick: handleOpenDir, disabled: !pWorkingDir },
+    { label: '复制命令', icon: <CopyIcon size={16} />, onClick: handleCopyCommand, disabled: !pCommand },
+    { label: '进程树', icon: <TreeIcon size={16} />, onClick: () => onShowTree(pPid) },
     { label: '', onClick: () => {}, divider: true },
     { label: '终止进程', icon: <CloseIcon size={16} />, onClick: () => setShowKillConfirm(true), danger: true }
   ]
@@ -187,7 +202,7 @@ const ProcessCard = memo(function ProcessCard({ process, index, maxMemory, cpuHi
       >
         <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none" />
 
-        {process.status === 'running' && (
+        {pStatus === 'running' && (
           <div className="absolute top-3 right-3">
             <span className="status-dot status-dot-running" />
           </div>
@@ -200,43 +215,47 @@ const ProcessCard = memo(function ProcessCard({ process, index, maxMemory, cpuHi
               {typeConfig.icon}
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-bold text-text-primary truncate" title={process.name}>
-                {process.name}
-              </h3>
+              <TruncatedText text={pName} className="text-sm font-bold text-text-primary" />
               <div className="flex items-center gap-2 mt-0.5">
-                <span className={`status-badge ${process.status === 'running' ? 'status-badge-running' : ''}`}>
+                <span className={`status-badge ${pStatus === 'running' ? 'status-badge-running' : ''}`}>
                   <span className={`w-1.5 h-1.5 ${statusConfig.color}`} style={{ borderRadius: '1px' }} />
                   {statusConfig.text}
                 </span>
-                <span className="text-[10px] text-text-muted font-mono">PID: {process.pid}</span>
+                <span className="text-[10px] text-text-muted font-mono">PID: {pPid}</span>
               </div>
             </div>
           </div>
 
           {/* Ports (multi-port display) */}
           <div className="flex items-center gap-1.5 mb-3 flex-wrap">
-            {process.port ? (
+            {pPort ? (
               <span className="text-xs font-bold font-mono bg-gold/10 text-gold px-2 py-0.5 border-l-2 border-gold" style={{ borderRadius: '2px' }}>
-                :{process.port}
+                :{pPort}
               </span>
             ) : (
               <span className="text-xs text-text-muted font-mono px-2 py-0.5 bg-surface-900" style={{ borderRadius: '2px' }}>
                 无端口
               </span>
             )}
-            <span className="text-[10px] text-text-muted">{formatStartTime(process.startTime)}</span>
+            <span className="text-[10px] text-text-muted">{formatStartTime(pStartTime)}</span>
           </div>
 
           {/* Command Line Summary (expandable) */}
-          {process.command && (
+          {pCommand && (
             <div className="mb-2">
               <button
                 onClick={() => setCommandExpanded(!commandExpanded)}
                 className="w-full text-left"
               >
-                <p className={`text-[10px] font-mono text-text-muted ${commandExpanded ? '' : 'truncate'} bg-surface-900 px-2 py-1 hover:bg-surface-800 transition-colors`} style={{ borderRadius: '2px' }} title={commandExpanded ? undefined : process.command}>
-                  $ {process.command}
-                </p>
+                {commandExpanded ? (
+                  <p className="text-[10px] font-mono text-text-muted bg-surface-900 px-2 py-1 hover:bg-surface-800 transition-colors break-all" style={{ borderRadius: '2px' }}>
+                    $ {pCommand}
+                  </p>
+                ) : (
+                  <div className="bg-surface-900 px-2 py-1 hover:bg-surface-800 transition-colors" style={{ borderRadius: '2px' }}>
+                    <TruncatedText text={`$ ${pCommand}`} className="text-[10px] font-mono text-text-muted" />
+                  </div>
+                )}
               </button>
             </div>
           )}
@@ -250,13 +269,13 @@ const ProcessCard = memo(function ProcessCard({ process, index, maxMemory, cpuHi
                   {cpuHistory && cpuHistory.length > 1 && (
                     <Sparkline data={cpuHistory} width={60} height={14} color="var(--accent)" threshold={80} />
                   )}
-                  <span className={`font-mono font-bold ${cpuColor.text}`}>{process.cpu.toFixed(1)}%</span>
+                  <span className={`font-mono font-bold ${cpuColor.text}`}>{pCpu.toFixed(1)}%</span>
                 </div>
               </div>
               <div className="h-1.5 bg-surface-800" style={{ borderRadius: '1px' }}>
                 <div
                   className={`h-full transition-all duration-500 ${cpuColor.bg}`}
-                  style={{ width: `${Math.min(process.cpu, 100)}%`, borderRadius: '1px' }}
+                  style={{ width: `${Math.min(pCpu, 100)}%`, borderRadius: '1px' }}
                 />
               </div>
             </div>
@@ -267,7 +286,7 @@ const ProcessCard = memo(function ProcessCard({ process, index, maxMemory, cpuHi
                   {memoryHistory && memoryHistory.length > 1 && (
                     <Sparkline data={memoryHistory} width={60} height={14} color="var(--info)" />
                   )}
-                  <span className={`font-mono font-bold ${memColor.text}`}>{process.memory}MB</span>
+                  <span className={`font-mono font-bold ${memColor.text}`}>{pMemory}MB</span>
                 </div>
               </div>
               <div className="h-1.5 bg-surface-800" style={{ borderRadius: '1px' }}>
@@ -279,7 +298,7 @@ const ProcessCard = memo(function ProcessCard({ process, index, maxMemory, cpuHi
             </div>
           </div>
 
-          {/* Quick Actions — always visible */}
+          {/* Quick Actions -- always visible */}
           <div className="flex items-center gap-1.5 pt-2 border-t border-surface-700">
             <button
               onClick={() => setShowKillConfirm(true)}
@@ -292,7 +311,7 @@ const ProcessCard = memo(function ProcessCard({ process, index, maxMemory, cpuHi
               onClick={handleOpenDir}
               className="btn-icon-sm text-text-muted hover:text-text-primary hover:bg-surface-700 transition-all"
               title="打开目录"
-              disabled={!process.workingDir}
+              disabled={!pWorkingDir}
             >
               <FolderIcon size={14} />
             </button>
@@ -300,19 +319,19 @@ const ProcessCard = memo(function ProcessCard({ process, index, maxMemory, cpuHi
               onClick={handleCopyCommand}
               className="btn-icon-sm text-text-muted hover:text-text-primary hover:bg-surface-700 transition-all"
               title="复制命令"
-              disabled={!process.command}
+              disabled={!pCommand}
             >
               <CopyIcon size={14} />
             </button>
             <button
-              onClick={() => onShowDetail(process.pid)}
+              onClick={() => onShowDetail(pPid)}
               className="btn-icon-sm text-text-muted hover:text-accent hover:bg-accent/10 transition-all"
               title="查看详情"
             >
               <EyeIcon size={14} />
             </button>
             <button
-              onClick={() => onShowTree(process.pid)}
+              onClick={() => onShowTree(pPid)}
               className="btn-icon-sm text-text-muted hover:text-accent hover:bg-accent/10 transition-all"
               title="关系图"
             >
@@ -326,7 +345,7 @@ const ProcessCard = memo(function ProcessCard({ process, index, maxMemory, cpuHi
       <ConfirmDialog
         isOpen={showKillConfirm}
         title="终止进程"
-        message={`确定要终止进程 "${process.name}" (PID: ${process.pid}) 吗？`}
+        message={`确定要终止进程 "${pName}" (PID: ${pPid}) 吗？`}
         confirmText="终止"
         variant="danger"
         onConfirm={() => { setShowKillConfirm(false); onKill() }}
@@ -353,14 +372,27 @@ const ProcessItem = memo(function ProcessItem({ process, maxMemory, isSelected, 
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null)
   const { showToast } = useToast()
 
-  const typeConfig = TYPE_ICONS[process.type] || TYPE_ICONS['other']
+  // Defensive: safely access process fields with fallbacks
+  const pName = process?.name ?? 'Unknown'
+  const pPid = process?.pid ?? 0
+  const pCpu = Number.isFinite(process?.cpu) ? process.cpu : 0
+  const pMemory = Number.isFinite(process?.memory) ? process.memory : 0
+  const pStatus = process?.status ?? 'running'
+  const pType = process?.type ?? 'other'
+  const pCommand = process?.command ?? ''
+  const pPort = process?.port
+  const pWorkingDir = process?.workingDir
+  const pStartTime = process?.startTime ?? 0
+
+  const typeConfig = TYPE_ICONS[pType] || TYPE_ICONS['other']
   const statusColor = {
     running: 'bg-success',
     idle: 'bg-warning',
-    waiting: 'bg-surface-500'
-  }[process.status] ?? 'bg-surface-400'
-  const cpuColor = getResourceColor(process.cpu)
-  const memPercent = calcMemoryPercent(process.memory, maxMemory)
+    waiting: 'bg-surface-500',
+    unknown: 'bg-surface-400'
+  }[pStatus] ?? 'bg-surface-400'
+  const cpuColor = getResourceColor(pCpu)
+  const memPercent = calcMemoryPercent(pMemory, maxMemory)
   const memColor = getMemoryResourceColor(memPercent)
 
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -370,25 +402,25 @@ const ProcessItem = memo(function ProcessItem({ process, maxMemory, isSelected, 
   }
 
   const handleCopyCommand = async () => {
-    if (process.command) {
-      await navigator.clipboard.writeText(process.command)
+    if (pCommand) {
+      await navigator.clipboard.writeText(pCommand)
       showToast('success', '命令已复制到剪贴板')
     }
   }
 
   const handleOpenDir = () => {
-    if (process.workingDir) {
-      window.devhub.shell.openPath(process.workingDir)
+    if (pWorkingDir) {
+      window.devhub.shell.openPath(pWorkingDir)
     } else {
       showToast('warning', '该进程没有工作目录信息')
     }
   }
 
   const contextMenuItems = [
-    { label: '查看详情', icon: <EyeIcon size={16} />, onClick: () => onShowDetail(process.pid) },
-    { label: '打开目录', icon: <FolderIcon size={16} />, onClick: handleOpenDir, disabled: !process.workingDir },
-    { label: '复制命令', icon: <CopyIcon size={16} />, onClick: handleCopyCommand, disabled: !process.command },
-    { label: '进程树', icon: <TreeIcon size={16} />, onClick: () => onShowTree(process.pid) },
+    { label: '查看详情', icon: <EyeIcon size={16} />, onClick: () => onShowDetail(pPid) },
+    { label: '打开目录', icon: <FolderIcon size={16} />, onClick: handleOpenDir, disabled: !pWorkingDir },
+    { label: '复制命令', icon: <CopyIcon size={16} />, onClick: handleCopyCommand, disabled: !pCommand },
+    { label: '进程树', icon: <TreeIcon size={16} />, onClick: () => onShowTree(pPid) },
     { label: '', onClick: () => {}, divider: true },
     { label: '终止进程', icon: <CloseIcon size={16} />, onClick: () => setShowKillConfirm(true), danger: true }
   ]
@@ -410,31 +442,29 @@ const ProcessItem = memo(function ProcessItem({ process, maxMemory, isSelected, 
       >
         {/* Status + Type Icon */}
         <div className="relative flex-shrink-0">
-          <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 ${statusColor} ${process.status === 'running' ? 'status-dot-running' : ''}`} style={{ borderRadius: '1px' }} />
+          <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 ${statusColor} ${pStatus === 'running' ? 'status-dot-running' : ''}`} style={{ borderRadius: '1px' }} />
           <div className={`w-6 h-6 bg-surface-700 flex items-center justify-center border-l-2 ${typeConfig.borderColor}`} style={{ borderRadius: '2px' }}>
             {React.cloneElement(typeConfig.icon as React.ReactElement, { size: 14 })}
           </div>
         </div>
 
         {/* Name */}
-        <span className="text-xs font-bold text-text-primary truncate min-w-[100px] max-w-[180px]" title={process.name}>
-          {process.name}
-        </span>
+        <TruncatedText text={pName} className="text-xs font-bold text-text-primary min-w-[100px]" maxWidth="180px" />
 
         {/* PID */}
-        <span className="text-[10px] text-text-muted font-mono min-w-[50px]">{process.pid}</span>
+        <span className="text-[10px] text-text-muted font-mono min-w-[50px]">{pPid}</span>
 
         {/* Port */}
-        <span className={`text-[10px] font-mono min-w-[50px] ${process.port ? 'text-gold font-bold' : 'text-text-muted'}`}>
-          {process.port ? `:${process.port}` : '-'}
+        <span className={`text-[10px] font-mono min-w-[50px] ${pPort ? 'text-gold font-bold' : 'text-text-muted'}`}>
+          {pPort ? `:${pPort}` : '-'}
         </span>
 
         {/* CPU */}
         <div className="flex items-center gap-1 min-w-[70px]">
           <div className="w-[30px] h-1 bg-surface-700" style={{ borderRadius: '1px' }}>
-            <div className={`h-full ${cpuColor.bg}`} style={{ width: `${Math.min(process.cpu, 100)}%`, borderRadius: '1px' }} />
+            <div className={`h-full ${cpuColor.bg}`} style={{ width: `${Math.min(pCpu, 100)}%`, borderRadius: '1px' }} />
           </div>
-          <span className={`text-[10px] font-mono font-bold ${cpuColor.text}`}>{process.cpu.toFixed(1)}%</span>
+          <span className={`text-[10px] font-mono font-bold ${cpuColor.text}`}>{pCpu.toFixed(1)}%</span>
         </div>
 
         {/* Memory */}
@@ -442,16 +472,16 @@ const ProcessItem = memo(function ProcessItem({ process, maxMemory, isSelected, 
           <div className="w-[30px] h-1 bg-surface-700" style={{ borderRadius: '1px' }}>
             <div className={`h-full ${memColor.bg}`} style={{ width: `${memPercent}%`, borderRadius: '1px' }} />
           </div>
-          <span className={`text-[10px] font-mono font-bold ${memColor.text}`}>{process.memory}MB</span>
+          <span className={`text-[10px] font-mono font-bold ${memColor.text}`}>{pMemory}MB</span>
         </div>
 
         {/* Start Time */}
-        <span className="text-[10px] text-text-muted min-w-[30px]">{formatStartTime(process.startTime)}</span>
+        <span className="text-[10px] text-text-muted min-w-[30px]">{formatStartTime(pStartTime)}</span>
 
         {/* Actions */}
         <div className="flex items-center gap-1 ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
           <button
-            onClick={(e) => { e.stopPropagation(); onShowDetail(process.pid) }}
+            onClick={(e) => { e.stopPropagation(); onShowDetail(pPid) }}
             className="btn-icon-sm text-text-muted hover:text-accent"
             title="详情"
           >
@@ -471,7 +501,7 @@ const ProcessItem = memo(function ProcessItem({ process, maxMemory, isSelected, 
       <ConfirmDialog
         isOpen={showKillConfirm}
         title="终止进程"
-        message={`确定要终止进程 "${process.name}" (PID: ${process.pid}) 吗？`}
+        message={`确定要终止进程 "${pName}" (PID: ${pPid}) 吗？`}
         confirmText="终止"
         variant="danger"
         onConfirm={() => { setShowKillConfirm(false); onKill() }}
@@ -522,11 +552,11 @@ const ProcessGroupCard = memo(function ProcessGroupCard({
         </div>
         <div className="flex items-center gap-6">
           <div className="text-right">
-            <div className="text-sm font-bold text-text-primary font-mono">{group.totalCpu.toFixed(1)}%</div>
+            <div className="text-sm font-bold text-text-primary font-mono">{(group.totalCpu ?? 0).toFixed(1)}%</div>
             <div className="text-[10px] text-text-muted uppercase tracking-wider">CPU</div>
           </div>
           <div className="text-right">
-            <div className="text-sm font-bold text-text-primary font-mono">{group.totalMemory}MB</div>
+            <div className="text-sm font-bold text-text-primary font-mono">{group.totalMemory ?? 0}MB</div>
             <div className="text-[10px] text-text-muted uppercase tracking-wider">内存</div>
           </div>
         </div>
@@ -535,16 +565,17 @@ const ProcessGroupCard = memo(function ProcessGroupCard({
       <div className={`transition-all duration-300 ease-out overflow-hidden ${isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
         <div className="px-4 pb-4 space-y-1">
           {group.processes.map((process) => (
-            <ProcessItem
-              key={process.pid}
-              process={process}
-              maxMemory={maxMemory}
-              isSelected={selectedPid === process.pid}
-              onSelect={() => onSelectProcess(process.pid)}
-              onKill={() => onKillProcess(process.pid)}
-              onShowDetail={onShowDetail}
-              onShowTree={onShowTree}
-            />
+            <ProcessCardErrorBoundary key={process.pid} pid={process.pid ?? 0} processName={process.name}>
+              <ProcessItem
+                process={process}
+                maxMemory={maxMemory}
+                isSelected={selectedPid === process.pid}
+                onSelect={() => onSelectProcess(process.pid)}
+                onKill={() => onKillProcess(process.pid)}
+                onShowDetail={onShowDetail}
+                onShowTree={onShowTree}
+              />
+            </ProcessCardErrorBoundary>
           ))}
         </div>
       </div>
@@ -603,9 +634,10 @@ const VirtualListView = memo(function VirtualListView({
         >
           {virtualizer.getVirtualItems().map((virtualItem) => {
             const process = processes[virtualItem.index]
+            if (!process) return null
             return (
               <div
-                key={process.pid}
+                key={process.pid ?? virtualItem.index}
                 style={{
                   position: 'absolute',
                   top: 0,
@@ -615,15 +647,17 @@ const VirtualListView = memo(function VirtualListView({
                   transform: `translateY(${virtualItem.start}px)`
                 }}
               >
-                <ProcessItem
-                  process={process}
-                  maxMemory={maxMemory}
-                  isSelected={selectedPid === process.pid}
-                  onSelect={() => onSelectProcess(process.pid)}
-                  onKill={() => onKillProcess(process.pid)}
-                  onShowDetail={onShowDetail}
-                  onShowTree={onShowTree}
-                />
+                <ProcessCardErrorBoundary pid={process.pid ?? 0} processName={process.name}>
+                  <ProcessItem
+                    process={process}
+                    maxMemory={maxMemory}
+                    isSelected={selectedPid === process.pid}
+                    onSelect={() => onSelectProcess(process.pid)}
+                    onKill={() => onKillProcess(process.pid)}
+                    onShowDetail={onShowDetail}
+                    onShowTree={onShowTree}
+                  />
+                </ProcessCardErrorBoundary>
               </div>
             )
           })}
@@ -805,7 +839,7 @@ export function ProcessView() {
       </div>
 
       {/* Hero Stats */}
-      <div className="flex-shrink-0 px-5 py-4 stat-grid border-b border-surface-700/50 bg-surface-900/50">
+      <div className="flex-shrink-0 py-4 stat-grid border-b border-surface-700/50 bg-surface-900/50" style={{ paddingLeft: 'var(--responsive-padding, 20px)', paddingRight: 'var(--responsive-padding, 20px)' }}>
         <StatCard icon={<ProcessIcon size={20} className="text-accent" />} label="活跃进程" value={processes.length} color="accent" />
         <StatCard icon={<ProcessIcon size={20} className="text-info" />} label="CPU 使用" value={`${totalResources.cpu.toFixed(1)}%`} color={totalResources.cpu > 50 ? 'warning' : 'default'} />
         <StatCard icon={<ProcessIcon size={20} className="text-success" />} label="内存使用" value={formatBytes(totalResources.memory)} color={totalResources.memory > 2000 ? 'warning' : 'default'} />
@@ -857,28 +891,29 @@ export function ProcessView() {
             onSort={toggleSort}
           />
         ) : viewMode === 'cards' ? (
-          <div className="h-full overflow-y-auto p-5">
-            <div className="monitor-card-grid" style={{ display: 'grid', gap: 'var(--density-grid-gap, 8px)' }}>
+          <div className="h-full overflow-y-auto" style={{ padding: 'var(--responsive-padding, 20px)' }}>
+            <div className="monitor-card-grid">
               {filteredProcesses.map((process, index) => {
                 const hist = historyCache.get(process.pid)
                 return (
-                  <ProcessCard
-                    key={process.pid}
-                    process={process}
-                    index={index}
-                    maxMemory={maxMemory}
-                    cpuHistory={hist?.cpuHistory}
-                    memoryHistory={hist?.memoryHistory}
-                    onKill={() => killProcess(process.pid)}
-                    onShowDetail={handleShowDetail}
-                    onShowTree={handleShowDetail}
-                  />
+                  <ProcessCardErrorBoundary key={process.pid} pid={process.pid} processName={process.name}>
+                    <ProcessCard
+                      process={process}
+                      index={index}
+                      maxMemory={maxMemory}
+                      cpuHistory={hist?.cpuHistory}
+                      memoryHistory={hist?.memoryHistory}
+                      onKill={() => killProcess(process.pid)}
+                      onShowDetail={handleShowDetail}
+                      onShowTree={handleShowDetail}
+                    />
+                  </ProcessCardErrorBoundary>
                 )
               })}
             </div>
           </div>
         ) : (
-          <div className="h-full overflow-y-auto p-5 space-y-4">
+          <div className="h-full overflow-y-auto space-y-4" style={{ padding: 'var(--responsive-padding, 20px)' }}>
             {groups.map((group, index) => (
               <ProcessGroupCard
                 key={group.projectId}

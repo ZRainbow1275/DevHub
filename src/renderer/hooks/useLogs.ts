@@ -28,6 +28,12 @@ export function useLogs(projectId: string | null) {
 
     return () => {
       unsubscribe?.()
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(window.devhub?.logs as any)?.unsubscribe?.(currentProjectId)
+      } catch (error) {
+        console.warn('Failed to unsubscribe from logs:', error instanceof Error ? error.message : 'Unknown error')
+      }
     }
   }, [projectId, addLog])
 

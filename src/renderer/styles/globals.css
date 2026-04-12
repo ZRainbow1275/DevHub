@@ -15,9 +15,10 @@
 @layer base {
   body {
     @apply bg-surface-950 text-text-primary antialiased;
-    font-family: var(--font-sans);
+    font-family: var(--typo-body-family, var(--font-sans));
     letter-spacing: var(--typo-body-spacing, 0);
     line-height: var(--line-height-body-theme, 1.5);
+    font-weight: var(--typo-body-weight, 400);
   }
 
   * {
@@ -31,6 +32,7 @@
     letter-spacing: var(--typo-heading-spacing, 0);
     text-transform: var(--typo-heading-transform, none);
     font-weight: var(--typo-heading-weight, 700);
+    line-height: var(--line-height-heading-theme, 1.2);
   }
 }
 
@@ -124,8 +126,12 @@
    ======================================== */
 
 .btn-primary {
-  @apply relative overflow-hidden bg-accent text-white px-5 py-2.5;
-  font-weight: var(--typo-heading-weight, 700);
+  @apply relative overflow-hidden bg-accent text-white;
+  padding: var(--component-btn-padding, 8px 16px);
+  font-weight: var(--component-btn-font-weight, 700);
+  font-family: var(--typo-heading-family, var(--font-display));
+  letter-spacing: var(--typo-heading-spacing, 0);
+  text-transform: var(--typo-heading-transform, none);
   transition: all var(--motion-duration-fast, 150ms) var(--motion-easing, linear);
   @apply hover:bg-accent-400;
   @apply active:bg-accent-600;
@@ -462,21 +468,22 @@ select option {
 
 /* ========================================
    Responsive Auto Grid — Container Query Based
+   Uses density-aware gap variables with enforced minimum of 12px.
    ======================================== */
 
 .auto-grid {
   display: grid;
-  gap: calc(var(--density-grid-gap, 8px) * 2);
+  gap: var(--responsive-gap, var(--density-grid-gap, 12px));
   grid-template-columns: repeat(
     auto-fill,
-    minmax(280px, 1fr)
+    minmax(var(--responsive-card-min-width, 280px), 1fr)
   );
 }
 
 /* Container Query Precise Card Grid */
 .card-grid {
   display: grid;
-  gap: var(--density-grid-gap, 8px);
+  gap: var(--responsive-gap, var(--density-grid-gap, 12px));
 }
 
 @container panel (width < 600px) {
@@ -503,7 +510,16 @@ select option {
   }
 }
 
-/* Monitor container card grids */
+/* Monitor container card grids — uses auto-fill for smooth responsive */
+.monitor-card-grid {
+  display: grid;
+  gap: var(--responsive-gap, var(--density-grid-gap, 12px));
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(var(--responsive-card-min-width, 280px), 1fr)
+  );
+}
+
 @container monitor (width < 600px) {
   .monitor-card-grid {
     grid-template-columns: 1fr;
@@ -635,7 +651,7 @@ select option {
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--density-grid-gap, 8px);
+  gap: var(--responsive-gap, var(--density-grid-gap, 12px));
 }
 
 @container monitor (width < 800px) {
@@ -980,5 +996,210 @@ select option {
 .sidebar-expanded {
   width: var(--sidebar-width, 224px);
   min-width: var(--sidebar-width, 224px);
+}
+
+/* ========================================
+   Theme-Specific Overrides
+   These apply targeted visual changes that go
+   beyond what CSS variables alone can express.
+   ======================================== */
+
+/* --- Constructivism: Industrial, hard edges --- */
+[data-theme="constructivism"] .card,
+[data-theme="constructivism"] .monitor-card {
+  border-width: 2px;
+}
+
+[data-theme="constructivism"] .btn-primary {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+/* --- Cyberpunk: Neon glow, terminal feel --- */
+[data-theme="cyberpunk"] .card,
+[data-theme="cyberpunk"] .monitor-card {
+  background-color: rgba(10, 10, 18, 0.85);
+  backdrop-filter: blur(4px);
+}
+
+[data-theme="cyberpunk"] .card:hover,
+[data-theme="cyberpunk"] .monitor-card:hover {
+  border-color: rgba(0, 255, 255, 0.35);
+}
+
+[data-theme="cyberpunk"] .btn-primary {
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.15);
+}
+
+[data-theme="cyberpunk"] .btn-primary:hover {
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.3), 0 0 40px rgba(0, 255, 255, 0.1);
+}
+
+[data-theme="cyberpunk"] .input,
+[data-theme="cyberpunk"] .input-sm {
+  font-family: var(--typo-body-family, 'Share Tech Mono', monospace);
+  border-bottom-color: rgba(0, 255, 255, 0.2);
+}
+
+[data-theme="cyberpunk"] .input:focus,
+[data-theme="cyberpunk"] .input-sm:focus {
+  border-bottom-color: rgba(0, 255, 255, 0.6);
+  box-shadow: 0 2px 8px rgba(0, 255, 255, 0.15);
+}
+
+[data-theme="cyberpunk"] .nav-item:hover {
+  border-left-color: rgba(0, 255, 255, 0.5);
+}
+
+[data-theme="cyberpunk"] .nav-item-active {
+  border-left-color: var(--red-500) !important;
+  background-color: rgba(0, 255, 255, 0.06);
+}
+
+[data-theme="cyberpunk"] .tab-active {
+  background-color: rgba(0, 255, 255, 0.06);
+  border-bottom-color: var(--red-500);
+}
+
+[data-theme="cyberpunk"] .section-header {
+  text-shadow: 0 0 6px rgba(0, 255, 255, 0.2);
+}
+
+[data-theme="cyberpunk"] .hero-number-value {
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.4), 0 0 30px rgba(0, 255, 255, 0.15);
+}
+
+[data-theme="cyberpunk"] .status-badge {
+  clip-path: none;
+}
+
+[data-theme="cyberpunk"] .tooltip {
+  border-color: rgba(0, 255, 255, 0.2);
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.15);
+}
+
+[data-theme="cyberpunk"] .progress-bar {
+  border: 1px solid rgba(0, 255, 255, 0.1);
+}
+
+[data-theme="cyberpunk"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 255, 0.2);
+}
+
+[data-theme="cyberpunk"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 255, 0.35);
+}
+
+/* --- Swiss: Clean, restrained, functional --- */
+[data-theme="swiss"] .card,
+[data-theme="swiss"] .monitor-card {
+  border-width: 1px;
+}
+
+[data-theme="swiss"] .btn-primary {
+  text-transform: none;
+  letter-spacing: -0.01em;
+  border-left: none;
+}
+
+[data-theme="swiss"] .status-badge {
+  clip-path: none;
+  border-radius: 0;
+}
+
+[data-theme="swiss"] .section-header {
+  text-transform: none;
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+
+[data-theme="swiss"] .nav-item {
+  border-left: none;
+}
+
+[data-theme="swiss"] .nav-item-active {
+  border-left: 2px solid var(--gold-500) !important;
+  background-color: rgba(26, 26, 26, 0.04);
+}
+
+[data-theme="swiss"] .card:hover,
+[data-theme="swiss"] .monitor-card:hover {
+  transform: none;
+  border-left-color: transparent;
+}
+
+[data-theme="swiss"] .hero-number {
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+}
+
+[data-theme="swiss"] .divider-accent {
+  background: var(--gold-500);
+}
+
+[data-theme="swiss"] .deco-corner::before,
+[data-theme="swiss"] .deco-corner-br::after {
+  display: none;
+}
+
+[data-theme="swiss"] ::-webkit-scrollbar-track {
+  background: var(--surface-200);
+}
+
+[data-theme="swiss"] ::-webkit-scrollbar-thumb {
+  background: var(--surface-400);
+  border-radius: 0;
+}
+
+[data-theme="swiss"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-500);
+}
+
+/* ========================================
+   Cyberpunk Dot-Grid Background Utility
+   ======================================== */
+
+.deco-dotgrid {
+  background-image: var(--deco-background, none);
+  background-size: var(--deco-background-size, auto);
+}
+
+/* ========================================
+   Cyberpunk Scanline Overlay Utility
+   ======================================== */
+
+.deco-scanline::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--deco-scanline-opacity, 0);
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 4px
+  );
+  z-index: 1;
+}
+
+/* ========================================
+   Neon Glow Utility Classes
+   ======================================== */
+
+.neon-glow {
+  box-shadow: 0 0 8px var(--deco-glow-color, transparent);
+}
+
+.neon-glow-strong {
+  box-shadow: 0 0 15px var(--deco-glow-color, transparent),
+              0 0 30px var(--deco-glow-color, transparent);
+}
+
+.neon-text-glow {
+  text-shadow: 0 0 6px var(--deco-glow-color, transparent);
 }
 

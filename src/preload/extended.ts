@@ -10,6 +10,7 @@ import {
   PortInfo,
   PortTopologyData,
   PortFocusData,
+  PortDetailIncrementalResult,
   WindowInfo,
   WindowGroup,
   WindowLayout,
@@ -116,6 +117,12 @@ export const portApi = {
 
   getPortFocusData: (port: number): Promise<PortFocusData | null> =>
     ipcRenderer.invoke(IPC_CHANNELS_EXT.PORT_GET_FOCUS_DATA, port),
+
+  getPortDetailIncremental: (port: number): Promise<PortDetailIncrementalResult> =>
+    ipcRenderer.invoke('port:get-detail-incremental', port),
+
+  cancelPortQuery: (port: number): Promise<boolean> =>
+    ipcRenderer.invoke('port:cancel-query', port),
 
   onConflict: (callback: (data: { port: number; resolved: boolean }) => void) => {
     const handler = (_: unknown, data: { port: number; resolved: boolean }) => callback(data)
@@ -426,5 +433,14 @@ export const scannerApi = {
     const handler = (_: unknown, snapshot: ScannerCacheSnapshot) => callback(snapshot)
     ipcRenderer.on('scanner:snapshot:push', handler)
     return () => ipcRenderer.removeListener('scanner:snapshot:push', handler)
+  },
+
+  retryScanner: (type: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('scanner:retry', type),
+
+  onScannerFailed: (callback: (data: { type: string; retries: number }) => void) => {
+    const handler = (_: unknown, data: { type: string; retries: number }) => callback(data)
+    ipcRenderer.on('scanner:failed', handler)
+    return () => ipcRenderer.removeListener('scanner:failed', handler)
   }
 }
