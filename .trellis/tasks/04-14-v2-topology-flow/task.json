@@ -1,0 +1,45 @@
+{
+  "id": "v2-topology-flow",
+  "name": "v2-topology-flow",
+  "title": "Team3 Topology Flow (T6 拓扑+T7 流程图)",
+  "description": "",
+  "status": "planning",
+  "dev_type": "frontend",
+  "scope": "devhub/src/renderer/components/monitor/TopologyView.tsx devhub/src/renderer/components/monitor/PortRelationshipGraph.tsx devhub/src/renderer/components/monitor/MonitorPanel.tsx devhub/src/renderer/components/monitor/topology/ devhub/src/renderer/components/monitor/flow/ devhub/src/renderer/hooks/useProcessTopology.ts",
+  "package": null,
+  "priority": "P2",
+  "creator": "ZRainbow",
+  "assignee": "ZRainbow",
+  "createdAt": "2026-04-14",
+  "completedAt": null,
+  "branch": "feature/v2-topology-flow",
+  "base_branch": "master",
+  "worktree_path": "D:\\Desktop\\trellis-worktrees\\feature\\v2-topology-flow",
+  "current_phase": 3,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
