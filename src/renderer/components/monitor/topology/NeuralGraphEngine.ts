@@ -140,6 +140,32 @@ function getNodeColor(node: GraphNode): { base: string; glow: string } {
     colors = NODE_COLOR_MAP[processType]
   }
 
+  // CPU-based gradient for process nodes: green -> yellow -> red
+  const cpu = node.cpu ?? 0
+  if (cpu > 0 && (node.nodeType === 'process' || processType)) {
+    const cpuRatio = clamp(0, cpu / 100, 1)
+    if (cpuRatio < 0.3) {
+      // Low CPU: green tint
+      return {
+        base: lerpColor('#22c55e', '#c9a227', cpuRatio / 0.3),
+        glow: lerpColor('#4ade80', '#ffd700', cpuRatio / 0.3),
+      }
+    } else if (cpuRatio < 0.7) {
+      // Medium CPU: yellow tint
+      const t = (cpuRatio - 0.3) / 0.4
+      return {
+        base: lerpColor('#c9a227', '#d64545', t),
+        glow: lerpColor('#ffd700', '#ff6b6b', t),
+      }
+    } else {
+      // High CPU: red
+      return {
+        base: '#d64545',
+        glow: '#ff6b6b',
+      }
+    }
+  }
+
   // Memory-based tint: high memory shifts color toward red/warning
   const memoryMB = Number(node.metadata?.memory ?? 0)
   if (memoryMB > 0 && (node.nodeType === 'process' || processType)) {
@@ -194,6 +220,8 @@ export class NeuralGraphEngine {
   private width = 0
   private height = 0
 
+  private initRetryTimer: ReturnType<typeof setTimeout> | null = null
+
   constructor(container: HTMLElement, config?: Partial<NeuralForceConfig>) {
     this.container = container
     this.config = { ...DEFAULT_CONFIG, ...config }
@@ -204,8 +232,31 @@ export class NeuralGraphEngine {
 
   private init(): void {
     const rect = this.container.getBoundingClientRect()
-    this.width = rect.width || 800
-    this.height = rect.height || 600
+    this.width = rect.width
+    this.height = rect.height
+
+    // If container has zero dimensions (mount timing), retry after a short delay
+    if (this.width === 0 || this.height === 0) {
+      if (import.meta.env.DEV) {
+        console.warn('[NeuralGraphEngine] Container has 0 dimensions, retrying in 100ms')
+      }
+      this.width = 800
+      this.height = 600
+      this.initRetryTimer = setTimeout(() => {
+        if (this.destroyed) return
+        const retryRect = this.container.getBoundingClientRect()
+        if (retryRect.width > 0 && retryRect.height > 0) {
+          this.width = retryRect.width
+          this.height = retryRect.height
+          this.svg.attr('viewBox', `0 0 ${this.width} ${this.height}`)
+          this.simulation
+            .force('center', forceCenter(this.width / 2, this.height / 2).strength(this.config.centerStrength))
+          if (this.nodes.length > 0) {
+            this.simulation.alpha(0.3).restart()
+          }
+        }
+      }, 100)
+    }
 
     // Create SVG
     this.svg = select(this.container)
@@ -302,6 +353,22 @@ export class NeuralGraphEngine {
 
   setData(nodes: GraphNode[], edges: GraphEdge[]): void {
     if (this.destroyed) return
+
+    if (nodes.length === 0 && edges.length === 0) {
+      if (import.meta.env.DEV) {
+        console.warn('[NeuralGraphEngine] setData called with empty data')
+      }
+    }
+
+    // Re-read actual container size — corrects cases where init used the 800x600 fallback
+    const rect = this.container.getBoundingClientRect()
+    if (rect.width > 0 && rect.height > 0) {
+      if (this.width !== rect.width || this.height !== rect.height) {
+        this.width = rect.width
+        this.height = rect.height
+        this.svg.attr('viewBox', `0 0 ${this.width} ${this.height}`)
+      }
+    }
 
     // Compute visual radii
     for (const n of nodes) {
@@ -404,10 +471,10 @@ export class NeuralGraphEngine {
     // Enter
     const enter = nodeSel.enter()
       .append('g')
-      .attr('class', (d) => `neural-node ${enterIds.has(d.id) ? 'neural-node-enter' : ''}`)
+      .attr('class', (d) => `neural-node neural-node-${d.nodeType} ${enterIds.has(d.id) ? 'neural-node-enter' : ''}`)
       .style('cursor', 'pointer')
 
-    // Glow circle (behind main circle)
+    // Glow ring (circle fallback — fine for all shapes)
     enter.append('circle')
       .attr('class', 'neural-glow-ring')
       .attr('r', (d) => (d.visualRadius ?? 20) + 4)
@@ -417,15 +484,63 @@ export class NeuralGraphEngine {
       .attr('stroke-opacity', 0.3)
       .attr('filter', 'url(#neural-glow)')
 
-    // Main circle
-    enter.append('circle')
-      .attr('class', 'neural-main-circle')
-      .attr('r', (d) => d.visualRadius ?? 20)
-      .attr('fill', (d) => getNodeColor(d).base)
-      .attr('stroke', (d) => getNodeColor(d).glow)
-      .attr('stroke-width', 1.5)
-      .style('--pulse-speed', (d) => `${pulseSpeed(d.cpu)}ms`)
-      .classed('neural-node-pulse', true)
+    // Shape-specific primary marker. We create one of circle/rect/polygon per node
+    // and hide the unused ones so d3 can still select them later uniformly.
+    enter.each(function (d) {
+      const kind = (d.nodeType === 'window') ? 'rect'
+        : (d.nodeType.startsWith('port')) ? 'diamond'
+        : 'circle'
+      const r = d.visualRadius ?? 20
+      const colors = getNodeColor(d)
+      const g = select(this)
+
+      if (kind === 'circle') {
+        const c = g.append('circle')
+          .attr('class', 'neural-main-shape')
+          .attr('data-shape', 'circle')
+          .attr('r', r)
+          .attr('fill', colors.base)
+          .attr('stroke', colors.glow)
+          .attr('stroke-width', 1.5)
+          .style('--pulse-speed', `${pulseSpeed(d.cpu)}ms`)
+          .classed('neural-node-pulse', true)
+
+        // External nodes: dashed stroke (PRD T6.4)
+        if (d.nodeType === 'external') {
+          c.attr('stroke-dasharray', '4 3')
+            .attr('fill-opacity', 0.4)
+        }
+      } else if (kind === 'rect') {
+        // Window: square/rounded rectangle
+        const size = r * 1.6
+        g.append('rect')
+          .attr('class', 'neural-main-shape')
+          .attr('data-shape', 'rect')
+          .attr('x', -size / 2)
+          .attr('y', -size / 2)
+          .attr('width', size)
+          .attr('height', size)
+          .attr('rx', 3)
+          .attr('ry', 3)
+          .attr('fill', colors.base)
+          .attr('stroke', colors.glow)
+          .attr('stroke-width', 1.5)
+          .style('--pulse-speed', `${pulseSpeed(d.cpu)}ms`)
+          .classed('neural-node-pulse', true)
+      } else {
+        // Diamond (rotated square) for port
+        const size = r * 1.3
+        g.append('polygon')
+          .attr('class', 'neural-main-shape')
+          .attr('data-shape', 'diamond')
+          .attr('points', `0,${-size} ${size},0 0,${size} ${-size},0`)
+          .attr('fill', colors.base)
+          .attr('stroke', colors.glow)
+          .attr('stroke-width', 1.5)
+          .style('--pulse-speed', `${pulseSpeed(d.cpu)}ms`)
+          .classed('neural-node-pulse', true)
+      }
+    })
 
     // Label
     enter.append('text')
@@ -439,6 +554,10 @@ export class NeuralGraphEngine {
         const maxLen = 14
         return d.label.length > maxLen ? d.label.slice(0, maxLen) + '...' : d.label
       })
+
+    // Tooltip (SVG title) for hover hint
+    enter.append('title')
+      .text((d) => this.buildTooltip(d))
 
     // Interactions
     enter
@@ -454,6 +573,12 @@ export class NeuralGraphEngine {
         event.stopPropagation()
         this.clickCallback?.(d)
       })
+      .on('dblclick', (event, d) => {
+        event.stopPropagation()
+        event.preventDefault()
+        // Zoom-to-fit neighborhood (PRD T6.4)
+        this.focusNode(d.id)
+      })
       .on('contextmenu', (event: MouseEvent, d) => {
         event.preventDefault()
         event.stopPropagation()
@@ -466,15 +591,75 @@ export class NeuralGraphEngine {
     // Merge: update existing node visuals
     const merged = enter.merge(nodeSel as Selection<SVGGElement, GraphNode, SVGGElement, unknown>)
 
-    merged.select('circle.neural-main-circle')
-      .attr('r', (d) => d.visualRadius ?? 20)
-      .attr('fill', (d) => getNodeColor(d).base)
-      .attr('stroke', (d) => getNodeColor(d).glow)
-      .style('--pulse-speed', (d) => `${pulseSpeed(d.cpu)}ms`)
+    merged.each(function (d) {
+      const colors = getNodeColor(d)
+      const r = d.visualRadius ?? 20
+      const g = select(this)
+      const shape = g.select<SVGElement>('.neural-main-shape')
+      const kind = shape.attr('data-shape')
+      if (kind === 'circle') {
+        shape
+          .attr('r', r)
+          .attr('fill', colors.base)
+          .attr('stroke', colors.glow)
+          .style('--pulse-speed', `${pulseSpeed(d.cpu)}ms`)
+      } else if (kind === 'rect') {
+        const size = r * 1.6
+        shape
+          .attr('x', -size / 2)
+          .attr('y', -size / 2)
+          .attr('width', size)
+          .attr('height', size)
+          .attr('fill', colors.base)
+          .attr('stroke', colors.glow)
+          .style('--pulse-speed', `${pulseSpeed(d.cpu)}ms`)
+      } else if (kind === 'diamond') {
+        const size = r * 1.3
+        shape
+          .attr('points', `0,${-size} ${size},0 0,${size} ${-size},0`)
+          .attr('fill', colors.base)
+          .attr('stroke', colors.glow)
+          .style('--pulse-speed', `${pulseSpeed(d.cpu)}ms`)
+      }
+    })
 
     merged.select('circle.neural-glow-ring')
       .attr('r', (d) => (d.visualRadius ?? 20) + 4)
       .attr('stroke', (d) => getNodeColor(d).glow)
+
+    // Refresh tooltip text after updates
+    merged.select<SVGTitleElement>('title')
+      .text((d) => this.buildTooltip(d))
+  }
+
+  /**
+   * Build the hover tooltip text for a node (PRD T6.4 requirement).
+   * Uses SVG <title> element so the browser shows it natively on hover.
+   */
+  private buildTooltip(node: GraphNode): string {
+    const lines: string[] = [node.label]
+    const meta = node.metadata ?? {}
+    if (node.nodeType === 'process') {
+      if (meta.pid !== undefined) lines.push(`PID: ${String(meta.pid)}`)
+      if (node.cpu !== undefined) lines.push(`CPU: ${node.cpu.toFixed(1)}%`)
+      if (meta.memory !== undefined) lines.push(`内存: ${Number(meta.memory).toFixed(1)}MB`)
+      if (meta.processType) lines.push(`类型: ${String(meta.processType)}`)
+      if (meta.status) lines.push(`状态: ${String(meta.status)}`)
+    } else if (node.nodeType.startsWith('port')) {
+      if (meta.port !== undefined) lines.push(`端口: ${String(meta.port)}`)
+      if (meta.state) lines.push(`状态: ${String(meta.state)}`)
+      if (meta.protocol) lines.push(`协议: ${String(meta.protocol)}`)
+      if (meta.processName) lines.push(`进程: ${String(meta.processName)}`)
+    } else if (node.nodeType === 'window') {
+      if (meta.title) lines.push(`标题: ${String(meta.title)}`)
+      if (meta.processName) lines.push(`进程: ${String(meta.processName)}`)
+      if (meta.hwnd !== undefined) lines.push(`HWND: ${String(meta.hwnd)}`)
+    } else if (node.nodeType === 'external') {
+      if (meta.address) lines.push(`地址: ${String(meta.address)}`)
+    } else if (node.nodeType === 'project') {
+      if (meta.projectName) lines.push(`项目: ${String(meta.projectName)}`)
+    }
+    return lines.join('\n')
   }
 
   private tick(): void {
@@ -586,6 +771,10 @@ export class NeuralGraphEngine {
     this.destroyed = true
     if (this.animationFrameId) {
       cancelAnimationFrame(this.animationFrameId)
+    }
+    if (this.initRetryTimer) {
+      clearTimeout(this.initRetryTimer)
+      this.initRetryTimer = null
     }
     this.simulation.stop()
     this.svg.remove()
