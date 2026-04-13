@@ -250,7 +250,19 @@ export function useProjects() {
       if (filter.group && project.group !== filter.group) return false
       if (filter.search) {
         const searchLower = filter.search.toLowerCase()
-        if (!project.name.toLowerCase().includes(searchLower) && !project.path.toLowerCase().includes(searchLower)) {
+        const nameMatch = project.name.toLowerCase().includes(searchLower)
+        const pathMatch = project.path.toLowerCase().includes(searchLower)
+        const tagMatch = project.tags.some(t => t.toLowerCase().includes(searchLower))
+        // Simple fuzzy: check if all chars of search appear in name in order
+        const fuzzyMatch = (() => {
+          const name = project.name.toLowerCase()
+          let si = 0
+          for (let i = 0; i < name.length && si < searchLower.length; i++) {
+            if (name[i] === searchLower[si]) si++
+          }
+          return si === searchLower.length
+        })()
+        if (!nameMatch && !pathMatch && !tagMatch && !fuzzyMatch) {
           return false
         }
       }

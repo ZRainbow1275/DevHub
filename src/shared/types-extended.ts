@@ -296,7 +296,7 @@ export interface ProcessTopologyEdgeData extends Record<string, unknown> {
 
 // ============ AI Task Tracking Types ============
 
-export type AIToolType = 'codex' | 'claude-code' | 'gemini-cli' | 'cursor' | 'opencode' | 'other'
+export type AIToolType = 'codex' | 'claude-code' | 'gemini-cli' | 'cursor' | 'opencode' | 'aider' | 'windsurf' | 'continue-dev' | 'cline' | 'other'
 export type AITaskState = 'running' | 'waiting' | 'completed' | 'error' | 'idle' | 'thinking' | 'coding' | 'compiling'
 
 export type AITaskPhase =
@@ -450,16 +450,16 @@ export const DEFAULT_AI_TOOL_CONFIGS: Record<Exclude<AIToolType, 'other'>, AIToo
     completionKeywords: ['Done', 'Complete', 'Finished', 'finished', 'done', '✓', '✔'],
     errorKeywords: ['Error', 'Failed', 'error:', 'FAILED', 'panic', '✗', '✘'],
     promptPatterns: ['^\\s*[>$%#]\\s*$', '^\\s*❯\\s*$', '^\\s*>>>\\s*$'],
-    cpuBaselineThreshold: 3,
-    confirmationWindowMs: 3000,
+    cpuBaselineThreshold: 1,
+    confirmationWindowMs: 8000,
   },
   'codex': {
     toolType: 'codex',
-    completionKeywords: ['Done', 'Complete', 'Finished', '✓'],
+    completionKeywords: ['Done', 'Complete', 'Finished', 'Ready', '✓'],
     errorKeywords: ['Error', 'Failed', 'error:'],
     promptPatterns: ['^\\s*[>$%#]\\s*$', '^\\s*❯\\s*$'],
     cpuBaselineThreshold: 3,
-    confirmationWindowMs: 3000,
+    confirmationWindowMs: 8000,
   },
   'gemini-cli': {
     toolType: 'gemini-cli',
@@ -467,7 +467,7 @@ export const DEFAULT_AI_TOOL_CONFIGS: Record<Exclude<AIToolType, 'other'>, AIToo
     errorKeywords: ['Error', 'Failed', 'error:'],
     promptPatterns: ['^\\s*[>$%#]\\s*$'],
     cpuBaselineThreshold: 3,
-    confirmationWindowMs: 3000,
+    confirmationWindowMs: 8000,
   },
   'cursor': {
     toolType: 'cursor',
@@ -475,7 +475,7 @@ export const DEFAULT_AI_TOOL_CONFIGS: Record<Exclude<AIToolType, 'other'>, AIToo
     errorKeywords: ['Error', 'Failed'],
     promptPatterns: [],
     cpuBaselineThreshold: 5,
-    confirmationWindowMs: 5000,
+    confirmationWindowMs: 8000,
   },
   'opencode': {
     toolType: 'opencode',
@@ -483,7 +483,39 @@ export const DEFAULT_AI_TOOL_CONFIGS: Record<Exclude<AIToolType, 'other'>, AIToo
     errorKeywords: ['Error', 'Failed', 'error:'],
     promptPatterns: ['^\\s*[>$%#]\\s*$'],
     cpuBaselineThreshold: 3,
-    confirmationWindowMs: 3000,
+    confirmationWindowMs: 8000,
+  },
+  'aider': {
+    toolType: 'aider',
+    completionKeywords: ['Done', 'Complete', 'Finished', '✓', 'aider>'],
+    errorKeywords: ['Error', 'Failed', 'error:', 'Traceback'],
+    promptPatterns: ['^\\s*aider>\\s*$', '^\\s*[>$%#]\\s*$'],
+    cpuBaselineThreshold: 3,
+    confirmationWindowMs: 8000,
+  },
+  'windsurf': {
+    toolType: 'windsurf',
+    completionKeywords: ['Done', 'Complete'],
+    errorKeywords: ['Error', 'Failed'],
+    promptPatterns: [],
+    cpuBaselineThreshold: 5,
+    confirmationWindowMs: 8000,
+  },
+  'continue-dev': {
+    toolType: 'continue-dev',
+    completionKeywords: ['Done', 'Complete', 'Finished', '✓'],
+    errorKeywords: ['Error', 'Failed', 'error:'],
+    promptPatterns: ['^\\s*[>$%#]\\s*$'],
+    cpuBaselineThreshold: 3,
+    confirmationWindowMs: 8000,
+  },
+  'cline': {
+    toolType: 'cline',
+    completionKeywords: ['Done', 'Complete', 'Finished', 'Task completed', '✓'],
+    errorKeywords: ['Error', 'Failed', 'error:'],
+    promptPatterns: ['^\\s*[>$%#]\\s*$'],
+    cpuBaselineThreshold: 3,
+    confirmationWindowMs: 8000,
   },
 }
 
@@ -631,7 +663,9 @@ export const IPC_CHANNELS_EXT = {
   NOTIFICATION_GET_CONFIG: 'notification:get-config',
   NOTIFICATION_SET_CONFIG: 'notification:set-config',
   NOTIFICATION_GET_HISTORY: 'notification:get-history',
-  NOTIFICATION_ACTION: 'notification:action'
+  NOTIFICATION_ACTION: 'notification:action',
+  PROJECT_GET_GIT_INFO: 'project:get-git-info',
+  PROJECT_GET_DEPENDENCIES: 'project:get-dependencies'
 } as const
 
 // AI Tool Signatures for Detection
@@ -641,19 +675,19 @@ export const AI_TOOL_SIGNATURES: Record<AIToolType, {
   commandPatterns: RegExp[]
 }> = {
   'codex': {
-    processPatterns: ['node.exe', 'codex'],
+    processPatterns: ['codex.exe', 'node.exe'],
     windowTitlePatterns: [/codex/i, /openai/i],
-    commandPatterns: [/codex\s+/i]
+    commandPatterns: [/@openai\/codex/i, /codex\s+/i]
   },
   'claude-code': {
-    processPatterns: ['node.exe', 'claude'],
+    processPatterns: ['claude.exe', 'node.exe'],
     windowTitlePatterns: [/claude/i, /anthropic/i],
-    commandPatterns: [/\bclaude\b/i, /@anthropic-ai\/claude-code/i, /claude-code/i]
+    commandPatterns: [/@anthropic-ai\/claude-code/i, /\bclaude-code\b/i, /\bclaude\b/i]
   },
   'gemini-cli': {
-    processPatterns: ['node.exe', 'gemini'],
+    processPatterns: ['gemini.exe', 'node.exe'],
     windowTitlePatterns: [/gemini/i, /google/i],
-    commandPatterns: [/gemini\s+/i]
+    commandPatterns: [/@google\/gemini-cli/i, /gemini-cli/i, /gemini\s+/i]
   },
   'cursor': {
     processPatterns: ['Cursor.exe'],
@@ -661,9 +695,29 @@ export const AI_TOOL_SIGNATURES: Record<AIToolType, {
     commandPatterns: []
   },
   'opencode': {
-    processPatterns: ['node.exe', 'opencode'],
+    processPatterns: ['opencode.exe', 'node.exe'],
     windowTitlePatterns: [/opencode/i],
-    commandPatterns: [/opencode\s*/i]
+    commandPatterns: [/\bopencode\b/i]
+  },
+  'aider': {
+    processPatterns: ['aider.exe', 'python.exe', 'python3.exe'],
+    windowTitlePatterns: [/aider/i],
+    commandPatterns: [/\baider\b/i]
+  },
+  'windsurf': {
+    processPatterns: ['Windsurf.exe'],
+    windowTitlePatterns: [/windsurf/i],
+    commandPatterns: []
+  },
+  'continue-dev': {
+    processPatterns: ['node.exe'],
+    windowTitlePatterns: [/continue/i],
+    commandPatterns: [/\bcontinue\b/i, /@continue\/extension/i]
+  },
+  'cline': {
+    processPatterns: ['node.exe'],
+    windowTitlePatterns: [/cline/i],
+    commandPatterns: [/\bcline\b/i]
   },
   'other': {
     processPatterns: [],
@@ -715,10 +769,52 @@ export const DEV_PROCESS_PATTERNS = [
   'code.exe', 'Cursor.exe', 'windsurf.exe',
   'idea64.exe', 'pycharm64.exe', 'webstorm64.exe',
   // AI 编程工具
-  'codex', 'claude', 'gemini',
+  'codex', 'claude', 'gemini', 'opencode', 'aider',
+  'Windsurf.exe',
   // 容器
   'docker.exe'
 ] as const
+
+// ============ Project Git Info Types ============
+
+export interface GitInfo {
+  branch: string
+  uncommittedCount: number
+  recentCommits: GitCommitSummary[]
+  aheadBehind: { ahead: number; behind: number }
+}
+
+export interface GitCommitSummary {
+  hash: string
+  message: string
+  author: string
+  date: string
+}
+
+// ============ Project Dependency Types ============
+
+export type LockfileType = 'npm' | 'yarn' | 'pnpm' | 'none'
+
+export interface DependencyEntry {
+  name: string
+  version: string
+}
+
+export interface ProjectDependencies {
+  dependencies: DependencyEntry[]
+  devDependencies: DependencyEntry[]
+  lockfileType: LockfileType
+}
+
+// ============ Project Sort Types ============
+
+export type ProjectSortField = 'name' | 'status' | 'type' | 'recentRun' | 'createdAt'
+export type ProjectSortDirection = 'asc' | 'desc'
+
+export interface ProjectSortConfig {
+  field: ProjectSortField
+  direction: ProjectSortDirection
+}
 
 // ============ Scanner Cache Types (for preload/renderer) ============
 

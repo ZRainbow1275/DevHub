@@ -14,6 +14,11 @@ import type {
 } from '@shared/types'
 
 import type {
+  GitInfo,
+  ProjectDependencies
+} from '@shared/types-extended'
+
+import type {
   ProcessInfo,
   ProcessGroup,
   ProcessRelationship,
@@ -70,6 +75,8 @@ declare global {
         scanDirectory: (dirPath: string) => Promise<Array<{ path: string; name: string; scripts: string[]; projectType: ProjectType }>>
         discover: () => Promise<Array<{ path: string; name: string; scripts: string[]; projectType: ProjectType }>>
         onAutoDiscovered: (callback: (projects: Array<{ path: string; name: string; scripts: string[]; projectType: ProjectType }>) => void) => () => void
+        getGitInfo: (projectPath: string) => Promise<GitInfo | null>
+        getDependencies: (projectPath: string) => Promise<ProjectDependencies | null>
         watcher?: {
           start: (watchPaths?: string[]) => Promise<{ running: boolean }>
           stop: () => Promise<{ running: boolean }>
