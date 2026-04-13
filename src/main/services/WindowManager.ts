@@ -672,6 +672,33 @@ public class WindowEnumerator {
     }
   }
 
+  /** Stack all specified windows at the same position (center of screen, same size) */
+  async stackWindows(hwnds: number[]): Promise<ServiceResult> {
+    const validHwnds = hwnds.filter(h => validateHwnd(h))
+    if (validHwnds.length === 0) return { success: false, error: 'No valid window handles provided' }
+
+    try {
+      const primaryDisplay = screen.getPrimaryDisplay()
+      const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize
+      const { x: offsetX, y: offsetY } = primaryDisplay.workArea
+
+      const windowWidth = Math.floor(screenWidth * 0.65)
+      const windowHeight = Math.floor(screenHeight * 0.65)
+      const x = offsetX + Math.floor((screenWidth - windowWidth) / 2)
+      const y = offsetY + Math.floor((screenHeight - windowHeight) / 2)
+
+      for (const hwnd of validHwnds) {
+        await this.moveWindow(hwnd, x, y, windowWidth, windowHeight)
+      }
+
+      return { success: true }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error'
+      console.error('stackWindows failed:', errorMsg)
+      return { success: false, error: errorMsg }
+    }
+  }
+
   /** Minimize all tracked windows */
   async minimizeAll(): Promise<ServiceResult> {
     try {

@@ -199,6 +199,9 @@ export const windowApi = {
   cascadeLayout: (hwnds: number[]): Promise<ServiceResult> =>
     ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_CASCADE_LAYOUT, hwnds),
 
+  stackLayout: (hwnds: number[]): Promise<ServiceResult> =>
+    ipcRenderer.invoke('window:stack-layout', hwnds),
+
   minimizeAll: (): Promise<ServiceResult> =>
     ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_MINIMIZE_ALL),
 

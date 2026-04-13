@@ -224,6 +224,12 @@ export function useWindows() {
     return result?.success ?? false
   }, [])
 
+  const stackWindows = useCallback(async (hwnds: number[]): Promise<boolean> => {
+    if (!isElectron) return false
+    const result = await window.devhub.windowManager?.stackLayout?.(hwnds)
+    return result?.success ?? false
+  }, [])
+
   const minimizeAll = useCallback(async (): Promise<boolean> => {
     if (!isElectron) return false
     const result = await window.devhub.windowManager?.minimizeAll?.()
@@ -282,6 +288,7 @@ export function useWindows() {
     sendKeysToWindow,
     tileWindows,
     cascadeWindows,
+    stackWindows,
     minimizeAll,
     restoreAll,
     addToGroup,

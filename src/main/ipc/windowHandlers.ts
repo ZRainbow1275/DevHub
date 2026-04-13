@@ -254,6 +254,15 @@ export function setupWindowHandlers(_mainWindow: BrowserWindow): void {
     }
   ))
 
+  ipcMain.handle('window:stack-layout', withRateLimit(
+    'window:stack-layout', RATE_LIMITS.ACTION,
+    async (_, hwnds: number[]): Promise<ServiceResult> => {
+      validateHwndArray(hwnds)
+      if (!windowManager) return { success: false, error: 'Window manager not initialized' }
+      return windowManager.stackWindows(hwnds)
+    }
+  ))
+
   ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_MINIMIZE_ALL, withRateLimit(
     IPC_CHANNELS_EXT.WINDOW_MINIMIZE_ALL, RATE_LIMITS.ACTION,
     async (): Promise<ServiceResult> => {
@@ -314,6 +323,7 @@ export function cleanupWindowHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_SEND_KEYS)
   ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_TILE_LAYOUT)
   ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_CASCADE_LAYOUT)
+  ipcMain.removeHandler('window:stack-layout')
   ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_MINIMIZE_ALL)
   ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_RESTORE_ALL)
   ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_ADD_TO_GROUP)
