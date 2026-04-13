@@ -10,6 +10,10 @@
 export type MetricFormat = 'number' | 'percent' | 'bytes' | 'duration'
 export type MetricMode = 'full' | 'compact' | 'minimal'
 
+function assertNever(value: never): never {
+  throw new Error(`Unexpected value: ${value}`)
+}
+
 /**
  * Format a number with thousands separators.
  */
@@ -56,6 +60,8 @@ function formatPercent(value: number, mode: MetricMode): string {
       return `${Math.round(value)}%`
     case 'minimal':
       return `${Math.round(value)}`
+    default:
+      return assertNever(mode)
   }
 }
 
@@ -79,6 +85,8 @@ function formatBytesMetric(valueMB: number, mode: MetricMode): string {
       if (gb < 1024) return `${Math.round(gb)}G`
       return `${Math.round(gb / 1024)}T`
     }
+    default:
+      return assertNever(mode)
   }
 }
 
@@ -105,6 +113,8 @@ function formatDurationMetric(seconds: number, mode: MetricMode): string {
       if (h > 0) return `${h}:${String(m).padStart(2, '0')}`
       return `${m}:${String(s).padStart(2, '0')}`
     }
+    default:
+      return assertNever(mode)
   }
 }
 
@@ -123,13 +133,16 @@ export function formatMetric(value: number, format: MetricFormat, mode: MetricMo
         case 'full': return formatFullNumber(value)
         case 'compact': return formatCompactNumber(value)
         case 'minimal': return formatMinimalNumber(value)
+        default:
+          return assertNever(mode)
       }
-      return formatFullNumber(value)
     case 'percent':
       return formatPercent(value, mode)
     case 'bytes':
       return formatBytesMetric(value, mode)
     case 'duration':
       return formatDurationMetric(value, mode)
+    default:
+      return assertNever(format)
   }
 }

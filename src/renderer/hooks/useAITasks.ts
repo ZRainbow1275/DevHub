@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useRef } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useAITaskStore } from '../stores/aiTaskStore'
-import { AITask, AITaskHistory } from '@shared/types-extended'
+import { AITask, AITaskHistory, DEFAULT_AI_TOOL_CONFIGS, AIToolType } from '@shared/types-extended'
 
 const isElectron = typeof window !== 'undefined' && window.devhub !== undefined
 
@@ -10,15 +11,34 @@ export function useAITasks() {
     history,
     statistics,
     selectedTaskId,
+    detectionConfigs,
     setActiveTasks,
     updateTask,
     addToHistory,
     setHistory,
     setStatistics,
     selectTask,
+    setDetectionConfigs,
     getTasksByTool,
     getActiveTaskCount
-  } = useAITaskStore()
+  } = useAITaskStore(
+    useShallow(s => ({
+      activeTasks: s.activeTasks,
+      history: s.history,
+      statistics: s.statistics,
+      selectedTaskId: s.selectedTaskId,
+      detectionConfigs: s.detectionConfigs,
+      setActiveTasks: s.setActiveTasks,
+      updateTask: s.updateTask,
+      addToHistory: s.addToHistory,
+      setHistory: s.setHistory,
+      setStatistics: s.setStatistics,
+      selectTask: s.selectTask,
+      setDetectionConfigs: s.setDetectionConfigs,
+      getTasksByTool: s.getTasksByTool,
+      getActiveTaskCount: s.getActiveTaskCount
+    }))
+  )
 
   // 使用 ref 来避免在依赖数组中包含 activeTasks
   const activeTasksRef = useRef(activeTasks)
@@ -67,6 +87,18 @@ export function useAITasks() {
     return window.devhub.aiTask?.getById?.(taskId)
   }, [])
 
+  /** Fetch detection config for a tool type (uses static DEFAULT_AI_TOOL_CONFIGS, cached in store) */
+  const fetchDetectionConfig = useCallback((toolType: AIToolType) => {
+    // Detection configs are static from DEFAULT_AI_TOOL_CONFIGS -- no IPC needed
+    if (detectionConfigs[toolType]) return detectionConfigs[toolType]
+    const toolKey = toolType as Exclude<AIToolType, 'other'>
+    const config = DEFAULT_AI_TOOL_CONFIGS[toolKey]
+    if (config) {
+      setDetectionConfigs({ ...detectionConfigs, [toolType]: config })
+    }
+    return config ?? null
+  }, [detectionConfigs, setDetectionConfigs])
+
   useEffect(() => {
     if (!isElectron) return
 
@@ -97,10 +129,12 @@ export function useAITasks() {
     history,
     statistics,
     selectedTaskId,
+    detectionConfigs,
     fetchActiveTasks,
     fetchHistory,
     fetchStatistics,
     getTaskById,
+    fetchDetectionConfig,
     selectTask,
     getTasksByTool,
     getActiveTaskCount

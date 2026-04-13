@@ -3,6 +3,14 @@ import { IPC_CHANNELS_EXT, WindowInfo, WindowGroup, WindowLayout, ServiceResult 
 import { WindowManager } from '../services/WindowManager'
 import { validateHwnd, validateString, validateHwndArray } from '../utils/validation'
 import { withRateLimit, RATE_LIMITS } from '../utils/rateLimiter'
+import { z } from 'zod'
+
+// Zod schemas for window IPC input validation
+const hwndSchema = z.number().int().positive()
+const stringSchema = z.string().min(1).max(200)
+const hwndArraySchema = z.array(z.number().int().positive()).max(100)
+const opacitySchema = z.number().min(0).max(100)
+const coordinateSchema = z.number().finite()
 
 let windowManager: WindowManager | null = null
 
@@ -17,11 +25,11 @@ export function setupWindowHandlers(_mainWindow: BrowserWindow): void {
     }
   ))
 
-  // TODO(I3): Add Zod schema validation for window:focus when zod is added to dependencies
-  // Schema: z.object({ hwnd: z.number().int().positive() })
   ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_FOCUS, withRateLimit(
     IPC_CHANNELS_EXT.WINDOW_FOCUS, RATE_LIMITS.ACTION,
     async (_, hwnd: number): Promise<ServiceResult> => {
+      const parsed = hwndSchema.safeParse(hwnd)
+      if (!parsed.success) return { success: false, error: 'Invalid hwnd: must be a positive integer' }
       validateHwnd(hwnd)
       if (!windowManager) return { success: false, error: 'Window manager not initialized' }
       return windowManager.focusWindow(hwnd)
@@ -40,12 +48,17 @@ export function setupWindowHandlers(_mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_MOVE, withRateLimit(
     IPC_CHANNELS_EXT.WINDOW_MOVE, RATE_LIMITS.ACTION,
     async (_, hwnd: number, x: number, y: number, width: number, height: number): Promise<ServiceResult> => {
-      validateHwnd(hwnd)
-      // Validate coordinates are numbers (IPC can pass any type at runtime)
-      for (const [name, val] of [['x', x], ['y', y], ['width', width], ['height', height]] as const) {
-        if (typeof val !== 'number' || !Number.isFinite(val)) {
-          return { success: false, error: `Invalid ${name}: must be a finite number` }
-        }
+      const moveSchema = z.object({
+        hwnd: hwndSchema,
+        x: coordinateSchema,
+        y: coordinateSchema,
+        width: coordinateSchema,
+        height: coordinateSchema,
+      })
+      const parsed = moveSchema.safeParse({ hwnd, x, y, width, height })
+      if (!parsed.success) {
+        const issue = parsed.error.issues[0]
+        return { success: false, error: `Invalid ${String(issue?.path[0] ?? 'input')}: must be a finite number` }
       }
       if (!windowManager) return { success: false, error: 'Window manager not initialized' }
       return windowManager.moveWindow(hwnd, x, y, width, height)
@@ -82,11 +95,12 @@ export function setupWindowHandlers(_mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_CREATE_GROUP, withRateLimit(
     IPC_CHANNELS_EXT.WINDOW_CREATE_GROUP, RATE_LIMITS.ACTION,
     async (_, name: string, windowHwnds: number[], projectId?: string): Promise<WindowGroup | null> => {
-      validateString(name, 'name')
-      validateHwndArray(windowHwnds)
-      if (projectId !== undefined) {
-        validateString(projectId, 'projectId')
-      }
+      const groupSchema = z.object({
+        name: stringSchema,
+        windowHwnds: hwndArraySchema,
+        projectId: stringSchema.optional(),
+      })
+      groupSchema.parse({ name, windowHwnds, projectId })
       if (!windowManager) return null
       return windowManager.createGroup(name, windowHwnds, projectId)
     }
@@ -189,9 +203,10 @@ export function setupWindowHandlers(_mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_SET_TOPMOST, withRateLimit(
     IPC_CHANNELS_EXT.WINDOW_SET_TOPMOST, RATE_LIMITS.ACTION,
     async (_, hwnd: number, topmost: boolean): Promise<ServiceResult> => {
-      validateHwnd(hwnd)
-      if (typeof topmost !== 'boolean') {
-        return { success: false, error: 'topmost must be a boolean' }
+      const topmostSchema = z.object({ hwnd: hwndSchema, topmost: z.boolean() })
+      const parsed = topmostSchema.safeParse({ hwnd, topmost })
+      if (!parsed.success) {
+        return { success: false, error: `Validation error: ${parsed.error.issues[0]?.message}` }
       }
       if (!windowManager) return { success: false, error: 'Window manager not initialized' }
       return windowManager.setWindowTopmost(hwnd, topmost)
@@ -201,9 +216,10 @@ export function setupWindowHandlers(_mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_SET_OPACITY, withRateLimit(
     IPC_CHANNELS_EXT.WINDOW_SET_OPACITY, RATE_LIMITS.ACTION,
     async (_, hwnd: number, opacity: number): Promise<ServiceResult> => {
-      validateHwnd(hwnd)
-      if (typeof opacity !== 'number' || opacity < 0 || opacity > 100) {
-        return { success: false, error: 'opacity must be a number between 0 and 100' }
+      const opacityInputSchema = z.object({ hwnd: hwndSchema, opacity: opacitySchema })
+      const parsed = opacityInputSchema.safeParse({ hwnd, opacity })
+      if (!parsed.success) {
+        return { success: false, error: `Validation error: ${parsed.error.issues[0]?.message}` }
       }
       if (!windowManager) return { success: false, error: 'Window manager not initialized' }
       return windowManager.setWindowOpacity(hwnd, opacity)
@@ -213,8 +229,8 @@ export function setupWindowHandlers(_mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_SEND_KEYS, withRateLimit(
     IPC_CHANNELS_EXT.WINDOW_SEND_KEYS, RATE_LIMITS.ACTION,
     async (_, hwnd: number, keys: string): Promise<ServiceResult> => {
-      validateHwnd(hwnd)
-      validateString(keys, 'keys', 50)
+      const keysSchema = z.object({ hwnd: hwndSchema, keys: z.string().min(1).max(50) })
+      keysSchema.parse({ hwnd, keys })
       if (!windowManager) return { success: false, error: 'Window manager not initialized' }
       return windowManager.sendKeysToWindow(hwnd, keys)
     }

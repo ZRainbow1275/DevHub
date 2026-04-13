@@ -18,7 +18,9 @@ export function Sidebar({ onSettingsClick }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(() => {
     return localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'true'
   })
-  const { filter, setTagFilter, setGroupFilter } = useProjectStore()
+  const filter = useProjectStore(s => s.filter)
+  const setTagFilter = useProjectStore(s => s.setTagFilter)
+  const setGroupFilter = useProjectStore(s => s.setGroupFilter)
   const { startGroup, stopGroup, startByTag, stopByTag, getGroupStats, getTagStats } = useProjects()
   const { width } = useWindowSize()
 

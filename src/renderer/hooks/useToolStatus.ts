@@ -4,7 +4,9 @@ import { useToolStore } from '../stores/toolStore'
 const isElectron = typeof window !== 'undefined' && window.devhub !== undefined
 
 export function useToolStatus() {
-  const { tools, setTools, updateTool } = useToolStore()
+  const tools = useToolStore(s => s.tools)
+  const setTools = useToolStore(s => s.setTools)
+  const updateTool = useToolStore(s => s.updateTool)
   // 追踪所有 timeout 以便清理
   const timeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 

@@ -1,19 +1,13 @@
 import { create } from 'zustand'
-import { AITask, AITaskHistory, AIToolType } from '@shared/types-extended'
-
-interface AITaskStatistics {
-  totalTasks: number
-  completedTasks: number
-  errorTasks: number
-  avgDuration: number
-  byTool: Record<AIToolType, number>
-}
+import { AITask, AITaskHistory, AIToolType, AIToolDetectionConfig, AITaskStatistics } from '@shared/types-extended'
 
 interface AITaskState {
   activeTasks: AITask[]
   history: AITaskHistory[]
   statistics: AITaskStatistics | null
   selectedTaskId: string | null
+  /** Cached per-tool detection configs from backend */
+  detectionConfigs: Record<string, AIToolDetectionConfig>
 
   // Actions
   setActiveTasks: (tasks: AITask[]) => void
@@ -22,6 +16,7 @@ interface AITaskState {
   setHistory: (history: AITaskHistory[]) => void
   setStatistics: (stats: AITaskStatistics) => void
   selectTask: (taskId: string | null) => void
+  setDetectionConfigs: (configs: Record<string, AIToolDetectionConfig>) => void
 
   // Computed
   getTasksByTool: (toolType: AIToolType) => AITask[]
@@ -33,6 +28,7 @@ export const useAITaskStore = create<AITaskState>((set, get) => ({
   history: [],
   statistics: null,
   selectedTaskId: null,
+  detectionConfigs: {},
 
   setActiveTasks: (activeTasks) => set({ activeTasks }),
 
@@ -54,6 +50,8 @@ export const useAITaskStore = create<AITaskState>((set, get) => ({
   setStatistics: (statistics) => set({ statistics }),
 
   selectTask: (selectedTaskId) => set({ selectedTaskId }),
+
+  setDetectionConfigs: (detectionConfigs) => set({ detectionConfigs }),
 
   getTasksByTool: (toolType) => {
     return get().activeTasks.filter((t) => t.toolType === toolType)

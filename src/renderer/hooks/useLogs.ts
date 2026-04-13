@@ -5,7 +5,9 @@ import { LogEntry } from '@shared/types'
 const isElectron = typeof window !== 'undefined' && window.devhub !== undefined
 
 export function useLogs(projectId: string | null) {
-  const { logs, addLog, clearLogs } = useProjectStore()
+  const logs = useProjectStore(s => s.logs)
+  const addLog = useProjectStore(s => s.addLog)
+  const clearLogs = useProjectStore(s => s.clearLogs)
 
   // Subscribe to logs for the selected project
   useEffect(() => {

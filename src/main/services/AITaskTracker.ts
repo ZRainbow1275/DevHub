@@ -98,6 +98,12 @@ export class AITaskTracker extends EventEmitter {
   private falsePositiveCount = 0
   /** Auto-name counter per tool type for this session */
   private autoNameCounters = new Map<AIToolType, number>()
+  /** Previous I/O write bytes per PID for Signal 3 output rate calculation */
+  private _previousIOCounters = new Map<number, { writeBytes: number; timestamp: number }>()
+  /** Previous child PIDs per taskId for Signal 5 child process exit detection */
+  private _prevChildPids = new Map<string, Set<number>>()
+  /** Refresh cycle counter for throttling expensive operations */
+  private _refreshCycleCount = 0
   private config: AITaskDetectionConfig = {
     outputPatternWeight: 0.20,
     cpuIdleWeight: 0.25,
@@ -164,6 +170,68 @@ export class AITaskTracker extends EventEmitter {
     const current = (this.autoNameCounters.get(toolType) ?? 0) + 1
     this.autoNameCounters.set(toolType, current)
     return `${AIAliasManager.getToolDisplayName(toolType)}-${current}`
+  }
+
+  /**
+   * Lightweight batch fetch of I/O write bytes for a set of PIDs.
+   * Uses Win32_Process WMI query filtered to specific PIDs.
+   */
+  private async fetchIOCounters(pids: number[]): Promise<Map<number, { readBytes: number; writeBytes: number }>> {
+    const result = new Map<number, { readBytes: number; writeBytes: number }>()
+    if (pids.length === 0) return result
+
+    try {
+      const pidFilter = pids.map(p => `ProcessId=${Math.floor(p)}`).join(' OR ')
+      const psCmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8;Get-CimInstance Win32_Process -Filter "${pidFilter}" | Select-Object ProcessId,ReadTransferCount,WriteTransferCount | ConvertTo-Json -Depth 2`
+      const { stdout } = await execFileAsync(
+        'powershell',
+        ['-NoProfile', '-NonInteractive', '-Command', psCmd],
+        { windowsHide: true, timeout: 10000 }
+      )
+
+      const trimmed = stdout.trim()
+      if (!trimmed || trimmed === 'null') return result
+
+      let parsed: unknown
+      try {
+        parsed = JSON.parse(trimmed)
+      } catch {
+        return result
+      }
+
+      const items: unknown[] = Array.isArray(parsed) ? parsed : [parsed]
+      for (const item of items) {
+        if (typeof item !== 'object' || item === null) continue
+        const obj = item as Record<string, unknown>
+        const pid = Number(obj.ProcessId || 0)
+        if (pid > 0) {
+          result.set(pid, {
+            readBytes: Number(obj.ReadTransferCount || 0),
+            writeBytes: Number(obj.WriteTransferCount || 0),
+          })
+        }
+      }
+    } catch (err) {
+      console.warn('AITaskTracker: fetchIOCounters failed:', err instanceof Error ? err.message : err)
+    }
+
+    return result
+  }
+
+  /**
+   * Get remaining confirmation window time for a task.
+   */
+  private _getConfirmationRemaining(taskId: string): number | undefined {
+    const ct = this.confirmationTimers.get(taskId)
+    if (!ct) return undefined
+    const elapsed = Date.now() - ct.startedAt
+    const toolConfig = (() => {
+      const task = this.tasks.get(taskId)
+      if (!task) return undefined
+      return this.toolConfigs.get(task.toolType)
+    })()
+    const windowMs = toolConfig?.confirmationWindowMs ?? this.config.confirmationWindowMs
+    return Math.max(0, windowMs - elapsed)
   }
 
   private _scanning = false
@@ -298,6 +366,28 @@ export class AITaskTracker extends EventEmitter {
     const processes = cachedProcesses ?? await this.processScanner.getAll()
     const processMap = new Map(processes.map(p => [p.pid, p]))
 
+    this._refreshCycleCount++
+    const now = Date.now()
+
+    // Batch fetch I/O counters for all tracked PIDs (Signal 3)
+    const trackedPids = Array.from(this.tasks.values())
+      .map(t => t.pid)
+      .filter(pid => processMap.has(pid))
+    const ioCounters = await this.fetchIOCounters(trackedPids)
+
+    // Fetch child process trees every 5 cycles (~10s) for Signal 5
+    const shouldCheckChildren = this._refreshCycleCount % 5 === 0
+    const childPidSnapshots = new Map<string, Set<number>>()
+    if (shouldCheckChildren) {
+      const childPromises = Array.from(this.tasks.entries())
+        .filter(([, task]) => processMap.has(task.pid))
+        .map(async ([taskId, task]) => {
+          const children = await this.processScanner.getProcessTree(task.pid)
+          childPidSnapshots.set(taskId, new Set(children.map(c => c.pid)))
+        })
+      await Promise.all(childPromises)
+    }
+
     for (const [taskId, task] of this.tasks) {
       const process = processMap.get(task.pid)
       if (!process) continue
@@ -313,10 +403,12 @@ export class AITaskTracker extends EventEmitter {
 
       // ===== Multi-signal fusion scoring =====
       let completionScore = 0
+      const activeIndicators: string[] = []
 
       // Signal 1: Terminal output keywords (20% weight)
       if (isComplete) {
         completionScore += this.config.outputPatternWeight
+        activeIndicators.push('terminal_keywords')
       }
 
       // Signal 2: CPU activity change (25% weight)
@@ -329,25 +421,74 @@ export class AITaskTracker extends EventEmitter {
       const cpuThreshold = toolConfig?.cpuBaselineThreshold ?? 3
       if (recentAvg < cpuThreshold && process.cpu < cpuThreshold) {
         completionScore += this.config.cpuIdleWeight
+        activeIndicators.push('cpu_idle')
       }
 
-      // Signal 3: Terminal output rate (20% weight) - approximated by idle duration
-      const now = Date.now()
+      // Signal 3: Terminal output rate (20% weight) - real I/O counter delta
       const lastActivity = task.status.lastActivity
       const idleDuration = now - lastActivity
       task.metrics.idleDuration = idleDuration
-      if (idleDuration > this.config.idleThresholdMs) {
+
+      const currentIO = ioCounters.get(task.pid)
+      if (currentIO) {
+        const prevIO = this._previousIOCounters.get(task.pid)
+        if (prevIO) {
+          const timeDelta = (now - prevIO.timestamp) / 1000 // seconds
+          if (timeDelta > 0) {
+            const byteDelta = currentIO.writeBytes - prevIO.writeBytes
+            // outputRate = bytes per second of write activity
+            task.metrics.outputRate = Math.max(0, byteDelta / timeDelta)
+          }
+        }
+        // Store current counters for next cycle
+        this._previousIOCounters.set(task.pid, {
+          writeBytes: currentIO.writeBytes,
+          timestamp: now,
+        })
+      }
+
+      // Score Signal 3: low output rate indicates task may be done
+      const outputRate = task.metrics.outputRate ?? 0
+      if (outputRate < 100 && idleDuration > this.config.idleThresholdMs) {
+        // Low I/O write activity combined with idle time signals completion
         completionScore += this.config.cursorWaitWeight
+        activeIndicators.push('low_output_rate')
       }
 
       // Signal 4: Input prompt detection (25% weight)
       if (hasPrompt) {
         completionScore += this.config.promptDetectionWeight
+        activeIndicators.push('prompt_detected')
       }
 
-      // Signal 5: Time-based signal (10% weight)
-      if (idleDuration > 30000) {
-        completionScore += this.config.childProcessWeight
+      // Signal 5: Child process exit detection (10% weight)
+      if (shouldCheckChildren) {
+        const currentChildren = childPidSnapshots.get(taskId)
+        const prevChildren = this._prevChildPids.get(taskId)
+
+        if (prevChildren && prevChildren.size > 0 && currentChildren) {
+          // Children existed before but are now gone => child processes exited
+          if (currentChildren.size === 0) {
+            completionScore += this.config.childProcessWeight
+            activeIndicators.push('child_process_exit')
+          }
+        }
+
+        // Update snapshot for next cycle
+        if (currentChildren) {
+          this._prevChildPids.set(taskId, currentChildren)
+        }
+      } else {
+        // Between child-check cycles, use cached result if children were previously detected as exited
+        const prevChildren = this._prevChildPids.get(taskId)
+        if (prevChildren && prevChildren.size === 0) {
+          // Keep scoring if children already exited
+          const hadChildrenBefore = this._prevChildPids.has(taskId)
+          if (hadChildrenBefore) {
+            completionScore += this.config.childProcessWeight
+            activeIndicators.push('child_process_exit')
+          }
+        }
       }
 
       // 如果检测到错误模式，直接标记为错误
@@ -363,6 +504,16 @@ export class AITaskTracker extends EventEmitter {
       // ===== 7-state monitor state machine =====
       const prevMonitorState = task.monitorState
       task.monitorState = this.determineMonitorState(task, process.cpu, isComplete, hasPrompt)
+
+      // ===== D7: Populate detection signals for frontend =====
+      const phaseResult = this.detectPhase(task)
+      task.detectionSignals = {
+        completionScore,
+        phaseConfidence: phaseResult.confidence,
+        activeIndicators,
+        inConfirmationWindow: this.confirmationTimers.has(taskId),
+        confirmationRemainingMs: this._getConfirmationRemaining(taskId),
+      }
 
       // ===== Confirmation window for completion =====
       if (completionScore >= this.config.completionThreshold) {
@@ -383,9 +534,17 @@ export class AITaskTracker extends EventEmitter {
               const reToolConfig = this.toolConfigs.get(currentTask.toolType)
               const reCpuThreshold = reToolConfig?.cpuBaselineThreshold ?? 3
               if (recentAvgRe < reCpuThreshold) reScore += this.config.cpuIdleWeight
-              if (currentTask.metrics.idleDuration > this.config.idleThresholdMs) reScore += this.config.cursorWaitWeight
+              // Signal 3 re-check: use real outputRate
+              const reOutputRate = currentTask.metrics.outputRate ?? 0
+              if (reOutputRate < 100 && currentTask.metrics.idleDuration > this.config.idleThresholdMs) {
+                reScore += this.config.cursorWaitWeight
+              }
               if (hasPrompt) reScore += this.config.promptDetectionWeight
-              if (currentTask.metrics.idleDuration > 30000) reScore += this.config.childProcessWeight
+              // Signal 5 re-check: use cached child process state
+              const rePrevChildren = this._prevChildPids.get(taskId)
+              if (rePrevChildren && rePrevChildren.size === 0) {
+                reScore += this.config.childProcessWeight
+              }
 
               if (!isError && reScore >= this.config.completionThreshold) {
                 currentTask.status.state = 'completed'
@@ -706,6 +865,10 @@ export class AITaskTracker extends EventEmitter {
     // Clear auto-named PID tracking
     this.aliasManager.clearAutoNamedPid(task.pid)
 
+    // Clean up per-task tracking data
+    this._previousIOCounters.delete(task.pid)
+    this._prevChildPids.delete(taskId)
+
     task.endTime = Date.now()
     task.status.state = status === 'error' ? 'error' : 'completed'
     task.monitorState = status === 'error' ? 'error' : 'completed'
@@ -886,6 +1049,9 @@ export class AITaskTracker extends EventEmitter {
     this.history = []
     this.timelines.clear()
     this.autoNameCounters.clear()
+    this._previousIOCounters.clear()
+    this._prevChildPids.clear()
+    this._refreshCycleCount = 0
     this.removeAllListeners()
   }
 }

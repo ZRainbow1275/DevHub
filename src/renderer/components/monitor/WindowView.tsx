@@ -1128,7 +1128,7 @@ export function WindowView() {
   } = useWindows()
 
   const { activeTasks, fetchActiveTasks } = useAITasks()
-  const { aliases, fetchAliases, saveAlias } = useAliasStore()
+  const { aliases, fetchAliases, saveAlias, renameAlias } = useAliasStore()
 
   const { showToast } = useToast()
 
@@ -1290,16 +1290,27 @@ export function WindowView() {
   }, [windows, aiWindowPids])
 
   // Get display name for an AI window (alias > autoName > processName)
+  // Multi-level alias lookup: task.alias -> toolType+workingDir -> titlePrefix -> pid fallback
   const getAIWindowDisplayName = useCallback((win: WindowInfo): string => {
     const task = activeTasks.find(t => t.pid === win.pid)
     if (task?.alias) return task.alias
     if (task?.autoName) return task.autoName
-    // Check stored aliases
-    const alias = aliases.find(a =>
-      a.matchCriteria.pid === win.pid ||
-      (a.matchCriteria.toolType && a.matchCriteria.titlePrefix && win.title.startsWith(a.matchCriteria.titlePrefix))
+    // Check stored aliases with multi-level fallback strategy
+    // Strategy 1: Match by toolType + workingDir (most reliable for persisted aliases)
+    const byWorkingDir = task && aliases.find(a =>
+      a.matchCriteria.toolType === task.toolType &&
+      a.matchCriteria.workingDir &&
+      a.matchCriteria.workingDir === task.projectId
     )
-    if (alias) return alias.alias
+    if (byWorkingDir) return byWorkingDir.alias
+    // Strategy 2: Match by titlePrefix (survives process restarts if title is stable)
+    const byTitle = aliases.find(a =>
+      a.matchCriteria.titlePrefix && win.title.startsWith(a.matchCriteria.titlePrefix)
+    )
+    if (byTitle) return byTitle.alias
+    // Strategy 3: Match by pid (least reliable - pid changes on restart)
+    const byPid = aliases.find(a => a.matchCriteria.pid === win.pid)
+    if (byPid) return byPid.alias
     return win.processName
   }, [activeTasks, aliases])
 
@@ -1310,28 +1321,31 @@ export function WindowView() {
   }, [activeTasks])
 
   // Handle AI window rename
+  // Multi-level alias lookup: toolType+workingDir -> titlePrefix -> pid fallback
   const handleAIWindowRename = useCallback(async (win: WindowInfo, newName: string) => {
     const task = activeTasks.find(t => t.pid === win.pid)
-    // Find existing alias or create new one
-    const existingAlias = aliases.find(a => a.matchCriteria.pid === win.pid)
+    // Find existing alias with multi-level fallback (same order as getAIWindowDisplayName)
+    const existingAlias =
+      (task && aliases.find(a =>
+        a.matchCriteria.toolType === task.toolType &&
+        a.matchCriteria.workingDir &&
+        a.matchCriteria.workingDir === task.projectId
+      )) ||
+      aliases.find(a =>
+        a.matchCriteria.titlePrefix && win.title.startsWith(a.matchCriteria.titlePrefix)
+      ) ||
+      aliases.find(a => a.matchCriteria.pid === win.pid)
+
     if (existingAlias) {
-      // Use rename API
-      try {
-        const isElectron = typeof window !== 'undefined' && window.devhub !== undefined
-        if (isElectron) {
-          const success = await window.devhub.aiAlias?.rename?.(existingAlias.id, newName)
-          if (success) {
-            showToast('success', `Renamed to "${newName}"`)
-            fetchAliases()
-          } else {
-            showToast('error', 'Rename failed')
-          }
-        }
-      } catch {
+      // Use optimistic renameAlias action from store
+      const success = await renameAlias(existingAlias.id, newName)
+      if (success) {
+        showToast('success', `Renamed to "${newName}"`)
+      } else {
         showToast('error', 'Rename failed')
       }
     } else {
-      // Create new alias
+      // Create new alias with robust matchCriteria
       const newAlias = {
         id: `alias_${Date.now()}`,
         alias: newName,
@@ -1339,6 +1353,7 @@ export function WindowView() {
           pid: win.pid,
           toolType: task?.toolType ?? ('other' as const),
           titlePrefix: win.title.substring(0, 30),
+          ...(task?.projectId ? { workingDir: task.projectId } : {}),
         },
         createdAt: Date.now(),
         lastMatchedAt: Date.now(),
@@ -1351,7 +1366,7 @@ export function WindowView() {
         showToast('error', 'Save failed')
       }
     }
-  }, [activeTasks, aliases, saveAlias, fetchAliases, showToast])
+  }, [activeTasks, aliases, saveAlias, renameAlias, showToast])
 
   // ==================== Batch Operations ====================
   const handleBatchTile = useCallback(async () => {

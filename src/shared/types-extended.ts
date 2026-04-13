@@ -361,8 +361,21 @@ export interface AITask {
     outputLineCount: number
     lastOutputTime: number
     idleDuration: number
-    /** Output rate: lines per second (rolling average) */
+    /** Output rate: bytes per second from I/O counter delta */
     outputRate?: number
+  }
+  /** Detection signal details for frontend display */
+  detectionSignals?: {
+    /** 0-1, combined completion score from all signals */
+    completionScore: number
+    /** 0-1, confidence in current phase detection */
+    phaseConfidence: number
+    /** Names of currently active detection indicators */
+    activeIndicators: string[]
+    /** Whether the task is in a confirmation window before final completion */
+    inConfirmationWindow: boolean
+    /** Remaining milliseconds in confirmation window, if active */
+    confirmationRemainingMs?: number
   }
 }
 
@@ -540,6 +553,14 @@ export interface TaskStatistics {
   byType: Record<string, { count: number; avgDuration: number }>
   byProject: Record<string, { count: number; avgDuration: number }>
   byDay: { date: string; count: number }[]
+}
+
+export interface AITaskStatistics {
+  totalTasks: number
+  completedTasks: number
+  errorTasks: number
+  avgDuration: number
+  byTool: Record<AIToolType, number>
 }
 
 // ============ Extended IPC Channels ============

@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useWindowStore } from '../stores/windowStore'
 import { WindowInfo, WindowGroup, WindowLayout } from '@shared/types-extended'
 
@@ -24,7 +25,28 @@ export function useWindows() {
     removeLayout: removeLayoutFromStore,
     getWindowsByPid,
     getWindowsByProcess
-  } = useWindowStore()
+  } = useWindowStore(
+    useShallow(s => ({
+      windows: s.windows,
+      groups: s.groups,
+      layouts: s.layouts,
+      isScanning: s.isScanning,
+      selectedHwnd: s.selectedHwnd,
+      selectedGroupId: s.selectedGroupId,
+      setWindows: s.setWindows,
+      setGroups: s.setGroups,
+      setLayouts: s.setLayouts,
+      setScanning: s.setScanning,
+      selectWindow: s.selectWindow,
+      selectGroup: s.selectGroup,
+      addGroup: s.addGroup,
+      removeGroup: s.removeGroup,
+      addLayout: s.addLayout,
+      removeLayout: s.removeLayout,
+      getWindowsByPid: s.getWindowsByPid,
+      getWindowsByProcess: s.getWindowsByProcess
+    }))
+  )
 
   const scan = useCallback(async (includeSystemWindows?: boolean): Promise<WindowInfo[]> => {
     if (!isElectron) return []

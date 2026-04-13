@@ -1,4 +1,5 @@
 import { useEffect, useCallback } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useProcessStore } from '../stores/processStore'
 import { ProcessInfo, ProcessGroup, ProcessRelationship, ProcessDeepDetail, NetworkConnectionInfo, LoadedModuleInfo } from '@shared/types-extended'
 
@@ -32,7 +33,36 @@ export function useSystemProcesses() {
     getProcessByPid,
     getTotalResources,
     getFilteredAndSortedProcesses
-  } = useProcessStore()
+  } = useProcessStore(
+    useShallow(s => ({
+      processes: s.processes,
+      groups: s.groups,
+      zombies: s.zombies,
+      isScanning: s.isScanning,
+      lastScanTime: s.lastScanTime,
+      selectedPid: s.selectedPid,
+      sortConfigs: s.sortConfigs,
+      searchQuery: s.searchQuery,
+      statusFilters: s.statusFilters,
+      typeFilters: s.typeFilters,
+      setProcesses: s.setProcesses,
+      setGroups: s.setGroups,
+      setZombies: s.setZombies,
+      setScanning: s.setScanning,
+      selectProcess: s.selectProcess,
+      removeProcess: s.removeProcess,
+      toggleSort: s.toggleSort,
+      clearSort: s.clearSort,
+      setSearchQuery: s.setSearchQuery,
+      toggleStatusFilter: s.toggleStatusFilter,
+      toggleTypeFilter: s.toggleTypeFilter,
+      clearFilters: s.clearFilters,
+      getProcessesByProject: s.getProcessesByProject,
+      getProcessByPid: s.getProcessByPid,
+      getTotalResources: s.getTotalResources,
+      getFilteredAndSortedProcesses: s.getFilteredAndSortedProcesses
+    }))
+  )
 
   const scan = useCallback(async (): Promise<ProcessInfo[]> => {
     if (!isElectron) return []

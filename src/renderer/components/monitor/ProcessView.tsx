@@ -552,7 +552,7 @@ const ProcessGroupCard = memo(function ProcessGroupCard({
         </div>
         <div className="flex items-center gap-6">
           <div className="text-right">
-            <div className="text-sm font-bold text-text-primary font-mono">{(group.totalCpu ?? 0).toFixed(1)}%</div>
+            <div className="text-sm font-bold text-text-primary font-mono">{(isFinite(group.totalCpu ?? 0) ? (group.totalCpu ?? 0) : 0).toFixed(1)}%</div>
             <div className="text-[10px] text-text-muted uppercase tracking-wider">CPU</div>
           </div>
           <div className="text-right">
@@ -841,7 +841,7 @@ export function ProcessView() {
       {/* Hero Stats */}
       <div className="flex-shrink-0 py-4 stat-grid border-b border-surface-700/50 bg-surface-900/50" style={{ paddingLeft: 'var(--responsive-padding, 20px)', paddingRight: 'var(--responsive-padding, 20px)' }}>
         <StatCard icon={<ProcessIcon size={20} className="text-accent" />} label="活跃进程" value={processes.length} color="accent" />
-        <StatCard icon={<ProcessIcon size={20} className="text-info" />} label="CPU 使用" value={`${totalResources.cpu.toFixed(1)}%`} color={totalResources.cpu > 50 ? 'warning' : 'default'} />
+        <StatCard icon={<ProcessIcon size={20} className="text-info" />} label="CPU 使用" value={`${(isFinite(totalResources.cpu) ? totalResources.cpu : 0).toFixed(1)}%`} color={totalResources.cpu > 50 ? 'warning' : 'default'} />
         <StatCard icon={<ProcessIcon size={20} className="text-success" />} label="内存使用" value={formatBytes(totalResources.memory)} color={totalResources.memory > 2000 ? 'warning' : 'default'} />
         <StatCard icon={<AlertIcon size={20} className="text-warning" />} label="僵尸进程" value={zombies.length} color={zombies.length > 0 ? 'warning' : 'default'} />
       </div>

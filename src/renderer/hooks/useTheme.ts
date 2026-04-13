@@ -2,8 +2,13 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 
 export type ThemeName = 'constructivism' | 'modern-light' | 'warm-light' | 'cyberpunk' | 'swiss'
 
-/** Duration in ms for theme transition animation (matches --duration-theme in CSS) */
+export type FontStatus = 'idle' | 'loading' | 'loaded' | 'failed'
+
+/** Fallback duration in ms for theme transition animation */
 const THEME_TRANSITION_MS = 250
+
+/** Maximum time to wait for fonts before proceeding with theme switch */
+const FONT_TIMEOUT_MS = 1500
 
 /**
  * Fonts required per theme. Preloaded on theme switch so glyphs are
@@ -11,21 +16,25 @@ const THEME_TRANSITION_MS = 250
  * (FontFace.load) which is non-blocking and returns a Promise.
  */
 const THEME_FONTS: Record<ThemeName, string[]> = {
-  constructivism: ['400 1em "Oswald"', '400 1em "Bebas Neue"', '400 1em "JetBrains Mono"'],
-  'modern-light': ['400 1em "Inter"'],
-  'warm-light': ['400 1em "Playfair Display"'],
-  cyberpunk: ['400 1em "Orbitron"', '400 1em "Share Tech Mono"', '400 1em "Exo 2"'],
-  swiss: ['400 1em "Inter"', '600 1em "Inter"'],
+  constructivism: ['400 1em "Oswald Variable"', '400 1em "Bebas Neue"', '400 1em "JetBrains Mono Variable"'],
+  'modern-light': ['400 1em "Inter Variable"'],
+  'warm-light': ['400 1em "Playfair Display Variable"'],
+  cyberpunk: ['400 1em "Orbitron Variable"', '400 1em "Share Tech Mono"', '400 1em "Exo 2 Variable"'],
+  swiss: ['400 1em "Inter Variable"', '600 1em "Inter Variable"'],
 }
 
-/** Best-effort font preload; never throws. */
-function preloadFontsForTheme(name: ThemeName): void {
+/** Preload fonts for a theme. Returns true if all fonts loaded successfully. */
+async function preloadFontsForTheme(name: ThemeName): Promise<boolean> {
   const specs = THEME_FONTS[name] ?? []
-  for (const spec of specs) {
-    // document.fonts.load is available in Chromium (Electron).
-    document.fonts?.load(spec).catch(() => {
-      /* Swallow: font may already be loaded or unavailable */
-    })
+  if (specs.length === 0) return true
+
+  try {
+    const results = await Promise.allSettled(
+      specs.map(spec => document.fonts.load(spec))
+    )
+    return results.every(r => r.status === 'fulfilled')
+  } catch {
+    return false
   }
 }
 
@@ -58,6 +67,7 @@ function extractThemeValue(s: { appearance?: { theme?: string } } | null): strin
 
 export function useTheme() {
   const [theme, setThemeState] = useState<ThemeName>('constructivism')
+  const [fontStatus, setFontStatus] = useState<FontStatus>('idle')
   const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -84,8 +94,8 @@ export function useTheme() {
   const setTheme = useCallback(async (name: ThemeName) => {
     const root = document.documentElement
 
-    // Preload fonts for the target theme before switching
-    preloadFontsForTheme(name)
+    // Mark loading
+    setFontStatus('loading')
 
     // Enable transition animation attribute before switching
     root.dataset.themeTransitioning = ''
@@ -99,14 +109,27 @@ export function useTheme() {
     setThemeState(name)
     root.dataset.theme = name
 
-    // Remove the transitioning attribute after the animation completes
+    // Race font loading against timeout
+    const fontsLoaded = await Promise.race([
+      preloadFontsForTheme(name),
+      new Promise<boolean>(resolve => setTimeout(() => resolve(false), FONT_TIMEOUT_MS))
+    ])
+
+    setFontStatus(fontsLoaded ? 'loaded' : 'failed')
+
+    // Read CSS transition duration or use fallback
+    const cssDuration = getComputedStyle(root).getPropertyValue('--duration-theme').trim()
+    const transitionMs = cssDuration ? parseFloat(cssDuration) : THEME_TRANSITION_MS
+
+    // Remove transitioning attribute after the animation completes
     transitionTimerRef.current = setTimeout(() => {
       delete root.dataset.themeTransitioning
       transitionTimerRef.current = null
-    }, THEME_TRANSITION_MS)
+    }, isFinite(transitionMs) ? transitionMs : THEME_TRANSITION_MS)
 
+    // Save to settings
     await window.devhub?.settings?.update?.({ appearance: { theme: name } } as Partial<import('@shared/types').AppSettings>)
   }, [])
 
-  return { theme, setTheme } as const
+  return { theme, setTheme, fontStatus } as const
 }

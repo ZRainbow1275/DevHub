@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useRef, useMemo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useProjectStore } from '../stores/projectStore'
 import { Project } from '@shared/types'
 
@@ -13,7 +14,17 @@ export function useProjects() {
     updateProject,
     removeProject,
     selectProject
-  } = useProjectStore()
+  } = useProjectStore(
+    useShallow(s => ({
+      projects: s.projects,
+      selectedProjectId: s.selectedProjectId,
+      setProjects: s.setProjects,
+      addProject: s.addProject,
+      updateProject: s.updateProject,
+      removeProject: s.removeProject,
+      selectProject: s.selectProject
+    }))
+  )
 
   const filter = useProjectStore((s) => s.filter)
 

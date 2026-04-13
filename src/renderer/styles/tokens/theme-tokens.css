@@ -12,11 +12,11 @@
   --typo-heading-transform: uppercase;
   --typo-heading-spacing: 0.12em;
   --typo-heading-weight: 800;
-  --typo-heading-family: 'Oswald', 'Bebas Neue', 'Anton', var(--font-display);
-  --typo-body-family: 'Inter', var(--font-sans);
+  --typo-heading-family: 'Oswald Variable', 'Bebas Neue', 'Anton', var(--font-display);
+  --typo-body-family: 'Inter Variable', var(--font-sans);
   --typo-body-spacing: 0.02em;
   --typo-body-weight: 400;
-  --font-display-theme: 'JetBrains Mono', monospace;
+  --font-display-theme: 'JetBrains Mono Variable', monospace;
   --line-height-body-theme: 1.4;
   --line-height-heading-theme: 1.1;
 
@@ -158,7 +158,7 @@
   --typo-heading-weight: 600;
   --typo-heading-family: var(--font-sans);
   --typo-body-spacing: 0;
-  --font-display-theme: 'Inter', sans-serif;
+  --font-display-theme: 'Inter Variable', sans-serif;
   --line-height-body-theme: 1.5;
 
   /* ---- Information Density ---- */
@@ -236,7 +236,7 @@
   --typo-heading-weight: 500;
   --typo-heading-family: var(--font-serif);
   --typo-body-spacing: 0.01em;
-  --font-display-theme: 'Playfair Display', serif;
+  --font-display-theme: 'Playfair Display Variable', serif;
   --line-height-body-theme: 1.6;
 
   /* ---- Information Density ---- */
@@ -253,11 +253,11 @@
   --typo-heading-transform: uppercase;
   --typo-heading-spacing: 0.15em;
   --typo-heading-weight: 700;
-  --typo-heading-family: 'Orbitron', 'Share Tech Mono', 'Exo 2', var(--font-sans);
+  --typo-heading-family: 'Orbitron Variable', 'Share Tech Mono', 'Exo 2 Variable', var(--font-sans);
   --typo-body-family: 'Share Tech Mono', 'Roboto Mono', var(--font-mono);
   --typo-body-spacing: 0.03em;
   --typo-body-weight: 400;
-  --font-display-theme: 'Orbitron', 'Exo 2', sans-serif;
+  --font-display-theme: 'Orbitron Variable', 'Exo 2 Variable', sans-serif;
   --line-height-body-theme: 1.55;
   --line-height-heading-theme: 1.2;
 
@@ -344,11 +344,11 @@
   --typo-heading-transform: none;
   --typo-heading-spacing: -0.02em;
   --typo-heading-weight: 600;
-  --typo-heading-family: 'Helvetica Neue', 'Inter', var(--font-sans);
-  --typo-body-family: 'Inter', var(--font-sans);
+  --typo-heading-family: 'Helvetica Neue', 'Inter Variable', var(--font-sans);
+  --typo-body-family: 'Inter Variable', var(--font-sans);
   --typo-body-spacing: -0.01em;
   --typo-body-weight: 400;
-  --font-display-theme: 'Helvetica Neue', 'Inter', sans-serif;
+  --font-display-theme: 'Helvetica Neue', 'Inter Variable', sans-serif;
   --line-height-body-theme: 1.65;
   --line-height-heading-theme: 1.25;
 
@@ -429,11 +429,11 @@
   --typo-heading-transform: none;
   --typo-heading-spacing: -0.01em;
   --typo-heading-weight: 600;
-  --typo-heading-family: 'Inter', system-ui, sans-serif;
-  --typo-body-family: 'Inter', system-ui, sans-serif;
+  --typo-heading-family: 'Inter Variable', system-ui, sans-serif;
+  --typo-body-family: 'Inter Variable', system-ui, sans-serif;
   --typo-body-spacing: 0;
   --typo-body-weight: 400;
-  --font-display-theme: 'Inter', sans-serif;
+  --font-display-theme: 'Inter Variable', sans-serif;
   --line-height-body-theme: 1.5;
   --line-height-heading-theme: 1.25;
 
@@ -512,11 +512,11 @@
   --typo-heading-transform: none;
   --typo-heading-spacing: -0.01em;
   --typo-heading-weight: 600;
-  --typo-heading-family: 'Inter', system-ui, sans-serif;
-  --typo-body-family: 'Inter', system-ui, sans-serif;
+  --typo-heading-family: 'Inter Variable', system-ui, sans-serif;
+  --typo-body-family: 'Inter Variable', system-ui, sans-serif;
   --typo-body-spacing: 0;
   --typo-body-weight: 400;
-  --font-display-theme: 'Inter', sans-serif;
+  --font-display-theme: 'Inter Variable', sans-serif;
   --line-height-body-theme: 1.5;
   --line-height-heading-theme: 1.25;
 

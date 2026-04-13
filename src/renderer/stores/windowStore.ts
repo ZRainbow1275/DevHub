@@ -29,6 +29,9 @@ interface WindowState {
   addLayout: (layout: WindowLayout) => void
   removeLayout: (layoutId: string) => void
 
+  // Layout preset
+  applyLayoutPreset: (preset: keyof typeof LAYOUT_PRESETS, hwnds: number[]) => Promise<boolean>
+
   // Computed
   getWindowsByPid: (pid: number) => WindowInfo[]
   getWindowsByProcess: (processName: string) => WindowInfo[]
@@ -77,6 +80,34 @@ export const useWindowStore = create<WindowState>((set, get) => ({
     set((state) => ({
       layouts: state.layouts.filter((l) => l.id !== layoutId)
     })),
+
+  applyLayoutPreset: async (preset, hwnds) => {
+    if (hwnds.length === 0) return false
+    const isElectron = typeof window !== 'undefined' && window.devhub !== undefined
+    if (!isElectron) return false
+    try {
+      let result: { success: boolean } | undefined
+      switch (preset) {
+        case 'tile':
+          result = await window.devhub.windowManager?.tileLayout?.(hwnds)
+          break
+        case 'cascade':
+          result = await window.devhub.windowManager?.cascadeLayout?.(hwnds)
+          break
+        case 'masterSlave':
+          // Master-slave uses tile layout with first window as master
+          result = await window.devhub.windowManager?.tileLayout?.(hwnds)
+          break
+      }
+      if (result?.success) {
+        set({ activePreset: preset })
+      }
+      return result?.success ?? false
+    } catch (error) {
+      console.warn('Failed to apply layout preset:', error instanceof Error ? error.message : 'Unknown error')
+      return false
+    }
+  },
 
   getWindowsByPid: (pid) => {
     return get().windows.filter((w) => w.pid === pid)

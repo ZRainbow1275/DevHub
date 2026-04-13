@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useRef } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { usePortStore } from '../stores/portStore'
 import { PortInfo, PortTopologyData, PortFocusData, PortDetailIncrementalResult } from '@shared/types-extended'
 
@@ -21,7 +22,25 @@ export function usePorts() {
     getCommonPorts,
     getActiveConflicts,
     isPortInUse
-  } = usePortStore()
+  } = usePortStore(
+    useShallow(s => ({
+      ports: s.ports,
+      conflicts: s.conflicts,
+      isScanning: s.isScanning,
+      lastScanTime: s.lastScanTime,
+      selectedPort: s.selectedPort,
+      setPorts: s.setPorts,
+      setScanning: s.setScanning,
+      selectPort: s.selectPort,
+      addConflict: s.addConflict,
+      resolveConflict: s.resolveConflict,
+      removePort: s.removePort,
+      getPortByNumber: s.getPortByNumber,
+      getCommonPorts: s.getCommonPorts,
+      getActiveConflicts: s.getActiveConflicts,
+      isPortInUse: s.isPortInUse
+    }))
+  )
 
   const updatePortDetail = usePortStore((s) => s.updatePortDetail)
 

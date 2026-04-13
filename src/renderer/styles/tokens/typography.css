@@ -2,111 +2,26 @@
    DevHub Typography System
    ======================================== */
 
-/* ---- Font Face Definitions ---- */
-
-/* Oswald - Display font (Constructivism heading) */
-@font-face {
-  font-family: 'Oswald';
-  src: url('https://fonts.gstatic.com/s/oswald/v53/TK3_WkUHHAIjg75cFRf3bXL8LICs1_FvsUZiZQ.woff2') format('woff2');
-  font-weight: 200 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-/* Share Tech Mono - Body font (Cyberpunk) */
-@font-face {
-  font-family: 'Share Tech Mono';
-  src: url('https://fonts.gstatic.com/s/sharetechmono/v15/J7aHnp1uDWRBEqV98dVQztYldFcLowEF.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-/* Orbitron - Display font (Cyberpunk) */
-@font-face {
-  font-family: 'Orbitron';
-  src: url('https://fonts.gstatic.com/s/orbitron/v31/yMJMMIlzdpvBhQQL_SC3X9yhF25-T1nyGy6xpmIyXjU1pg.woff2') format('woff2');
-  font-weight: 400 900;
-  font-style: normal;
-  font-display: swap;
-}
-
-/* Exo 2 - Secondary display font (Cyberpunk fallback) */
-@font-face {
-  font-family: 'Exo 2';
-  src: url('https://fonts.gstatic.com/s/exo2/v21/7cH1v4okm5zmbvwkAx_sfcEuiD8jvvOcPtq-rpvLpQ.woff2') format('woff2');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
-
-/* Bebas Neue - Display font (Constructivism) */
-@font-face {
-  font-family: 'Bebas Neue';
-  src: url('https://fonts.gstatic.com/s/bebasneue/v14/JTUSjIg69CK48gW7PXoo9Wlhyw.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-/* Playfair Display - Serif heading font (Warm Light) */
-@font-face {
-  font-family: 'Playfair Display';
-  src: url('https://fonts.gstatic.com/s/playfairdisplay/v37/nuFvD-vYSZviVYUb_rj3ij__anPXJzDwcbmjWBN2PKdFvUDQZNLo_U2r.woff2') format('woff2');
-  font-weight: 400 900;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Playfair Display';
-  src: url('https://fonts.gstatic.com/s/playfairdisplay/v37/nuFRD-vYSZviVYUb_rj3ij__anPXDTnCjmHKM4nYO7KN_qiTbtbK-F2rA0s.woff2') format('woff2');
-  font-weight: 400 900;
-  font-style: italic;
-  font-display: swap;
-}
-
-/* Inter - Primary body font */
-@font-face {
-  font-family: 'Inter';
-  src: url('https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfAZ9hiA.woff2') format('woff2');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Inter';
-  src: url('https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuI6fAZ9hiA.woff2') format('woff2');
-  font-weight: 100 900;
-  font-style: italic;
-  font-display: swap;
-}
-
-/* JetBrains Mono - Monospace font */
-@font-face {
-  font-family: 'JetBrains Mono';
-  src: url('https://fonts.gstatic.com/s/jetbrainsmono/v18/tDbY2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKxjPVmUsaaDhw.woff2') format('woff2');
-  font-weight: 100 800;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'JetBrains Mono';
-  src: url('https://fonts.gstatic.com/s/jetbrainsmono/v18/tDbX2o-flEEny0FZhsfKu5WU4xD-IQ-PuZJJXxfpAO-Lf1MQk6OThxPA.woff2') format('woff2');
-  font-weight: 100 800;
-  font-style: italic;
-  font-display: swap;
-}
+/* ---- Font Imports via @fontsource (local, no external CDN dependency) ---- */
+@import '@fontsource-variable/inter/wght.css';
+@import '@fontsource-variable/inter/wght-italic.css';
+@import '@fontsource-variable/jetbrains-mono/wght.css';
+@import '@fontsource-variable/jetbrains-mono/wght-italic.css';
+@import '@fontsource-variable/oswald/wght.css';
+@import '@fontsource-variable/orbitron/wght.css';
+@import '@fontsource-variable/exo-2/wght.css';
+@import '@fontsource-variable/playfair-display/wght.css';
+@import '@fontsource-variable/playfair-display/wght-italic.css';
+@import '@fontsource/bebas-neue';
+@import '@fontsource/share-tech-mono';
 
 /* ---- Base Typography Tokens ---- */
 :root {
   /* ---- Font Families ---- */
-  --font-display: 'Oswald', 'Bebas Neue', 'Anton', sans-serif;
-  --font-sans: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
-  --font-serif: 'Playfair Display', 'Noto Serif SC', Georgia, serif;
+  --font-display: 'Oswald Variable', 'Bebas Neue', 'Anton', sans-serif;
+  --font-sans: 'Inter Variable', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'Fira Code', 'Consolas', monospace;
+  --font-serif: 'Playfair Display Variable', 'Noto Serif SC', Georgia, serif;
 
   /* ---- Font Sizes ---- */
   --text-hero: 48px;

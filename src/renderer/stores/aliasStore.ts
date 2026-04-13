@@ -11,6 +11,7 @@ interface AliasState {
   fetchAliases: () => Promise<void>
   saveAlias: (alias: AIWindowAlias) => Promise<boolean>
   deleteAlias: (aliasId: string) => Promise<boolean>
+  renameAlias: (aliasId: string, newName: string) => Promise<boolean>
 }
 
 export const useAliasStore = create<AliasState>((set, get) => ({
@@ -68,6 +69,30 @@ export const useAliasStore = create<AliasState>((set, get) => ({
       return result
     } catch (error) {
       console.warn('Failed to delete alias:', error instanceof Error ? error.message : 'Unknown error')
+      return false
+    }
+  },
+
+  renameAlias: async (aliasId, newName) => {
+    if (!isElectron) return false
+    try {
+      // Optimistic update: apply locally first
+      set((state) => ({
+        aliases: state.aliases.map((a) =>
+          a.id === aliasId ? { ...a, alias: newName } : a
+        )
+      }))
+
+      const result = await window.devhub.aiAlias.rename(aliasId, newName)
+      if (!result) {
+        // Rollback: re-fetch from backend
+        await get().fetchAliases()
+      }
+      return result
+    } catch (error) {
+      // Rollback on error
+      await get().fetchAliases()
+      console.warn('Failed to rename alias:', error instanceof Error ? error.message : 'Unknown error')
       return false
     }
   }

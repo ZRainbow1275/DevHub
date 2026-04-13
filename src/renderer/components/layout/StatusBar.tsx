@@ -4,7 +4,7 @@ import { GearIcon, LightningIcon } from '../icons'
 
 export function StatusBar() {
   const { tools } = useToolStatus()
-  const { projects } = useProjectStore()
+  const projects = useProjectStore(s => s.projects)
 
   const runningProjects = projects.filter(p => p.status === 'running')
   const runningCount = runningProjects.length

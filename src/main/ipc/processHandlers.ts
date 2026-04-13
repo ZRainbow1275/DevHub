@@ -1,11 +1,17 @@
 import { ipcMain, BrowserWindow, shell } from 'electron'
-import { IPC_CHANNELS_EXT, ProcessInfo, ProcessGroup, ProcessRelationship, ProcessDeepDetail, NetworkConnectionInfo, LoadedModuleInfo, ProcessPriority, ServiceResult, isProtectedProcess } from '@shared/types-extended'
+import { IPC_CHANNELS_EXT, ProcessInfo, ProcessGroup, ProcessRelationship, ProcessDeepDetail, NetworkConnectionInfo, LoadedModuleInfo, ServiceResult, isProtectedProcess } from '@shared/types-extended'
 import { SystemProcessScanner } from '../services/SystemProcessScanner'
 import { PortScanner } from '../services/PortScanner'
 import { AppStore } from '../store/AppStore'
 import { validatePid } from '../utils/validation'
 import { withRateLimit, RATE_LIMITS } from '../utils/rateLimiter'
 import { auditLogger } from '../services/AuditLogger'
+import { z } from 'zod'
+
+// Zod schemas for IPC input validation
+const pidSchema = z.number().int().positive()
+const filePathSchema = z.string().min(1).max(500).regex(/^[A-Za-z]:[/\\]/, 'Must be an absolute path')
+const prioritySchema = z.enum(['Idle', 'BelowNormal', 'Normal', 'AboveNormal', 'High', 'RealTime'])
 
 let processScanner: SystemProcessScanner | null = null
 let portScanner: PortScanner | null = null
@@ -35,12 +41,15 @@ export function setupProcessHandlers(mainWindow: BrowserWindow, appStore: AppSto
     }
   ))
 
-  // TODO(I3): Add Zod schema validation for process:kill when zod is added to dependencies
-  // Schema: z.object({ pid: z.number().int().positive(), force: z.boolean().optional() })
   ipcMain.handle(IPC_CHANNELS_EXT.PROCESS_KILL, withRateLimit(
     IPC_CHANNELS_EXT.PROCESS_KILL, RATE_LIMITS.DESTRUCTIVE,
     async (_, pid: unknown): Promise<boolean> => {
       if (!processScanner) return false
+      const parsed = pidSchema.safeParse(pid)
+      if (!parsed.success) {
+        console.warn('process:kill validation failed:', parsed.error.message)
+        return false
+      }
       validatePid(pid)
       const knownProcesses = await processScanner.getAll()
       const proc = knownProcesses.find(p => p.pid === pid)
@@ -83,6 +92,7 @@ export function setupProcessHandlers(mainWindow: BrowserWindow, appStore: AppSto
     'process:get-tree', RATE_LIMITS.QUERY,
     async (_, pid: unknown): Promise<ProcessInfo[]> => {
       if (!processScanner) return []
+      pidSchema.parse(pid)
       validatePid(pid)
       return processScanner.getProcessTree(pid)
     }
@@ -162,11 +172,12 @@ export function setupProcessHandlers(mainWindow: BrowserWindow, appStore: AppSto
     IPC_CHANNELS_EXT.PROCESS_SET_PRIORITY, RATE_LIMITS.ACTION,
     async (_, pid: unknown, priority: unknown): Promise<boolean> => {
       if (!processScanner) return false
+      const pidResult = pidSchema.safeParse(pid)
+      if (!pidResult.success) return false
+      const priorityResult = prioritySchema.safeParse(priority)
+      if (!priorityResult.success) return false
       validatePid(pid)
-      if (typeof priority !== 'string') return false
-      const validPriorities: ProcessPriority[] = ['Idle', 'BelowNormal', 'Normal', 'AboveNormal', 'High', 'RealTime']
-      if (!validPriorities.includes(priority as ProcessPriority)) return false
-      const result = await processScanner.setProcessPriority(pid, priority as ProcessPriority)
+      const result = await processScanner.setProcessPriority(pid, priorityResult.data)
       auditLogger.log('process:set-priority', { pid, priority }, result ? 'success' : 'error')
       return result
     }
@@ -175,14 +186,11 @@ export function setupProcessHandlers(mainWindow: BrowserWindow, appStore: AppSto
   ipcMain.handle(IPC_CHANNELS_EXT.PROCESS_OPEN_FILE_LOCATION, withRateLimit(
     IPC_CHANNELS_EXT.PROCESS_OPEN_FILE_LOCATION, RATE_LIMITS.ACTION,
     async (_, filePath: unknown): Promise<void> => {
-      if (typeof filePath !== 'string' || filePath.length === 0 || filePath.length > 500) {
-        throw new Error('Invalid file path')
+      const parsed = filePathSchema.safeParse(filePath)
+      if (!parsed.success) {
+        throw new Error(`Invalid file path: ${parsed.error.issues[0]?.message ?? 'validation failed'}`)
       }
-      // Basic path validation — must be an absolute path
-      if (!/^[A-Za-z]:[/\\]/.test(filePath)) {
-        throw new Error('Invalid file path: must be absolute')
-      }
-      shell.showItemInFolder(filePath)
+      shell.showItemInFolder(parsed.data)
     }
   ))
 

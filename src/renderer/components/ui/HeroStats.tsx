@@ -33,7 +33,7 @@ function HeroStat({ value, label, delta, variant = 'default' }: HeroStatProps) {
 }
 
 export function HeroStats() {
-  const { projects } = useProjectStore()
+  const projects = useProjectStore(s => s.projects)
   const summary = useScannerStore(s => s.summary)
   const summaryDelta = useScannerStore(s => s.summaryDelta)
   const initStatus = useScannerStore(s => s.initStatus)

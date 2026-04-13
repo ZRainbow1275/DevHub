@@ -225,26 +225,19 @@ export function parseProjectConfig(projectPath: string): {
     }
   }
 
-  // Check for requirements.txt AND (venv/ or .venv/) (Python venv)
-  if (
-    fs.existsSync(path.join(projectPath, 'requirements.txt')) &&
-    (fs.existsSync(path.join(projectPath, 'venv')) ||
-      fs.existsSync(path.join(projectPath, '.venv')))
-  ) {
-    return {
-      valid: true,
-      name: path.basename(projectPath),
-      scripts: ['install', 'run', 'test'],
-      projectType: 'venv'
-    }
-  }
+  // Check for Python venv projects — unified detection using consistent markers
+  const hasRequirementsTxt = fs.existsSync(path.join(projectPath, 'requirements.txt'))
+  const hasSetupPy = fs.existsSync(path.join(projectPath, 'setup.py'))
+  const hasVenvDir = fs.existsSync(path.join(projectPath, 'venv')) ||
+    fs.existsSync(path.join(projectPath, '.venv'))
 
-  // Check for requirements.txt only (no venv dir — still Python but may not have venv)
-  if (fs.existsSync(path.join(projectPath, 'requirements.txt'))) {
+  if (hasRequirementsTxt || hasSetupPy) {
     return {
       valid: true,
       name: path.basename(projectPath),
-      scripts: ['install', 'run', 'test'],
+      scripts: hasVenvDir
+        ? ['activate', 'install', 'run', 'test']
+        : ['install', 'run', 'test'],
       projectType: 'venv'
     }
   }
