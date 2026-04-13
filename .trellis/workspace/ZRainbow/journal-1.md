@@ -1268,3 +1268,81 @@ devhub 子模块 54 文件 (commit 1508543):
 ### Next Steps
 
 - None - task complete
+
+
+## Session 17: Code Review Remaining 15 Issues - Full Implementation
+
+**Date**: 2026-04-13
+**Task**: Code Review Remaining 15 Issues - Full Implementation
+**Branch**: `master`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## Summary
+
+Implemented all 15 remaining issues from the 5-agent code review (2026-04-12). Original scope: 42 issues total, 25 fixed previously, 17 remaining (2 already done = 15 to implement). Used 5 parallel Agent Teams for implementation.
+
+## Design Documents (D-series: 6 implemented)
+
+| ID | Title | Files | Key Changes |
+|----|-------|-------|-------------|
+| D1 | Zustand Selector Refactor | 10 files | 3 components: individual selectors; 2 hooks: individual selectors; 5 hooks: useShallow |
+| D2 | Terminal Signal Fusion | AITaskTracker.ts | Signal 3: real WMI I/O counters for outputRate; Signal 5: child process tree snapshot detection |
+| D3 | Theme Runtime Manager | useTheme.ts, theme-tokens.ts (new) | fontStatus state, async font preload with 1.5s timeout race, CSS var transition duration |
+| D4 | Font Local Bundling | typography.css, theme-tokens.css, index.html | 10 CDN @font-face -> 11 @fontsource imports; font-family updated to Variable suffix |
+| D6 | Window Rename Chain | WindowView.tsx, aliasStore.ts | 3-level alias lookup (workingDir > titlePrefix > pid); renameAlias with optimistic update + rollback |
+| D7 | AI Task Confidence State | types-extended.ts, AITaskTracker.ts, aiTaskStore.ts, useAITasks.ts | detectionSignals field on AITask, real signal data pipeline |
+
+## Direct Fixes (I-series: 9 completed)
+
+| ID | Fix | Status |
+|----|-----|--------|
+| I1 | windowStore applyLayoutPreset | Implemented |
+| I2 | aliasStore hydration | Already existed |
+| I3 | IPC Zod validation | 6 schemas for process + window handlers |
+| I4 | tailwind breakpoints | Already consistent |
+| I5 | formatMetric exhaustive switch | assertNever helper |
+| I6 | saveLayoutOnExit | Already implemented |
+| I8 | AITaskStatistics unification | Exported to types-extended |
+| I9 | venv detection consistency | Unified detection path |
+| I10 | cpu.toFixed NaN protection | isFinite guard |
+
+## Metrics
+
+- 27 files modified, 1 new file created
+- +599 / -249 lines
+- TypeScript: 0 errors
+- ESLint: 0 new errors
+- 5 Agent Teams executed in parallel
+
+## Key Files Changed
+
+- `devhub/src/main/services/AITaskTracker.ts` (+182 lines - signal fusion core)
+- `devhub/src/renderer/styles/tokens/typography.css` (-101 CDN, +11 local)
+- `devhub/src/renderer/components/monitor/WindowView.tsx` (alias lookup fix)
+- `devhub/src/renderer/hooks/use*.ts` (7 hooks - Zustand selectors)
+- `devhub/src/main/ipc/processHandlers.ts` + `windowHandlers.ts` (Zod validation)
+- `devhub/src/shared/types-extended.ts` (detectionSignals + AITaskStatistics)
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a6a9663` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
