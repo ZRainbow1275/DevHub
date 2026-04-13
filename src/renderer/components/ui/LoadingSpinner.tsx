@@ -17,8 +17,7 @@ export const LoadingSpinner = memo(function LoadingSpinner({
 }: LoadingSpinnerProps) {
   return (
     <div
-      className={`${SIZE_CLASSES[size]} border-accent border-t-transparent animate-spin ${className}`}
-      style={{ borderRadius: '2px' }}
+      className={`${SIZE_CLASSES[size]} border-accent border-t-transparent animate-spin ${className} radius-sm`}
       role="status"
       aria-label="加载中"
     />

@@ -54,8 +54,7 @@ export function ScriptSelector({ scripts, defaultScript, onSelect, disabled }: S
 
       {isOpen && (
         <div
-          className="absolute right-0 top-full mt-1 bg-surface-900 border-2 border-surface-600 shadow-elevated py-1.5 min-w-32 z-50 animate-fade-in"
-          style={{ borderRadius: '4px' }}
+          className="absolute right-0 top-full mt-1 bg-surface-900 border-2 border-surface-600 shadow-elevated py-1.5 min-w-32 z-50 animate-fade-in radius-md"
         >
           {scripts.map(script => (
             <button

@@ -98,6 +98,17 @@ export function setupProcessHandlers(mainWindow: BrowserWindow, appStore: AppSto
     }
   ))
 
+  // Basic info handler: fast, no PowerShell call, reads from in-memory cache
+  ipcMain.handle('process:get-basic-info', withRateLimit(
+    'process:get-basic-info', RATE_LIMITS.QUERY,
+    async (_, pid: unknown): Promise<ProcessInfo | null> => {
+      if (!processScanner) return null
+      const parsed = pidSchema.safeParse(pid)
+      if (!parsed.success) return null
+      return processScanner.getBasicInfo(parsed.data)
+    }
+  ))
+
   ipcMain.handle(IPC_CHANNELS_EXT.PROCESS_GET_FULL_RELATIONSHIP, withRateLimit(
     IPC_CHANNELS_EXT.PROCESS_GET_FULL_RELATIONSHIP, RATE_LIMITS.QUERY,
     async (_, pid: unknown): Promise<ProcessRelationship | null> => {
@@ -214,6 +225,7 @@ export function cleanupProcessHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS_EXT.PROCESS_CLEANUP_ZOMBIES)
   ipcMain.removeHandler('process:get-groups')
   ipcMain.removeHandler('process:get-tree')
+  ipcMain.removeHandler('process:get-basic-info')
   ipcMain.removeHandler(IPC_CHANNELS_EXT.PROCESS_GET_FULL_RELATIONSHIP)
   ipcMain.removeHandler('process:get-history')
   ipcMain.removeHandler(IPC_CHANNELS_EXT.PROCESS_GET_DEEP_DETAIL)

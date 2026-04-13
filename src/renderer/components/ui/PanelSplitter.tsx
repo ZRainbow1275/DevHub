@@ -24,6 +24,8 @@ interface PanelSplitterProps {
   storageKey?: string
   /** Called when sizes change (percentages). */
   onResize?: (sizes: number[]) => void
+  /** Minimum panel width in pixels. Defaults to 300. */
+  minPanelWidth?: number
   children: ReactNode[]
 }
 
@@ -34,8 +36,11 @@ export function PanelSplitter({
   maxSizes,
   storageKey,
   onResize,
+  minPanelWidth = 300,
   children,
 }: PanelSplitterProps) {
+  // Enforce minimum panel width: if no minSizes provided, use minPanelWidth for all panes
+  const effectiveMinSizes = minSizes ?? children.map(() => minPanelWidth)
   const containerRef = useRef<HTMLDivElement>(null)
   const [sizes, setSizes] = useState<number[]>(() => {
     if (storageKey) {
@@ -90,9 +95,9 @@ export function PanelSplitter({
         let newRightPct = startSizes[index + 1] - deltaPct
 
         // Enforce min sizes
-        if (minSizes) {
-          const minLeftPct = ((minSizes[index] || 0) / availableSize) * 100
-          const minRightPct = ((minSizes[index + 1] || 0) / availableSize) * 100
+        if (effectiveMinSizes) {
+          const minLeftPct = ((effectiveMinSizes[index] || 0) / availableSize) * 100
+          const minRightPct = ((effectiveMinSizes[index + 1] || 0) / availableSize) * 100
           if (newLeftPct < minLeftPct) {
             const correction = minLeftPct - newLeftPct
             newLeftPct = minLeftPct
@@ -146,7 +151,7 @@ export function PanelSplitter({
       document.addEventListener('pointermove', onPointerMove)
       document.addEventListener('pointerup', onPointerUp)
     },
-    [direction, sizes, minSizes, maxSizes, onResize, children.length],
+    [direction, sizes, effectiveMinSizes, maxSizes, onResize, children.length],
   )
 
   // Double-click splitter to reset to default sizes

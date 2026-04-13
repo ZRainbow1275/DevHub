@@ -62,17 +62,15 @@ export function ConfirmDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
-        className="bg-surface-900 border-2 border-surface-600 w-full max-w-md mx-4 shadow-elevated relative"
-        style={{ borderRadius: '4px' }}
+        className="bg-surface-900 border-2 border-surface-600 w-full max-w-md mx-4 shadow-elevated relative radius-md"
       >
         {/* Diagonal decoration */}
-        <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none" style={{ borderRadius: '4px' }} />
+        <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none radius-md" />
 
         {/* Header */}
         <div className="flex items-center gap-3 px-6 py-4 border-b-2 border-surface-700 relative z-10">
           <div
-            className={`w-10 h-10 ${config.iconBg} flex items-center justify-center border-l-3 ${config.iconBorder}`}
-            style={{ borderRadius: '2px' }}
+            className={`w-10 h-10 ${config.iconBg} flex items-center justify-center border-l-3 ${config.iconBorder} radius-sm`}
           >
             {config.icon}
           </div>
@@ -99,15 +97,13 @@ export function ConfirmDialog({
         <div className="flex justify-end gap-3 px-6 py-4 border-t-2 border-surface-700 relative z-10">
           <button
             onClick={onCancel}
-            className="px-4 py-2.5 text-text-secondary hover:bg-surface-800 transition-colors font-medium"
-            style={{ borderRadius: '2px' }}
+            className="px-4 py-2.5 text-text-secondary hover:bg-surface-800 transition-colors font-medium radius-sm"
           >
             {cancelText}
           </button>
           <button
             onClick={onConfirm}
-            className={`px-4 py-2.5 text-white font-medium transition-all duration-200 ${config.buttonClass}`}
-            style={{ borderRadius: '2px' }}
+            className={`px-4 py-2.5 text-white font-medium transition-all duration-200 ${config.buttonClass} radius-sm`}
           >
             {confirmText}
           </button>

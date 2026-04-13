@@ -120,7 +120,7 @@ const CpuChart = memo(function CpuChart({ data }: { data: number[] }) {
 
   if (!data || data.length < 2) {
     return (
-      <div className="bg-surface-900 px-3 py-2" style={{ borderRadius: '2px' }}>
+      <div className="bg-surface-900 px-3 py-2 radius-sm">
         <span className="text-[10px] text-text-muted">CPU 数据不足</span>
       </div>
     )
@@ -131,7 +131,7 @@ const CpuChart = memo(function CpuChart({ data }: { data: number[] }) {
   const lineColor = isHigh ? 'var(--error)' : 'var(--accent)'
 
   return (
-    <div className="bg-surface-900 px-3 py-2 border-l-2 border-surface-600" style={{ borderRadius: '2px' }}>
+    <div className="bg-surface-900 px-3 py-2 border-l-2 border-surface-600 radius-sm">
       <div className="flex items-center justify-between mb-1">
         <span className="text-[10px] text-text-muted uppercase tracking-wider">CPU 趋势 (60s)</span>
         <span className={`font-mono font-bold text-sm ${getResourceColor(currentCpu).text}`}>
@@ -193,8 +193,7 @@ function DetailField({ label, value, mono = false, copyable = false }: {
 
   return (
     <div
-      className={`bg-surface-900 px-3 py-2 border-l-2 border-surface-700 ${copyable ? 'cursor-pointer hover:bg-surface-800' : ''}`}
-      style={{ borderRadius: '2px' }}
+      className={`bg-surface-900 px-3 py-2 border-l-2 border-surface-700 ${copyable ? 'cursor-pointer hover:bg-surface-800' : ''} radius-sm`}
       onClick={copyable ? handleCopy : undefined}
       title={copyable ? '点击复制' : undefined}
     >
@@ -222,7 +221,7 @@ function ConnectionRow({ conn }: { conn: NetworkConnectionInfo }) {
   const colorClass = stateColor[conn.state] || 'text-text-muted bg-surface-800'
 
   return (
-    <div className="flex items-center gap-2 bg-surface-900 px-3 py-1.5 border-l-2 border-surface-600 text-xs" style={{ borderRadius: '2px' }}>
+    <div className="flex items-center gap-2 bg-surface-900 px-3 py-1.5 border-l-2 border-surface-600 text-xs radius-sm">
       <span className="text-[10px] font-mono text-text-muted w-8 flex-shrink-0">{conn.protocol}</span>
       <span className="font-mono text-text-secondary flex-1 truncate" title={`${conn.localAddress}:${conn.localPort}`}>
         {conn.localAddress}:{conn.localPort}
@@ -231,7 +230,7 @@ function ConnectionRow({ conn }: { conn: NetworkConnectionInfo }) {
       <span className="font-mono text-text-secondary flex-1 truncate" title={`${conn.remoteAddress}:${conn.remotePort}`}>
         {conn.remoteAddress}:{conn.remotePort}
       </span>
-      <span className={`text-[10px] px-1.5 py-0.5 flex-shrink-0 ${colorClass}`} style={{ borderRadius: '2px' }}>
+      <span className={`text-[10px] px-1.5 py-0.5 flex-shrink-0 ${colorClass} radius-sm`}>
         {conn.state}
       </span>
     </div>
@@ -261,7 +260,7 @@ function TreeNodeRow({ node, depth = 0, isTarget = false }: {
         ) : (
           <span className="w-3 flex-shrink-0" />
         )}
-        <span className="text-xs font-mono text-text-muted bg-surface-800 px-1.5 py-0.5" style={{ borderRadius: '2px' }}>
+        <span className="text-xs font-mono text-text-muted bg-surface-800 px-1.5 py-0.5 radius-sm">
           {node.pid}
         </span>
         <span className={`text-xs truncate ${isTarget ? 'text-accent font-bold' : 'text-text-primary'}`}>
@@ -298,8 +297,7 @@ function EnvVarRow({ name, value }: { name: string; value: string }) {
 
   return (
     <div
-      className="flex items-start gap-2 bg-surface-900 px-3 py-1.5 border-l-2 border-surface-600 hover:bg-surface-800"
-      style={{ borderRadius: '2px' }}
+      className="flex items-start gap-2 bg-surface-900 px-3 py-1.5 border-l-2 border-surface-600 hover:bg-surface-800 radius-sm"
     >
       <span className="text-xs font-mono font-bold text-accent flex-shrink-0 min-w-[120px] max-w-[200px] truncate" title={name}>
         {name}
@@ -767,7 +765,7 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
 
                   {/* Command Line */}
                   {detail.commandLine && (
-                    <div className="bg-surface-900 px-3 py-2 border-l-2 border-surface-600" style={{ borderRadius: '2px' }}>
+                    <div className="bg-surface-900 px-3 py-2 border-l-2 border-surface-600 radius-sm">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-[10px] text-text-muted uppercase tracking-wider">完整命令</span>
                         <button
@@ -790,19 +788,19 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
                   {/* Quick stats links to other tabs */}
                   <div className="flex flex-wrap gap-2 text-[10px]">
                     {(detail?.networkConnections?.length ?? 0) > 0 && (
-                      <button onClick={() => setActiveTab('network')} className="flex items-center gap-1.5 bg-surface-800 px-2 py-1 hover:bg-surface-700 transition-colors" style={{ borderRadius: '2px' }}>
+                      <button onClick={() => setActiveTab('network')} className="flex items-center gap-1.5 bg-surface-800 px-2 py-1 hover:bg-surface-700 transition-colors radius-sm">
                         <PortIcon size={12} className="text-gold" />
                         <span className="text-text-muted">{detail?.networkConnections?.length ?? 0} 个网络连接</span>
                       </button>
                     )}
                     {(detail?.relatedProcesses?.length ?? 0) > 0 && (
-                      <button onClick={() => setActiveTab('network')} className="flex items-center gap-1.5 bg-surface-800 px-2 py-1 hover:bg-surface-700 transition-colors" style={{ borderRadius: '2px' }}>
+                      <button onClick={() => setActiveTab('network')} className="flex items-center gap-1.5 bg-surface-800 px-2 py-1 hover:bg-surface-700 transition-colors radius-sm">
                         <ProcessIcon size={12} className="text-steel" />
                         <span className="text-text-muted">{detail?.relatedProcesses?.length ?? 0} 个关联进程</span>
                       </button>
                     )}
                     {totalChildren > 0 && (
-                      <span className="flex items-center gap-1.5 bg-surface-800 px-2 py-1" style={{ borderRadius: '2px' }}>
+                      <span className="flex items-center gap-1.5 bg-surface-800 px-2 py-1 radius-sm">
                         <TreeIcon size={12} className="text-accent" />
                         <span className="text-text-muted">{totalChildren} 个子进程</span>
                       </span>
@@ -861,12 +859,12 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
                   <CpuChart data={cpuHistory} />
 
                   {/* Memory Usage */}
-                  <div className="bg-surface-900 px-3 py-2 border-l-2 border-surface-600" style={{ borderRadius: '2px' }}>
+                  <div className="bg-surface-900 px-3 py-2 border-l-2 border-surface-600 radius-sm">
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-[10px] text-text-muted uppercase tracking-wider">内存使用</span>
                       <span className="font-mono font-bold text-sm text-info">{detail.memoryRSS} MB</span>
                     </div>
-                    <div className="h-2 bg-surface-800" style={{ borderRadius: '1px' }}>
+                    <div className="h-2 bg-surface-800 radius-sm">
                       <div
                         className="h-full transition-all duration-500 bg-info"
                         style={{ width: `${Math.min((detail.memoryRSS / Math.max(detail.memoryRSS, 500)) * 100, 100)}%`, borderRadius: '1px' }}
@@ -891,15 +889,15 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
                 <div className="space-y-3 animate-fade-in">
                   {/* Connection Stats */}
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="bg-surface-900 px-3 py-2 border-l-2 border-success" style={{ borderRadius: '2px' }}>
+                    <div className="bg-surface-900 px-3 py-2 border-l-2 border-success radius-sm">
                       <span className="text-[10px] text-text-muted uppercase tracking-wider block">监听</span>
                       <span className="text-sm font-bold font-mono text-success">{connectionStats.listening}</span>
                     </div>
-                    <div className="bg-surface-900 px-3 py-2 border-l-2 border-info" style={{ borderRadius: '2px' }}>
+                    <div className="bg-surface-900 px-3 py-2 border-l-2 border-info radius-sm">
                       <span className="text-[10px] text-text-muted uppercase tracking-wider block">已连接</span>
                       <span className="text-sm font-bold font-mono text-info">{connectionStats.established}</span>
                     </div>
-                    <div className="bg-surface-900 px-3 py-2 border-l-2 border-surface-500" style={{ borderRadius: '2px' }}>
+                    <div className="bg-surface-900 px-3 py-2 border-l-2 border-surface-500 radius-sm">
                       <span className="text-[10px] text-text-muted uppercase tracking-wider block">其他</span>
                       <span className="text-sm font-bold font-mono text-text-muted">{connectionStats.other}</span>
                     </div>
@@ -947,8 +945,7 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
                       {detail.relatedProcesses.map(rp => (
                         <div
                           key={rp.pid}
-                          className="flex items-center justify-between bg-surface-900 px-3 py-1.5 border-l-2 border-steel/30"
-                          style={{ borderRadius: '2px' }}
+                          className="flex items-center justify-between bg-surface-900 px-3 py-1.5 border-l-2 border-steel/30 radius-sm"
                         >
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-mono text-text-muted">{rp.pid}</span>
@@ -966,7 +963,7 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
               {activeTab === 'env' && (
                 <div className="space-y-3 animate-fade-in">
                   {envRequiresElevation && (
-                    <div className="flex items-center gap-2 bg-warning/10 px-3 py-2 border-l-2 border-warning" style={{ borderRadius: '2px' }}>
+                    <div className="flex items-center gap-2 bg-warning/10 px-3 py-2 border-l-2 border-warning radius-sm">
                       <AlertIcon size={14} className="text-warning flex-shrink-0" />
                       <span className="text-xs text-warning">需要管理员权限才能查看该进程的环境变量，显示的是当前用户环境变量</span>
                     </div>
@@ -980,8 +977,7 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
                       placeholder="搜索环境变量..."
                       value={envSearch}
                       onChange={(e) => setEnvSearch(e.target.value)}
-                      className="w-full bg-surface-800 border border-surface-600 px-9 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
-                      style={{ borderRadius: '2px' }}
+                      className="w-full bg-surface-800 border border-surface-600 px-9 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent radius-sm"
                     />
                     {envSearch && (
                       <button
@@ -1016,7 +1012,7 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
               {activeTab === 'modules' && (
                 <div className="space-y-3 animate-fade-in">
                   {modulesRequiresElevation && (
-                    <div className="flex items-center gap-2 bg-warning/10 px-3 py-2 border-l-2 border-warning" style={{ borderRadius: '2px' }}>
+                    <div className="flex items-center gap-2 bg-warning/10 px-3 py-2 border-l-2 border-warning radius-sm">
                       <AlertIcon size={14} className="text-warning flex-shrink-0" />
                       <span className="text-xs text-warning">需要管理员权限才能查看该进程的已加载模块</span>
                     </div>
@@ -1030,8 +1026,7 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
                       placeholder="搜索模块..."
                       value={moduleSearch}
                       onChange={(e) => setModuleSearch(e.target.value)}
-                      className="w-full bg-surface-800 border border-surface-600 px-9 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
-                      style={{ borderRadius: '2px' }}
+                      className="w-full bg-surface-800 border border-surface-600 px-9 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent radius-sm"
                     />
                     {moduleSearch && (
                       <button
@@ -1052,8 +1047,7 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
                     {filteredModules.map((mod) => (
                       <div
                         key={mod.path || mod.name}
-                        className="flex items-center gap-2 bg-surface-900 px-3 py-1.5 border-l-2 border-surface-600 hover:bg-surface-800"
-                        style={{ borderRadius: '2px' }}
+                        className="flex items-center gap-2 bg-surface-900 px-3 py-1.5 border-l-2 border-surface-600 hover:bg-surface-800 radius-sm"
                         title={mod.path}
                       >
                         <GearIcon size={12} className="text-text-muted flex-shrink-0" />
@@ -1085,7 +1079,7 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
         {detail && !detail.requiresElevation && (
           <div className="flex items-center gap-2 px-4 py-3 border-t-2 border-surface-700 relative z-10 flex-shrink-0 flex-wrap">
             {isProcessProtected ? (
-              <div className="flex items-center gap-2 bg-warning/10 px-3 py-1.5 border-l-2 border-warning" style={{ borderRadius: '2px' }}>
+              <div className="flex items-center gap-2 bg-warning/10 px-3 py-1.5 border-l-2 border-warning radius-sm">
                 <AlertIcon size={12} className="text-warning flex-shrink-0" />
                 <span className="text-xs text-warning">系统关键进程，已禁止操作</span>
               </div>
@@ -1125,7 +1119,7 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
                 <ChevronDownIcon size={10} />
               </button>
               {showPriorityMenu && (
-                <div className="absolute bottom-full left-0 mb-1 bg-surface-800 border border-surface-600 py-1 z-20 min-w-[120px]" style={{ borderRadius: '2px' }}>
+                <div className="absolute bottom-full left-0 mb-1 bg-surface-800 border border-surface-600 py-1 z-20 min-w-[120px] radius-sm">
                   {PRIORITY_OPTIONS.map(opt => (
                     <button
                       key={opt.value}

@@ -315,8 +315,7 @@ function ViewToggleButton({
           ? 'bg-accent/15 text-accent border-accent'
           : 'text-text-secondary hover:bg-surface-800 hover:text-text-primary border-transparent hover:border-surface-500'
         }
-      `}
-      style={{ borderRadius: '2px' }}
+       radius-sm`}
     >
       <span className={active ? 'text-accent' : 'text-text-muted'}>{icon}</span>
       <span

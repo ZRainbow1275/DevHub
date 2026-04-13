@@ -39,17 +39,15 @@ export function CloseConfirmDialog({ isOpen, onClose }: CloseConfirmDialogProps)
         role="dialog"
         aria-modal="true"
         aria-labelledby="close-confirm-dialog-title"
-        className="bg-surface-900 border-2 border-surface-600 w-full max-w-md mx-4 shadow-elevated relative"
-        style={{ borderRadius: '4px' }}
+        className="bg-surface-900 border-2 border-surface-600 w-full max-w-md mx-4 shadow-elevated relative radius-md"
       >
         {/* Diagonal decoration */}
-        <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none" style={{ borderRadius: '4px' }} />
+        <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none radius-md" />
 
         {/* Header */}
         <div className="flex items-center gap-3 px-6 py-4 border-b-2 border-surface-700 relative z-10">
           <div
-            className="w-10 h-10 bg-accent/20 flex items-center justify-center border-l-3 border-accent"
-            style={{ borderRadius: '2px' }}
+            className="w-10 h-10 bg-accent/20 flex items-center justify-center border-l-3 border-accent radius-sm"
           >
             <AlertIcon size={20} className="text-accent" />
           </div>
@@ -80,12 +78,10 @@ export function CloseConfirmDialog({ isOpen, onClose }: CloseConfirmDialogProps)
             {/* Minimize to tray option */}
             <button
               onClick={handleMinimizeToTray}
-              className="w-full flex items-center gap-4 p-4 bg-surface-800 hover:bg-surface-700 border-l-3 border-info transition-colors text-left group"
-              style={{ borderRadius: '2px' }}
+              className="w-full flex items-center gap-4 p-4 bg-surface-800 hover:bg-surface-700 border-l-3 border-info transition-colors text-left group radius-sm"
             >
               <div
-                className="w-10 h-10 bg-info/20 flex items-center justify-center border-l-2 border-info flex-shrink-0"
-                style={{ borderRadius: '2px' }}
+                className="w-10 h-10 bg-info/20 flex items-center justify-center border-l-2 border-info flex-shrink-0 radius-sm"
               >
                 <ChevronIcon size={20} className="text-info rotate-90" />
               </div>
@@ -102,12 +98,10 @@ export function CloseConfirmDialog({ isOpen, onClose }: CloseConfirmDialogProps)
             {/* Exit option */}
             <button
               onClick={handleExit}
-              className="w-full flex items-center gap-4 p-4 bg-surface-800 hover:bg-error/20 border-l-3 border-error/50 hover:border-error transition-colors text-left group"
-              style={{ borderRadius: '2px' }}
+              className="w-full flex items-center gap-4 p-4 bg-surface-800 hover:bg-error/20 border-l-3 border-error/50 hover:border-error transition-colors text-left group radius-sm"
             >
               <div
-                className="w-10 h-10 bg-error/20 flex items-center justify-center border-l-2 border-error flex-shrink-0"
-                style={{ borderRadius: '2px' }}
+                className="w-10 h-10 bg-error/20 flex items-center justify-center border-l-2 border-error flex-shrink-0 radius-sm"
               >
                 <CloseIcon size={20} className="text-error" />
               </div>
@@ -127,8 +121,7 @@ export function CloseConfirmDialog({ isOpen, onClose }: CloseConfirmDialogProps)
         <div className="flex justify-end px-6 py-4 border-t-2 border-surface-700 relative z-10">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-text-secondary hover:bg-surface-800 transition-colors text-sm font-medium"
-            style={{ borderRadius: '2px' }}
+            className="px-4 py-2 text-text-secondary hover:bg-surface-800 transition-colors text-sm font-medium radius-sm"
           >
             取消
           </button>

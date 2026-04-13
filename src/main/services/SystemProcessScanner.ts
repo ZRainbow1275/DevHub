@@ -41,6 +41,64 @@ function sanitizeProcessData(raw: Partial<ProcessInfo>): ProcessInfo {
   }
 }
 
+/** Timeout wrapper for promises - returns fallback on timeout */
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  fallback: T
+): Promise<T> {
+  let timeoutHandle: ReturnType<typeof setTimeout> | null = null
+  const timeoutPromise = new Promise<T>((resolve) => {
+    timeoutHandle = setTimeout(() => resolve(fallback), timeoutMs)
+  })
+  try {
+    const result = await Promise.race([promise, timeoutPromise])
+    return result
+  } finally {
+    if (timeoutHandle) clearTimeout(timeoutHandle)
+  }
+}
+
+/** Simple LRU cache for relationship queries */
+class LRUCache<K, V> {
+  private cache = new Map<K, { value: V; expiry: number }>()
+  private capacity: number
+  private ttlMs: number
+
+  constructor(capacity: number, ttlMs: number) {
+    this.capacity = capacity
+    this.ttlMs = ttlMs
+  }
+
+  get(key: K): V | undefined {
+    const entry = this.cache.get(key)
+    if (!entry) return undefined
+    if (Date.now() > entry.expiry) {
+      this.cache.delete(key)
+      return undefined
+    }
+    // Move to end (most recently used)
+    this.cache.delete(key)
+    this.cache.set(key, entry)
+    return entry.value
+  }
+
+  set(key: K, value: V): void {
+    // Evict oldest if at capacity
+    if (this.cache.size >= this.capacity) {
+      const firstKey = this.cache.keys().next().value
+      if (firstKey !== undefined) {
+        this.cache.delete(firstKey)
+      }
+    }
+    this.cache.set(key, { value, expiry: Date.now() + this.ttlMs })
+  }
+
+  clear(): void {
+    this.cache.clear()
+  }
+}
+
 export class SystemProcessScanner {
   private processes = new Map<number, ProcessInfo>()
   private processFirstSeen = new Map<number, number>()
@@ -60,6 +118,9 @@ export class SystemProcessScanner {
 
   // Callback for window info resolution (injected from handlers)
   private getWindowsForPid: ((pid: number) => WindowInfo[]) | null = null
+
+  // LRU cache for relationship queries (capacity 50, TTL 10s)
+  private relationshipCache = new LRUCache<number, ProcessRelationship>(50, 10000)
 
   constructor(portScanner?: PortScanner) {
     this.portScanner = portScanner || new PortScanner()
@@ -123,6 +184,7 @@ export class SystemProcessScanner {
     this.previousCpuTimes.clear()
     this.cpuHistoryMap.clear()
     this.memoryHistoryMap.clear()
+    this.relationshipCache.clear()
     this.onUpdateCallback = null
     this.onZombieCallback = null
     this.getWindowsForPid = null
@@ -341,20 +403,83 @@ export class SystemProcessScanner {
   }
 
   /**
+   * Get basic process info from in-memory cache (no PowerShell call).
+   * Always available as long as the process has been scanned at least once.
+   */
+  getBasicInfo(pid: number): ProcessInfo | null {
+    return this.processes.get(pid) ?? null
+  }
+
+  /**
+   * Build a minimal ProcessRelationship from cached basic info.
+   * Level 1 fallback: no PowerShell calls, always fast.
+   */
+  getBasicRelationship(pid: number): ProcessRelationship | null {
+    const basicInfo = this.getBasicInfo(pid)
+    if (!basicInfo) return null
+
+    const selfExtended: ProcessInfoExtended = {
+      ...basicInfo,
+      ppid: 0,
+      parentName: undefined,
+      childPids: [],
+      siblingPids: [],
+      threadCount: 0,
+      handleCount: 0,
+      ports: basicInfo.port ? [basicInfo.port] : [],
+      relatedWindowHwnds: [],
+      cpuHistory: this.cpuHistoryMap.get(pid) || [],
+      memoryHistory: this.memoryHistoryMap.get(pid) || [],
+      commandLine: basicInfo.command || '',
+      userName: undefined,
+      priority: undefined
+    }
+
+    return {
+      ancestors: [],
+      self: selfExtended,
+      children: [],
+      descendants: [],
+      siblings: [],
+      relatedPorts: [],
+      relatedWindows: []
+    }
+  }
+
+  /**
    * Get full relationship for a given PID: ancestors, children, descendants,
    * siblings, related ports, and related windows.
+   * Uses 3-level fallback strategy:
+   *   Level 1: Basic info from cache (always available)
+   *   Level 2: Extended info with 3s timeout (optional)
+   *   Level 3: Relationships with 5s timeout (optional)
    */
   async getFullRelationship(pid: number): Promise<ProcessRelationship | null> {
     if (!Number.isInteger(pid) || pid <= 0) return null
 
+    // Check LRU cache first
+    const cached = this.relationshipCache.get(pid)
+    if (cached) return cached
+
+    // Level 1: Always have basic info from cache
+    const basicRelationship = this.getBasicRelationship(pid)
+
     try {
-      // Single PowerShell call to get all process info at once
+      // Level 2+3: Extended info with timeout - Single PowerShell call
       const psCmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name,CommandLine,WorkingSetSize,ThreadCount,HandleCount,Priority,@{N='User';E={try{($_ | Invoke-CimMethod -MethodName GetOwner).User}catch{''}}} | ConvertTo-Csv -NoTypeInformation`
-      const { stdout } = await execFileAsync(
+      const psPromise = execFileAsync(
         'powershell.exe',
         ['-NoProfile', '-NonInteractive', '-Command', psCmd],
-        { windowsHide: true, maxBuffer: 10 * 1024 * 1024, encoding: 'utf8', timeout: 30000 }
+        { windowsHide: true, maxBuffer: 10 * 1024 * 1024, encoding: 'utf8', timeout: 5000 }
       )
+
+      // Use 3s timeout for the PowerShell call; fallback to basic relationship
+      const result = await withTimeout(psPromise, 3000, null)
+      if (!result) {
+        // Timeout: return Level 1 basic info
+        return basicRelationship
+      }
+      const { stdout } = result
 
       const lines = stdout.split('\n').filter(l => l.trim())
       interface FullProcInfo {
@@ -520,7 +645,7 @@ export class SystemProcessScanner {
         priority: target.priority || undefined
       }
 
-      return {
+      const relationship: ProcessRelationship = {
         ancestors,
         self: selfExtended,
         children,
@@ -529,9 +654,15 @@ export class SystemProcessScanner {
         relatedPorts,
         relatedWindows
       }
+
+      // Cache the successful result
+      this.relationshipCache.set(pid, relationship)
+
+      return relationship
     } catch (err) {
       console.error('getFullRelationship failed:', err instanceof Error ? err.message : err)
-      return null
+      // Fallback to Level 1 basic info instead of null
+      return basicRelationship
     }
   }
 

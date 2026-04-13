@@ -43,16 +43,14 @@ export const StatCard = memo(function StatCard({
 
   return (
     <div
-      className={`relative bg-surface-800 border-l-3 ${colorConfig.border} ${colorConfig.bg} p-4 transition-all duration-200 hover:bg-surface-700`}
-      style={{ borderRadius: '2px' }}
+      className={`relative bg-surface-800 border-l-3 ${colorConfig.border} ${colorConfig.bg} p-4 transition-all duration-200 hover:bg-surface-700 radius-sm`}
     >
       {/* Diagonal decoration */}
       <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none" />
 
       <div className="flex items-center gap-3 relative z-10">
         <div
-          className="w-10 h-10 bg-surface-700 flex items-center justify-center border-l-2 border-current"
-          style={{ borderRadius: '2px' }}
+          className="w-10 h-10 bg-surface-700 flex items-center justify-center border-l-2 border-current radius-sm"
         >
           {icon}
         </div>

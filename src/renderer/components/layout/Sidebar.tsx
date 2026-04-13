@@ -1,10 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useProjectStore } from '../../stores/projectStore'
 import { useProjects } from '../../hooks/useProjects'
 import { useWindowSize } from '../../hooks/useWindowSize'
 import { FolderIcon, TagIcon, GroupIcon, GearIcon, ChevronLeftIcon, ChevronRightIcon, PlayIcon, StopIcon } from '../icons'
 
 const SIDEBAR_STORAGE_KEY = 'devhub:sidebar-collapsed'
+const SIDEBAR_WIDTH_KEY = 'devhub:sidebar-width'
+const MIN_SIDEBAR_WIDTH = 200
+const MAX_SIDEBAR_WIDTH = 400
+const DEFAULT_SIDEBAR_WIDTH = 224
+const COLLAPSED_WIDTH = 48
 
 interface SidebarProps {
   onSettingsClick: () => void
@@ -18,6 +23,17 @@ export function Sidebar({ onSettingsClick }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(() => {
     return localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'true'
   })
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const stored = localStorage.getItem(SIDEBAR_WIDTH_KEY)
+    if (stored) {
+      const w = parseInt(stored, 10)
+      if (w >= MIN_SIDEBAR_WIDTH && w <= MAX_SIDEBAR_WIDTH) return w
+    }
+    return DEFAULT_SIDEBAR_WIDTH
+  })
+  const [isDragging, setIsDragging] = useState(false)
+  const sidebarRef = useRef<HTMLElement>(null)
+
   const filter = useProjectStore(s => s.filter)
   const setTagFilter = useProjectStore(s => s.setTagFilter)
   const setGroupFilter = useProjectStore(s => s.setGroupFilter)
@@ -25,7 +41,6 @@ export function Sidebar({ onSettingsClick }: SidebarProps) {
   const { width } = useWindowSize()
 
   // Auto-collapse on narrow windows (xs: <640px, sm: <1000px)
-  // Auto-expand on wider windows (md+: >=1000px) only if user hasn't manually collapsed
   useEffect(() => {
     if (width < 1000 && !collapsed) {
       setCollapsed(true)
@@ -45,6 +60,50 @@ export function Sidebar({ onSettingsClick }: SidebarProps) {
     const interval = setInterval(refresh, 5000)
     return () => clearInterval(interval)
   }, [])
+
+  // Drag handle for width adjustment
+  const handleDragStart = useCallback((e: React.PointerEvent) => {
+    if (collapsed) return
+    e.preventDefault()
+    setIsDragging(true)
+
+    const startX = e.clientX
+    const startWidth = sidebarWidth
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const delta = moveEvent.clientX - startX
+      const newWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, startWidth + delta))
+      setSidebarWidth(newWidth)
+    }
+
+    const onPointerUp = () => {
+      setIsDragging(false)
+      // Persist width
+      const el = sidebarRef.current
+      if (el) {
+        const currentWidth = el.offsetWidth
+        localStorage.setItem(SIDEBAR_WIDTH_KEY, String(currentWidth))
+      }
+      document.removeEventListener('pointermove', onPointerMove)
+      document.removeEventListener('pointerup', onPointerUp)
+    }
+
+    document.addEventListener('pointermove', onPointerMove)
+    document.addEventListener('pointerup', onPointerUp)
+  }, [collapsed, sidebarWidth])
+
+  // Persist width when it changes during drag
+  useEffect(() => {
+    if (!isDragging) {
+      localStorage.setItem(SIDEBAR_WIDTH_KEY, String(sidebarWidth))
+    }
+  }, [sidebarWidth, isDragging])
+
+  const handleToggleCollapse = useCallback(() => {
+    const next = !collapsed
+    setCollapsed(next)
+    localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next))
+  }, [collapsed])
 
   const isAllActive = !filter.tag && !filter.group
 
@@ -68,22 +127,40 @@ export function Sidebar({ onSettingsClick }: SidebarProps) {
     stopGroup(group)
   }
 
+  const actualWidth = collapsed ? COLLAPSED_WIDTH : sidebarWidth
+
   return (
     <aside
+      ref={sidebarRef}
       className={`
         bg-surface-900 border-r-2 border-surface-700 flex flex-col h-full relative
         sidebar-transition animate-sidebar-enter
-        ${collapsed ? 'sidebar-collapsed' : 'sidebar-expanded'}
       `}
+      style={{
+        width: `${actualWidth}px`,
+        minWidth: `${actualWidth}px`,
+        userSelect: isDragging ? 'none' : undefined
+      }}
     >
       {/* Collapse Toggle Button */}
       <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="absolute -right-3 top-1/2 -translate-y-1/2 z-20 w-6 h-6 bg-surface-800 border border-surface-600 flex items-center justify-center text-text-muted hover:text-accent hover:border-accent transition-all duration-200"
-        style={{ borderRadius: '2px' }}
+        onClick={handleToggleCollapse}
+        className="absolute -right-3 top-1/2 -translate-y-1/2 z-20 w-6 h-6 bg-surface-800 border border-surface-600 flex items-center justify-center text-text-muted hover:text-accent hover:border-accent transition-all duration-200 radius-sm"
       >
         {collapsed ? <ChevronRightIcon size={14} /> : <ChevronLeftIcon size={14} />}
       </button>
+
+      {/* Drag Handle on right edge */}
+      {!collapsed && (
+        <div
+          className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize z-10 hover:bg-accent/30 transition-colors"
+          style={{
+            background: isDragging ? 'var(--accent)' : undefined,
+            opacity: isDragging ? 0.5 : undefined
+          }}
+          onPointerDown={handleDragStart}
+        />
+      )}
 
       {/* Header Decoration */}
       {!collapsed && (
@@ -145,7 +222,7 @@ export function Sidebar({ onSettingsClick }: SidebarProps) {
                       className="flex items-center gap-2 flex-1 min-w-0"
                       title={collapsed ? tag : undefined}
                     >
-                      <span className={`w-2 h-2 ${isActive ? 'bg-accent' : 'bg-surface-500'}`} style={{ borderRadius: '1px' }} />
+                      <span className={`w-2 h-2 ${isActive ? 'bg-accent' : 'bg-surface-500'} radius-sm`} />
                       {!collapsed && (
                         <>
                           <span className="truncate flex-1 text-left">{tag}</span>

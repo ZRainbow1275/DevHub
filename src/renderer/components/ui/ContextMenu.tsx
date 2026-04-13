@@ -66,15 +66,11 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 bg-surface-900 border-2 border-surface-600 shadow-elevated py-1.5 min-w-48 animate-fade-in"
-      style={{
-        left: adjustedPosition?.x ?? position.x,
-        top: adjustedPosition?.y ?? position.y,
-        borderRadius: '4px'
-      }}
+      className="fixed z-50 bg-surface-900 border-2 border-surface-600 shadow-elevated py-1.5 min-w-48 animate-fade-in radius-md" style={{ left: adjustedPosition?.x ?? position.x,
+        top: adjustedPosition?.y ?? position.y }}
     >
       {/* Diagonal decoration */}
-      <div className="absolute inset-0 deco-diagonal opacity-5 pointer-events-none" style={{ borderRadius: '4px' }} />
+      <div className="absolute inset-0 deco-diagonal opacity-5 pointer-events-none radius-md" />
 
       {items.map((item, index) => {
         if (item.divider) {
@@ -105,8 +101,7 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
                 ? 'text-error hover:bg-error/10 hover:text-error border-transparent hover:border-error'
                 : 'text-text-secondary hover:bg-surface-700 hover:text-text-primary border-transparent hover:border-accent'
               }
-            `}
-            style={{ borderRadius: '2px' }}
+             radius-sm`}
           >
             {item.icon && <span className="w-4 h-4">{item.icon}</span>}
             {item.label}

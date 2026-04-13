@@ -32,7 +32,7 @@ export interface Project {
 
 export interface CodingTool {
   id: string
-  name: 'codex' | 'claude-code' | 'gemini-cli' | 'cursor' | 'other'
+  name: 'codex' | 'claude-code' | 'gemini-cli' | 'cursor' | 'opencode' | 'aider' | 'windsurf' | 'continue-dev' | 'cline' | 'other'
   displayName: string
   processName: string
   completionPatterns: string[]

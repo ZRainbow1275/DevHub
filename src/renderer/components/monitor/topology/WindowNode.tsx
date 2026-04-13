@@ -20,20 +20,17 @@ export const WindowNode = memo(function WindowNode({ data, selected }: WindowNod
       className={`
         relative bg-surface-800 border-l-3 p-2.5 min-w-[140px] max-w-[200px] transition-all duration-150
         ${selected ? 'border-accent bg-accent/10 shadow-lg' : 'border-steel hover:bg-surface-700'}
-      `}
-      style={{ borderRadius: '2px' }}
+       radius-sm`}
     >
       <Handle
         type="target"
         position={Position.Top}
-        className="!w-2 !h-2 !bg-steel !border-0"
-        style={{ borderRadius: '1px' }}
+        className="!w-2 !h-2 !bg-steel !border-0 radius-sm"
       />
 
       <div className="flex items-center gap-2">
         <div
-          className="w-6 h-6 bg-surface-700 flex items-center justify-center border-l-2 border-steel flex-shrink-0"
-          style={{ borderRadius: '2px' }}
+          className="w-6 h-6 bg-surface-700 flex items-center justify-center border-l-2 border-steel flex-shrink-0 radius-sm"
         >
           <WindowIcon size={12} className="text-steel" />
         </div>
@@ -42,7 +39,7 @@ export const WindowNode = memo(function WindowNode({ data, selected }: WindowNod
             className="text-[11px] font-medium text-text-primary truncate"
             title={data.label}
           >
-            {data.label || 'Untitled'}
+            {data.label || '未命名窗口'}
           </div>
           <div className="flex items-center gap-1 mt-0.5">
             <span className={`text-[10px] font-mono ${visibilityColor}`}>{visibilityText}</span>

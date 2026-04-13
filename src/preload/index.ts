@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS, Project, LogEntry, CodingTool, AppSettings, ProjectType } from '@shared/types'
+import type { GitInfo, ProjectDependencies } from '@shared/types-extended'
 import {
   systemProcessApi,
   portApi,
@@ -38,6 +39,13 @@ contextBridge.exposeInMainWorld('devhub', {
     // 智能项目发现（包括 VSCode 最近打开、pnpm/npm 链接等）
     discover: (): Promise<Array<{ path: string; name: string; scripts: string[]; projectType: ProjectType }>> =>
       ipcRenderer.invoke('projects:discover'),
+
+    // Git info and dependency parsing
+    getGitInfo: (projectPath: string): Promise<GitInfo | null> =>
+      ipcRenderer.invoke('project:get-git-info', projectPath),
+
+    getDependencies: (projectPath: string): Promise<ProjectDependencies | null> =>
+      ipcRenderer.invoke('project:get-dependencies', projectPath),
 
     // 监听首次启动自动发现结果
     onAutoDiscovered: (callback: (projects: Array<{ path: string; name: string; scripts: string[]; projectType: ProjectType }>) => void) => {

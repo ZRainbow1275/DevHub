@@ -74,16 +74,14 @@ const Dropdown = memo(function Dropdown({ label, isOpen, onToggle, children, has
             ? 'bg-accent/10 border-accent text-accent'
             : 'bg-surface-800 border-surface-600 text-text-secondary hover:border-surface-500 hover:text-text-primary'
           }
-        `}
-        style={{ borderRadius: '2px' }}
+         radius-sm`}
       >
         {label}
         <ChevronDownIcon size={12} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
         <div
-          className="absolute top-full left-0 mt-1 min-w-[160px] bg-surface-800 border border-surface-600 shadow-lg z-50 animate-fade-in"
-          style={{ borderRadius: '2px' }}
+          className="absolute top-full left-0 mt-1 min-w-[160px] bg-surface-800 border border-surface-600 shadow-lg z-50 animate-fade-in radius-sm"
         >
           {children}
         </div>
@@ -184,8 +182,7 @@ export const ProcessFilterBar = memo(function ProcessFilterBar({
           placeholder="搜索进程... (pid:1234)"
           defaultValue={searchQuery}
           onChange={handleSearchInput}
-          className="w-full pl-8 pr-8 py-1.5 text-xs bg-surface-800 border border-surface-600 text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none transition-colors"
-          style={{ borderRadius: '2px' }}
+          className="w-full pl-8 pr-8 py-1.5 text-xs bg-surface-800 border border-surface-600 text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none transition-colors radius-sm"
         />
         {searchQuery && (
           <button
@@ -214,10 +211,10 @@ export const ProcessFilterBar = memo(function ProcessFilterBar({
               onClick={() => onToggleStatus(status)}
               className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-surface-700 transition-colors"
             >
-              <span className={`w-3 h-3 flex items-center justify-center border ${statusFilters.has(status) ? 'border-accent bg-accent' : 'border-surface-500'}`} style={{ borderRadius: '2px' }}>
+              <span className={`w-3 h-3 flex items-center justify-center border ${statusFilters.has(status) ? 'border-accent bg-accent' : 'border-surface-500'} radius-sm`}>
                 {statusFilters.has(status) && <span className="text-white text-[8px]">✓</span>}
               </span>
-              <span className={`w-2 h-2 ${STATUS_COLORS[status]}`} style={{ borderRadius: '1px' }} />
+              <span className={`w-2 h-2 ${STATUS_COLORS[status]} radius-sm`} />
               <span className="text-text-primary">{STATUS_LABELS[status]}</span>
             </button>
           ))}
@@ -238,7 +235,7 @@ export const ProcessFilterBar = memo(function ProcessFilterBar({
               onClick={() => onToggleType(type)}
               className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-surface-700 transition-colors"
             >
-              <span className={`w-3 h-3 flex items-center justify-center border ${typeFilters.has(type) ? 'border-accent bg-accent' : 'border-surface-500'}`} style={{ borderRadius: '2px' }}>
+              <span className={`w-3 h-3 flex items-center justify-center border ${typeFilters.has(type) ? 'border-accent bg-accent' : 'border-surface-500'} radius-sm`}>
                 {typeFilters.has(type) && <span className="text-white text-[8px]">✓</span>}
               </span>
               <span className="text-text-primary">{TYPE_LABELS[type]}</span>
@@ -252,7 +249,7 @@ export const ProcessFilterBar = memo(function ProcessFilterBar({
         <div className="flex items-center gap-1 text-[10px] text-accent">
           <span className="text-text-muted">排序:</span>
           {sortConfigs.map((s, i) => (
-            <span key={s.column} className="bg-accent/10 px-1.5 py-0.5 font-mono" style={{ borderRadius: '2px' }}>
+            <span key={s.column} className="bg-accent/10 px-1.5 py-0.5 font-mono radius-sm">
               {SORT_COLUMN_LABELS[s.column]} {s.direction === 'asc' ? '↑' : '↓'}
               {i < sortConfigs.length - 1 && <span className="text-text-muted mx-0.5">→</span>}
             </span>

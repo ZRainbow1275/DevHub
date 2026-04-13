@@ -62,8 +62,7 @@ function DegradedProcessCard({
         )}
         <button
           onClick={handleRetry}
-          className="flex items-center gap-1 text-[10px] text-accent hover:text-accent/80 bg-surface-800 px-2 py-1 transition-colors"
-          style={{ borderRadius: '2px' }}
+          className="flex items-center gap-1 text-[10px] text-accent hover:text-accent/80 bg-surface-800 px-2 py-1 transition-colors radius-sm"
         >
           <RefreshIcon size={10} />
           Retry

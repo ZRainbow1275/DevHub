@@ -13,6 +13,10 @@ const TOOL_INFO: Record<AIToolType, { name: string; icon: string; color: string 
   'gemini-cli': { name: 'Gemini CLI', icon: '✨', color: 'text-blue-400' },
   'cursor': { name: 'Cursor', icon: '📝', color: 'text-purple-400' },
   'opencode': { name: 'OpenCode', icon: '💻', color: 'text-cyan-400' },
+  'aider': { name: 'Aider', icon: '[A]', color: 'text-emerald-400' },
+  'windsurf': { name: 'Windsurf', icon: '[W]', color: 'text-teal-400' },
+  'continue-dev': { name: 'Continue', icon: '[C]', color: 'text-indigo-400' },
+  'cline': { name: 'Cline', icon: '[CL]', color: 'text-rose-400' },
   'other': { name: 'Other', icon: '⚙️', color: 'text-gray-400' }
 }
 

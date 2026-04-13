@@ -16,8 +16,7 @@ export const ProcessNode = memo(function ProcessNode({ data, selected }: Process
       className={`
         relative bg-surface-800 border-l-3 p-3 min-w-[160px] transition-all duration-150
         ${selected ? 'border-accent bg-accent/10 shadow-lg' : 'border-gold hover:bg-surface-700'}
-      `}
-      style={{ borderRadius: '2px' }}
+       radius-sm`}
     >
       {/* Diagonal deco */}
       <div className="absolute inset-0 deco-diagonal opacity-5 pointer-events-none" />
@@ -25,14 +24,12 @@ export const ProcessNode = memo(function ProcessNode({ data, selected }: Process
       <Handle
         type="target"
         position={Position.Top}
-        className="!w-2 !h-2 !bg-gold !border-0"
-        style={{ borderRadius: '1px' }}
+        className="!w-2 !h-2 !bg-gold !border-0 radius-sm"
       />
 
       <div className="flex items-center gap-2 relative z-10">
         <div
-          className="w-7 h-7 bg-surface-700 flex items-center justify-center border-l-2 border-gold flex-shrink-0"
-          style={{ borderRadius: '2px' }}
+          className="w-7 h-7 bg-surface-700 flex items-center justify-center border-l-2 border-gold flex-shrink-0 radius-sm"
         >
           <ProcessIcon size={14} className="text-gold" />
         </div>
@@ -61,8 +58,7 @@ export const ProcessNode = memo(function ProcessNode({ data, selected }: Process
       <Handle
         type="source"
         position={Position.Bottom}
-        className="!w-2 !h-2 !bg-gold !border-0"
-        style={{ borderRadius: '1px' }}
+        className="!w-2 !h-2 !bg-gold !border-0 radius-sm"
       />
     </div>
   )

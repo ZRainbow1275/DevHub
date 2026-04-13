@@ -3,9 +3,16 @@ import * as path from 'path'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import type { ProjectType } from '@shared/types'
+import type { GitInfo, GitCommitSummary, ProjectDependencies, DependencyEntry, LockfileType } from '@shared/types-extended'
 import { detectProjectTypes, type DetectionResult } from './projectDetectors'
 
 const execFileAsync = promisify(execFile)
+
+// Cache for git info and dependencies
+const gitInfoCache = new Map<string, { data: GitInfo; timestamp: number }>()
+const depCache = new Map<string, { data: ProjectDependencies; timestamp: number }>()
+const GIT_CACHE_TTL = 10_000   // 10 seconds
+const DEP_CACHE_TTL = 30_000   // 30 seconds
 
 export interface ScanResult {
   path: string
@@ -316,6 +323,136 @@ export class ProjectScanner {
     }
 
     return paths
+  }
+
+  /**
+   * Get Git repository info for a project path.
+   * Returns null if the path is not a git repository.
+   * Results are cached for 10 seconds.
+   */
+  async getGitInfo(projectPath: string): Promise<GitInfo | null> {
+    const cached = gitInfoCache.get(projectPath)
+    if (cached && Date.now() - cached.timestamp < GIT_CACHE_TTL) {
+      return cached.data
+    }
+
+    try {
+      // Check if it's a git repo
+      await execFileAsync('git', ['rev-parse', '--git-dir'], {
+        cwd: projectPath,
+        windowsHide: true,
+        timeout: 5000
+      })
+
+      // Get current branch
+      const { stdout: branchOut } = await execFileAsync(
+        'git', ['rev-parse', '--abbrev-ref', 'HEAD'],
+        { cwd: projectPath, windowsHide: true, timeout: 5000 }
+      )
+      const branch = branchOut.trim()
+
+      // Get uncommitted changes count
+      const { stdout: statusOut } = await execFileAsync(
+        'git', ['status', '--porcelain'],
+        { cwd: projectPath, windowsHide: true, timeout: 5000 }
+      )
+      const uncommittedCount = statusOut.trim() === '' ? 0 : statusOut.trim().split('\n').length
+
+      // Get recent 10 commits
+      const recentCommits: GitCommitSummary[] = []
+      try {
+        const { stdout: logOut } = await execFileAsync(
+          'git', ['log', '--oneline', '--format=%H|%s|%an|%ai', '-10'],
+          { cwd: projectPath, windowsHide: true, timeout: 5000 }
+        )
+        for (const line of logOut.trim().split('\n')) {
+          if (!line) continue
+          const parts = line.split('|')
+          if (parts.length >= 4) {
+            recentCommits.push({
+              hash: parts[0].substring(0, 7),
+              message: parts[1],
+              author: parts[2],
+              date: parts[3]
+            })
+          }
+        }
+      } catch {
+        // Empty repo or no commits yet
+      }
+
+      // Get ahead/behind
+      let ahead = 0
+      let behind = 0
+      try {
+        const { stdout: abOut } = await execFileAsync(
+          'git', ['rev-list', '--count', '--left-right', '@{upstream}...HEAD'],
+          { cwd: projectPath, windowsHide: true, timeout: 5000 }
+        )
+        const abParts = abOut.trim().split(/\s+/)
+        if (abParts.length === 2) {
+          behind = parseInt(abParts[0], 10) || 0
+          ahead = parseInt(abParts[1], 10) || 0
+        }
+      } catch {
+        // No upstream configured
+      }
+
+      const info: GitInfo = { branch, uncommittedCount, recentCommits, aheadBehind: { ahead, behind } }
+      gitInfoCache.set(projectPath, { data: info, timestamp: Date.now() })
+      return info
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * Parse dependencies from package.json at the given path.
+   * Returns null if no package.json exists.
+   * Results are cached for 30 seconds.
+   */
+  async getDependencies(projectPath: string): Promise<ProjectDependencies | null> {
+    const cached = depCache.get(projectPath)
+    if (cached && Date.now() - cached.timestamp < DEP_CACHE_TTL) {
+      return cached.data
+    }
+
+    const pkgPath = path.join(projectPath, 'package.json')
+    try {
+      if (!(await pathExists(pkgPath))) {
+        return null
+      }
+
+      const content = await fs.readFile(pkgPath, 'utf-8')
+      const pkg = JSON.parse(content) as Record<string, unknown>
+
+      const parseDeps = (raw: unknown): DependencyEntry[] => {
+        if (!raw || typeof raw !== 'object') return []
+        return Object.entries(raw as Record<string, string>).map(([name, version]) => ({
+          name,
+          version: typeof version === 'string' ? version : 'unknown'
+        })).sort((a, b) => a.name.localeCompare(b.name))
+      }
+
+      const dependencies = parseDeps(pkg.dependencies)
+      const devDependencies = parseDeps(pkg.devDependencies)
+
+      // Detect lockfile type
+      let lockfileType: LockfileType = 'none'
+      if (await pathExists(path.join(projectPath, 'pnpm-lock.yaml'))) {
+        lockfileType = 'pnpm'
+      } else if (await pathExists(path.join(projectPath, 'yarn.lock'))) {
+        lockfileType = 'yarn'
+      } else if (await pathExists(path.join(projectPath, 'package-lock.json'))) {
+        lockfileType = 'npm'
+      }
+
+      const result: ProjectDependencies = { dependencies, devDependencies, lockfileType }
+      depCache.set(projectPath, { data: result, timestamp: Date.now() })
+      return result
+    } catch {
+      return null
+    }
   }
 
   private async getNpmCacheProjects(): Promise<string[]> {

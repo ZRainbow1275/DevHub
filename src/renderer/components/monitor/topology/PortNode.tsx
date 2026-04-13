@@ -19,20 +19,17 @@ export const PortNode = memo(function PortNode({ data, selected }: PortNodeProps
       className={`
         relative bg-surface-800 border-l-3 p-2.5 min-w-[120px] transition-all duration-150
         ${selected ? 'border-accent bg-accent/10 shadow-lg' : 'border-info hover:bg-surface-700'}
-      `}
-      style={{ borderRadius: '2px' }}
+       radius-sm`}
     >
       <Handle
         type="target"
         position={Position.Top}
-        className="!w-2 !h-2 !bg-info !border-0"
-        style={{ borderRadius: '1px' }}
+        className="!w-2 !h-2 !bg-info !border-0 radius-sm"
       />
 
       <div className="flex items-center gap-2">
         <div
-          className="w-6 h-6 bg-surface-700 flex items-center justify-center border-l-2 border-info flex-shrink-0"
-          style={{ borderRadius: '2px' }}
+          className="w-6 h-6 bg-surface-700 flex items-center justify-center border-l-2 border-info flex-shrink-0 radius-sm"
         >
           <PortIcon size={12} className="text-info" />
         </div>

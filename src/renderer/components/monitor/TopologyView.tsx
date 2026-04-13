@@ -190,10 +190,15 @@ function buildGraphData(
 
 export function TopologyView() {
   const processes = useProcessStore((s) => s.processes)
+  const processesLastScan = useProcessStore((s) => s.lastScanTime)
   const ports = usePortStore((s) => s.ports)
+  const portsLastScan = usePortStore((s) => s.lastScanTime)
   const windows = useWindowStore((s) => s.windows)
 
   const [selectedNode, setSelectedNode] = useState<SelectedNodeInfo | null>(null)
+
+  // Initial sync detection — all three stores have never reported a scan
+  const hasInitialSync = processesLastScan !== null || portsLastScan !== null
 
   // Debounce data to avoid thrashing
   const [stableData, setStableData] = useState({ processes: [] as ProcessInfo[], ports: [] as PortInfo[], windows: [] as WindowInfo[] })
@@ -222,10 +227,10 @@ export function TopologyView() {
       if (p.projectId) projectIds.add(p.projectId)
     }
     return [
-      { label: 'Processes', value: stableData.processes.length, color: '#c9a227' },
-      { label: 'Ports', value: stableData.ports.length, color: '#22c55e' },
-      { label: 'Windows', value: stableData.windows.length, color: '#6b7d8a' },
-      { label: 'Projects', value: projectIds.size, color: '#d64545' }
+      { label: '进程', value: stableData.processes.length, color: '#c9a227' },
+      { label: '端口', value: stableData.ports.length, color: '#22c55e' },
+      { label: '窗口', value: stableData.windows.length, color: '#6b7d8a' },
+      { label: '项目', value: projectIds.size, color: '#d64545' }
     ]
   }, [stableData])
 
@@ -265,15 +270,18 @@ export function TopologyView() {
     setSelectedNode(null)
   }, [stableData])
 
+  const isLoading = !hasInitialSync && nodes.length === 0
+  const emptyMessage = isLoading ? '加载中...' : '暂无拓扑数据'
+
   return (
-    <div className="h-full relative">
+    <div className="h-full relative" style={{ minHeight: '400px' }}>
       <NeuralGraphWithControls
-        title="PROCESS TOPOLOGY"
+        title="系统拓扑"
         nodes={nodes}
         edges={edges}
         stats={stats}
         onNodeClick={handleNodeClick}
-        emptyMessage="No topology data"
+        emptyMessage={emptyMessage}
       />
 
       {/* Detail Panel (reuse existing) */}

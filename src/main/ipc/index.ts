@@ -376,6 +376,28 @@ export function registerIpcHandlers(
     app.quit()
   })
 
+  // ==================== Project Git & Dependency Handlers ====================
+
+  ipcMain.handle('project:get-git-info', withRateLimit(
+    'project:get-git-info', RATE_LIMITS.QUERY,
+    async (_, projectPath: unknown) => {
+      if (typeof projectPath !== 'string') {
+        throw new Error('Project path must be a string')
+      }
+      return projectScanner.getGitInfo(projectPath)
+    }
+  ))
+
+  ipcMain.handle('project:get-dependencies', withRateLimit(
+    'project:get-dependencies', RATE_LIMITS.QUERY,
+    async (_, projectPath: unknown) => {
+      if (typeof projectPath !== 'string') {
+        throw new Error('Project path must be a string')
+      }
+      return projectScanner.getDependencies(projectPath)
+    }
+  ))
+
   // ==================== Dialog Handlers ====================
 
   ipcMain.handle('dialog:open-directory', withRateLimit(

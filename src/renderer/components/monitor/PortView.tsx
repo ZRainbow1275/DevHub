@@ -94,22 +94,22 @@ const PortCard = memo(function PortCard({ port, index, isCommon, isSelected, has
           {/* Port Number */}
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className={`min-w-[4.5rem] h-14 px-2 bg-surface-700 flex items-center justify-center border-l-3 ${hasConflict ? 'border-error' : stateConfig.borderColor}`} style={{ borderRadius: '2px' }}>
+              <div className={`min-w-[4.5rem] h-14 px-2 bg-surface-700 flex items-center justify-center border-l-3 ${hasConflict ? 'border-error' : stateConfig.borderColor} radius-sm`}>
                 <span className="text-2xl font-bold text-accent font-mono whitespace-nowrap">:{port.port}</span>
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <span className={`status-badge ${port.state === 'LISTENING' ? 'status-badge-running' : ''}`}>
-                    <span className={`w-1.5 h-1.5 ${stateConfig.color}`} style={{ borderRadius: '1px' }} />
+                    <span className={`w-1.5 h-1.5 ${stateConfig.color} radius-sm`} />
                     {stateConfig.text}
                   </span>
                   {isCommon && (
-                    <span className="text-[10px] bg-info/10 text-info px-2 py-0.5 border-l-2 border-info" style={{ borderRadius: '2px' }}>
+                    <span className="text-[10px] bg-info/10 text-info px-2 py-0.5 border-l-2 border-info radius-sm">
                       常用
                     </span>
                   )}
                   {hasConflict && (
-                    <span className="text-[10px] bg-error/10 text-error px-2 py-0.5 border-l-2 border-error" style={{ borderRadius: '2px' }}>
+                    <span className="text-[10px] bg-error/10 text-error px-2 py-0.5 border-l-2 border-error radius-sm">
                       冲突
                     </span>
                   )}
@@ -123,9 +123,9 @@ const PortCard = memo(function PortCard({ port, index, isCommon, isSelected, has
           </div>
 
           {/* Process Info */}
-          <div className="bg-surface-900 p-3 mb-4 border-l-2 border-surface-600" style={{ borderRadius: '2px' }}>
+          <div className="bg-surface-900 p-3 mb-4 border-l-2 border-surface-600 radius-sm">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-surface-700 flex items-center justify-center" style={{ borderRadius: '2px' }}>
+              <div className="w-8 h-8 bg-surface-700 flex items-center justify-center radius-sm">
                 <ProcessIcon size={16} className="text-text-muted" />
               </div>
               <div className="flex-1 min-w-0">
@@ -138,7 +138,7 @@ const PortCard = memo(function PortCard({ port, index, isCommon, isSelected, has
           {/* Address */}
           <div className="mb-4">
             <div className="text-[10px] text-text-tertiary uppercase tracking-wider mb-1">本地地址</div>
-            <div className="bg-surface-800 px-2 py-1 border-l-2 border-surface-600" style={{ borderRadius: '2px' }}>
+            <div className="bg-surface-800 px-2 py-1 border-l-2 border-surface-600 radius-sm">
               <TruncatedText text={port.localAddress} className="text-xs text-text-secondary font-mono" />
             </div>
           </div>
@@ -147,7 +147,7 @@ const PortCard = memo(function PortCard({ port, index, isCommon, isSelected, has
           {port.foreignAddress && port.foreignAddress !== '*:*' && port.foreignAddress !== '0.0.0.0:0' && (
             <div className="mb-4">
               <div className="text-[10px] text-text-tertiary uppercase tracking-wider mb-1">远程地址</div>
-              <div className="bg-surface-800 px-2 py-1 border-l-2 border-warning/40" style={{ borderRadius: '2px' }}>
+              <div className="bg-surface-800 px-2 py-1 border-l-2 border-warning/40 radius-sm">
                 <TruncatedText text={port.foreignAddress} className="text-xs text-warning/80 font-mono" />
               </div>
             </div>
@@ -230,30 +230,30 @@ const PortItem = memo(function PortItem({ port, index, isSelected, isCommon, has
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 min-w-0 flex-1">
             <div className="relative">
-              <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 ${hasConflict ? 'bg-error' : stateConfig.color} ${port.state === 'LISTENING' && !hasConflict ? 'status-dot-running' : ''}`} style={{ borderRadius: '1px' }} />
-              <div className={`min-w-[3.5rem] h-12 px-1 bg-surface-700 flex items-center justify-center border-l-2 ${hasConflict ? 'border-error' : 'border-accent'}`} style={{ borderRadius: '2px' }}>
+              <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 ${hasConflict ? 'bg-error' : stateConfig.color} ${port.state === 'LISTENING' && !hasConflict ? 'status-dot-running' : ''} radius-sm`} />
+              <div className={`min-w-[3.5rem] h-12 px-1 bg-surface-700 flex items-center justify-center border-l-2 ${hasConflict ? 'border-error' : 'border-accent'} radius-sm`}>
                 <span className="text-lg font-bold text-accent font-mono whitespace-nowrap">:{port.port}</span>
               </div>
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <TruncatedText text={port.processName} className="text-sm font-bold text-text-primary" maxWidth="180px" />
-                <span className="text-xs text-text-muted font-mono bg-surface-700 px-2 py-0.5" style={{ borderRadius: '2px' }}>
+                <span className="text-xs text-text-muted font-mono bg-surface-700 px-2 py-0.5 radius-sm">
                   PID: {port.pid}
                 </span>
                 {portLabel && (
-                  <span className="text-[9px] text-text-muted bg-surface-700 px-1.5 py-0.5" style={{ borderRadius: '2px' }}>
+                  <span className="text-[9px] text-text-muted bg-surface-700 px-1.5 py-0.5 radius-sm">
                     {portLabel}
                   </span>
                 )}
                 {isCommon && !portLabel && (
-                  <span className="text-[10px] bg-info/10 text-info px-1.5 py-0.5 border-l-2 border-info" style={{ borderRadius: '2px' }}>
+                  <span className="text-[10px] bg-info/10 text-info px-1.5 py-0.5 border-l-2 border-info radius-sm">
                     常用
                   </span>
                 )}
                 {hasConflict && (
-                  <span className="text-[10px] bg-error/10 text-error px-1.5 py-0.5 border-l-2 border-error font-bold uppercase tracking-wider" style={{ borderRadius: '2px' }}>
-                    CONFLICT
+                  <span className="text-[10px] bg-error/10 text-error px-1.5 py-0.5 border-l-2 border-error font-bold uppercase tracking-wider radius-sm">
+                    冲突
                   </span>
                 )}
               </div>
@@ -271,7 +271,7 @@ const PortItem = memo(function PortItem({ port, index, isSelected, isCommon, has
 
           <div className="flex items-center gap-4 flex-shrink-0">
             <span className={`status-badge ${port.state === 'LISTENING' ? 'status-badge-running' : ''}`}>
-              <span className={`w-1.5 h-1.5 ${stateConfig.color}`} style={{ borderRadius: '1px' }} />
+              <span className={`w-1.5 h-1.5 ${stateConfig.color} radius-sm`} />
               {stateConfig.text}
             </span>
             <span className="text-xs text-text-muted font-mono uppercase">{port.protocol}</span>
@@ -326,14 +326,13 @@ const QuickPortIndicator = memo(function QuickPortIndicator({ portNum, portInfo,
           ? 'bg-error/10 text-error border-l-2 border-error hover:bg-error/20 cursor-pointer'
           : 'bg-success/5 text-success/60 border-l-2 border-success/30 cursor-default'
         }
-      `}
-      style={{ borderRadius: '2px' }}
+       radius-sm`}
       title={isInUse ? `${label ? label + ' - ' : ''}被 ${portInfo.processName ?? 'unknown'} 占用` : `${label ?? ''} 可用`}
     >
       <span>:{portNum}</span>
       {label && <span className="text-[8px] ml-1 opacity-60 font-normal">{label}</span>}
       {isInUse && (
-        <span className="absolute -top-1 -right-1 w-2 h-2 bg-error status-dot-running" style={{ borderRadius: '1px' }} />
+        <span className="absolute -top-1 -right-1 w-2 h-2 bg-error status-dot-running radius-sm" />
       )}
     </button>
   )
@@ -349,7 +348,6 @@ export function PortView() {
     releasePort,
     selectPort,
     getActiveConflicts,
-    getTopology,
     getPortFocusData,
     getPortDetailIncremental,
     cancelPortQuery
@@ -361,8 +359,9 @@ export function PortView() {
   const [focusedPort, setFocusedPort] = useState<PortInfo | null>(null)
 
   // Handle graph node click -> open focus panel for port nodes
-  const handleGraphNodeClick = useCallback((nodeData: { type: string; port?: number; pid?: number }) => {
-    if (nodeData.type.startsWith('port') && nodeData.port !== undefined) {
+  const handleGraphNodeClick = useCallback((nodeData: { type: string; port?: number; pid?: number; hwnd?: number }) => {
+    // Match the new ReactFlow node types: 'flowPort' / 'flowProcess' / 'flowWindow' (legacy lower-case accepted)
+    if ((nodeData.type === 'flowPort' || nodeData.type.startsWith('port')) && nodeData.port !== undefined) {
       const portInfo = ports.find(p => p.port === nodeData.port)
       if (portInfo) {
         setFocusedPort(portInfo)
@@ -415,7 +414,7 @@ export function PortView() {
 
         <div className="flex items-center justify-between relative z-10">
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-surface-700 flex items-center justify-center border-l-3 border-accent" style={{ borderRadius: '2px' }}>
+            <div className="w-10 h-10 bg-surface-700 flex items-center justify-center border-l-3 border-accent radius-sm">
               <PortIcon size={20} className="text-accent" />
             </div>
             <div>
@@ -446,7 +445,7 @@ export function PortView() {
             </div>
 
             {/* Filter */}
-            <div className="flex items-center bg-surface-800 p-1 border border-surface-700" style={{ borderRadius: '2px' }}>
+            <div className="flex items-center bg-surface-800 p-1 border border-surface-700 radius-sm">
               {[
                 { key: 'all', label: '全部' },
                 { key: 'common', label: '常用' },
@@ -461,8 +460,7 @@ export function PortView() {
                       ? 'bg-accent text-white'
                       : 'text-text-muted hover:text-text-primary hover:bg-surface-700'
                     }
-                  `}
-                  style={{ borderRadius: '2px' }}
+                   radius-sm`}
                 >
                   {label}
                 </button>
@@ -548,7 +546,6 @@ export function PortView() {
         <div className="flex-1 overflow-hidden flex">
           <div className="flex-1">
             <PortRelationshipGraph
-              getTopology={getTopology}
               focusPort={selectedPort}
               onNodeClick={handleGraphNodeClick}
             />
@@ -624,7 +621,7 @@ void pid
 
             {filteredPorts.length === 0 && !isScanning && (
               <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
-                <div className="w-20 h-20 bg-surface-800 flex items-center justify-center mb-6 border-l-3 border-accent" style={{ borderRadius: '4px' }}>
+                <div className="w-20 h-20 bg-surface-800 flex items-center justify-center mb-6 border-l-3 border-accent radius-md">
                   <PortIcon size={40} className="text-text-muted" />
                 </div>
                 <h3

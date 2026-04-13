@@ -198,18 +198,16 @@ export function AddProjectDialog({ isOpen, onClose, onAdd }: AddProjectDialogPro
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-project-dialog-title"
-        className="bg-surface-900 border-2 border-surface-600 w-full max-w-2xl mx-4 shadow-elevated max-h-[85vh] flex flex-col relative"
-        style={{ borderRadius: '4px' }}
+        className="bg-surface-900 border-2 border-surface-600 w-full max-w-2xl mx-4 shadow-elevated max-h-[85vh] flex flex-col relative radius-md"
       >
         {/* Diagonal decoration */}
-        <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none" style={{ borderRadius: '4px' }} />
+        <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none radius-md" />
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b-2 border-surface-700 relative z-10">
           <div className="flex items-center gap-3">
             <div
-              className="w-10 h-10 bg-accent/20 flex items-center justify-center border-l-3 border-accent"
-              style={{ borderRadius: '2px' }}
+              className="w-10 h-10 bg-accent/20 flex items-center justify-center border-l-3 border-accent radius-sm"
             >
               <PlusIcon size={20} className="text-accent" />
             </div>
@@ -250,14 +248,12 @@ export function AddProjectDialog({ isOpen, onClose, onAdd }: AddProjectDialogPro
                   isDragging
                     ? 'border-accent bg-accent/10'
                     : 'border-surface-600 hover:border-surface-500 hover:bg-surface-800/30'
-                }`}
-                style={{ borderRadius: '4px' }}
+                } radius-md`}
               >
                 <div
                   className={`w-16 h-16 mx-auto mb-4 flex items-center justify-center border-l-3 ${
                     isDragging ? 'border-accent bg-accent/20' : 'border-surface-600 bg-surface-800'
-                  }`}
-                  style={{ borderRadius: '4px' }}
+                  } radius-md`}
                 >
                   <FolderIcon size={32} className={isDragging ? 'text-accent' : 'text-text-muted'} />
                 </div>
@@ -275,13 +271,11 @@ export function AddProjectDialog({ isOpen, onClose, onAdd }: AddProjectDialogPro
                     setError(null)
                   }}
                   placeholder="输入项目路径..."
-                  className="flex-1 px-4 py-2.5 bg-surface-800 border-2 border-surface-600 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
-                  style={{ borderRadius: '2px' }}
+                  className="flex-1 px-4 py-2.5 bg-surface-800 border-2 border-surface-600 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent radius-sm"
                 />
                 <button
                   onClick={handleBrowse}
-                  className="px-4 py-2.5 bg-surface-800 text-text-secondary hover:bg-surface-700 transition-colors border-l-2 border-surface-600"
-                  style={{ borderRadius: '2px' }}
+                  className="px-4 py-2.5 bg-surface-800 text-text-secondary hover:bg-surface-700 transition-colors border-l-2 border-surface-600 radius-sm"
                 >
                   浏览
                 </button>
@@ -292,8 +286,7 @@ export function AddProjectDialog({ isOpen, onClose, onAdd }: AddProjectDialogPro
                 <div className="flex gap-2">
                   <button
                     onClick={handleSmartDiscover}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-accent text-white font-medium hover:bg-accent-600 transition-colors border-l-3 border-accent"
-                    style={{ borderRadius: '2px' }}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-accent text-white font-medium hover:bg-accent-600 transition-colors border-l-3 border-accent radius-sm"
                   >
                     <LightningIcon size={18} />
                     智能发现
@@ -302,16 +295,14 @@ export function AddProjectDialog({ isOpen, onClose, onAdd }: AddProjectDialogPro
                 <div className="flex gap-2">
                   <button
                     onClick={handleScan}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-surface-800 text-text-secondary hover:bg-surface-700 transition-colors border-l-2 border-surface-600"
-                    style={{ borderRadius: '2px' }}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-surface-800 text-text-secondary hover:bg-surface-700 transition-colors border-l-2 border-surface-600 radius-sm"
                   >
                     <SearchIcon size={16} />
                     常规扫描
                   </button>
                   <button
                     onClick={handleScanDirectory}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-surface-800 text-text-secondary hover:bg-surface-700 transition-colors border-l-2 border-surface-600"
-                    style={{ borderRadius: '2px' }}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-surface-800 text-text-secondary hover:bg-surface-700 transition-colors border-l-2 border-surface-600 radius-sm"
                   >
                     <FolderIcon size={16} />
                     扫描目录
@@ -335,8 +326,7 @@ export function AddProjectDialog({ isOpen, onClose, onAdd }: AddProjectDialogPro
                   返回
                 </button>
                 <span
-                  className="text-sm text-text-muted bg-surface-800 px-2 py-1 border-l-2 border-surface-600"
-                  style={{ borderRadius: '2px' }}
+                  className="text-sm text-text-muted bg-surface-800 px-2 py-1 border-l-2 border-surface-600 radius-sm"
                 >
                   {isScanning ? '扫描中...' : `发现 ${scanResults.length} 个项目`}
                 </span>
@@ -366,8 +356,7 @@ export function AddProjectDialog({ isOpen, onClose, onAdd }: AddProjectDialogPro
                             {result.scripts.slice(0, 4).map((script) => (
                               <span
                                 key={script}
-                                className="text-[10px] px-1.5 py-0.5 bg-surface-700 text-text-tertiary"
-                                style={{ borderRadius: '2px' }}
+                                className="text-[10px] px-1.5 py-0.5 bg-surface-700 text-text-tertiary radius-sm"
                               >
                                 {script}
                               </span>
@@ -381,8 +370,7 @@ export function AddProjectDialog({ isOpen, onClose, onAdd }: AddProjectDialogPro
                       <button
                         onClick={() => handleSelectScanResult(result)}
                         disabled={isLoading}
-                        className="px-3 py-1.5 text-sm bg-accent text-white hover:bg-accent-600 transition-colors disabled:opacity-50 border-l-2 border-accent"
-                        style={{ borderRadius: '2px' }}
+                        className="px-3 py-1.5 text-sm bg-accent text-white hover:bg-accent-600 transition-colors disabled:opacity-50 border-l-2 border-accent radius-sm"
                       >
                         添加
                       </button>
@@ -396,8 +384,7 @@ export function AddProjectDialog({ isOpen, onClose, onAdd }: AddProjectDialogPro
           {/* Error */}
           {error && (
             <div
-              className="mt-3 flex items-center gap-2 p-3 bg-error/10 border-l-3 border-error text-error text-sm"
-              style={{ borderRadius: '2px' }}
+              className="mt-3 flex items-center gap-2 p-3 bg-error/10 border-l-3 border-error text-error text-sm radius-sm"
             >
               <AlertIcon size={16} />
               {error}
@@ -410,16 +397,14 @@ export function AddProjectDialog({ isOpen, onClose, onAdd }: AddProjectDialogPro
           <div className="flex justify-end gap-3 px-6 py-4 border-t-2 border-surface-700 relative z-10">
             <button
               onClick={handleClose}
-              className="px-4 py-2.5 text-text-secondary hover:bg-surface-800 transition-colors"
-              style={{ borderRadius: '2px' }}
+              className="px-4 py-2.5 text-text-secondary hover:bg-surface-800 transition-colors radius-sm"
             >
               取消
             </button>
             <button
               onClick={handleSubmit}
               disabled={isLoading}
-              className="px-4 py-2.5 bg-accent text-white font-medium hover:bg-accent-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all border-l-2 border-accent"
-              style={{ borderRadius: '2px' }}
+              className="px-4 py-2.5 bg-accent text-white font-medium hover:bg-accent-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all border-l-2 border-accent radius-sm"
             >
               {isLoading ? '添加中...' : '添加项目'}
             </button>

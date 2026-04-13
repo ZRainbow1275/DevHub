@@ -77,18 +77,16 @@ export function AutoDiscoveryDialog({ isOpen, projects, onImport, onClose }: Aut
         role="dialog"
         aria-modal="true"
         aria-labelledby="auto-discovery-dialog-title"
-        className="bg-surface-900 border-2 border-surface-600 w-full max-w-2xl mx-4 shadow-elevated max-h-[85vh] flex flex-col relative"
-        style={{ borderRadius: '4px' }}
+        className="bg-surface-900 border-2 border-surface-600 w-full max-w-2xl mx-4 shadow-elevated max-h-[85vh] flex flex-col relative radius-md"
       >
         {/* Diagonal decoration */}
-        <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none" style={{ borderRadius: '4px' }} />
+        <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none radius-md" />
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b-2 border-surface-700 relative z-10">
           <div className="flex items-center gap-3">
             <div
-              className="w-10 h-10 bg-accent/20 flex items-center justify-center border-l-3 border-accent"
-              style={{ borderRadius: '2px' }}
+              className="w-10 h-10 bg-accent/20 flex items-center justify-center border-l-3 border-accent radius-sm"
             >
               <SearchIcon size={20} className="text-accent" />
             </div>
@@ -125,23 +123,20 @@ export function AutoDiscoveryDialog({ isOpen, projects, onImport, onClose }: Aut
           {/* Select All / Deselect All */}
           <div className="flex items-center justify-between mb-3">
             <span
-              className="text-sm text-text-muted bg-surface-800 px-2 py-1 border-l-2 border-surface-600"
-              style={{ borderRadius: '2px' }}
+              className="text-sm text-text-muted bg-surface-800 px-2 py-1 border-l-2 border-surface-600 radius-sm"
             >
               {selected.size} / {projects.length} 已选择
             </span>
             <div className="flex gap-2">
               <button
                 onClick={handleSelectAll}
-                className="px-3 py-1 text-xs text-text-secondary bg-surface-800 hover:bg-surface-700 transition-colors border-l-2 border-surface-600"
-                style={{ borderRadius: '2px' }}
+                className="px-3 py-1 text-xs text-text-secondary bg-surface-800 hover:bg-surface-700 transition-colors border-l-2 border-surface-600 radius-sm"
               >
                 全选
               </button>
               <button
                 onClick={handleDeselectAll}
-                className="px-3 py-1 text-xs text-text-secondary bg-surface-800 hover:bg-surface-700 transition-colors border-l-2 border-surface-600"
-                style={{ borderRadius: '2px' }}
+                className="px-3 py-1 text-xs text-text-secondary bg-surface-800 hover:bg-surface-700 transition-colors border-l-2 border-surface-600 radius-sm"
               >
                 全不选
               </button>
@@ -169,8 +164,7 @@ export function AutoDiscoveryDialog({ isOpen, projects, onImport, onClose }: Aut
                       isSelected
                         ? 'bg-accent border-accent'
                         : 'border-surface-500 bg-surface-900'
-                    }`}
-                    style={{ borderRadius: '2px' }}
+                    } radius-sm`}
                   >
                     {isSelected && <CheckIcon size={12} className="text-white" />}
                   </div>
@@ -190,8 +184,7 @@ export function AutoDiscoveryDialog({ isOpen, projects, onImport, onClose }: Aut
                         {project.scripts.slice(0, 4).map((script) => (
                           <span
                             key={script}
-                            className="text-[10px] px-1.5 py-0.5 bg-surface-700 text-text-tertiary"
-                            style={{ borderRadius: '2px' }}
+                            className="text-[10px] px-1.5 py-0.5 bg-surface-700 text-text-tertiary radius-sm"
                           >
                             {script}
                           </span>
@@ -212,16 +205,14 @@ export function AutoDiscoveryDialog({ isOpen, projects, onImport, onClose }: Aut
         <div className="flex justify-end gap-3 px-6 py-4 border-t-2 border-surface-700 relative z-10">
           <button
             onClick={onClose}
-            className="px-4 py-2.5 text-text-secondary hover:bg-surface-800 transition-colors"
-            style={{ borderRadius: '2px' }}
+            className="px-4 py-2.5 text-text-secondary hover:bg-surface-800 transition-colors radius-sm"
           >
             跳过
           </button>
           <button
             onClick={handleImport}
             disabled={isImporting || selected.size === 0}
-            className="px-4 py-2.5 bg-accent text-white font-medium hover:bg-accent-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all border-l-2 border-accent"
-            style={{ borderRadius: '2px' }}
+            className="px-4 py-2.5 bg-accent text-white font-medium hover:bg-accent-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all border-l-2 border-accent radius-sm"
           >
             {isImporting ? '导入中...' : `导入选中 (${selected.size})`}
           </button>

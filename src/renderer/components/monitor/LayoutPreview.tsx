@@ -54,8 +54,7 @@ export const LayoutPreview = memo(function LayoutPreview({ windows }: LayoutPrev
   if (!layout || windowsWithBounds.length === 0) {
     return (
       <div
-        className="mt-3 p-3 bg-surface-800/50 border-l-3 border-info relative z-10"
-        style={{ borderRadius: '2px' }}
+        className="mt-3 p-3 bg-surface-800/50 border-l-3 border-info relative z-10 radius-sm"
       >
         <div className="flex items-center gap-2 mb-2">
           <WindowIcon size={14} className="text-info" />
@@ -66,7 +65,7 @@ export const LayoutPreview = memo(function LayoutPreview({ windows }: LayoutPrev
         <div className="space-y-1 max-h-24 overflow-y-auto">
           {windows.slice(0, 8).map((w, i) => (
             <div key={i} className="flex items-center gap-2 text-xs text-text-muted">
-              <span className="w-1.5 h-1.5 bg-accent" style={{ borderRadius: '1px' }} />
+              <span className="w-1.5 h-1.5 bg-accent radius-sm" />
               <span className="truncate">{w.processName}</span>
               <span className="text-text-muted/50 truncate flex-1">{w.title}</span>
             </div>
@@ -81,8 +80,7 @@ export const LayoutPreview = memo(function LayoutPreview({ windows }: LayoutPrev
 
   return (
     <div
-      className="mt-3 p-3 bg-surface-800/50 border-l-3 border-info relative z-10"
-      style={{ borderRadius: '2px' }}
+      className="mt-3 p-3 bg-surface-800/50 border-l-3 border-info relative z-10 radius-sm"
     >
       <div className="flex items-center gap-2 mb-2">
         <WindowIcon size={14} className="text-info" />

@@ -944,6 +944,104 @@ export function UploadIcon({ className = '', size = 20 }: IconProps) {
   )
 }
 
+// Git Branch Icon
+export function GitBranchIcon({ className = '', size = 20 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="square"
+      strokeLinejoin="miter"
+      className={className}
+    >
+      <path d="M6 3v12M18 9a3 3 0 100-6 3 3 0 000 6zM6 21a3 3 0 100-6 3 3 0 000 6z" />
+      <path d="M18 9c0 6-12 6-12 9" />
+    </svg>
+  )
+}
+
+// Package/Box Icon - Dependencies
+export function PackageIcon({ className = '', size = 20 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="square"
+      strokeLinejoin="miter"
+      className={className}
+    >
+      <path d="M12 2l9 4.5v11L12 22l-9-4.5v-11L12 2z" />
+      <path d="M12 22V11M12 11l9-4.5M12 11L3 6.5" />
+    </svg>
+  )
+}
+
+// Clock/History Icon
+export function ClockIcon({ className = '', size = 20 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="square"
+      strokeLinejoin="miter"
+      className={className}
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 6v6l4 2" />
+    </svg>
+  )
+}
+
+// Sort Icon - ascending/descending
+export function SortIcon({ className = '', size = 20 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="square"
+      strokeLinejoin="miter"
+      className={className}
+    >
+      <path d="M7 3v18M7 3l-4 4M7 3l4 4M17 21V3M17 21l-4-4M17 21l4-4" />
+    </svg>
+  )
+}
+
+// ChevronUp Icon
+export function ChevronUpIcon({ className = '', size = 20 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="square"
+      strokeLinejoin="miter"
+      className={className}
+    >
+      <path d="M18 15l-6-6-6 6" />
+    </svg>
+  )
+}
+
 // Settings Icon
 export function SettingsIcon({ className = '', size = 20 }: IconProps) {
   return (

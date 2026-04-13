@@ -14,6 +14,10 @@ const TOOL_DISPLAY_NAMES: Record<AIToolType, string> = {
   'gemini-cli': 'Gemini CLI',
   'cursor': 'Cursor',
   'opencode': 'OpenCode',
+  'aider': 'Aider',
+  'windsurf': 'Windsurf',
+  'continue-dev': 'Continue',
+  'cline': 'Cline',
   'other': 'AI Tool',
 }
 

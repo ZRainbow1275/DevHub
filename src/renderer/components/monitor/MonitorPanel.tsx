@@ -4,11 +4,12 @@ import { PortView } from './PortView'
 import { WindowView } from './WindowView'
 import { AITaskView } from './AITaskView'
 import { TopologyView } from './TopologyView'
+import { PortRelationshipGraph } from './PortRelationshipGraph'
 import { ErrorBoundary } from '../ErrorBoundary'
 import { ViewErrorFallback } from '../ui/ViewErrorFallback'
-import { ProcessIcon, PortIcon, WindowIcon, AIIcon, MonitorIcon, TopologyIcon } from '../icons'
+import { ProcessIcon, PortIcon, WindowIcon, AIIcon, MonitorIcon, TopologyIcon, TreeIcon } from '../icons'
 
-type MonitorTab = 'process' | 'port' | 'window' | 'ai-task' | 'topology'
+type MonitorTab = 'process' | 'port' | 'window' | 'ai-task' | 'topology' | 'flow'
 
 const TABS: { id: MonitorTab; label: string; icon: React.ReactNode }[] = [
   {
@@ -35,6 +36,11 @@ const TABS: { id: MonitorTab; label: string; icon: React.ReactNode }[] = [
     id: 'topology',
     label: '拓扑',
     icon: <TopologyIcon size={16} />
+  },
+  {
+    id: 'flow',
+    label: '流程图',
+    icon: <TreeIcon size={16} />
   }
 ]
 
@@ -51,7 +57,7 @@ export function MonitorPanel() {
         <div className="flex items-center justify-between relative z-10">
           {/* Title */}
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-surface-700 flex items-center justify-center border-l-2 border-gold" style={{ borderRadius: '2px' }}>
+            <div className="w-8 h-8 bg-surface-700 flex items-center justify-center border-l-2 border-gold radius-sm">
               <MonitorIcon size={16} className="text-gold" />
             </div>
             <div>
@@ -131,6 +137,13 @@ export function MonitorPanel() {
             <ViewErrorFallback viewName="关系拓扑" error={error} onRetry={resetErrorBoundary} />
           )}>
             <TopologyView />
+          </ErrorBoundary>
+        )}
+        {activeTab === 'flow' && (
+          <ErrorBoundary fallbackRender={({ error, resetErrorBoundary }) => (
+            <ViewErrorFallback viewName="流程图" error={error} onRetry={resetErrorBoundary} />
+          )}>
+            <PortRelationshipGraph />
           </ErrorBoundary>
         )}
       </div>
