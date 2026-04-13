@@ -1,0 +1,45 @@
+{
+  "id": "v2-port-window",
+  "name": "v2-port-window",
+  "title": "Team2 Port Window (T4 端口i18n+T5 窗口管理)",
+  "description": "",
+  "status": "planning",
+  "dev_type": "fullstack",
+  "scope": "devhub/src/renderer/components/monitor/PortFocusPanel.tsx devhub/src/renderer/components/monitor/PortView.tsx devhub/src/renderer/components/monitor/WindowView.tsx devhub/src/renderer/components/monitor/AIWindowAlias.tsx devhub/src/renderer/components/monitor/AIProgressTimeline.tsx devhub/src/renderer/components/monitor/LayoutPreview.tsx devhub/src/renderer/utils/portLabels.ts devhub/src/renderer/stores/windowStore.ts devhub/src/renderer/stores/aliasStore.ts devhub/src/renderer/hooks/useWindows.ts devhub/src/main/services/PortScanner.ts devhub/src/main/services/WindowManager.ts devhub/src/main/services/AIAliasManager.ts devhub/src/main/ipc/portHandlers.ts devhub/src/main/ipc/windowHandlers.ts devhub/src/preload/extended.ts devhub/src/shared/types-extended.ts",
+  "package": null,
+  "priority": "P2",
+  "creator": "ZRainbow",
+  "assignee": "ZRainbow",
+  "createdAt": "2026-04-14",
+  "completedAt": null,
+  "branch": "feature/v2-port-window",
+  "base_branch": "master",
+  "worktree_path": "D:\\Desktop\\trellis-worktrees\\feature\\v2-port-window",
+  "current_phase": 3,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
