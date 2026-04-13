@@ -1,6 +1,7 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useRef } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { usePortStore } from '../stores/portStore'
-import { PortInfo } from '@shared/types-extended'
+import { PortInfo, PortTopologyData, PortFocusData, PortDetailIncrementalResult } from '@shared/types-extended'
 
 const isElectron = typeof window !== 'undefined' && window.devhub !== undefined
 
@@ -21,7 +22,27 @@ export function usePorts() {
     getCommonPorts,
     getActiveConflicts,
     isPortInUse
-  } = usePortStore()
+  } = usePortStore(
+    useShallow(s => ({
+      ports: s.ports,
+      conflicts: s.conflicts,
+      isScanning: s.isScanning,
+      lastScanTime: s.lastScanTime,
+      selectedPort: s.selectedPort,
+      setPorts: s.setPorts,
+      setScanning: s.setScanning,
+      selectPort: s.selectPort,
+      addConflict: s.addConflict,
+      resolveConflict: s.resolveConflict,
+      removePort: s.removePort,
+      getPortByNumber: s.getPortByNumber,
+      getCommonPorts: s.getCommonPorts,
+      getActiveConflicts: s.getActiveConflicts,
+      isPortInUse: s.isPortInUse
+    }))
+  )
+
+  const updatePortDetail = usePortStore((s) => s.updatePortDetail)
 
   const scan = useCallback(async (): Promise<PortInfo[]> => {
     if (!isElectron) return []
@@ -67,6 +88,45 @@ export function usePorts() {
     return result
   }, [addConflict])
 
+  const getTopology = useCallback(async (): Promise<PortTopologyData> => {
+    if (!isElectron) return { nodes: [], edges: [] }
+    return window.devhub.port?.getTopology?.() ?? { nodes: [], edges: [] }
+  }, [])
+
+  const getPortFocusData = useCallback(async (port: number): Promise<PortFocusData | null> => {
+    if (!isElectron) return null
+    return window.devhub.port?.getPortFocusData?.(port) ?? null
+  }, [])
+
+  // Track the last queried port for cancellation
+  const lastQueriedPortRef = useRef<number | null>(null)
+
+  const getPortDetailIncremental = useCallback(async (port: number): Promise<PortDetailIncrementalResult> => {
+    if (!isElectron) return { data: null, source: 'cache', isStale: true }
+
+    // Cancel previous query if different port
+    const prevPort = lastQueriedPortRef.current
+    if (prevPort !== null && prevPort !== port) {
+      window.devhub.port?.cancelPortQuery?.(prevPort)
+    }
+    lastQueriedPortRef.current = port
+
+    try {
+      const result = await window.devhub.port?.getPortDetailIncremental?.(port) ?? { data: null, source: 'cache', isStale: true }
+      if (result.data) {
+        updatePortDetail(port, result.data)
+      }
+      return result
+    } catch {
+      return { data: null, source: 'cache', isStale: true }
+    }
+  }, [updatePortDetail])
+
+  const cancelPortQuery = useCallback(async (port: number): Promise<boolean> => {
+    if (!isElectron) return false
+    return window.devhub.port?.cancelPortQuery?.(port) ?? false
+  }, [])
+
   useEffect(() => {
     if (!isElectron) return
 
@@ -99,6 +159,10 @@ export function usePorts() {
     getPortByNumber,
     getCommonPorts,
     getActiveConflicts,
-    isPortInUse
+    isPortInUse,
+    getTopology,
+    getPortFocusData,
+    getPortDetailIncremental,
+    cancelPortQuery
   }
 }

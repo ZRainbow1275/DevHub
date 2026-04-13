@@ -100,18 +100,16 @@ export function TagManagerDialog({
           role="dialog"
           aria-modal="true"
           aria-labelledby="tag-manager-dialog-title"
-          className="bg-surface-900 border-2 border-surface-600 w-full max-w-md mx-4 shadow-elevated relative"
-          style={{ borderRadius: '4px' }}
+          className="bg-surface-900 border-2 border-surface-600 w-full max-w-md mx-4 shadow-elevated relative radius-md"
         >
           {/* Diagonal decoration */}
-          <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none" style={{ borderRadius: '4px' }} />
+          <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none radius-md" />
 
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b-2 border-surface-700 relative z-10">
             <div className="flex items-center gap-3">
               <div
-                className="w-10 h-10 bg-gold/20 flex items-center justify-center border-l-3 border-gold"
-                style={{ borderRadius: '2px' }}
+                className="w-10 h-10 bg-gold/20 flex items-center justify-center border-l-3 border-gold radius-sm"
               >
                 <TagIcon size={20} className="text-gold" />
               </div>
@@ -156,8 +154,7 @@ export function TagManagerDialog({
                           selectedTags.includes(tag)
                             ? 'bg-accent text-white border-accent'
                             : 'bg-surface-800 text-text-secondary hover:bg-surface-700 hover:text-text-primary border-surface-600'
-                        }`}
-                        style={{ borderRadius: '2px' }}
+                        } radius-sm`}
                       >
                         {selectedTags.includes(tag) && <CheckIcon size={12} className="inline mr-1" />}
                         {tag}
@@ -185,15 +182,13 @@ export function TagManagerDialog({
                   onChange={e => setNewTag(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleAddTag()}
                   placeholder="输入标签名..."
-                  className="flex-1 px-4 py-2 bg-surface-800 border-2 border-surface-600 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
-                  style={{ borderRadius: '2px' }}
+                  className="flex-1 px-4 py-2 bg-surface-800 border-2 border-surface-600 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent radius-sm"
                   maxLength={20}
                 />
                 <button
                   onClick={handleAddTag}
                   disabled={!newTag.trim()}
-                  className="px-4 py-2 bg-accent text-white text-sm hover:bg-accent-600 disabled:opacity-50 transition-colors border-l-2 border-accent"
-                  style={{ borderRadius: '2px' }}
+                  className="px-4 py-2 bg-accent text-white text-sm hover:bg-accent-600 disabled:opacity-50 transition-colors border-l-2 border-accent radius-sm"
                 >
                   <PlusIcon size={16} />
                 </button>
@@ -205,16 +200,14 @@ export function TagManagerDialog({
           <div className="flex justify-end gap-3 px-6 py-4 border-t-2 border-surface-700 relative z-10">
             <button
               onClick={onClose}
-              className="px-4 py-2.5 text-text-secondary hover:bg-surface-800 transition-colors"
-              style={{ borderRadius: '2px' }}
+              className="px-4 py-2.5 text-text-secondary hover:bg-surface-800 transition-colors radius-sm"
             >
               取消
             </button>
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className="px-4 py-2.5 bg-accent text-white font-medium hover:bg-accent-600 disabled:opacity-50 transition-all border-l-2 border-accent"
-              style={{ borderRadius: '2px' }}
+              className="px-4 py-2.5 bg-accent text-white font-medium hover:bg-accent-600 disabled:opacity-50 transition-all border-l-2 border-accent radius-sm"
             >
               {isSaving ? '保存中...' : '保存'}
             </button>

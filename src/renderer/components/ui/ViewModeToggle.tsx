@@ -19,8 +19,7 @@ export const ViewModeToggle = memo(function ViewModeToggle({
 }: ViewModeToggleProps) {
   return (
     <div
-      className="flex items-center bg-surface-800 p-1 border border-surface-700"
-      style={{ borderRadius: '2px' }}
+      className="flex items-center bg-surface-800 p-1 border border-surface-700 radius-sm"
     >
       {modes.map(({ key, icon, label }) => (
         <button
@@ -32,8 +31,7 @@ export const ViewModeToggle = memo(function ViewModeToggle({
               ? 'bg-accent text-white'
               : 'text-text-muted hover:text-text-primary hover:bg-surface-700'
             }
-          `}
-          style={{ borderRadius: '2px' }}
+           radius-sm`}
           title={label}
           aria-pressed={current === key}
         >

@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useProcessStore } from '../stores/processStore'
-import { ProcessInfo, ProcessGroup } from '@shared/types-extended'
+import { ProcessInfo, ProcessGroup, ProcessRelationship, ProcessDeepDetail, NetworkConnectionInfo, LoadedModuleInfo } from '@shared/types-extended'
 
 const isElectron = typeof window !== 'undefined' && window.devhub !== undefined
 
@@ -12,16 +13,56 @@ export function useSystemProcesses() {
     isScanning,
     lastScanTime,
     selectedPid,
+    sortConfigs,
+    searchQuery,
+    statusFilters,
+    typeFilters,
     setProcesses,
     setGroups,
     setZombies,
     setScanning,
     selectProcess,
     removeProcess,
+    toggleSort,
+    clearSort,
+    setSearchQuery,
+    toggleStatusFilter,
+    toggleTypeFilter,
+    clearFilters,
     getProcessesByProject,
     getProcessByPid,
-    getTotalResources
-  } = useProcessStore()
+    getTotalResources,
+    getFilteredAndSortedProcesses
+  } = useProcessStore(
+    useShallow(s => ({
+      processes: s.processes,
+      groups: s.groups,
+      zombies: s.zombies,
+      isScanning: s.isScanning,
+      lastScanTime: s.lastScanTime,
+      selectedPid: s.selectedPid,
+      sortConfigs: s.sortConfigs,
+      searchQuery: s.searchQuery,
+      statusFilters: s.statusFilters,
+      typeFilters: s.typeFilters,
+      setProcesses: s.setProcesses,
+      setGroups: s.setGroups,
+      setZombies: s.setZombies,
+      setScanning: s.setScanning,
+      selectProcess: s.selectProcess,
+      removeProcess: s.removeProcess,
+      toggleSort: s.toggleSort,
+      clearSort: s.clearSort,
+      setSearchQuery: s.setSearchQuery,
+      toggleStatusFilter: s.toggleStatusFilter,
+      toggleTypeFilter: s.toggleTypeFilter,
+      clearFilters: s.clearFilters,
+      getProcessesByProject: s.getProcessesByProject,
+      getProcessByPid: s.getProcessByPid,
+      getTotalResources: s.getTotalResources,
+      getFilteredAndSortedProcesses: s.getFilteredAndSortedProcesses
+    }))
+  )
 
   const scan = useCallback(async (): Promise<ProcessInfo[]> => {
     if (!isElectron) return []
@@ -64,6 +105,60 @@ export function useSystemProcesses() {
     return cleaned
   }, [scan])
 
+  const getProcessTree = useCallback(async (pid: number): Promise<ProcessInfo[]> => {
+    if (!isElectron) return []
+    return window.devhub.systemProcess?.getProcessTree?.(pid) ?? []
+  }, [])
+
+  const getFullRelationship = useCallback(async (pid: number): Promise<ProcessRelationship | null> => {
+    if (!isElectron) return null
+    return window.devhub.systemProcess?.getFullRelationship?.(pid) ?? null
+  }, [])
+
+  const getProcessHistory = useCallback(async (pid: number): Promise<{ cpuHistory: number[]; memoryHistory: number[] }> => {
+    if (!isElectron) return { cpuHistory: [], memoryHistory: [] }
+    return window.devhub.systemProcess?.getProcessHistory?.(pid) ?? { cpuHistory: [], memoryHistory: [] }
+  }, [])
+
+  const getDeepDetail = useCallback(async (pid: number): Promise<ProcessDeepDetail | null> => {
+    if (!isElectron) return null
+    return window.devhub.systemProcess?.getDeepDetail?.(pid) ?? null
+  }, [])
+
+  const getConnections = useCallback(async (pid: number): Promise<NetworkConnectionInfo[]> => {
+    if (!isElectron) return []
+    return window.devhub.systemProcess?.getConnections?.(pid) ?? []
+  }, [])
+
+  const getEnvironment = useCallback(async (pid: number): Promise<{ variables: Record<string, string>; requiresElevation: boolean }> => {
+    if (!isElectron) return { variables: {}, requiresElevation: false }
+    return window.devhub.systemProcess?.getEnvironment?.(pid) ?? { variables: {}, requiresElevation: false }
+  }, [])
+
+  const killProcessTree = useCallback(async (pid: number): Promise<boolean> => {
+    if (!isElectron) return false
+    const success = await window.devhub.systemProcess?.killTree?.(pid) ?? false
+    if (success) {
+      removeProcess(pid)
+    }
+    return success
+  }, [removeProcess])
+
+  const setProcessPriority = useCallback(async (pid: number, priority: string): Promise<boolean> => {
+    if (!isElectron) return false
+    return window.devhub.systemProcess?.setPriority?.(pid, priority) ?? false
+  }, [])
+
+  const openFileLocation = useCallback(async (filePath: string): Promise<void> => {
+    if (!isElectron) return
+    await window.devhub.systemProcess?.openFileLocation?.(filePath)
+  }, [])
+
+  const getModules = useCallback(async (pid: number): Promise<{ modules: LoadedModuleInfo[]; requiresElevation: boolean }> => {
+    if (!isElectron) return { modules: [], requiresElevation: false }
+    return window.devhub.systemProcess?.getModules?.(pid) ?? { modules: [], requiresElevation: false }
+  }, [])
+
   useEffect(() => {
     if (!isElectron) return
 
@@ -88,6 +183,10 @@ export function useSystemProcesses() {
     isScanning,
     lastScanTime,
     selectedPid,
+    sortConfigs,
+    searchQuery,
+    statusFilters,
+    typeFilters,
     scan,
     getGroups,
     killProcess,
@@ -95,6 +194,23 @@ export function useSystemProcesses() {
     selectProcess,
     getProcessesByProject,
     getProcessByPid,
-    getTotalResources
+    getTotalResources,
+    getProcessTree,
+    getFullRelationship,
+    getProcessHistory,
+    getDeepDetail,
+    getConnections,
+    getEnvironment,
+    killProcessTree,
+    setProcessPriority,
+    openFileLocation,
+    getModules,
+    toggleSort,
+    clearSort,
+    setSearchQuery,
+    toggleStatusFilter,
+    toggleTypeFilter,
+    clearFilters,
+    getFilteredAndSortedProcesses
   }
 }

@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useWindowStore } from '../stores/windowStore'
 import { WindowInfo, WindowGroup, WindowLayout } from '@shared/types-extended'
 
@@ -24,13 +25,34 @@ export function useWindows() {
     removeLayout: removeLayoutFromStore,
     getWindowsByPid,
     getWindowsByProcess
-  } = useWindowStore()
+  } = useWindowStore(
+    useShallow(s => ({
+      windows: s.windows,
+      groups: s.groups,
+      layouts: s.layouts,
+      isScanning: s.isScanning,
+      selectedHwnd: s.selectedHwnd,
+      selectedGroupId: s.selectedGroupId,
+      setWindows: s.setWindows,
+      setGroups: s.setGroups,
+      setLayouts: s.setLayouts,
+      setScanning: s.setScanning,
+      selectWindow: s.selectWindow,
+      selectGroup: s.selectGroup,
+      addGroup: s.addGroup,
+      removeGroup: s.removeGroup,
+      addLayout: s.addLayout,
+      removeLayout: s.removeLayout,
+      getWindowsByPid: s.getWindowsByPid,
+      getWindowsByProcess: s.getWindowsByProcess
+    }))
+  )
 
-  const scan = useCallback(async (): Promise<WindowInfo[]> => {
+  const scan = useCallback(async (includeSystemWindows?: boolean): Promise<WindowInfo[]> => {
     if (!isElectron) return []
     setScanning(true)
     try {
-      const result = await window.devhub.windowManager?.scan?.()
+      const result = await window.devhub.windowManager?.scan?.(includeSystemWindows)
       const windowList = result?.data ?? []
       if (result && !result.success) {
         console.error('Window scan failed:', result.error)
@@ -94,6 +116,24 @@ export function useWindows() {
     return success
   }, [removeGroupFromStore])
 
+  const minimizeGroup = useCallback(async (groupId: string): Promise<boolean> => {
+    if (!isElectron) return false
+    const result = await window.devhub.windowManager?.minimizeGroup?.(groupId)
+    if (result && !result.success) {
+      console.error('Minimize group failed:', result.error)
+    }
+    return result?.success ?? false
+  }, [])
+
+  const closeGroup = useCallback(async (groupId: string): Promise<boolean> => {
+    if (!isElectron) return false
+    const result = await window.devhub.windowManager?.closeGroup?.(groupId)
+    if (result && !result.success) {
+      console.error('Close group failed:', result.error)
+    }
+    return result?.success ?? false
+  }, [])
+
   const saveLayout = useCallback(async (name: string, description?: string): Promise<WindowLayout | null> => {
     if (!isElectron) return null
     const layout = await window.devhub.windowManager?.saveLayout?.(name, description) ?? null
@@ -128,6 +168,92 @@ export function useWindows() {
     return success
   }, [removeLayoutFromStore])
 
+  // ==================== Advanced Window Operations ====================
+
+  const minimizeWindow = useCallback(async (hwnd: number): Promise<boolean> => {
+    if (!isElectron) return false
+    const result = await window.devhub.windowManager?.minimize?.(hwnd)
+    return result?.success ?? false
+  }, [])
+
+  const maximizeWindow = useCallback(async (hwnd: number): Promise<boolean> => {
+    if (!isElectron) return false
+    const result = await window.devhub.windowManager?.maximize?.(hwnd)
+    return result?.success ?? false
+  }, [])
+
+  const restoreWindow = useCallback(async (hwnd: number): Promise<boolean> => {
+    if (!isElectron) return false
+    const result = await window.devhub.windowManager?.restore?.(hwnd)
+    return result?.success ?? false
+  }, [])
+
+  const closeWindow = useCallback(async (hwnd: number): Promise<boolean> => {
+    if (!isElectron) return false
+    const result = await window.devhub.windowManager?.close?.(hwnd)
+    return result?.success ?? false
+  }, [])
+
+  const setWindowTopmost = useCallback(async (hwnd: number, topmost: boolean): Promise<boolean> => {
+    if (!isElectron) return false
+    const result = await window.devhub.windowManager?.setTopmost?.(hwnd, topmost)
+    return result?.success ?? false
+  }, [])
+
+  const setWindowOpacity = useCallback(async (hwnd: number, opacity: number): Promise<boolean> => {
+    if (!isElectron) return false
+    const result = await window.devhub.windowManager?.setOpacity?.(hwnd, opacity)
+    return result?.success ?? false
+  }, [])
+
+  const sendKeysToWindow = useCallback(async (hwnd: number, keys: string): Promise<boolean> => {
+    if (!isElectron) return false
+    const result = await window.devhub.windowManager?.sendKeys?.(hwnd, keys)
+    return result?.success ?? false
+  }, [])
+
+  const tileWindows = useCallback(async (hwnds: number[]): Promise<boolean> => {
+    if (!isElectron) return false
+    const result = await window.devhub.windowManager?.tileLayout?.(hwnds)
+    return result?.success ?? false
+  }, [])
+
+  const cascadeWindows = useCallback(async (hwnds: number[]): Promise<boolean> => {
+    if (!isElectron) return false
+    const result = await window.devhub.windowManager?.cascadeLayout?.(hwnds)
+    return result?.success ?? false
+  }, [])
+
+  const stackWindows = useCallback(async (hwnds: number[]): Promise<boolean> => {
+    if (!isElectron) return false
+    const result = await window.devhub.windowManager?.stackLayout?.(hwnds)
+    return result?.success ?? false
+  }, [])
+
+  const minimizeAll = useCallback(async (): Promise<boolean> => {
+    if (!isElectron) return false
+    const result = await window.devhub.windowManager?.minimizeAll?.()
+    return result?.success ?? false
+  }, [])
+
+  const restoreAll = useCallback(async (): Promise<boolean> => {
+    if (!isElectron) return false
+    const result = await window.devhub.windowManager?.restoreAll?.()
+    return result?.success ?? false
+  }, [])
+
+  const addToGroup = useCallback(async (groupId: string, hwnd: number): Promise<boolean> => {
+    if (!isElectron) return false
+    const result = await window.devhub.windowManager?.addToGroup?.(groupId, hwnd)
+    return result?.success ?? false
+  }, [])
+
+  const restoreGroup = useCallback(async (groupId: string): Promise<boolean> => {
+    if (!isElectron) return false
+    const result = await window.devhub.windowManager?.restoreGroup?.(groupId)
+    return result?.success ?? false
+  }, [])
+
   return {
     windows,
     groups,
@@ -142,6 +268,8 @@ export function useWindows() {
     createGroup,
     fetchGroups,
     removeGroup,
+    minimizeGroup,
+    closeGroup,
     saveLayout,
     restoreLayout,
     fetchLayouts,
@@ -149,6 +277,21 @@ export function useWindows() {
     selectWindow,
     selectGroup,
     getWindowsByPid,
-    getWindowsByProcess
+    getWindowsByProcess,
+    // Advanced operations
+    minimizeWindow,
+    maximizeWindow,
+    restoreWindow,
+    closeWindow,
+    setWindowTopmost,
+    setWindowOpacity,
+    sendKeysToWindow,
+    tileWindows,
+    cascadeWindows,
+    stackWindows,
+    minimizeAll,
+    restoreAll,
+    addToGroup,
+    restoreGroup
   }
 }

@@ -1,10 +1,11 @@
 import { ipcMain, BrowserWindow, dialog, shell, app } from 'electron'
 import { IPC_CHANNELS, Project } from '@shared/types'
+import { ProjectWatcher } from '../services/ProjectWatcher'
 import { AppStore } from '../store/AppStore'
 import { ProcessManager } from '../services/ProcessManager'
 import { ToolMonitor } from '../services/ToolMonitor'
 import { ProjectScanner } from '../services/ProjectScanner'
-import { validatePath, parsePackageJson } from '../utils/security'
+import { validatePath, parseProjectConfig } from '../utils/security'
 import { guardProtoPollution, validateTagOrGroup, trimTagOrGroup } from '../utils/validation'
 import { withRateLimit, RATE_LIMITS } from '../utils/rateLimiter'
 import { setupProcessHandlers, cleanupProcessHandlers } from './processHandlers'
@@ -13,14 +14,18 @@ import { setupWindowHandlers, cleanupWindowHandlers } from './windowHandlers'
 import { setupAITaskHandlers, cleanupAITaskHandlers } from './aiTaskHandlers'
 import { setupNotificationHandlers, cleanupNotificationHandlers } from './notificationHandlers'
 import { setupTaskHistoryHandlers, cleanupTaskHistoryHandlers } from './taskHistoryHandlers'
+import { setupScannerHandlers, cleanupScannerHandlers } from './scannerHandlers'
+import { BackgroundScannerManager } from '../services/BackgroundScannerManager'
 
 const projectScanner = new ProjectScanner()
+const projectWatcher = new ProjectWatcher()
 
 export function registerIpcHandlers(
   appStore: AppStore,
   processManager: ProcessManager,
   toolMonitor: ToolMonitor,
-  getMainWindow: () => BrowserWindow | null
+  getMainWindow: () => BrowserWindow | null,
+  scannerManager?: BackgroundScannerManager
 ): void {
   // ==================== Project Handlers ====================
 
@@ -43,14 +48,14 @@ export function registerIpcHandlers(
     async (_, inputPath: string) => {
       // Validate path security
       const settings = appStore.getSettings()
-      const validation = validatePath(inputPath, settings.allowedPaths)
+      const validation = validatePath(inputPath, settings.scan.allowedPaths)
 
       if (!validation.valid) {
         throw new Error(validation.error)
       }
 
-      // Parse package.json
-      const pkgInfo = parsePackageJson(validation.normalized!)
+      // Parse project configuration (multi-ecosystem support)
+      const pkgInfo = parseProjectConfig(validation.normalized!)
 
       if (!pkgInfo.valid) {
         throw new Error(pkgInfo.error)
@@ -62,12 +67,26 @@ export function registerIpcHandlers(
         throw new Error('Project already exists')
       }
 
+      // Determine default script based on project type
+      const scripts = pkgInfo.scripts || []
+      let defaultScript = scripts[0] || 'start'
+      if (pkgInfo.projectType === 'npm' || pkgInfo.projectType === 'pnpm' || pkgInfo.projectType === 'yarn') {
+        defaultScript = scripts.includes('dev') ? 'dev' : scripts[0] || 'start'
+      } else if (pkgInfo.projectType === 'rust') {
+        defaultScript = 'run'
+      } else if (pkgInfo.projectType === 'go') {
+        defaultScript = 'run'
+      } else if (pkgInfo.projectType === 'java-maven' || pkgInfo.projectType === 'java-gradle') {
+        defaultScript = scripts.includes('build') ? 'build' : scripts[0] || 'build'
+      }
+
       // Add project
       const project = appStore.addProject({
         name: pkgInfo.name!,
         path: validation.normalized!,
-        scripts: pkgInfo.scripts || [],
-        defaultScript: pkgInfo.scripts?.includes('dev') ? 'dev' : pkgInfo.scripts?.[0] || 'start',
+        projectType: pkgInfo.projectType || 'unknown',
+        scripts,
+        defaultScript,
         tags: [],
         status: 'stopped'
       })
@@ -151,27 +170,137 @@ export function registerIpcHandlers(
   })
 
   // Forward logs to renderer
+  // Track active log subscriptions per webContents to prevent leaks on project switch
+  const activeLogUnsubscribes = new WeakMap<Electron.WebContents, () => void>()
+
   ipcMain.on('log:subscribe', (event, projectId: string) => {
+    // Clean up previous subscription from the same sender (project switch)
+    const prevUnsubscribe = activeLogUnsubscribes.get(event.sender)
+    if (prevUnsubscribe) {
+      prevUnsubscribe()
+    }
+
     const unsubscribe = processManager.onLog(projectId, (entry) => {
-      event.sender.send(IPC_CHANNELS.LOG_ENTRY, entry)
+      if (!event.sender.isDestroyed()) {
+        event.sender.send(IPC_CHANNELS.LOG_ENTRY, entry)
+      }
     })
 
+    activeLogUnsubscribes.set(event.sender, unsubscribe)
+
     // Clean up on window close
-    event.sender.on('destroyed', unsubscribe)
+    event.sender.on('destroyed', () => {
+      unsubscribe()
+      activeLogUnsubscribes.delete(event.sender)
+    })
   })
 
   // ==================== Settings Handlers ====================
 
-  // 允许更新的设置字段白名单
-  const ALLOWED_SETTINGS_FIELDS = [
-    'autoStartOnBoot',
-    'minimizeToTray',
-    'notificationEnabled',
-    'checkInterval',
-    'allowedPaths',
-    'scanDrives',
-    'theme'
+  // 允许更新的顶级设置分类白名单
+  const ALLOWED_SETTINGS_CATEGORIES = [
+    'appearance', 'scan', 'process', 'notification', 'window', 'advanced', 'firstLaunchDone'
   ] as const
+
+  // 每个分类允许的字段白名单
+  const ALLOWED_CATEGORY_FIELDS: Record<string, readonly string[]> = {
+    appearance: ['theme', 'fontSize', 'sidebarPosition', 'compactMode', 'enableAnimations', 'informationDensity'],
+    scan: ['scanDrives', 'allowedPaths', 'excludePaths', 'checkInterval', 'maxScanDepth', 'fileTypeFilters'],
+    process: ['enabled', 'scanInterval', 'autoCleanZombies', 'zombieThresholdMinutes', 'cpuWarningThreshold', 'memoryWarningThresholdMB', 'whitelist', 'blacklist'],
+    notification: ['enabled', 'typeToggles', 'sound', 'persistent', 'quietHoursEnabled', 'quietHoursStart', 'quietHoursEnd'],
+    window: ['enabled', 'autoGroupStrategy', 'saveLayoutOnExit', 'snapToEdges'],
+    advanced: ['autoStartOnBoot', 'minimizeToTray', 'dataStoragePath', 'logLevel', 'developerMode'],
+  }
+
+  /**
+   * Recursively filter settings object through the whitelist.
+   * Only allows known categories and known fields within each category.
+   */
+  function sanitizeSettingsUpdate(updates: Record<string, unknown>): Record<string, unknown> {
+    const sanitized: Record<string, unknown> = {}
+    for (const key of Object.keys(updates)) {
+      if (!ALLOWED_SETTINGS_CATEGORIES.includes(key as typeof ALLOWED_SETTINGS_CATEGORIES[number])) {
+        continue
+      }
+      if (key === 'firstLaunchDone') {
+        if (typeof updates[key] === 'boolean') {
+          sanitized[key] = updates[key]
+        }
+        continue
+      }
+      const categoryValue = updates[key]
+      if (typeof categoryValue !== 'object' || categoryValue === null || Array.isArray(categoryValue)) {
+        continue
+      }
+      guardProtoPollution(categoryValue)
+      const allowedFields = ALLOWED_CATEGORY_FIELDS[key]
+      if (!allowedFields) continue
+      const sanitizedCategory: Record<string, unknown> = {}
+      for (const field of Object.keys(categoryValue as Record<string, unknown>)) {
+        if (allowedFields.includes(field)) {
+          sanitizedCategory[field] = (categoryValue as Record<string, unknown>)[field]
+        }
+      }
+      if (Object.keys(sanitizedCategory).length > 0) {
+        sanitized[key] = sanitizedCategory
+      }
+    }
+    return sanitized
+  }
+
+  /**
+   * Validate specific field types within settings categories.
+   */
+  function validateSettingsFields(sanitized: Record<string, unknown>): void {
+    const appearance = sanitized.appearance as Record<string, unknown> | undefined
+    if (appearance) {
+      if ('theme' in appearance && !['constructivism', 'modern-light', 'warm-light', 'cyberpunk', 'swiss', 'dark', 'light'].includes(appearance.theme as string)) {
+        throw new Error('theme must be a valid theme name')
+      }
+      if ('fontSize' in appearance && !['small', 'medium', 'large'].includes(appearance.fontSize as string)) {
+        throw new Error('fontSize must be small, medium, or large')
+      }
+      if ('sidebarPosition' in appearance && !['left', 'right'].includes(appearance.sidebarPosition as string)) {
+        throw new Error('sidebarPosition must be left or right')
+      }
+    }
+    const scan = sanitized.scan as Record<string, unknown> | undefined
+    if (scan) {
+      if ('checkInterval' in scan && (typeof scan.checkInterval !== 'number' || scan.checkInterval < 500 || scan.checkInterval > 60000)) {
+        throw new Error('checkInterval must be a number between 500 and 60000')
+      }
+      if ('scanDrives' in scan && !Array.isArray(scan.scanDrives)) {
+        throw new Error('scanDrives must be an array')
+      }
+      if ('maxScanDepth' in scan && (typeof scan.maxScanDepth !== 'number' || scan.maxScanDepth < 1 || scan.maxScanDepth > 20)) {
+        throw new Error('maxScanDepth must be a number between 1 and 20')
+      }
+    }
+    const process = sanitized.process as Record<string, unknown> | undefined
+    if (process) {
+      if ('scanInterval' in process && (typeof process.scanInterval !== 'number' || process.scanInterval < 1000 || process.scanInterval > 120000)) {
+        throw new Error('scanInterval must be a number between 1000 and 120000')
+      }
+      if ('cpuWarningThreshold' in process && (typeof process.cpuWarningThreshold !== 'number' || process.cpuWarningThreshold < 10 || process.cpuWarningThreshold > 100)) {
+        throw new Error('cpuWarningThreshold must be a number between 10 and 100')
+      }
+      if ('memoryWarningThresholdMB' in process && (typeof process.memoryWarningThresholdMB !== 'number' || process.memoryWarningThresholdMB < 64 || process.memoryWarningThresholdMB > 32768)) {
+        throw new Error('memoryWarningThresholdMB must be a number between 64 and 32768')
+      }
+    }
+    const advanced = sanitized.advanced as Record<string, unknown> | undefined
+    if (advanced) {
+      if ('logLevel' in advanced && !['debug', 'info', 'warn', 'error'].includes(advanced.logLevel as string)) {
+        throw new Error('logLevel must be debug, info, warn, or error')
+      }
+    }
+    const windowSettings = sanitized.window as Record<string, unknown> | undefined
+    if (windowSettings) {
+      if ('autoGroupStrategy' in windowSettings && !['none', 'by-project', 'by-type'].includes(windowSettings.autoGroupStrategy as string)) {
+        throw new Error('autoGroupStrategy must be none, by-project, or by-type')
+      }
+    }
+  }
 
   ipcMain.handle(IPC_CHANNELS.SETTINGS_GET, withRateLimit(
     IPC_CHANNELS.SETTINGS_GET, RATE_LIMITS.QUERY,
@@ -191,24 +320,9 @@ export function registerIpcHandlers(
       // 防止原型污染
       guardProtoPollution(updates)
 
-      // 字段白名单过滤
-      const sanitized: Record<string, unknown> = {}
-      for (const key of Object.keys(updates)) {
-        if (ALLOWED_SETTINGS_FIELDS.includes(key as typeof ALLOWED_SETTINGS_FIELDS[number])) {
-          sanitized[key] = (updates as Record<string, unknown>)[key]
-        }
-      }
-
-      // 验证具体字段类型
-      if ('checkInterval' in sanitized && typeof sanitized.checkInterval !== 'number') {
-        throw new Error('checkInterval must be a number')
-      }
-      if ('theme' in sanitized && !['constructivism', 'modern-light', 'warm-light', 'dark', 'light'].includes(sanitized.theme as string)) {
-        throw new Error('theme must be a valid theme name')
-      }
-      if ('scanDrives' in sanitized && !Array.isArray(sanitized.scanDrives)) {
-        throw new Error('scanDrives must be an array')
-      }
+      // 白名单过滤 + 字段验证
+      const sanitized = sanitizeSettingsUpdate(updates as Record<string, unknown>)
+      validateSettingsFields(sanitized)
 
       appStore.updateSettings(sanitized)
       return appStore.getSettings()
@@ -261,6 +375,28 @@ export function registerIpcHandlers(
     }
     app.quit()
   })
+
+  // ==================== Project Git & Dependency Handlers ====================
+
+  ipcMain.handle('project:get-git-info', withRateLimit(
+    'project:get-git-info', RATE_LIMITS.QUERY,
+    async (_, projectPath: unknown) => {
+      if (typeof projectPath !== 'string') {
+        throw new Error('Project path must be a string')
+      }
+      return projectScanner.getGitInfo(projectPath)
+    }
+  ))
+
+  ipcMain.handle('project:get-dependencies', withRateLimit(
+    'project:get-dependencies', RATE_LIMITS.QUERY,
+    async (_, projectPath: unknown) => {
+      if (typeof projectPath !== 'string') {
+        throw new Error('Project path must be a string')
+      }
+      return projectScanner.getDependencies(projectPath)
+    }
+  ))
 
   // ==================== Dialog Handlers ====================
 
@@ -335,7 +471,7 @@ export function registerIpcHandlers(
 
       // 路径安全验证
       const settings = appStore.getSettings()
-      const validation = validatePath(inputPath, settings.allowedPaths)
+      const validation = validatePath(inputPath, settings.scan.allowedPaths)
 
       if (!validation.valid) {
         throw new Error(validation.error || 'Invalid path')
@@ -357,14 +493,14 @@ export function registerIpcHandlers(
         if (typeof scanPath !== 'string') {
           throw new Error('Scan path must be a string')
         }
-        const validation = validatePath(scanPath, settings.allowedPaths)
+        const validation = validatePath(scanPath, settings.scan.allowedPaths)
         if (!validation.valid) {
           throw new Error(validation.error || 'Invalid scan path')
         }
         return projectScanner.scanDirectory(validation.normalized!)
       }
 
-      return projectScanner.scanCommonLocations(settings.scanDrives)
+      return projectScanner.scanCommonLocations(settings.scan.scanDrives)
     }
   ))
 
@@ -376,7 +512,7 @@ export function registerIpcHandlers(
       }
 
       const settings = appStore.getSettings()
-      const validation = validatePath(dirPath, settings.allowedPaths)
+      const validation = validatePath(dirPath, settings.scan.allowedPaths)
 
       if (!validation.valid) {
         throw new Error(validation.error || 'Invalid directory path')
@@ -391,7 +527,7 @@ export function registerIpcHandlers(
     'projects:discover', RATE_LIMITS.SCAN,
     async () => {
       const settings = appStore.getSettings()
-      return projectScanner.discoverProjectsIntelligently(settings.scanDrives)
+      return projectScanner.discoverProjectsIntelligently(settings.scan.scanDrives)
     }
   ))
 
@@ -400,6 +536,63 @@ export function registerIpcHandlers(
     'system:get-drives', RATE_LIMITS.SCAN,
     async () => {
       return projectScanner.getAvailableDrives()
+    }
+  ))
+
+  // ==================== Project Watcher ====================
+
+  // Set up watcher event forwarding to renderer
+  projectWatcher.onChange((events) => {
+    const mainWin = getMainWindow()
+    if (mainWin && !mainWin.isDestroyed()) {
+      mainWin.webContents.send(IPC_CHANNELS.PROJECTS_WATCHER_DETECTED, events)
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.PROJECTS_WATCHER_START, withRateLimit(
+    IPC_CHANNELS.PROJECTS_WATCHER_START, RATE_LIMITS.ACTION,
+    async (_, watchPaths?: unknown) => {
+      const settings = appStore.getSettings()
+
+      let paths: string[]
+      if (watchPaths !== undefined) {
+        // Validate user-supplied paths
+        if (!Array.isArray(watchPaths)) {
+          throw new Error('watchPaths must be an array')
+        }
+        const validated: string[] = []
+        for (const p of watchPaths) {
+          if (typeof p !== 'string') {
+            throw new Error('Each watchPath must be a string')
+          }
+          const result = validatePath(p, settings.scan.allowedPaths)
+          if (!result.valid) {
+            throw new Error(`Invalid watch path "${p}": ${result.error}`)
+          }
+          validated.push(result.normalized!)
+        }
+        paths = validated
+      } else {
+        paths = settings.scan.scanDrives.map(d => `${d}:\\`)
+      }
+
+      await projectWatcher.start(paths)
+      return { running: true }
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS.PROJECTS_WATCHER_STOP, withRateLimit(
+    IPC_CHANNELS.PROJECTS_WATCHER_STOP, RATE_LIMITS.ACTION,
+    async () => {
+      await projectWatcher.stop()
+      return { running: false }
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS.PROJECTS_WATCHER_STATUS, withRateLimit(
+    IPC_CHANNELS.PROJECTS_WATCHER_STATUS, RATE_LIMITS.QUERY,
+    () => {
+      return { running: projectWatcher.isRunning }
     }
   ))
 
@@ -416,11 +609,14 @@ export function registerIpcHandlers(
     if (mainWin) {
       try {
         setupProcessHandlers(mainWin, appStore)
-        setupPortHandlers(mainWin)
+        setupPortHandlers(mainWin, undefined, scannerManager?.getCache())
         setupWindowHandlers(mainWin)
         setupAITaskHandlers(mainWin)
         setupNotificationHandlers(mainWin)
         setupTaskHistoryHandlers(mainWin)
+        if (scannerManager) {
+          setupScannerHandlers(mainWin, scannerManager)
+        }
         extendedHandlersInitialized = true
       } catch (error) {
         console.error('Failed to initialize extended handlers:', error)
@@ -438,11 +634,15 @@ export function registerIpcHandlers(
   initExtendedHandlers()
 }
 
-export function cleanupIpcHandlers(): void {
+export async function cleanupIpcHandlers(): Promise<void> {
+  projectWatcher.clearChangeCallback()
+  await projectWatcher.stop()
+  ipcMain.removeAllListeners('log:subscribe')
   cleanupProcessHandlers()
   cleanupPortHandlers()
   cleanupWindowHandlers()
   cleanupAITaskHandlers()
   cleanupNotificationHandlers()
   cleanupTaskHistoryHandlers()
+  cleanupScannerHandlers()
 }

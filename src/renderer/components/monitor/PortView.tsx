@@ -1,6 +1,7 @@
-import { useEffect, memo, useState } from 'react'
+import { useEffect, memo, useState, useMemo, useCallback } from 'react'
 import { usePorts } from '../../hooks/usePorts'
 import { PortInfo, COMMON_DEV_PORTS } from '@shared/types-extended'
+import { ProcessCardErrorBoundary } from './ProcessCardErrorBoundary'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { StatCard } from '../ui/StatCard'
 import { ViewModeToggle } from '../ui/ViewModeToggle'
@@ -14,8 +15,34 @@ import {
   SearchIcon,
   GridIcon,
   ListIcon,
-  AlertIcon
+  AlertIcon,
+  NetworkIcon
 } from '../icons'
+import { PortRelationshipGraph } from './PortRelationshipGraph'
+import { PortFocusPanel } from './PortFocusPanel'
+import { getPortLabel } from '../../utils/portLabels'
+import { TruncatedText } from '../ui/TruncatedText'
+
+// ============ Conflict detection helper ============
+
+/** Find ports where multiple distinct PIDs are LISTENING on the same port number. */
+function getConflictingPorts(ports: PortInfo[]): Set<number> {
+  const listenMap = new Map<number, Set<number>>()
+  for (const p of ports) {
+    if (p.state !== 'LISTENING') continue
+    const pids = listenMap.get(p.port)
+    if (pids) {
+      pids.add(p.pid)
+    } else {
+      listenMap.set(p.port, new Set([p.pid]))
+    }
+  }
+  const conflicting = new Set<number>()
+  for (const [port, pids] of listenMap) {
+    if (pids.size > 1) conflicting.add(port)
+  }
+  return conflicting
+}
 
 // 端口卡片组件
 interface PortCardProps {
@@ -23,13 +50,15 @@ interface PortCardProps {
   index: number
   isCommon: boolean
   isSelected: boolean
+  hasConflict: boolean
   onSelect: () => void
   onRelease: () => void
 }
 
-const PortCard = memo(function PortCard({ port, index, isCommon, isSelected, onSelect, onRelease }: PortCardProps) {
+const PortCard = memo(function PortCard({ port, index, isCommon, isSelected, hasConflict, onSelect, onRelease }: PortCardProps) {
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
+  const portLabel = getPortLabel(port.port)
 
   const stateConfig = {
     LISTENING: { color: 'bg-success', text: '监听中', textColor: 'text-success', borderColor: 'border-success' },
@@ -65,34 +94,42 @@ const PortCard = memo(function PortCard({ port, index, isCommon, isSelected, onS
           {/* Port Number */}
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className={`w-14 h-14 bg-surface-700 flex items-center justify-center border-l-3 ${stateConfig.borderColor}`} style={{ borderRadius: '2px' }}>
-                <span className="text-2xl font-bold text-accent font-mono">:{port.port}</span>
+              <div className={`min-w-[4.5rem] h-14 px-2 bg-surface-700 flex items-center justify-center border-l-3 ${hasConflict ? 'border-error' : stateConfig.borderColor} radius-sm`}>
+                <span className="text-2xl font-bold text-accent font-mono whitespace-nowrap">:{port.port}</span>
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <span className={`status-badge ${port.state === 'LISTENING' ? 'status-badge-running' : ''}`}>
-                    <span className={`w-1.5 h-1.5 ${stateConfig.color}`} style={{ borderRadius: '1px' }} />
+                    <span className={`w-1.5 h-1.5 ${stateConfig.color} radius-sm`} />
                     {stateConfig.text}
                   </span>
                   {isCommon && (
-                    <span className="text-[10px] bg-info/10 text-info px-2 py-0.5 border-l-2 border-info" style={{ borderRadius: '2px' }}>
+                    <span className="text-[10px] bg-info/10 text-info px-2 py-0.5 border-l-2 border-info radius-sm">
                       常用
                     </span>
                   )}
+                  {hasConflict && (
+                    <span className="text-[10px] bg-error/10 text-error px-2 py-0.5 border-l-2 border-error radius-sm">
+                      冲突
+                    </span>
+                  )}
                 </div>
-                <span className="text-xs text-text-muted font-mono uppercase">{port.protocol}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-text-muted font-mono uppercase">{port.protocol}</span>
+                  {portLabel && <span className="text-[9px] text-text-muted">{portLabel}</span>}
+                </div>
               </div>
             </div>
           </div>
 
           {/* Process Info */}
-          <div className="bg-surface-900 p-3 mb-4 border-l-2 border-surface-600" style={{ borderRadius: '2px' }}>
+          <div className="bg-surface-900 p-3 mb-4 border-l-2 border-surface-600 radius-sm">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-surface-700 flex items-center justify-center" style={{ borderRadius: '2px' }}>
+              <div className="w-8 h-8 bg-surface-700 flex items-center justify-center radius-sm">
                 <ProcessIcon size={16} className="text-text-muted" />
               </div>
               <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-bold text-text-primary truncate">{port.processName}</h4>
+                <TruncatedText text={port.processName} className="text-sm font-bold text-text-primary" />
                 <span className="text-xs text-text-muted font-mono">PID: {port.pid}</span>
               </div>
             </div>
@@ -101,10 +138,20 @@ const PortCard = memo(function PortCard({ port, index, isCommon, isSelected, onS
           {/* Address */}
           <div className="mb-4">
             <div className="text-[10px] text-text-tertiary uppercase tracking-wider mb-1">本地地址</div>
-            <div className="text-xs text-text-secondary font-mono bg-surface-800 px-2 py-1 border-l-2 border-surface-600 truncate" style={{ borderRadius: '2px' }} title={port.localAddress}>
-              {port.localAddress}
+            <div className="bg-surface-800 px-2 py-1 border-l-2 border-surface-600 radius-sm">
+              <TruncatedText text={port.localAddress} className="text-xs text-text-secondary font-mono" />
             </div>
           </div>
+
+          {/* Foreign Address - show for ESTABLISHED connections */}
+          {port.foreignAddress && port.foreignAddress !== '*:*' && port.foreignAddress !== '0.0.0.0:0' && (
+            <div className="mb-4">
+              <div className="text-[10px] text-text-tertiary uppercase tracking-wider mb-1">远程地址</div>
+              <div className="bg-surface-800 px-2 py-1 border-l-2 border-warning/40 radius-sm">
+                <TruncatedText text={port.foreignAddress} className="text-xs text-warning/80 font-mono" />
+              </div>
+            </div>
+          )}
 
           {/* Action Button */}
           <div className={`
@@ -148,12 +195,14 @@ interface PortItemProps {
   index: number
   isSelected: boolean
   isCommon: boolean
+  hasConflict: boolean
   onSelect: () => void
   onRelease: () => void
 }
 
-const PortItem = memo(function PortItem({ port, index, isSelected, isCommon, onSelect, onRelease }: PortItemProps) {
+const PortItem = memo(function PortItem({ port, index, isSelected, isCommon, hasConflict, onSelect, onRelease }: PortItemProps) {
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
+  const portLabel = getPortLabel(port.port)
 
   const stateConfig = {
     LISTENING: { color: 'bg-success', text: '监听中', textColor: 'text-success' },
@@ -171,7 +220,9 @@ const PortItem = memo(function PortItem({ port, index, isSelected, isCommon, onS
           border-l-3 bg-surface-800
           ${isSelected
             ? 'border-accent bg-accent/10'
-            : 'border-transparent hover:border-surface-500 hover:bg-surface-700'
+            : hasConflict
+              ? 'border-error bg-error/5'
+              : 'border-transparent hover:border-surface-500 hover:bg-surface-700'
           }
         `}
         style={{ borderRadius: '2px', animationDelay: `${index * 40}ms` }}
@@ -179,32 +230,48 @@ const PortItem = memo(function PortItem({ port, index, isSelected, isCommon, onS
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 min-w-0 flex-1">
             <div className="relative">
-              <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 ${stateConfig.color} ${port.state === 'LISTENING' ? 'status-dot-running' : ''}`} style={{ borderRadius: '1px' }} />
-              <div className="w-12 h-12 bg-surface-700 flex items-center justify-center border-l-2 border-accent" style={{ borderRadius: '2px' }}>
-                <span className="text-lg font-bold text-accent font-mono">:{port.port}</span>
+              <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 ${hasConflict ? 'bg-error' : stateConfig.color} ${port.state === 'LISTENING' && !hasConflict ? 'status-dot-running' : ''} radius-sm`} />
+              <div className={`min-w-[3.5rem] h-12 px-1 bg-surface-700 flex items-center justify-center border-l-2 ${hasConflict ? 'border-error' : 'border-accent'} radius-sm`}>
+                <span className="text-lg font-bold text-accent font-mono whitespace-nowrap">:{port.port}</span>
               </div>
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm font-bold text-text-primary truncate">
-                  {port.processName}
-                </span>
-                <span className="text-xs text-text-muted font-mono bg-surface-700 px-2 py-0.5" style={{ borderRadius: '2px' }}>
+                <TruncatedText text={port.processName} className="text-sm font-bold text-text-primary" maxWidth="180px" />
+                <span className="text-xs text-text-muted font-mono bg-surface-700 px-2 py-0.5 radius-sm">
                   PID: {port.pid}
                 </span>
-                {isCommon && (
-                  <span className="text-[10px] bg-info/10 text-info px-1.5 py-0.5 border-l-2 border-info" style={{ borderRadius: '2px' }}>
+                {portLabel && (
+                  <span className="text-[9px] text-text-muted bg-surface-700 px-1.5 py-0.5 radius-sm">
+                    {portLabel}
+                  </span>
+                )}
+                {isCommon && !portLabel && (
+                  <span className="text-[10px] bg-info/10 text-info px-1.5 py-0.5 border-l-2 border-info radius-sm">
                     常用
                   </span>
                 )}
+                {hasConflict && (
+                  <span className="text-[10px] bg-error/10 text-error px-1.5 py-0.5 border-l-2 border-error font-bold uppercase tracking-wider radius-sm">
+                    冲突
+                  </span>
+                )}
               </div>
-              <p className="text-xs text-text-tertiary font-mono">{port.localAddress}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-text-tertiary font-mono">{port.localAddress}</p>
+                {port.foreignAddress && port.foreignAddress !== '*:*' && port.foreignAddress !== '0.0.0.0:0' && (
+                  <>
+                    <span className="text-[10px] text-text-muted">&rarr;</span>
+                    <TruncatedText text={port.foreignAddress} className="text-xs text-warning/70 font-mono" maxWidth="200px" />
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
           <div className="flex items-center gap-4 flex-shrink-0">
             <span className={`status-badge ${port.state === 'LISTENING' ? 'status-badge-running' : ''}`}>
-              <span className={`w-1.5 h-1.5 ${stateConfig.color}`} style={{ borderRadius: '1px' }} />
+              <span className={`w-1.5 h-1.5 ${stateConfig.color} radius-sm`} />
               {stateConfig.text}
             </span>
             <span className="text-xs text-text-muted font-mono uppercase">{port.protocol}</span>
@@ -247,6 +314,7 @@ interface QuickPortIndicatorProps {
 
 const QuickPortIndicator = memo(function QuickPortIndicator({ portNum, portInfo, onSelect }: QuickPortIndicatorProps) {
   const isInUse = !!portInfo
+  const label = getPortLabel(portNum)
 
   return (
     <button
@@ -258,13 +326,13 @@ const QuickPortIndicator = memo(function QuickPortIndicator({ portNum, portInfo,
           ? 'bg-error/10 text-error border-l-2 border-error hover:bg-error/20 cursor-pointer'
           : 'bg-success/5 text-success/60 border-l-2 border-success/30 cursor-default'
         }
-      `}
-      style={{ borderRadius: '2px' }}
-      title={isInUse ? `被 ${portInfo.processName} 占用` : '可用'}
+       radius-sm`}
+      title={isInUse ? `${label ? label + ' - ' : ''}被 ${portInfo.processName ?? 'unknown'} 占用` : `${label ?? ''} 可用`}
     >
-      :{portNum}
+      <span>:{portNum}</span>
+      {label && <span className="text-[8px] ml-1 opacity-60 font-normal">{label}</span>}
       {isInUse && (
-        <span className="absolute -top-1 -right-1 w-2 h-2 bg-error status-dot-running" style={{ borderRadius: '1px' }} />
+        <span className="absolute -top-1 -right-1 w-2 h-2 bg-error status-dot-running radius-sm" />
       )}
     </button>
   )
@@ -279,12 +347,33 @@ export function PortView() {
     scan,
     releasePort,
     selectPort,
-    getActiveConflicts
+    getActiveConflicts,
+    getPortFocusData,
+    getPortDetailIncremental,
+    cancelPortQuery
   } = usePorts()
 
-  const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards')
+  const [viewMode, setViewMode] = useState<'cards' | 'list' | 'relationship'>('cards')
   const [filter, setFilter] = useState<'all' | 'common' | 'listening'>('all')
   const [searchPort, setSearchPort] = useState('')
+  const [focusedPort, setFocusedPort] = useState<PortInfo | null>(null)
+
+  // Handle graph node click -> open focus panel for port nodes
+  const handleGraphNodeClick = useCallback((nodeData: { type: string; port?: number; pid?: number; hwnd?: number }) => {
+    // Match the new ReactFlow node types: 'flowPort' / 'flowProcess' / 'flowWindow' (legacy lower-case accepted)
+    if ((nodeData.type === 'flowPort' || nodeData.type.startsWith('port')) && nodeData.port !== undefined) {
+      const portInfo = ports.find(p => p.port === nodeData.port)
+      if (portInfo) {
+        setFocusedPort(portInfo)
+        selectPort(portInfo.port)
+      }
+    }
+  }, [ports, selectPort])
+
+  // Close focus panel
+  const closeFocusPanel = useCallback(() => {
+    setFocusedPort(null)
+  }, [])
 
   useEffect(() => {
     scan()
@@ -306,13 +395,15 @@ export function PortView() {
     }
   })
 
-  const activeConflicts = getActiveConflicts()
+  const activeConflicts = useMemo(() => getActiveConflicts(), [getActiveConflicts])
 
-  const portsByState = {
+  const conflictingPortNumbers = useMemo(() => getConflictingPorts(ports), [ports])
+
+  const portsByState = useMemo(() => ({
     listening: ports.filter(p => p.state === 'LISTENING').length,
     established: ports.filter(p => p.state === 'ESTABLISHED').length,
     other: ports.filter(p => !['LISTENING', 'ESTABLISHED'].includes(p.state)).length
-  }
+  }), [ports])
 
   return (
     <div className="h-full flex flex-col bg-surface-950">
@@ -323,7 +414,7 @@ export function PortView() {
 
         <div className="flex items-center justify-between relative z-10">
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-surface-700 flex items-center justify-center border-l-3 border-accent" style={{ borderRadius: '2px' }}>
+            <div className="w-10 h-10 bg-surface-700 flex items-center justify-center border-l-3 border-accent radius-sm">
               <PortIcon size={20} className="text-accent" />
             </div>
             <div>
@@ -354,7 +445,7 @@ export function PortView() {
             </div>
 
             {/* Filter */}
-            <div className="flex items-center bg-surface-800 p-1 border border-surface-700" style={{ borderRadius: '2px' }}>
+            <div className="flex items-center bg-surface-800 p-1 border border-surface-700 radius-sm">
               {[
                 { key: 'all', label: '全部' },
                 { key: 'common', label: '常用' },
@@ -369,8 +460,7 @@ export function PortView() {
                       ? 'bg-accent text-white'
                       : 'text-text-muted hover:text-text-primary hover:bg-surface-700'
                     }
-                  `}
-                  style={{ borderRadius: '2px' }}
+                   radius-sm`}
                 >
                   {label}
                 </button>
@@ -381,7 +471,8 @@ export function PortView() {
             <ViewModeToggle
               modes={[
                 { key: 'cards', icon: <GridIcon size={16} />, label: '卡片' },
-                { key: 'list', icon: <ListIcon size={16} />, label: '列表' }
+                { key: 'list', icon: <ListIcon size={16} />, label: '列表' },
+                { key: 'relationship', icon: <NetworkIcon size={16} />, label: '关系图' }
               ]}
               current={viewMode}
               onChange={(mode) => setViewMode(mode as typeof viewMode)}
@@ -403,7 +494,7 @@ export function PortView() {
       </div>
 
       {/* Hero Stats */}
-      <div className="flex-shrink-0 px-5 py-4 grid grid-cols-4 gap-4 border-b border-surface-700/50 bg-surface-900/50">
+      <div className="flex-shrink-0 px-5 py-4 stat-grid border-b border-surface-700/50 bg-surface-900/50">
         <StatCard
           icon={<PortIcon size={20} className="text-accent" />}
           label="活跃端口"
@@ -451,61 +542,122 @@ export function PortView() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-5">
-        {viewMode === 'cards' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredPorts.map((port, index) => (
-              <PortCard
-                key={`${port.port}-${port.pid}`}
-                port={port}
-                index={index}
-                isCommon={COMMON_DEV_PORTS.includes(port.port as typeof COMMON_DEV_PORTS[number])}
-                isSelected={selectedPort === port.port}
-                onSelect={() => selectPort(port.port)}
-                onRelease={() => releasePort(port.port)}
-              />
-            ))}
+      {viewMode === 'relationship' ? (
+        <div className="flex-1 overflow-hidden flex">
+          <div className="flex-1">
+            <PortRelationshipGraph
+              focusPort={selectedPort}
+              onNodeClick={handleGraphNodeClick}
+            />
           </div>
-        ) : (
-          <div className="space-y-2">
-            {filteredPorts.map((port, index) => (
-              <PortItem
-                key={`${port.port}-${port.pid}`}
-                port={port}
-                index={index}
-                isSelected={selectedPort === port.port}
-                isCommon={COMMON_DEV_PORTS.includes(port.port as typeof COMMON_DEV_PORTS[number])}
-                onSelect={() => selectPort(port.port)}
-                onRelease={() => releasePort(port.port)}
-              />
-            ))}
-          </div>
-        )}
+          {focusedPort && (
+            <PortFocusPanel
+              port={focusedPort}
+              onClose={closeFocusPanel}
+              getPortFocusData={getPortFocusData}
+              getPortDetailIncremental={getPortDetailIncremental}
+              cancelPortQuery={cancelPortQuery}
+              allPorts={ports}
+              onFocusProcess={(pid) => {
+                // Navigate to process view (placeholder — could emit event)
+                // TODO: Navigate to process view when cross-tab navigation is implemented
+void pid
+              }}
+              onViewInGraph={(port) => {
+                selectPort(port)
+              }}
+            />
+          )}
+        </div>
+      ) : (
+        <div className="flex-1 flex">
+          <div className="flex-1 overflow-y-auto p-5">
+            {viewMode === 'cards' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredPorts.map((port, index) => (
+                  <ProcessCardErrorBoundary key={`${port.port}-${port.pid}`} pid={port.pid} processName={port.processName}>
+                    <PortCard
+                      port={port}
+                      index={index}
+                      isCommon={COMMON_DEV_PORTS.includes(port.port as typeof COMMON_DEV_PORTS[number])}
+                      isSelected={selectedPort === port.port}
+                      hasConflict={conflictingPortNumbers.has(port.port)}
+                      onSelect={() => {
+                        selectPort(port.port)
+                        setFocusedPort(port)
+                      }}
+                      onRelease={() => releasePort(port.port)}
+                    />
+                  </ProcessCardErrorBoundary>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filteredPorts.map((port, index) => (
+                  <ProcessCardErrorBoundary key={`${port.port}-${port.pid}`} pid={port.pid} processName={port.processName}>
+                    <PortItem
+                      port={port}
+                      index={index}
+                      isSelected={selectedPort === port.port}
+                      isCommon={COMMON_DEV_PORTS.includes(port.port as typeof COMMON_DEV_PORTS[number])}
+                      hasConflict={conflictingPortNumbers.has(port.port)}
+                      onSelect={() => {
+                        selectPort(port.port)
+                        setFocusedPort(port)
+                      }}
+                      onRelease={() => releasePort(port.port)}
+                    />
+                  </ProcessCardErrorBoundary>
+                ))}
+              </div>
+            )}
 
-        {isScanning && filteredPorts.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
-            <LoadingSpinner size="md" className="mb-4" />
-            <p className="text-text-secondary">正在扫描端口...</p>
-          </div>
-        )}
+            {isScanning && filteredPorts.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
+                <LoadingSpinner size="md" className="mb-4" />
+                <p className="text-text-secondary">正在扫描端口...</p>
+              </div>
+            )}
 
-        {filteredPorts.length === 0 && !isScanning && (
-          <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
-            <div className="w-20 h-20 bg-surface-800 flex items-center justify-center mb-6 border-l-3 border-accent" style={{ borderRadius: '4px' }}>
-              <PortIcon size={40} className="text-text-muted" />
-            </div>
-            <h3
-              className="text-lg font-bold text-text-primary mb-2 uppercase tracking-wider"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              {searchPort ? '未找到匹配的端口' : '没有检测到使用中的端口'}
-            </h3>
-            <p className="text-text-muted">
-              {searchPort ? '尝试其他搜索关键词' : '启动开发服务器后将在此显示'}
-            </p>
+            {filteredPorts.length === 0 && !isScanning && (
+              <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
+                <div className="w-20 h-20 bg-surface-800 flex items-center justify-center mb-6 border-l-3 border-accent radius-md">
+                  <PortIcon size={40} className="text-text-muted" />
+                </div>
+                <h3
+                  className="text-lg font-bold text-text-primary mb-2 uppercase tracking-wider"
+                  style={{ fontFamily: 'var(--font-display)' }}
+                >
+                  {searchPort ? '未找到匹配的端口' : '没有检测到使用中的端口'}
+                </h3>
+                <p className="text-text-muted">
+                  {searchPort ? '尝试其他搜索关键词' : '启动开发服务器后将在此显示'}
+                </p>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+
+          {/* Focus Panel for card/list modes */}
+          {focusedPort && (
+            <PortFocusPanel
+              port={focusedPort}
+              onClose={closeFocusPanel}
+              getPortFocusData={getPortFocusData}
+              getPortDetailIncremental={getPortDetailIncremental}
+              cancelPortQuery={cancelPortQuery}
+              allPorts={ports}
+              onFocusProcess={(pid) => {
+                // TODO: Navigate to process view when cross-tab navigation is implemented
+void pid
+              }}
+              onViewInGraph={(port) => {
+                setViewMode('relationship')
+                selectPort(port)
+              }}
+            />
+          )}
+        </div>
+      )}
     </div>
   )
 }

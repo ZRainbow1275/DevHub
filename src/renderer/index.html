@@ -6,7 +6,79 @@
     <title>DevHub</title>
   </head>
   <body class="bg-surface-950 text-text-primary font-sans">
+    <!-- Inline loading fallback: visible until React mounts, then auto-removed -->
+    <div id="pre-react-splash" style="
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #1a1814;
+      font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    ">
+      <div style="
+        font-size: 24px;
+        font-weight: 700;
+        color: #f0e8d8;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        font-family: 'JetBrains Mono Variable', 'Consolas', monospace;
+      ">DevHub</div>
+      <div style="
+        margin-top: 16px;
+        width: 200px;
+        height: 3px;
+        background: #2a2520;
+        overflow: hidden;
+        position: relative;
+      ">
+        <div id="pre-react-bar" style="
+          position: absolute;
+          height: 100%;
+          width: 40%;
+          background: linear-gradient(90deg, #d64545, #c9a227);
+          animation: pre-react-slide 1.2s ease-in-out infinite;
+        "></div>
+      </div>
+      <div style="
+        margin-top: 10px;
+        font-size: 11px;
+        color: #6a6050;
+        letter-spacing: 0.05em;
+      ">Loading...</div>
+      <style>
+        @keyframes pre-react-slide {
+          0% { left: -40%; }
+          50% { left: 60%; }
+          100% { left: -40%; }
+        }
+      </style>
+    </div>
     <div id="root"></div>
     <script type="module" src="./main.tsx"></script>
+    <script>
+      // Auto-remove pre-react splash once React mounts content into #root
+      (function() {
+        var root = document.getElementById('root');
+        var splash = document.getElementById('pre-react-splash');
+        if (!root || !splash) return;
+        var observer = new MutationObserver(function() {
+          if (root.children.length > 0) {
+            splash.remove();
+            observer.disconnect();
+          }
+        });
+        observer.observe(root, { childList: true });
+        // Safety fallback: remove after 10 seconds regardless
+        setTimeout(function() {
+          if (splash && splash.parentNode) {
+            splash.remove();
+          }
+          observer.disconnect();
+        }, 10000);
+      })();
+    </script>
   </body>
 </html>

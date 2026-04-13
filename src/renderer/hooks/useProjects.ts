@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useRef, useMemo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useProjectStore } from '../stores/projectStore'
 import { Project } from '@shared/types'
 
@@ -12,9 +13,20 @@ export function useProjects() {
     addProject,
     updateProject,
     removeProject,
-    selectProject,
-    getFilteredProjects
-  } = useProjectStore()
+    selectProject
+  } = useProjectStore(
+    useShallow(s => ({
+      projects: s.projects,
+      selectedProjectId: s.selectedProjectId,
+      setProjects: s.setProjects,
+      addProject: s.addProject,
+      updateProject: s.updateProject,
+      removeProject: s.removeProject,
+      selectProject: s.selectProject
+    }))
+  )
+
+  const filter = useProjectStore((s) => s.filter)
 
   // 追踪正在进行的操作，防止竞态条件
   const pendingOperations = useRef<Set<string>>(new Set())
@@ -22,9 +34,9 @@ export function useProjects() {
   // Load projects on mount
   useEffect(() => {
     if (isElectron) {
-      window.devhub.projects.list()
-        .then(setProjects)
-        .catch((error: Error) => {
+      window.devhub?.projects?.list()
+        ?.then(setProjects)
+        ?.catch((error: Error) => {
           console.warn('Failed to load projects:', error.message)
         })
     }
@@ -34,12 +46,38 @@ export function useProjects() {
   useEffect(() => {
     if (!isElectron) return
 
-    const unsubscribe = window.devhub.process.onStatusChange(({ projectId, status }) => {
+    const unsubscribe = window.devhub?.process?.onStatusChange?.(({ projectId, status }) => {
       updateProject(projectId, { status: status as Project['status'] })
     })
 
-    return unsubscribe
+    return () => { unsubscribe?.() }
   }, [updateProject])
+
+  // Subscribe to watcher events (auto-detected project changes)
+  useEffect(() => {
+    if (!isElectron) return
+
+    // 防御性检查：watcher 对象可能在运行时不存在
+    const watcher = window.devhub?.projects?.watcher
+    if (!watcher?.onDetected) return
+
+    const unsubscribe = watcher.onDetected((events) => {
+      // Refresh the full project list when watcher detects changes
+      // This is simpler and safer than trying to incrementally update
+      window.devhub?.projects?.list()
+        .then(setProjects)
+        .catch((error: Error) => {
+          console.warn('Failed to refresh projects after watcher event:', error.message)
+        })
+
+      // Log for debugging (use console.warn since info is restricted)
+      if (events.length > 0) {
+        console.warn(`[ProjectWatcher] Detected ${events.length} change(s), refreshing project list`)
+      }
+    })
+
+    return unsubscribe
+  }, [setProjects])
 
   const handleAddProject = useCallback(async (path: string) => {
     if (!isElectron) return null
@@ -206,7 +244,31 @@ export function useProjects() {
   }, [projects])
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId)
-  const filteredProjects = useMemo(() => getFilteredProjects(), [getFilteredProjects])
+  const filteredProjects = useMemo(() => {
+    return projects.filter((project) => {
+      if (filter.tag && !project.tags.includes(filter.tag)) return false
+      if (filter.group && project.group !== filter.group) return false
+      if (filter.search) {
+        const searchLower = filter.search.toLowerCase()
+        const nameMatch = project.name.toLowerCase().includes(searchLower)
+        const pathMatch = project.path.toLowerCase().includes(searchLower)
+        const tagMatch = project.tags.some(t => t.toLowerCase().includes(searchLower))
+        // Simple fuzzy: check if all chars of search appear in name in order
+        const fuzzyMatch = (() => {
+          const name = project.name.toLowerCase()
+          let si = 0
+          for (let i = 0; i < name.length && si < searchLower.length; i++) {
+            if (name[i] === searchLower[si]) si++
+          }
+          return si === searchLower.length
+        })()
+        if (!nameMatch && !pathMatch && !tagMatch && !fuzzyMatch) {
+          return false
+        }
+      }
+      return true
+    })
+  }, [projects, filter])
 
   return {
     projects,

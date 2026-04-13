@@ -207,7 +207,7 @@ describe('AITaskTracker', () => {
       expect(state).toBe('completed')
     })
 
-    it('should return running when CPU is high', () => {
+    it('should return coding when CPU is high with variance', () => {
       const task: AITask = {
         id: 'test',
         toolType: 'claude-code',
@@ -222,8 +222,9 @@ describe('AITaskTracker', () => {
         }
       }
 
+      // cpuHistory [50,60,70] → recentAvg=60 > 5, variance=66.67 > 2 → coding
       const state = (tracker as any).determineState(task, 0.3)
-      expect(state).toBe('running')
+      expect(state).toBe('coding')
     })
 
     it('should return waiting when idle for too long', () => {
@@ -245,7 +246,7 @@ describe('AITaskTracker', () => {
       expect(state).toBe('waiting')
     })
 
-    it('should return idle when CPU is low but not idle long enough', () => {
+    it('should return waiting when CPU is low and idle duration is short', () => {
       const task: AITask = {
         id: 'test',
         toolType: 'claude-code',
@@ -261,7 +262,7 @@ describe('AITaskTracker', () => {
       }
 
       const state = (tracker as any).determineState(task, 0.3)
-      expect(state).toBe('idle')
+      expect(state).toBe('waiting')
     })
   })
 

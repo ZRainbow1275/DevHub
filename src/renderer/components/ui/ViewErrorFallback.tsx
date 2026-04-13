@@ -15,8 +15,7 @@ export const ViewErrorFallback = memo(function ViewErrorFallback({
   return (
     <div className="h-full flex flex-col items-center justify-center p-8 bg-surface-950">
       <div
-        className="w-16 h-16 bg-error/10 flex items-center justify-center mb-4 border-l-3 border-error"
-        style={{ borderRadius: '2px' }}
+        className="w-16 h-16 bg-error/10 flex items-center justify-center mb-4 border-l-3 border-error radius-sm"
       >
         <AlertIcon size={32} className="text-error" />
       </div>
@@ -33,8 +32,7 @@ export const ViewErrorFallback = memo(function ViewErrorFallback({
       </p>
 
       <div
-        className="mb-6 p-3 bg-surface-800 border-l-2 border-error max-w-md w-full"
-        style={{ borderRadius: '2px' }}
+        className="mb-6 p-3 bg-surface-800 border-l-2 border-error max-w-md w-full radius-sm"
       >
         <p className="text-xs text-error font-mono break-all">
           {error.message}
@@ -43,8 +41,7 @@ export const ViewErrorFallback = memo(function ViewErrorFallback({
 
       <button
         onClick={onRetry}
-        className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-accent text-white hover:bg-accent/90 transition-colors border-l-2 border-accent"
-        style={{ borderRadius: '2px' }}
+        className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-accent text-white hover:bg-accent/90 transition-colors border-l-2 border-accent radius-sm"
       >
         <RefreshIcon size={16} />
         重试

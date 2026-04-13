@@ -120,6 +120,9 @@ export function setupTaskHistoryHandlers(mainWindow: BrowserWindow): void {
         guardProtoPollution(options)
       }
 
+      if (options?.startDate) validateDateString(options.startDate, 'startDate')
+      if (options?.endDate) validateDateString(options.endDate, 'endDate')
+
       const parsedOptions = {
         ...options,
         startDate: options?.startDate ? new Date(options.startDate) : undefined,
@@ -143,6 +146,9 @@ export function setupTaskHistoryHandlers(mainWindow: BrowserWindow): void {
         validateObject(options, 'options')
         guardProtoPollution(options)
       }
+
+      if (options?.startDate) validateDateString(options.startDate, 'startDate')
+      if (options?.endDate) validateDateString(options.endDate, 'endDate')
 
       const parsedOptions = {
         ...options,

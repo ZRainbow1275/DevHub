@@ -68,18 +68,16 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   addLog: (entry) =>
     set((state) => {
-      const logs = state.logs
-      const projectLogs = logs.get(entry.projectId) || []
+      const logs = new Map(state.logs)
+      const existingLogs = logs.get(entry.projectId) || []
 
-      // 原地修改数组避免整个数组复制
-      if (projectLogs.length >= MAX_LOGS_PER_PROJECT) {
-        projectLogs.shift()
-      }
-      projectLogs.push(entry)
-      logs.set(entry.projectId, projectLogs)
+      // 创建新数组引用以保证不可变更新
+      const newLogs = existingLogs.length >= MAX_LOGS_PER_PROJECT
+        ? [...existingLogs.slice(1), entry]
+        : [...existingLogs, entry]
+      logs.set(entry.projectId, newLogs)
 
-      // 仍需创建新 Map 引用以触发 React 重渲染
-      return { logs: new Map(logs) }
+      return { logs }
     }),
 
   clearLogs: (projectId) =>

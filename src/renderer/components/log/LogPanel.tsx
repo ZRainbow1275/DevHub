@@ -55,7 +55,7 @@ export function LogPanel({ projectId, projectName }: LogPanelProps) {
         <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none" />
 
         <div className="text-center relative z-10">
-          <div className="w-20 h-20 mx-auto mb-6 bg-surface-800 flex items-center justify-center border-l-3 border-accent" style={{ borderRadius: '4px' }}>
+          <div className="w-20 h-20 mx-auto mb-6 bg-surface-800 flex items-center justify-center border-l-3 border-accent radius-md">
             <TerminalIcon size={40} className="text-text-muted" />
           </div>
           <p
@@ -78,7 +78,7 @@ export function LogPanel({ projectId, projectName }: LogPanelProps) {
         <div className="absolute inset-0 deco-diagonal opacity-20 pointer-events-none" />
 
         <div className="flex items-center gap-3 relative z-10">
-          <div className="w-8 h-8 bg-surface-700 flex items-center justify-center border-l-2 border-accent" style={{ borderRadius: '2px' }}>
+          <div className="w-8 h-8 bg-surface-700 flex items-center justify-center border-l-2 border-accent radius-sm">
             <TerminalIcon size={16} className="text-accent" />
           </div>
           <div>
@@ -87,7 +87,7 @@ export function LogPanel({ projectId, projectName }: LogPanelProps) {
           </div>
         </div>
         <div className="flex items-center gap-2 relative z-10">
-          <span className="text-xs text-text-primary font-bold bg-surface-800 px-2 py-1 border-l-2 border-gold tabular-nums" style={{ borderRadius: '2px' }}>
+          <span className="text-xs text-text-primary font-bold bg-surface-800 px-2 py-1 border-l-2 border-gold tabular-nums radius-sm">
             {logs.length} 条日志
           </span>
           <button
@@ -108,7 +108,7 @@ export function LogPanel({ projectId, projectName }: LogPanelProps) {
       >
         {logs.length === 0 ? (
           <div className="flex items-center gap-2 text-text-muted px-5">
-            <span className="w-2 h-2 bg-success animate-pulse" style={{ borderRadius: '1px' }} />
+            <span className="w-2 h-2 bg-success animate-pulse radius-sm" />
             <span className="italic">等待输出...</span>
           </div>
         ) : (
@@ -128,7 +128,7 @@ export function LogPanel({ projectId, projectName }: LogPanelProps) {
         {logs.length > 0 && (
           <div className="flex items-center gap-1 mt-2 px-5">
             <span className="text-success font-bold">❯</span>
-            <span className="inline-block w-2 h-4 bg-accent animate-pulse" style={{ borderRadius: '1px' }} />
+            <span className="inline-block w-2 h-4 bg-accent animate-pulse radius-sm" />
           </div>
         )}
       </div>

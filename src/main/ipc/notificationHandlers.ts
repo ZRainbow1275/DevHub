@@ -3,6 +3,7 @@ import { IPC_CHANNELS_EXT, NotificationConfig, AppNotification } from '@shared/t
 import { initNotificationService, getNotificationService, NotificationService } from '../services/NotificationService'
 import { guardProtoPollution, validateObject } from '../utils/validation'
 import { withRateLimit, RATE_LIMITS } from '../utils/rateLimiter'
+import { getPortScanner } from './processHandlers'
 
 const NOTIFICATION_CONFIG_ALLOWED_FIELDS = ['enabled', 'types', 'sound', 'persistent']
 
@@ -18,6 +19,7 @@ export function setupNotificationHandlers(mainWindow: BrowserWindow): void {
         enabled: true,
         types: {
           'task-complete': true,
+          'task-error': true,
           'port-conflict': true,
           'zombie-process': true,
           'high-resource': true,
@@ -113,8 +115,11 @@ export function setupNotificationHandlers(mainWindow: BrowserWindow): void {
         if (isNaN(port) || port < 1 || port > 65535) {
           throw new Error('Invalid port: must be a number between 1 and 65535')
         }
-        // Emit event for port release - will be handled by portHandlers
-        mainWindow.webContents.send('notification:action', { notificationId, action, port })
+        // Call portScanner directly in main process instead of bouncing through renderer
+        const scanner = getPortScanner()
+        if (scanner) {
+          await scanner.releasePort(port)
+        }
       } else if (action === 'cleanup-zombies') {
         mainWindow.webContents.send('notification:action', { notificationId, action })
       }
@@ -123,6 +128,7 @@ export function setupNotificationHandlers(mainWindow: BrowserWindow): void {
 }
 
 export function cleanupNotificationHandlers(): void {
+  notificationService?.destroy()
   ipcMain.removeHandler(IPC_CHANNELS_EXT.NOTIFICATION_GET_CONFIG)
   ipcMain.removeHandler(IPC_CHANNELS_EXT.NOTIFICATION_SET_CONFIG)
   ipcMain.removeHandler(IPC_CHANNELS_EXT.NOTIFICATION_GET_HISTORY)

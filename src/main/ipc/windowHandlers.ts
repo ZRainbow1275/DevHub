@@ -3,6 +3,14 @@ import { IPC_CHANNELS_EXT, WindowInfo, WindowGroup, WindowLayout, ServiceResult 
 import { WindowManager } from '../services/WindowManager'
 import { validateHwnd, validateString, validateHwndArray } from '../utils/validation'
 import { withRateLimit, RATE_LIMITS } from '../utils/rateLimiter'
+import { z } from 'zod'
+
+// Zod schemas for window IPC input validation
+const hwndSchema = z.number().int().positive()
+const stringSchema = z.string().min(1).max(200)
+const hwndArraySchema = z.array(z.number().int().positive()).max(100)
+const opacitySchema = z.number().min(0).max(100)
+const coordinateSchema = z.number().finite()
 
 let windowManager: WindowManager | null = null
 
@@ -11,15 +19,17 @@ export function setupWindowHandlers(_mainWindow: BrowserWindow): void {
 
   ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_SCAN, withRateLimit(
     IPC_CHANNELS_EXT.WINDOW_SCAN, RATE_LIMITS.SCAN,
-    async (): Promise<ServiceResult<WindowInfo[]>> => {
+    async (_, includeSystemWindows?: boolean): Promise<ServiceResult<WindowInfo[]>> => {
       if (!windowManager) return { success: false, data: [], error: 'Window manager not initialized' }
-      return windowManager.scanWindows()
+      return windowManager.scanWindows(includeSystemWindows ?? false)
     }
   ))
 
   ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_FOCUS, withRateLimit(
     IPC_CHANNELS_EXT.WINDOW_FOCUS, RATE_LIMITS.ACTION,
     async (_, hwnd: number): Promise<ServiceResult> => {
+      const parsed = hwndSchema.safeParse(hwnd)
+      if (!parsed.success) return { success: false, error: 'Invalid hwnd: must be a positive integer' }
       validateHwnd(hwnd)
       if (!windowManager) return { success: false, error: 'Window manager not initialized' }
       return windowManager.focusWindow(hwnd)
@@ -38,12 +48,17 @@ export function setupWindowHandlers(_mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_MOVE, withRateLimit(
     IPC_CHANNELS_EXT.WINDOW_MOVE, RATE_LIMITS.ACTION,
     async (_, hwnd: number, x: number, y: number, width: number, height: number): Promise<ServiceResult> => {
-      validateHwnd(hwnd)
-      // Validate coordinates are numbers (IPC can pass any type at runtime)
-      for (const [name, val] of [['x', x], ['y', y], ['width', width], ['height', height]] as const) {
-        if (typeof val !== 'number' || !Number.isFinite(val)) {
-          return { success: false, error: `Invalid ${name}: must be a finite number` }
-        }
+      const moveSchema = z.object({
+        hwnd: hwndSchema,
+        x: coordinateSchema,
+        y: coordinateSchema,
+        width: coordinateSchema,
+        height: coordinateSchema,
+      })
+      const parsed = moveSchema.safeParse({ hwnd, x, y, width, height })
+      if (!parsed.success) {
+        const issue = parsed.error.issues[0]
+        return { success: false, error: `Invalid ${String(issue?.path[0] ?? 'input')}: must be a finite number` }
       }
       if (!windowManager) return { success: false, error: 'Window manager not initialized' }
       return windowManager.moveWindow(hwnd, x, y, width, height)
@@ -80,11 +95,12 @@ export function setupWindowHandlers(_mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_CREATE_GROUP, withRateLimit(
     IPC_CHANNELS_EXT.WINDOW_CREATE_GROUP, RATE_LIMITS.ACTION,
     async (_, name: string, windowHwnds: number[], projectId?: string): Promise<WindowGroup | null> => {
-      validateString(name, 'name')
-      validateHwndArray(windowHwnds)
-      if (projectId !== undefined) {
-        validateString(projectId, 'projectId')
-      }
+      const groupSchema = z.object({
+        name: stringSchema,
+        windowHwnds: hwndArraySchema,
+        projectId: stringSchema.optional(),
+      })
+      groupSchema.parse({ name, windowHwnds, projectId })
       if (!windowManager) return null
       return windowManager.createGroup(name, windowHwnds, projectId)
     }
@@ -172,6 +188,115 @@ export function setupWindowHandlers(_mainWindow: BrowserWindow): void {
       return { success: true, data: windowManager.filterDevWindows(allWindows) }
     }
   ))
+
+  // ==================== New Window Operations ====================
+
+  ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_RESTORE, withRateLimit(
+    IPC_CHANNELS_EXT.WINDOW_RESTORE, RATE_LIMITS.ACTION,
+    async (_, hwnd: number): Promise<ServiceResult> => {
+      validateHwnd(hwnd)
+      if (!windowManager) return { success: false, error: 'Window manager not initialized' }
+      return windowManager.restoreWindow(hwnd)
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_SET_TOPMOST, withRateLimit(
+    IPC_CHANNELS_EXT.WINDOW_SET_TOPMOST, RATE_LIMITS.ACTION,
+    async (_, hwnd: number, topmost: boolean): Promise<ServiceResult> => {
+      const topmostSchema = z.object({ hwnd: hwndSchema, topmost: z.boolean() })
+      const parsed = topmostSchema.safeParse({ hwnd, topmost })
+      if (!parsed.success) {
+        return { success: false, error: `Validation error: ${parsed.error.issues[0]?.message}` }
+      }
+      if (!windowManager) return { success: false, error: 'Window manager not initialized' }
+      return windowManager.setWindowTopmost(hwnd, topmost)
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_SET_OPACITY, withRateLimit(
+    IPC_CHANNELS_EXT.WINDOW_SET_OPACITY, RATE_LIMITS.ACTION,
+    async (_, hwnd: number, opacity: number): Promise<ServiceResult> => {
+      const opacityInputSchema = z.object({ hwnd: hwndSchema, opacity: opacitySchema })
+      const parsed = opacityInputSchema.safeParse({ hwnd, opacity })
+      if (!parsed.success) {
+        return { success: false, error: `Validation error: ${parsed.error.issues[0]?.message}` }
+      }
+      if (!windowManager) return { success: false, error: 'Window manager not initialized' }
+      return windowManager.setWindowOpacity(hwnd, opacity)
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_SEND_KEYS, withRateLimit(
+    IPC_CHANNELS_EXT.WINDOW_SEND_KEYS, RATE_LIMITS.ACTION,
+    async (_, hwnd: number, keys: string): Promise<ServiceResult> => {
+      const keysSchema = z.object({ hwnd: hwndSchema, keys: z.string().min(1).max(50) })
+      keysSchema.parse({ hwnd, keys })
+      if (!windowManager) return { success: false, error: 'Window manager not initialized' }
+      return windowManager.sendKeysToWindow(hwnd, keys)
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_TILE_LAYOUT, withRateLimit(
+    IPC_CHANNELS_EXT.WINDOW_TILE_LAYOUT, RATE_LIMITS.ACTION,
+    async (_, hwnds: number[]): Promise<ServiceResult> => {
+      validateHwndArray(hwnds)
+      if (!windowManager) return { success: false, error: 'Window manager not initialized' }
+      return windowManager.tileWindows(hwnds)
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_CASCADE_LAYOUT, withRateLimit(
+    IPC_CHANNELS_EXT.WINDOW_CASCADE_LAYOUT, RATE_LIMITS.ACTION,
+    async (_, hwnds: number[]): Promise<ServiceResult> => {
+      validateHwndArray(hwnds)
+      if (!windowManager) return { success: false, error: 'Window manager not initialized' }
+      return windowManager.cascadeWindows(hwnds)
+    }
+  ))
+
+  ipcMain.handle('window:stack-layout', withRateLimit(
+    'window:stack-layout', RATE_LIMITS.ACTION,
+    async (_, hwnds: number[]): Promise<ServiceResult> => {
+      validateHwndArray(hwnds)
+      if (!windowManager) return { success: false, error: 'Window manager not initialized' }
+      return windowManager.stackWindows(hwnds)
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_MINIMIZE_ALL, withRateLimit(
+    IPC_CHANNELS_EXT.WINDOW_MINIMIZE_ALL, RATE_LIMITS.ACTION,
+    async (): Promise<ServiceResult> => {
+      if (!windowManager) return { success: false, error: 'Window manager not initialized' }
+      return windowManager.minimizeAll()
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_RESTORE_ALL, withRateLimit(
+    IPC_CHANNELS_EXT.WINDOW_RESTORE_ALL, RATE_LIMITS.ACTION,
+    async (): Promise<ServiceResult> => {
+      if (!windowManager) return { success: false, error: 'Window manager not initialized' }
+      return windowManager.restoreAll()
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_ADD_TO_GROUP, withRateLimit(
+    IPC_CHANNELS_EXT.WINDOW_ADD_TO_GROUP, RATE_LIMITS.ACTION,
+    async (_, groupId: string, hwnd: number): Promise<ServiceResult> => {
+      validateString(groupId, 'groupId')
+      validateHwnd(hwnd)
+      if (!windowManager) return { success: false, error: 'Window manager not initialized' }
+      return windowManager.addToGroup(groupId, hwnd)
+    }
+  ))
+
+  ipcMain.handle(IPC_CHANNELS_EXT.WINDOW_RESTORE_GROUP, withRateLimit(
+    IPC_CHANNELS_EXT.WINDOW_RESTORE_GROUP, RATE_LIMITS.ACTION,
+    async (_, groupId: string): Promise<ServiceResult> => {
+      validateString(groupId, 'groupId')
+      if (!windowManager) return { success: false, error: 'Window manager not initialized' }
+      return windowManager.restoreGroup(groupId)
+    }
+  ))
 }
 
 export function cleanupWindowHandlers(): void {
@@ -192,6 +317,17 @@ export function cleanupWindowHandlers(): void {
   ipcMain.removeHandler('window:minimize-group')
   ipcMain.removeHandler('window:close-group')
   ipcMain.removeHandler('window:filter-dev')
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_RESTORE)
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_SET_TOPMOST)
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_SET_OPACITY)
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_SEND_KEYS)
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_TILE_LAYOUT)
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_CASCADE_LAYOUT)
+  ipcMain.removeHandler('window:stack-layout')
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_MINIMIZE_ALL)
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_RESTORE_ALL)
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_ADD_TO_GROUP)
+  ipcMain.removeHandler(IPC_CHANNELS_EXT.WINDOW_RESTORE_GROUP)
 }
 
 export function getWindowManager(): WindowManager | null {

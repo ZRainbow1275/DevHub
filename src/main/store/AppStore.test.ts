@@ -25,6 +25,7 @@ describe('AppStore Logic Tests', () => {
         path: 'D:/Projects/test',
         scripts: ['dev'],
         defaultScript: 'dev',
+        projectType: 'npm',
         tags: [],
         status: 'stopped',
         createdAt: now,
@@ -47,6 +48,7 @@ describe('AppStore Logic Tests', () => {
         path: 'D:/Projects/test',
         scripts: ['dev'],
         defaultScript: 'dev',
+        projectType: 'npm',
         tags: [],
         status: 'stopped',
         createdAt: now,
@@ -75,6 +77,7 @@ describe('AppStore Logic Tests', () => {
         path: 'D:/Projects/test',
         scripts: ['dev'],
         defaultScript: 'dev',
+        projectType: 'npm',
         tags: [],
         status: 'stopped',
         createdAt: now,
@@ -96,6 +99,7 @@ describe('AppStore Logic Tests', () => {
         path: 'D:/Projects/test',
         scripts: ['dev'],
         defaultScript: 'dev',
+        projectType: 'npm',
         tags: [],
         status: 'stopped',
         createdAt: now,
@@ -145,46 +149,92 @@ describe('AppStore Logic Tests', () => {
   })
 
   describe('Settings Management', () => {
-    const DEFAULT_SETTINGS: AppSettings = {
-      autoStartOnBoot: false,
-      notificationEnabled: true,
-      theme: 'dark',
-      checkInterval: 3000,
-      scanDrives: ['C:', 'D:'],
-      allowedPaths: [],
-      minimizeToTray: false,
-      firstLaunchDone: false
+    const TEST_SETTINGS: AppSettings = {
+      appearance: {
+        theme: 'constructivism',
+        fontSize: 'medium',
+        sidebarPosition: 'left',
+        compactMode: false,
+        enableAnimations: true,
+        informationDensity: 'standard',
+      },
+      scan: {
+        scanDrives: ['C', 'D'],
+        allowedPaths: [],
+        excludePaths: [],
+        checkInterval: 3000,
+        maxScanDepth: 5,
+        fileTypeFilters: [],
+      },
+      process: {
+        enabled: true,
+        scanInterval: 5000,
+        autoCleanZombies: false,
+        zombieThresholdMinutes: 30,
+        cpuWarningThreshold: 80,
+        memoryWarningThresholdMB: 1024,
+        whitelist: [],
+        blacklist: [],
+      },
+      notification: {
+        enabled: true,
+        typeToggles: { 'task-complete': true, 'port-conflict': true, 'zombie-process': true, 'high-resource': true, 'project-error': true },
+        sound: true,
+        persistent: false,
+        quietHoursEnabled: false,
+        quietHoursStart: '22:00',
+        quietHoursEnd: '08:00',
+      },
+      window: {
+        enabled: true,
+        autoGroupStrategy: 'by-project',
+        saveLayoutOnExit: false,
+        snapToEdges: true,
+      },
+      advanced: {
+        autoStartOnBoot: false,
+        minimizeToTray: false,
+        dataStoragePath: '',
+        logLevel: 'info',
+        developerMode: false,
+      },
+      firstLaunchDone: false,
     }
 
     it('应该返回默认设置', () => {
-      const settings = { ...DEFAULT_SETTINGS }
+      const settings = { ...TEST_SETTINGS }
 
-      expect(settings.notificationEnabled).toBe(true)
-      expect(settings.theme).toBe('dark')
-      expect(settings.checkInterval).toBe(3000)
+      expect(settings.notification.enabled).toBe(true)
+      expect(settings.appearance.theme).toBe('constructivism')
+      expect(settings.scan.checkInterval).toBe(3000)
     })
 
     it('应该正确更新设置', () => {
-      let settings = { ...DEFAULT_SETTINGS }
+      const settings = {
+        ...TEST_SETTINGS,
+        appearance: { ...TEST_SETTINGS.appearance, theme: 'modern-light' as const },
+        notification: { ...TEST_SETTINGS.notification, enabled: false },
+      }
 
-      settings = { ...settings, theme: 'light', notificationEnabled: false }
-
-      expect(settings.theme).toBe('light')
-      expect(settings.notificationEnabled).toBe(false)
+      expect(settings.appearance.theme).toBe('modern-light')
+      expect(settings.notification.enabled).toBe(false)
     })
 
     it('应该正确管理允许路径', () => {
-      const settings = { ...DEFAULT_SETTINGS }
+      const settings = {
+        ...TEST_SETTINGS,
+        scan: { ...TEST_SETTINGS.scan, allowedPaths: [...TEST_SETTINGS.scan.allowedPaths] },
+      }
 
       // 添加路径
-      if (!settings.allowedPaths.includes('D:/NewPath')) {
-        settings.allowedPaths.push('D:/NewPath')
+      if (!settings.scan.allowedPaths.includes('D:/NewPath')) {
+        settings.scan.allowedPaths.push('D:/NewPath')
       }
-      expect(settings.allowedPaths).toContain('D:/NewPath')
+      expect(settings.scan.allowedPaths).toContain('D:/NewPath')
 
       // 移除路径
-      settings.allowedPaths = settings.allowedPaths.filter(p => p !== 'D:/NewPath')
-      expect(settings.allowedPaths).not.toContain('D:/NewPath')
+      settings.scan.allowedPaths = settings.scan.allowedPaths.filter(p => p !== 'D:/NewPath')
+      expect(settings.scan.allowedPaths).not.toContain('D:/NewPath')
     })
   })
 

@@ -15,6 +15,7 @@ describe('NotificationService Logic Tests', () => {
       enabled: true,
       types: {
         'task-complete': true,
+        'task-error': true,
         'port-conflict': true,
         'zombie-process': true,
         'high-resource': true,

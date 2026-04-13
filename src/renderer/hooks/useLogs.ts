@@ -5,7 +5,9 @@ import { LogEntry } from '@shared/types'
 const isElectron = typeof window !== 'undefined' && window.devhub !== undefined
 
 export function useLogs(projectId: string | null) {
-  const { logs, addLog, clearLogs } = useProjectStore()
+  const logs = useProjectStore(s => s.logs)
+  const addLog = useProjectStore(s => s.addLog)
+  const clearLogs = useProjectStore(s => s.clearLogs)
 
   // Subscribe to logs for the selected project
   useEffect(() => {
@@ -15,19 +17,25 @@ export function useLogs(projectId: string | null) {
 
     // Subscribe to log entries
     try {
-      window.devhub.logs.subscribe(currentProjectId)
+      window.devhub?.logs?.subscribe?.(currentProjectId)
     } catch (error) {
       console.warn('Failed to subscribe to logs:', error instanceof Error ? error.message : 'Unknown error')
     }
 
-    const unsubscribe = window.devhub.logs.onEntry((entry: LogEntry) => {
+    const unsubscribe = window.devhub?.logs?.onEntry?.((entry: LogEntry) => {
       if (entry.projectId === currentProjectId) {
         addLog(entry)
       }
     })
 
     return () => {
-      unsubscribe()
+      unsubscribe?.()
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(window.devhub?.logs as any)?.unsubscribe?.(currentProjectId)
+      } catch (error) {
+        console.warn('Failed to unsubscribe from logs:', error instanceof Error ? error.message : 'Unknown error')
+      }
     }
   }, [projectId, addLog])
 
@@ -38,7 +46,7 @@ export function useLogs(projectId: string | null) {
       clearLogs(projectId)
       if (isElectron) {
         try {
-          window.devhub.logs.clear(projectId)
+          window.devhub?.logs?.clear?.(projectId)
         } catch (error) {
           console.warn('Failed to clear logs:', error instanceof Error ? error.message : 'Unknown error')
         }

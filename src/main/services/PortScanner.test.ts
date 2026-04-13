@@ -41,14 +41,14 @@ describe('PortScanner Logic Tests', () => {
   })
 
   describe('Port State Normalization', () => {
-    const normalizeState = (state: string): PortState => {
+    const normalizeState = (state: string): PortState | null => {
       const stateMap: Record<string, PortState> = {
         'LISTENING': 'LISTENING',
         'ESTABLISHED': 'ESTABLISHED',
         'TIME_WAIT': 'TIME_WAIT',
         'CLOSE_WAIT': 'CLOSE_WAIT'
       }
-      return stateMap[state] || 'LISTENING'
+      return stateMap[state] ?? null
     }
 
     it('应该正确标准化已知状态', () => {
@@ -58,9 +58,9 @@ describe('PortScanner Logic Tests', () => {
       expect(normalizeState('CLOSE_WAIT')).toBe('CLOSE_WAIT')
     })
 
-    it('应该将未知状态默认为 LISTENING', () => {
-      expect(normalizeState('UNKNOWN')).toBe('LISTENING')
-      expect(normalizeState('')).toBe('LISTENING')
+    it('应该对未知状态返回 null', () => {
+      expect(normalizeState('UNKNOWN')).toBeNull()
+      expect(normalizeState('')).toBeNull()
     })
   })
 
@@ -80,9 +80,9 @@ describe('PortScanner Logic Tests', () => {
 
   describe('Port Filtering Logic', () => {
     const mockPorts: PortInfo[] = [
-      { port: 3000, pid: 12345, processName: 'node.exe', state: 'LISTENING', protocol: 'TCP', localAddress: '0.0.0.0:3000' },
-      { port: 5173, pid: 67890, processName: 'node.exe', state: 'LISTENING', protocol: 'TCP', localAddress: '0.0.0.0:5173' },
-      { port: 49152, pid: 11111, processName: 'System', state: 'LISTENING', protocol: 'TCP', localAddress: '0.0.0.0:49152' }
+      { port: 3000, pid: 12345, processName: 'node.exe', state: 'LISTENING', protocol: 'TCP', localAddress: '0.0.0.0:3000', foreignAddress: '*:*' },
+      { port: 5173, pid: 67890, processName: 'node.exe', state: 'LISTENING', protocol: 'TCP', localAddress: '0.0.0.0:5173', foreignAddress: '*:*' },
+      { port: 49152, pid: 11111, processName: 'System', state: 'LISTENING', protocol: 'TCP', localAddress: '0.0.0.0:49152', foreignAddress: '*:*' }
     ]
 
     it('应该正确过滤常用开发端口', () => {
@@ -135,9 +135,9 @@ describe('PortScanner Logic Tests', () => {
 
   describe('Conflict Detection Logic', () => {
     const mockPorts: PortInfo[] = [
-      { port: 3000, pid: 12345, processName: 'node.exe', state: 'LISTENING', protocol: 'TCP', localAddress: '0.0.0.0:3000' },
-      { port: 5173, pid: 67890, processName: 'node.exe', state: 'LISTENING', protocol: 'TCP', localAddress: '0.0.0.0:5173' },
-      { port: 8080, pid: 11111, processName: 'java.exe', state: 'LISTENING', protocol: 'TCP', localAddress: '0.0.0.0:8080' }
+      { port: 3000, pid: 12345, processName: 'node.exe', state: 'LISTENING', protocol: 'TCP', localAddress: '0.0.0.0:3000', foreignAddress: '*:*' },
+      { port: 5173, pid: 67890, processName: 'node.exe', state: 'LISTENING', protocol: 'TCP', localAddress: '0.0.0.0:5173', foreignAddress: '*:*' },
+      { port: 8080, pid: 11111, processName: 'java.exe', state: 'LISTENING', protocol: 'TCP', localAddress: '0.0.0.0:8080', foreignAddress: '*:*' }
     ]
 
     it('应该正确检测端口冲突', () => {

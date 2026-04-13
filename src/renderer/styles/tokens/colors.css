@@ -6,14 +6,19 @@
 :root,
 [data-theme="constructivism"] {
   /* ---- Background Layers (Warm Gray) ---- */
-  --surface-950: #1a1814;  /* Deepest - warm charcoal */
-  --surface-900: #252220;  /* Main container */
-  --surface-850: #2b2825;  /* Mid layer */
-  --surface-800: #322e2a;  /* Cards/panels */
-  --surface-750: #3b3632;  /* Hover state */
-  --surface-700: #443f39;  /* Borders/dividers */
-  --surface-600: #5a534b;  /* Secondary borders */
+  --surface-50:  #f5f0e8;  /* Lightest - for inverted contexts */
+  --surface-100: #e8e0d4;
+  --surface-200: #d4cbbe;
+  --surface-300: #b5aa9a;
+  --surface-400: #8a8078;
   --surface-500: #6b635a;  /* Muted elements */
+  --surface-600: #5a534b;  /* Secondary borders */
+  --surface-700: #443f39;  /* Borders/dividers */
+  --surface-750: #3b3632;  /* Hover state */
+  --surface-800: #322e2a;  /* Cards/panels */
+  --surface-850: #2b2825;  /* Mid layer */
+  --surface-900: #252220;  /* Main container */
+  --surface-950: #1a1814;  /* Deepest - warm charcoal */
 
   /* ---- Text Layers (Ivory/Cream) ---- */
   --text-primary: #f5f0e8;    /* Ivory white */
@@ -73,18 +78,50 @@
     rgba(214, 69, 69, 0.03) 40px,
     rgba(214, 69, 69, 0.03) 42px
   );
+
+  /* ---- Layout / Effects ---- */
+  /* NOTE: --radius-*, --shadow-card*, --shadow-elevated are now in theme-tokens.css */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 4px;
+  --radius-xl: 4px;
+  --radius-full: 9999px;
+
+  --border-width-thin: 1px;
+  --border-width-default: 2px;
+  --border-width-thick: 3px;
+
+  --shadow-glow: 0 0 20px rgba(214, 69, 69, 0.4);
+  --shadow-glow-accent: 0 0 15px rgba(201, 162, 39, 0.3);
+  --shadow-inner: inset 0 1px 0 0 rgba(245, 240, 232, 0.05);
+
+  /* ---- Typography (theme-variant) ---- */
+  /* NOTE: Heading/body typography tokens are now in theme-tokens.css */
+  --heading-weight: 800;
+  --heading-transform: uppercase;
+  --heading-tracking: 0.12em;
+  --body-tracking: 0.02em;
+  --display-tracking: 0.12em;
+  --deco-rotation: -12deg;
+  --deco-slogan-rotation: -8deg;
 }
 
 /* ---- Modern Light Theme ---- */
 [data-theme="modern-light"] {
-  --surface-950: #f8f9fa;
-  --surface-900: #f1f3f5;
-  --surface-850: #e9ecef;
-  --surface-800: #dee2e6;
-  --surface-750: #ced4da;
-  --surface-700: #adb5bd;
-  --surface-600: #868e96;
+  /* ---- Background Layers (Cool Gray) ---- */
+  --surface-50:  #ffffff;
+  --surface-100: #f8f9fa;
+  --surface-200: #f1f3f5;
+  --surface-300: #e9ecef;
+  --surface-400: #dee2e6;
   --surface-500: #495057;
+  --surface-600: #868e96;
+  --surface-700: #adb5bd;
+  --surface-750: #ced4da;
+  --surface-800: #dee2e6;
+  --surface-850: #e9ecef;
+  --surface-900: #f1f3f5;
+  --surface-950: #f8f9fa;
 
   --text-primary: #212529;
   --text-secondary: #495057;
@@ -137,18 +174,250 @@
     rgba(59, 130, 246, 0.05) 8px,
     rgba(59, 130, 246, 0.05) 9px
   );
+
+  /* ---- Layout / Effects ---- */
+  /* NOTE: --radius-*, --shadow-card*, --shadow-elevated are now in theme-tokens.css */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  --border-width-thin: 1px;
+  --border-width-default: 1px;
+  --border-width-thick: 2px;
+
+  --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.25);
+  --shadow-glow-accent: 0 0 15px rgba(245, 158, 11, 0.2);
+  --shadow-inner: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+
+  /* ---- Typography (theme-variant) ---- */
+  /* NOTE: Heading/body typography tokens are now in theme-tokens.css */
+  --heading-weight: 600;
+  --heading-transform: none;
+  --heading-tracking: -0.01em;
+  --body-tracking: 0;
+  --display-tracking: -0.02em;
+  --deco-rotation: 0deg;
+  --deco-slogan-rotation: 0deg;
+}
+
+/* ==============================================================================
+   Cyberpunk Neon Theme — Deep space + neon cyan/pink
+   ============================================================================== */
+[data-theme="cyberpunk"] {
+  /* ---- Background Layers (Deep Space) ---- */
+  --surface-50:  #e0f7fa;
+  --surface-100: #b2ebf2;
+  --surface-200: #4dd0e1;
+  --surface-300: #26c6da;
+  --surface-400: #2a2a50;
+  --surface-500: #5c5c8a;
+  --surface-600: #3a3a60;
+  --surface-700: #2a2a4a;
+  --surface-750: #222240;
+  --surface-800: #1a1a35;
+  --surface-850: #15152a;
+  --surface-900: #101020;
+  --surface-950: #0a0a12;
+
+  /* ---- Text Layers ---- */
+  --text-primary: #e0f0ff;
+  --text-secondary: #a0b4cc;
+  --text-tertiary: #6a80a0;
+  --text-muted: #4a6080;
+  --text-accent: #00ffff;
+
+  /* ---- Neon Cyan (Primary) ---- */
+  --red-300: #80ffff;
+  --red-400: #40ffff;
+  --red-500: #00ffff;
+  --red-600: #00cccc;
+  --red-700: #009999;
+
+  /* ---- Hot Pink (Secondary/Gold slot) ---- */
+  --gold-300: #ff80d5;
+  --gold-400: #ff40c0;
+  --gold-500: #ff00aa;
+  --gold-600: #cc0088;
+  --gold-700: #990066;
+
+  /* ---- Electric Purple (Tertiary/Steel slot) ---- */
+  --steel-300: #c4a0ff;
+  --steel-400: #a66dff;
+  --steel-500: #8844ff;
+  --steel-600: #6622cc;
+  --steel-700: #4400aa;
+
+  /* ---- Semantic Colors ---- */
+  --success: #00ff88;
+  --success-light: #40ffa0;
+  --success-dark: #00cc66;
+  --warning: #ffaa00;
+  --warning-light: #ffcc40;
+  --warning-dark: #cc8800;
+  --error: #ff3366;
+  --error-light: #ff6699;
+  --error-dark: #cc2244;
+  --info: #00ccff;
+  --info-light: #40ddff;
+  --info-dark: #0099cc;
+
+  /* ---- Transparency Layers ---- */
+  --overlay-light: rgba(0, 255, 255, 0.04);
+  --overlay-medium: rgba(0, 255, 255, 0.08);
+  --overlay-heavy: rgba(0, 255, 255, 0.14);
+  --red-overlay: rgba(0, 255, 255, 0.15);
+  --gold-overlay: rgba(255, 0, 170, 0.15);
+  --success-overlay: rgba(0, 255, 136, 0.15);
+
+  /* ---- Decorative ---- */
+  --diagonal-stripe: repeating-linear-gradient(
+    -12deg,
+    transparent,
+    transparent 40px,
+    rgba(0, 255, 255, 0.03) 40px,
+    rgba(0, 255, 255, 0.03) 42px
+  );
+
+  /* ---- Layout / Effects ---- */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 8px;
+  --radius-full: 9999px;
+
+  --border-width-thin: 1px;
+  --border-width-default: 1px;
+  --border-width-thick: 2px;
+
+  --shadow-glow: 0 0 20px rgba(0, 255, 255, 0.4);
+  --shadow-glow-accent: 0 0 15px rgba(255, 0, 170, 0.3);
+  --shadow-inner: inset 0 1px 0 0 rgba(0, 255, 255, 0.05);
+
+  /* ---- Typography (theme-variant) ---- */
+  --heading-weight: 700;
+  --heading-transform: uppercase;
+  --heading-tracking: 0.15em;
+  --body-tracking: 0.03em;
+  --display-tracking: 0.15em;
+  --deco-rotation: 0deg;
+  --deco-slogan-rotation: 0deg;
+}
+
+/* ==============================================================================
+   Swiss Minimal Theme — Pure white + black + signal red accent
+   ============================================================================== */
+[data-theme="swiss"] {
+  /* ---- Background Layers (Pure White to Light Gray) ---- */
+  --surface-50:  #ffffff;
+  --surface-100: #fafafa;
+  --surface-200: #f5f5f5;
+  --surface-300: #e8e8e8;
+  --surface-400: #d4d4d4;
+  --surface-500: #737373;
+  --surface-600: #a3a3a3;
+  --surface-700: #d4d4d4;
+  --surface-750: #e5e5e5;
+  --surface-800: #f0f0f0;
+  --surface-850: #f5f5f5;
+  --surface-900: #fafafa;
+  --surface-950: #ffffff;
+
+  /* ---- Text Layers ---- */
+  --text-primary: #1a1a1a;
+  --text-secondary: #404040;
+  --text-tertiary: #737373;
+  --text-muted: #a3a3a3;
+  --text-accent: #1a1a1a;
+
+  /* ---- Swiss Black (Primary — uses red slot) ---- */
+  --red-300: #525252;
+  --red-400: #404040;
+  --red-500: #1a1a1a;
+  --red-600: #0a0a0a;
+  --red-700: #000000;
+
+  /* ---- Signal Red (Accent — uses gold slot for sparing use) ---- */
+  --gold-300: #ff6666;
+  --gold-400: #ff3333;
+  --gold-500: #ff0000;
+  --gold-600: #cc0000;
+  --gold-700: #990000;
+
+  /* ---- Neutral (Tertiary/Steel slot) ---- */
+  --steel-300: #a3a3a3;
+  --steel-400: #737373;
+  --steel-500: #525252;
+  --steel-600: #404040;
+  --steel-700: #262626;
+
+  /* ---- Semantic Colors ---- */
+  --success: #16a34a;
+  --success-light: #22c55e;
+  --success-dark: #15803d;
+  --warning: #d97706;
+  --warning-light: #f59e0b;
+  --warning-dark: #b45309;
+  --error: #dc2626;
+  --error-light: #ef4444;
+  --error-dark: #b91c1c;
+  --info: #2563eb;
+  --info-light: #3b82f6;
+  --info-dark: #1d4ed8;
+
+  /* ---- Transparency Layers ---- */
+  --overlay-light: rgba(26, 26, 26, 0.03);
+  --overlay-medium: rgba(26, 26, 26, 0.06);
+  --overlay-heavy: rgba(26, 26, 26, 0.10);
+  --red-overlay: rgba(26, 26, 26, 0.08);
+  --gold-overlay: rgba(255, 0, 0, 0.08);
+  --success-overlay: rgba(22, 163, 74, 0.08);
+
+  /* ---- Decorative ---- */
+  --diagonal-stripe: none;
+
+  /* ---- Layout / Effects ---- */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-full: 9999px;
+
+  --border-width-thin: 1px;
+  --border-width-default: 1px;
+  --border-width-thick: 1px;
+
+  --shadow-glow: none;
+  --shadow-glow-accent: none;
+  --shadow-inner: none;
+
+  /* ---- Typography (theme-variant) ---- */
+  --heading-weight: 600;
+  --heading-transform: none;
+  --heading-tracking: -0.02em;
+  --body-tracking: -0.01em;
+  --display-tracking: -0.02em;
+  --deco-rotation: 0deg;
+  --deco-slogan-rotation: 0deg;
 }
 
 /* ---- Warm Light Theme ---- */
 [data-theme="warm-light"] {
-  --surface-950: #faf8f5;
-  --surface-900: #f5f0e8;
-  --surface-850: #ede6da;
-  --surface-800: #e5ddd0;
-  --surface-750: #dbd2c4;
-  --surface-700: #c4b8a8;
-  --surface-600: #a69885;
+  /* ---- Background Layers (Warm Cream) ---- */
+  --surface-50:  #fffcf7;
+  --surface-100: #faf8f5;
+  --surface-200: #f5f0e8;
+  --surface-300: #ede6da;
+  --surface-400: #dbd2c4;
   --surface-500: #8a7c6c;
+  --surface-600: #a69885;
+  --surface-700: #c4b8a8;
+  --surface-750: #dbd2c4;
+  --surface-800: #e5ddd0;
+  --surface-850: #ede6da;
+  --surface-900: #f5f0e8;
+  --surface-950: #faf8f5;
 
   --text-primary: #3d2c1e;
   --text-secondary: #5c4a3a;
@@ -201,4 +470,30 @@
     rgba(184, 92, 56, 0.05) 8px,
     rgba(184, 92, 56, 0.05) 9px
   );
+
+  /* ---- Layout / Effects ---- */
+  /* NOTE: --radius-*, --shadow-card*, --shadow-elevated are now in theme-tokens.css */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-full: 9999px;
+
+  --border-width-thin: 1px;
+  --border-width-default: 1px;
+  --border-width-thick: 2px;
+
+  --shadow-glow: 0 0 20px rgba(184, 92, 56, 0.25);
+  --shadow-glow-accent: 0 0 15px rgba(201, 162, 39, 0.2);
+  --shadow-inner: inset 0 1px 2px rgba(61, 44, 30, 0.06);
+
+  /* ---- Typography (theme-variant) ---- */
+  /* NOTE: Heading/body typography tokens are now in theme-tokens.css */
+  --heading-weight: 600;
+  --heading-transform: none;
+  --heading-tracking: 0;
+  --body-tracking: 0;
+  --display-tracking: 0.02em;
+  --deco-rotation: 0deg;
+  --deco-slogan-rotation: 0deg;
 }

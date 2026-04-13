@@ -4,16 +4,20 @@ import { useToolStore } from '../stores/toolStore'
 const isElectron = typeof window !== 'undefined' && window.devhub !== undefined
 
 export function useToolStatus() {
-  const { tools, setTools, updateTool } = useToolStore()
+  const tools = useToolStore(s => s.tools)
+  const setTools = useToolStore(s => s.setTools)
+  const updateTool = useToolStore(s => s.updateTool)
   // 追踪所有 timeout 以便清理
   const timeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   // Load tools on mount
   useEffect(() => {
     if (isElectron) {
-      window.devhub.tools.getStatus().then(setTools).catch((error: Error) => {
-        console.warn('Failed to load tool status:', error.message)
-      })
+      window.devhub?.tools?.getStatus?.()
+        ?.then(setTools)
+        ?.catch((error: Error) => {
+          console.warn('Failed to load tool status:', error.message)
+        })
     }
   }, [setTools])
 
@@ -21,7 +25,7 @@ export function useToolStatus() {
   useEffect(() => {
     if (!isElectron) return
 
-    const unsubscribe = window.devhub.tools.onComplete((tool) => {
+    const unsubscribe = window.devhub?.tools?.onComplete?.((tool) => {
       updateTool(tool.id, { status: 'completed', lastCompletedAt: Date.now() })
 
       // 清除之前的 timeout
@@ -41,7 +45,7 @@ export function useToolStatus() {
 
     const timeouts = timeoutsRef.current
     return () => {
-      unsubscribe()
+      unsubscribe?.()
       // 清理所有 timeout
       timeouts.forEach((timeout) => clearTimeout(timeout))
       timeouts.clear()
@@ -56,8 +60,8 @@ export function useToolStatus() {
 
     const interval = setInterval(async () => {
       try {
-        const status = await window.devhub.tools.getStatus()
-        if (isMounted) {
+        const status = await window.devhub?.tools?.getStatus?.()
+        if (isMounted && status) {
           setTools(status)
         }
       } catch (error) {

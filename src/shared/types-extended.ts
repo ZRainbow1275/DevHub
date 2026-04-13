@@ -11,7 +11,7 @@ export interface ServiceResult<T = undefined> {
 // ============ Process Monitoring Types ============
 
 export type ProcessType = 'dev-server' | 'ai-tool' | 'build' | 'database' | 'other'
-export type ProcessStatusType = 'running' | 'idle' | 'waiting'
+export type ProcessStatusType = 'running' | 'idle' | 'waiting' | 'unknown'
 
 export interface ProcessInfo {
   pid: number
@@ -35,6 +35,113 @@ export interface ProcessGroup {
   totalMemory: number
 }
 
+// ============ Extended Process Info ============
+
+export interface ProcessInfoExtended extends ProcessInfo {
+  ppid: number
+  parentName?: string
+  childPids: number[]
+  siblingPids: number[]
+  threadCount: number
+  handleCount: number
+  ports: number[]
+  relatedWindowHwnds: number[]
+  cpuHistory: number[]
+  memoryHistory: number[]
+  commandLine: string
+  userName?: string
+  priority?: number
+}
+
+export interface ProcessRelationship {
+  ancestors: ProcessInfo[]
+  self: ProcessInfoExtended
+  children: ProcessInfo[]
+  descendants: ProcessInfo[]
+  siblings: ProcessInfo[]
+  relatedPorts: PortInfo[]
+  relatedWindows: WindowInfo[]
+}
+
+// ============ Process Deep Detail Types ============
+
+export interface ProcessDeepDetail {
+  pid: number
+  name: string
+  executablePath: string
+  commandLine: string
+  workingDirectory: string
+  scriptPath: string | null
+  startTime: string
+  userName: string
+  cpuPercent: number
+  cpuHistory: number[]
+  memoryRSS: number
+  memoryVMS: number
+  threadCount: number
+  handleCount: number
+  ioReadBytes: number
+  ioWriteBytes: number
+  networkConnections: NetworkConnectionInfo[]
+  loadedModules: LoadedModuleInfo[]
+  environmentVariables: Record<string, string>
+  ancestorChain: ProcessTreeNode[]
+  children: ProcessTreeNode[]
+  relatedProcesses: RelatedProcessInfo[]
+  requiresElevation?: boolean
+}
+
+export interface NetworkConnectionInfo {
+  protocol: 'TCP' | 'UDP'
+  localAddress: string
+  localPort: number
+  remoteAddress: string
+  remotePort: number
+  state: string
+}
+
+export interface LoadedModuleInfo {
+  name: string
+  path: string
+  sizeKB: number
+}
+
+export interface ProcessTreeNode {
+  pid: number
+  name: string
+  cpuPercent: number
+  memoryMB: number
+  children?: ProcessTreeNode[]
+}
+
+export interface RelatedProcessInfo {
+  pid: number
+  name: string
+  relation: 'shared_port' | 'shared_file' | 'pipe' | 'network_peer'
+  detail: string
+}
+
+export type ProcessPriority = 'Idle' | 'BelowNormal' | 'Normal' | 'AboveNormal' | 'High' | 'RealTime'
+
+// ============ Process Sort/Filter Types ============
+
+export type SortColumn = 'name' | 'pid' | 'cpu' | 'memory' | 'port' | 'startTime' | 'status' | 'type'
+export type SortDirection = 'asc' | 'desc'
+
+export interface SortConfig {
+  column: SortColumn
+  direction: SortDirection
+}
+
+export interface ProcessFilterState {
+  search: string
+  status: Set<ProcessStatusType>
+  type: Set<ProcessType>
+  cpuMin?: number
+  memoryMin?: number
+  hasPort?: boolean
+}
+
 // ============ Port Management Types ============
 
 export type PortState = 'LISTENING' | 'ESTABLISHED' | 'TIME_WAIT' | 'CLOSE_WAIT'
@@ -47,7 +154,64 @@ export interface PortInfo {
   state: PortState
   protocol: PortProtocol
   localAddress: string
+  foreignAddress: string
   projectId?: string
+}
+
+// ============ Port Focus Types ============
+
+export interface PortConnection {
+  localAddress: string
+  foreignAddress: string
+  state: string
+  foreignProcessName?: string
+  direction: 'inbound' | 'outbound'
+}
+
+export interface PortFocusData {
+  port: PortInfo
+  process: ProcessInfoExtended | null
+  siblingPorts: PortInfo[]
+  connections: PortConnection[]
+  processChildren: ProcessInfo[]
+}
+
+/** Response from the incremental port detail query (cache-first strategy). */
+export interface PortDetailIncrementalResult {
+  data: PortFocusData | null
+  source: 'cache' | 'incremental' | 'timeout'
+  isStale: boolean
+}
+
+// ============ Port Topology Types ============
+
+export type TopologyNodeType = 'process' | 'port' | 'external'
+
+export interface TopologyNode {
+  id: string
+  type: TopologyNodeType
+  label: string
+  metadata: {
+    pid?: number
+    processName?: string
+    port?: number
+    protocol?: PortProtocol
+    state?: PortState
+    address?: string
+    portCount?: number
+  }
+}
+
+export interface TopologyEdge {
+  id: string
+  source: string
+  target: string
+  label?: string
+}
+
+export interface PortTopologyData {
+  nodes: TopologyNode[]
+  edges: TopologyEdge[]
 }
 
 export const COMMON_DEV_PORTS = [
@@ -66,7 +230,18 @@ export interface WindowInfo {
   rect: { x: number; y: number; width: number; height: number }
   isVisible: boolean
   isMinimized: boolean
+  isSystemWindow: boolean
 }
+
+/** Window class names known to be system/shell windows — filtered by default */
+export const SYSTEM_WINDOW_CLASSNAMES: ReadonlySet<string> = new Set([
+  'Progman',
+  'WorkerW',
+  'Windows.UI.Core.CoreWindow',
+  'ApplicationFrameWindow',
+  'Shell_TrayWnd',
+  'Shell_SecondaryTrayWnd'
+])
 
 export interface WindowGroup {
   id: string
@@ -85,6 +260,8 @@ export interface WindowLayout {
     windows: {
       processName: string
       titlePattern: string
+      className?: string
+      workingDir?: string
       rect: { x: number; y: number; width: number; height: number }
     }[]
   }[]
@@ -92,16 +269,76 @@ export interface WindowLayout {
   updatedAt: number
 }
 
+// ============ Process Relationship Graph Types ============
+
+export type ProcessTopologyNodeType = 'project' | 'process' | 'port' | 'window'
+
+export type ProcessTopologyEdgeType =
+  | 'project-owns-process'
+  | 'process-binds-port'
+  | 'process-owns-window'
+
+export interface ProcessTopologyNodeData extends Record<string, unknown> {
+  label: string
+  nodeType: ProcessTopologyNodeType
+  pid?: number
+  processInfo?: ProcessInfo
+  portInfo?: PortInfo
+  windowInfo?: WindowInfo
+  projectId?: string
+  projectName?: string
+}
+
+export interface ProcessTopologyEdgeData extends Record<string, unknown> {
+  edgeType: ProcessTopologyEdgeType
+  animated?: boolean
+}
+
 // ============ AI Task Tracking Types ============
 
-export type AIToolType = 'codex' | 'claude-code' | 'gemini-cli' | 'cursor' | 'other'
-export type AITaskState = 'running' | 'waiting' | 'completed' | 'error' | 'idle'
+export type AIToolType = 'codex' | 'claude-code' | 'gemini-cli' | 'cursor' | 'opencode' | 'aider' | 'windsurf' | 'continue-dev' | 'cline' | 'other'
+export type AITaskState = 'running' | 'waiting' | 'completed' | 'error' | 'idle' | 'thinking' | 'coding' | 'compiling'
+
+export type AITaskPhase =
+  | 'initializing'    // Process just created, CPU initializing
+  | 'thinking'        // API call, waiting for response, low CPU
+  | 'coding'          // File writes detected, moderate CPU
+  | 'validating'      // Tests/lint running, high CPU burst
+  | 'completed'       // CPU dropped to idle, output completion flag
+  | 'error'           // Error detected
+
+export const PHASE_LABELS: Record<AITaskPhase, string> = {
+  initializing: '启动中...',
+  thinking: '思考中...',
+  coding: '编码中...',
+  validating: '验证中...',
+  completed: '已完成',
+  error: '出错',
+}
+
+export interface PhaseSignals {
+  phase: AITaskPhase
+  confidence: number       // 0-1
+  indicators: string[]     // detected indicators
+}
+
+export interface ProgressEstimate {
+  percentage: number           // 0-100 (estimated)
+  phase: AITaskPhase
+  phaseLabel: string           // "thinking..." / "coding..." / etc.
+  elapsed: number              // elapsed time (ms)
+  estimatedRemaining?: number  // estimated remaining (ms, based on history)
+  confidence: number           // estimate confidence
+}
 
 export interface AITaskStatus {
   state: AITaskState
   progress?: number
   lastActivity: number
   currentAction?: string
+  phase?: AITaskPhase
+  phaseLabel?: string
+  progressEstimate?: ProgressEstimate
 }
 
 export interface AITask {
@@ -113,12 +350,53 @@ export interface AITask {
   endTime?: number
   status: AITaskStatus
   projectId?: string
+  alias?: string
+  aliasColor?: string
+  /** Fine-grained 7-state monitor state */
+  monitorState?: AIMonitorState
+  /** Auto-generated display name (e.g. "Claude Code-1") */
+  autoName?: string
   metrics: {
     cpuHistory: number[]
     outputLineCount: number
     lastOutputTime: number
     idleDuration: number
+    /** Output rate: bytes per second from I/O counter delta */
+    outputRate?: number
   }
+  /** Detection signal details for frontend display */
+  detectionSignals?: {
+    /** 0-1, combined completion score from all signals */
+    completionScore: number
+    /** 0-1, confidence in current phase detection */
+    phaseConfidence: number
+    /** Names of currently active detection indicators */
+    activeIndicators: string[]
+    /** Whether the task is in a confirmation window before final completion */
+    inConfirmationWindow: boolean
+    /** Remaining milliseconds in confirmation window, if active */
+    confirmationRemainingMs?: number
+  }
+}
+
+// ============ AI Window Alias Types ============
+
+export interface AIWindowAlias {
+  id: string
+  alias: string
+  matchCriteria: {
+    pid?: number
+    commandHash?: string
+    titlePrefix?: string
+    executablePath?: string
+    toolType: AIToolType
+    workingDir?: string
+  }
+  createdAt: number
+  lastMatchedAt: number
+  color?: string
+  /** Whether this alias was auto-generated (vs. user-defined) */
+  autoGenerated?: boolean
 }
 
 export interface AITaskHistory {
@@ -132,10 +410,133 @@ export interface AITaskHistory {
   summary?: string
 }
 
+// ============ AI Progress Timeline Types ============
+
+export interface TimelineEntry {
+  timestamp: string    // ISO
+  status: AITaskState
+  duration: number     // seconds this status lasted
+  detail?: string      // optional context (e.g. "modifying App.tsx")
+}
+
+// ============ AI Tool Detection Config (per-tool) ============
+
+export interface AIToolDetectionConfig {
+  toolType: AIToolType
+  completionKeywords: string[]
+  errorKeywords: string[]
+  promptPatterns: string[]      // serializable regex source strings
+  cpuBaselineThreshold: number  // CPU % below which is considered idle
+  confirmationWindowMs: number  // ms to wait before confirming completion
+}
+
+/** Fine-grained AI monitor state for the 7-state state machine */
+export type AIMonitorState = 'idle' | 'thinking' | 'coding' | 'compiling' | 'waiting-input' | 'completed' | 'error'
+
+export const AI_MONITOR_STATE_INFO: Record<AIMonitorState, { label: string; color: string; icon: string }> = {
+  'idle':          { label: '空闲',     color: 'gray',   icon: 'pause' },
+  'thinking':      { label: '思考中',   color: 'blue',   icon: 'brain' },
+  'coding':        { label: '编码中',   color: 'green',  icon: 'keyboard' },
+  'compiling':     { label: '编译中',   color: 'orange', icon: 'gear' },
+  'waiting-input': { label: '等待输入', color: 'yellow', icon: 'hourglass' },
+  'completed':     { label: '已完成',   color: 'green',  icon: 'check' },
+  'error':         { label: '错误',     color: 'red',    icon: 'x' },
+}
+
+/** Default detection configs per AI tool */
+export const DEFAULT_AI_TOOL_CONFIGS: Record<Exclude<AIToolType, 'other'>, AIToolDetectionConfig> = {
+  'claude-code': {
+    toolType: 'claude-code',
+    completionKeywords: ['Done', 'Complete', 'Finished', 'finished', 'done', '✓', '✔'],
+    errorKeywords: ['Error', 'Failed', 'error:', 'FAILED', 'panic', '✗', '✘'],
+    promptPatterns: ['^\\s*[>$%#]\\s*$', '^\\s*❯\\s*$', '^\\s*>>>\\s*$'],
+    cpuBaselineThreshold: 1,
+    confirmationWindowMs: 8000,
+  },
+  'codex': {
+    toolType: 'codex',
+    completionKeywords: ['Done', 'Complete', 'Finished', 'Ready', '✓'],
+    errorKeywords: ['Error', 'Failed', 'error:'],
+    promptPatterns: ['^\\s*[>$%#]\\s*$', '^\\s*❯\\s*$'],
+    cpuBaselineThreshold: 3,
+    confirmationWindowMs: 8000,
+  },
+  'gemini-cli': {
+    toolType: 'gemini-cli',
+    completionKeywords: ['Done', 'Complete', 'Finished', '✓'],
+    errorKeywords: ['Error', 'Failed', 'error:'],
+    promptPatterns: ['^\\s*[>$%#]\\s*$'],
+    cpuBaselineThreshold: 3,
+    confirmationWindowMs: 8000,
+  },
+  'cursor': {
+    toolType: 'cursor',
+    completionKeywords: ['Done', 'Complete'],
+    errorKeywords: ['Error', 'Failed'],
+    promptPatterns: [],
+    cpuBaselineThreshold: 5,
+    confirmationWindowMs: 8000,
+  },
+  'opencode': {
+    toolType: 'opencode',
+    completionKeywords: ['Done', 'Complete', 'Finished', '✓'],
+    errorKeywords: ['Error', 'Failed', 'error:'],
+    promptPatterns: ['^\\s*[>$%#]\\s*$'],
+    cpuBaselineThreshold: 3,
+    confirmationWindowMs: 8000,
+  },
+  'aider': {
+    toolType: 'aider',
+    completionKeywords: ['Done', 'Complete', 'Finished', '✓', 'aider>'],
+    errorKeywords: ['Error', 'Failed', 'error:', 'Traceback'],
+    promptPatterns: ['^\\s*aider>\\s*$', '^\\s*[>$%#]\\s*$'],
+    cpuBaselineThreshold: 3,
+    confirmationWindowMs: 8000,
+  },
+  'windsurf': {
+    toolType: 'windsurf',
+    completionKeywords: ['Done', 'Complete'],
+    errorKeywords: ['Error', 'Failed'],
+    promptPatterns: [],
+    cpuBaselineThreshold: 5,
+    confirmationWindowMs: 8000,
+  },
+  'continue-dev': {
+    toolType: 'continue-dev',
+    completionKeywords: ['Done', 'Complete', 'Finished', '✓'],
+    errorKeywords: ['Error', 'Failed', 'error:'],
+    promptPatterns: ['^\\s*[>$%#]\\s*$'],
+    cpuBaselineThreshold: 3,
+    confirmationWindowMs: 8000,
+  },
+  'cline': {
+    toolType: 'cline',
+    completionKeywords: ['Done', 'Complete', 'Finished', 'Task completed', '✓'],
+    errorKeywords: ['Error', 'Failed', 'error:'],
+    promptPatterns: ['^\\s*[>$%#]\\s*$'],
+    cpuBaselineThreshold: 3,
+    confirmationWindowMs: 8000,
+  },
+}
+
+/** Notification with additional window context */
+export interface TaskCompletionNotification {
+  taskId: string
+  toolType: AIToolType
+  toolName: string
+  alias?: string
+  pid: number
+  windowHwnd?: number
+  duration: number
+  lastOutputLines?: string[]
+  isError: boolean
+}
+
 // ============ Notification Types ============
 
 export type NotificationType =
   | 'task-complete'
+  | 'task-error'
   | 'port-conflict'
   | 'zombie-process'
   | 'high-resource'
@@ -186,17 +587,35 @@ export interface TaskStatistics {
   byDay: { date: string; count: number }[]
 }
 
+export interface AITaskStatistics {
+  totalTasks: number
+  completedTasks: number
+  errorTasks: number
+  avgDuration: number
+  byTool: Record<AIToolType, number>
+}
+
 // ============ Extended IPC Channels ============
 
 export const IPC_CHANNELS_EXT = {
   PROCESS_SCAN: 'process:scan',
   PROCESS_KILL: 'process:kill',
   PROCESS_CLEANUP_ZOMBIES: 'process:cleanup-zombies',
+  PROCESS_GET_FULL_RELATIONSHIP: 'process:get-full-relationship',
+  PROCESS_GET_DEEP_DETAIL: 'process:get-deep-detail',
+  PROCESS_GET_CONNECTIONS: 'process:get-connections',
+  PROCESS_GET_ENVIRONMENT: 'process:get-environment',
+  PROCESS_KILL_TREE: 'process:kill-tree',
+  PROCESS_SET_PRIORITY: 'process:set-priority',
+  PROCESS_OPEN_FILE_LOCATION: 'process:open-file-location',
+  PROCESS_GET_MODULES: 'process:get-modules',
   PROCESS_UPDATED: 'process:updated',
   PROCESS_ZOMBIE_DETECTED: 'process:zombie-detected',
   PORT_SCAN: 'port:scan',
   PORT_CHECK: 'port:check',
   PORT_RELEASE: 'port:release',
+  PORT_TOPOLOGY: 'port:topology',
+  PORT_GET_FOCUS_DATA: 'port:get-focus-data',
   PORT_CONFLICT: 'port:conflict',
   WINDOW_SCAN: 'window:scan',
   WINDOW_FOCUS: 'window:focus',
@@ -223,10 +642,30 @@ export const IPC_CHANNELS_EXT = {
   AI_TASK_STATUS_CHANGED: 'ai-task:status-changed',
   AI_TASK_COMPLETE: 'ai-task:complete',
   AI_TASK_COMPLETED: 'ai-task:completed',
+  AI_ALIAS_GET_ALL: 'ai-alias:get-all',
+  AI_ALIAS_SET: 'ai-alias:set',
+  AI_ALIAS_REMOVE: 'ai-alias:remove',
+  AI_TASK_GET_PROGRESS: 'ai-task:get-progress',
+  AI_TASK_MARK_FALSE_POSITIVE: 'ai-task:mark-false-positive',
+  AI_TASK_SET_DETECTION_CONFIG: 'ai-task:set-detection-config',
+  AI_TASK_GET_DETECTION_CONFIG: 'ai-task:get-detection-config',
+  WINDOW_RESTORE: 'window:restore-window',
+  WINDOW_SET_TOPMOST: 'window:set-topmost',
+  WINDOW_SET_OPACITY: 'window:set-opacity',
+  WINDOW_SEND_KEYS: 'window:send-keys',
+  WINDOW_TILE_LAYOUT: 'window:tile-layout',
+  WINDOW_CASCADE_LAYOUT: 'window:cascade-layout',
+  WINDOW_MINIMIZE_ALL: 'window:minimize-all',
+  WINDOW_RESTORE_ALL: 'window:restore-all',
+  WINDOW_ADD_TO_GROUP: 'window:add-to-group',
+  WINDOW_RESTORE_GROUP: 'window:restore-group',
+  NAVIGATE_TO_TASK: 'navigate-to-task',
   NOTIFICATION_GET_CONFIG: 'notification:get-config',
   NOTIFICATION_SET_CONFIG: 'notification:set-config',
   NOTIFICATION_GET_HISTORY: 'notification:get-history',
-  NOTIFICATION_ACTION: 'notification:action'
+  NOTIFICATION_ACTION: 'notification:action',
+  PROJECT_GET_GIT_INFO: 'project:get-git-info',
+  PROJECT_GET_DEPENDENCIES: 'project:get-dependencies'
 } as const
 
 // AI Tool Signatures for Detection
@@ -236,30 +675,70 @@ export const AI_TOOL_SIGNATURES: Record<AIToolType, {
   commandPatterns: RegExp[]
 }> = {
   'codex': {
-    processPatterns: ['node.exe', 'codex'],
+    processPatterns: ['codex.exe', 'node.exe'],
     windowTitlePatterns: [/codex/i, /openai/i],
-    commandPatterns: [/codex\s+/i]
+    commandPatterns: [/@openai\/codex/i, /codex\s+/i]
   },
   'claude-code': {
-    processPatterns: ['node.exe', 'claude'],
+    processPatterns: ['claude.exe', 'node.exe'],
     windowTitlePatterns: [/claude/i, /anthropic/i],
-    commandPatterns: [/\bclaude\b/i, /@anthropic-ai\/claude-code/i, /claude-code/i]
+    commandPatterns: [/@anthropic-ai\/claude-code/i, /\bclaude-code\b/i, /\bclaude\b/i]
   },
   'gemini-cli': {
-    processPatterns: ['node.exe', 'gemini'],
+    processPatterns: ['gemini.exe', 'node.exe'],
     windowTitlePatterns: [/gemini/i, /google/i],
-    commandPatterns: [/gemini\s+/i]
+    commandPatterns: [/@google\/gemini-cli/i, /gemini-cli/i, /gemini\s+/i]
   },
   'cursor': {
     processPatterns: ['Cursor.exe'],
     windowTitlePatterns: [/cursor/i],
     commandPatterns: []
   },
+  'opencode': {
+    processPatterns: ['opencode.exe', 'node.exe'],
+    windowTitlePatterns: [/opencode/i],
+    commandPatterns: [/\bopencode\b/i]
+  },
+  'aider': {
+    processPatterns: ['aider.exe', 'python.exe', 'python3.exe'],
+    windowTitlePatterns: [/aider/i],
+    commandPatterns: [/\baider\b/i]
+  },
+  'windsurf': {
+    processPatterns: ['Windsurf.exe'],
+    windowTitlePatterns: [/windsurf/i],
+    commandPatterns: []
+  },
+  'continue-dev': {
+    processPatterns: ['node.exe'],
+    windowTitlePatterns: [/continue/i],
+    commandPatterns: [/\bcontinue\b/i, /@continue\/extension/i]
+  },
+  'cline': {
+    processPatterns: ['node.exe'],
+    windowTitlePatterns: [/cline/i],
+    commandPatterns: [/\bcline\b/i]
+  },
   'other': {
     processPatterns: [],
     windowTitlePatterns: [],
     commandPatterns: []
   }
+}
+
+/** Characters forbidden in window alias names */
+export const ALIAS_FORBIDDEN_CHARS = /[<>:"/\\|?*]/
+
+/** Max alias name length */
+export const ALIAS_MAX_LENGTH = 50
+
+/** Validate an alias name */
+export function validateAliasName(name: string): { valid: boolean; error?: string } {
+  const trimmed = name.trim()
+  if (trimmed.length === 0) return { valid: false, error: 'Name cannot be empty' }
+  if (trimmed.length > ALIAS_MAX_LENGTH) return { valid: false, error: `Name must be at most ${ALIAS_MAX_LENGTH} characters` }
+  if (ALIAS_FORBIDDEN_CHARS.test(trimmed)) return { valid: false, error: 'Name contains forbidden characters: < > : " / \\ | ? *' }
+  return { valid: true }
 }
 
 // Protected system processes — never kill these
@@ -290,7 +769,93 @@ export const DEV_PROCESS_PATTERNS = [
   'code.exe', 'Cursor.exe', 'windsurf.exe',
   'idea64.exe', 'pycharm64.exe', 'webstorm64.exe',
   // AI 编程工具
-  'codex', 'claude', 'gemini',
+  'codex', 'claude', 'gemini', 'opencode', 'aider',
+  'Windsurf.exe',
   // 容器
   'docker.exe'
 ] as const
+
+// ============ Project Git Info Types ============
+
+export interface GitInfo {
+  branch: string
+  uncommittedCount: number
+  recentCommits: GitCommitSummary[]
+  aheadBehind: { ahead: number; behind: number }
+}
+
+export interface GitCommitSummary {
+  hash: string
+  message: string
+  author: string
+  date: string
+}
+
+// ============ Project Dependency Types ============
+
+export type LockfileType = 'npm' | 'yarn' | 'pnpm' | 'none'
+
+export interface DependencyEntry {
+  name: string
+  version: string
+}
+
+export interface ProjectDependencies {
+  dependencies: DependencyEntry[]
+  devDependencies: DependencyEntry[]
+  lockfileType: LockfileType
+}
+
+// ============ Project Sort Types ============
+
+export type ProjectSortField = 'name' | 'status' | 'type' | 'recentRun' | 'createdAt'
+export type ProjectSortDirection = 'asc' | 'desc'
+
+export interface ProjectSortConfig {
+  field: ProjectSortField
+  direction: ProjectSortDirection
+}
+
+// ============ Scanner Cache Types (for preload/renderer) ============
+
+export type ScannerType = 'processes' | 'ports' | 'windows' | 'aiTasks'
+
+export interface ScannerDiff<T> {
+  hasChanges: boolean
+  added: T[]
+  removed: T[]
+  updated: Array<{ id: string; changes: Partial<T> }>
+}
+
+export interface ScannerCacheEntry<T> {
+  data: T[]
+  lastUpdated: number
+  isScanning: boolean
+  error: string | null
+}
+
+export interface SystemSummary {
+  processCount: number
+  activePortCount: number
+  windowCount: number
+  aiToolCount: number
+  cpuTotal: number
+  memoryUsedPercent: number
+}
+
+export interface ScannerCacheSnapshot {
+  processes: ScannerCacheEntry<ProcessInfo>
+  ports: ScannerCacheEntry<PortInfo>
+  windows: ScannerCacheEntry<WindowInfo>
+  aiTasks: ScannerCacheEntry<AITask>
+  systemSummary: SystemSummary
+}
+
+export interface ScannerStatus {
+  isActive: boolean
+  scanStatus: Record<ScannerType, {
+    isScanning: boolean
+    lastUpdated: number
+    error: string | null
+  }>
+}

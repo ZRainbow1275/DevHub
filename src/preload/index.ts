@@ -1,12 +1,15 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { IPC_CHANNELS, Project, LogEntry, CodingTool, AppSettings } from '@shared/types'
+import { IPC_CHANNELS, Project, LogEntry, CodingTool, AppSettings, ProjectType } from '@shared/types'
+import type { GitInfo, ProjectDependencies } from '@shared/types-extended'
 import {
   systemProcessApi,
   portApi,
   windowApi,
   aiTaskApi,
+  aiAliasApi,
   notificationApi,
-  taskHistoryApi
+  taskHistoryApi,
+  scannerApi
 } from './extended'
 
 // Expose protected methods to renderer
@@ -27,21 +30,46 @@ contextBridge.exposeInMainWorld('devhub', {
     update: (id: string, updates: Partial<Project>): Promise<Project | undefined> =>
       ipcRenderer.invoke(IPC_CHANNELS.PROJECTS_UPDATE, id, updates),
 
-    scan: (scanPath?: string): Promise<Array<{ path: string; name: string; scripts: string[] }>> =>
+    scan: (scanPath?: string): Promise<Array<{ path: string; name: string; scripts: string[]; projectType: ProjectType }>> =>
       ipcRenderer.invoke('projects:scan', scanPath),
 
-    scanDirectory: (dirPath: string): Promise<Array<{ path: string; name: string; scripts: string[] }>> =>
+    scanDirectory: (dirPath: string): Promise<Array<{ path: string; name: string; scripts: string[]; projectType: ProjectType }>> =>
       ipcRenderer.invoke('projects:scan-directory', dirPath),
 
     // 智能项目发现（包括 VSCode 最近打开、pnpm/npm 链接等）
-    discover: (): Promise<Array<{ path: string; name: string; scripts: string[] }>> =>
+    discover: (): Promise<Array<{ path: string; name: string; scripts: string[]; projectType: ProjectType }>> =>
       ipcRenderer.invoke('projects:discover'),
 
+    // Git info and dependency parsing
+    getGitInfo: (projectPath: string): Promise<GitInfo | null> =>
+      ipcRenderer.invoke('project:get-git-info', projectPath),
+
+    getDependencies: (projectPath: string): Promise<ProjectDependencies | null> =>
+      ipcRenderer.invoke('project:get-dependencies', projectPath),
+
     // 监听首次启动自动发现结果
-    onAutoDiscovered: (callback: (projects: Array<{ path: string; name: string; scripts: string[] }>) => void) => {
-      const handler = (_: unknown, projects: Array<{ path: string; name: string; scripts: string[] }>) => callback(projects)
+    onAutoDiscovered: (callback: (projects: Array<{ path: string; name: string; scripts: string[]; projectType: ProjectType }>) => void) => {
+      const handler = (_: unknown, projects: Array<{ path: string; name: string; scripts: string[]; projectType: ProjectType }>) => callback(projects)
       ipcRenderer.on('projects:auto-discovered', handler)
       return () => ipcRenderer.removeListener('projects:auto-discovered', handler)
+    },
+
+    // Project watcher API
+    watcher: {
+      start: (watchPaths?: string[]): Promise<{ running: boolean }> =>
+        ipcRenderer.invoke(IPC_CHANNELS.PROJECTS_WATCHER_START, watchPaths),
+
+      stop: (): Promise<{ running: boolean }> =>
+        ipcRenderer.invoke(IPC_CHANNELS.PROJECTS_WATCHER_STOP),
+
+      status: (): Promise<{ running: boolean }> =>
+        ipcRenderer.invoke(IPC_CHANNELS.PROJECTS_WATCHER_STATUS),
+
+      onDetected: (callback: (events: Array<{ type: 'added' | 'removed'; dirPath: string; detections: Array<{ projectType: ProjectType; name: string; scripts: string[] }> }>) => void) => {
+        const handler = (_: unknown, events: Array<{ type: 'added' | 'removed'; dirPath: string; detections: Array<{ projectType: ProjectType; name: string; scripts: string[] }> }>) => callback(events)
+        ipcRenderer.on(IPC_CHANNELS.PROJECTS_WATCHER_DETECTED, handler)
+        return () => ipcRenderer.removeListener(IPC_CHANNELS.PROJECTS_WATCHER_DETECTED, handler)
+      }
     }
   },
 
@@ -150,6 +178,8 @@ contextBridge.exposeInMainWorld('devhub', {
   port: portApi,
   windowManager: windowApi,
   aiTask: aiTaskApi,
+  aiAlias: aiAliasApi,
   notification: notificationApi,
-  taskHistory: taskHistoryApi
+  taskHistory: taskHistoryApi,
+  scanner: scannerApi
 })

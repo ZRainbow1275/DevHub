@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { PortInfo, COMMON_DEV_PORTS } from '@shared/types-extended'
+import { PortInfo, PortFocusData, COMMON_DEV_PORTS } from '@shared/types-extended'
 
 interface PortConflict {
   port: number
@@ -22,6 +22,10 @@ interface PortState {
   resolveConflict: (port: number) => void
   removePort: (port: number) => void
 
+  // Port detail cache (port number -> PortFocusData)
+  portDetails: Map<number, PortFocusData>
+  updatePortDetail: (port: number, detail: PortFocusData) => void
+
   // Computed
   getPortByNumber: (port: number) => PortInfo | undefined
   getCommonPorts: () => PortInfo[]
@@ -35,6 +39,7 @@ export const usePortStore = create<PortState>((set, get) => ({
   isScanning: false,
   lastScanTime: null,
   selectedPort: null,
+  portDetails: new Map(),
 
   setPorts: (ports) =>
     set({
@@ -66,6 +71,13 @@ export const usePortStore = create<PortState>((set, get) => ({
       ports: state.ports.filter((p) => p.port !== port),
       selectedPort: state.selectedPort === port ? null : state.selectedPort
     })),
+
+  updatePortDetail: (port, detail) =>
+    set((state) => {
+      const next = new Map(state.portDetails)
+      next.set(port, detail)
+      return { portDetails: next }
+    }),
 
   getPortByNumber: (port) => {
     return get().ports.find((p) => p.port === port)

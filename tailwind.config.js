@@ -4,6 +4,13 @@ export default {
     './src/renderer/**/*.{js,ts,jsx,tsx,html}'
   ],
   theme: {
+    screens: {
+      'xs': '0px',
+      'sm': '640px',
+      'md': '1000px',
+      'lg': '1400px',
+      'xl': '1800px',
+    },
     extend: {
       colors: {
         // All colors reference CSS custom properties for multi-theme support
@@ -12,29 +19,29 @@ export default {
           50: 'var(--red-50, #fef2f2)',
           100: 'var(--red-100, #fee2e2)',
           200: 'var(--red-200, #fecaca)',
-          300: 'var(--red-300, #f28b8b)',
-          400: 'var(--red-400, #e85d5d)',
+          300: 'var(--red-300)',
+          400: 'var(--red-400)',
           500: 'var(--red-500)',
-          600: 'var(--red-600, #b83a3a)',
-          700: 'var(--red-700, #9a2f2f)',
+          600: 'var(--red-600)',
+          700: 'var(--red-700)',
           800: 'var(--red-800, #7f2626)',
           900: 'var(--red-900, #691f1f)'
         },
         'gold': {
           DEFAULT: 'var(--gold-500)',
-          300: 'var(--gold-300, #e8cf6a)',
-          400: 'var(--gold-400, #dab948)',
+          300: 'var(--gold-300)',
+          400: 'var(--gold-400)',
           500: 'var(--gold-500)',
-          600: 'var(--gold-600, #a68619)',
-          700: 'var(--gold-700, #856b14)'
+          600: 'var(--gold-600)',
+          700: 'var(--gold-700)'
         },
         'steel': {
-          DEFAULT: 'var(--steel-500, #6b7d8a)',
-          300: 'var(--steel-300, #9fb0be)',
-          400: 'var(--steel-400, #8499a8)',
-          500: 'var(--steel-500, #6b7d8a)',
-          600: 'var(--steel-600, #4a5966)',
-          700: 'var(--steel-700, #3a464f)'
+          DEFAULT: 'var(--steel-500)',
+          300: 'var(--steel-300)',
+          400: 'var(--steel-400)',
+          500: 'var(--steel-500)',
+          600: 'var(--steel-600)',
+          700: 'var(--steel-700)'
         },
         'surface': {
           DEFAULT: 'var(--surface-850)',
@@ -66,9 +73,11 @@ export default {
         }
       },
       fontFamily: {
-        display: ['Bebas Neue', 'Oswald', 'Anton', 'sans-serif'],
-        sans: ['Inter', 'Noto Sans SC', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Fira Code', 'Consolas', 'monospace']
+        display: ['var(--typo-heading-family)', 'Oswald', 'Bebas Neue', 'Anton', 'sans-serif'],
+        body: ['var(--typo-body-family)', 'Inter', 'sans-serif'],
+        sans: ['var(--typo-body-family)', 'Inter', 'Noto Sans SC', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Fira Code', 'Consolas', 'monospace'],
+        serif: ['Playfair Display', 'Noto Serif SC', 'Georgia', 'serif']
       },
       fontSize: {
         'hero': ['48px', { lineHeight: '56px', fontWeight: '400' }],
@@ -84,25 +93,36 @@ export default {
         '18': '4.5rem',
         '22': '5.5rem',
         '88': '22rem',
-        '128': '32rem'
+        '128': '32rem',
+        'base': 'var(--spacing-base, 4px)',
+        'container': 'var(--container-padding, 12px)',
+        'card-gap': 'var(--card-gap, 8px)',
+        'sidebar': 'var(--sidebar-width, 240px)'
       },
       borderRadius: {
-        'sm': '2px',
-        'DEFAULT': '4px',
-        'md': '4px',
-        'lg': '4px',
-        'xl': '4px',
-        '2xl': '4px'
+        'sm': 'var(--radius-sm, 2px)',
+        'DEFAULT': 'var(--radius-md, 4px)',
+        'md': 'var(--radius-md, 4px)',
+        'lg': 'var(--radius-lg, 4px)',
+        'xl': 'var(--radius-xl, 4px)',
+        '2xl': 'var(--radius-xl, 4px)',
+        'full': 'var(--radius-full, 9999px)',
+        'card': 'var(--radius-card, 2px)',
+        'button': 'var(--radius-button, 2px)',
+        'input': 'var(--radius-input, 2px)',
+        'badge': 'var(--radius-badge, 0px)'
       },
       boxShadow: {
-        'glow': '0 0 20px var(--red-overlay, rgba(214, 69, 69, 0.4))',
+        'glow': 'var(--shadow-glow)',
         'glow-sm': '0 0 10px var(--red-overlay, rgba(214, 69, 69, 0.3))',
-        'glow-gold': '0 0 15px var(--gold-overlay, rgba(201, 162, 39, 0.3))',
+        'glow-gold': 'var(--shadow-glow-accent)',
         'glow-success': '0 0 15px var(--success-overlay, rgba(90, 154, 107, 0.3))',
-        'card': '0 2px 4px rgba(0, 0, 0, 0.3)',
-        'card-hover': '0 4px 8px rgba(0, 0, 0, 0.4)',
-        'elevated': '0 8px 16px rgba(0, 0, 0, 0.4)',
-        'inner-glow': 'inset 0 1px 0 0 rgba(245, 240, 232, 0.05)',
+        'card': 'var(--shadow-card)',
+        'card-hover': 'var(--shadow-card-hover)',
+        'elevated': 'var(--shadow-elevated)',
+        'inner-glow': 'var(--shadow-inner)',
+        'elevation-1': 'var(--elevation-1, none)',
+        'elevation-2': 'var(--elevation-2, none)',
         'none': 'none'
       },
       animation: {
@@ -194,7 +214,26 @@ export default {
         xs: '2px'
       },
       borderWidth: {
-        '3': '3px'
+        '3': 'var(--border-width-thick, 3px)'
+      },
+      transitionDuration: {
+        'theme-fast': 'var(--motion-duration-fast, 150ms)',
+        'theme-normal': 'var(--motion-duration-normal, 250ms)',
+        'theme-slow': 'var(--motion-duration-slow, 400ms)'
+      },
+      transitionTimingFunction: {
+        'theme': 'var(--motion-easing, linear)'
+      },
+      gap: {
+        'density': 'var(--density-grid-gap, 8px)',
+        'section': 'var(--space-section-gap, 8px)',
+        'content': 'var(--space-content-gap, 4px)'
+      },
+      minHeight: {
+        'card': 'var(--density-card-min-height, 60px)'
+      },
+      height: {
+        'list-row': 'var(--density-list-row-height, 36px)'
       }
     }
   },

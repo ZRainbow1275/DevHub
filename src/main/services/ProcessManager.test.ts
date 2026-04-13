@@ -2,9 +2,16 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { EventEmitter } from 'events'
 
 // Mock child_process
-vi.mock('child_process', () => ({
-  spawn: vi.fn()
-}))
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+vi.mock('child_process', async (importOriginal: () => Promise<any>) => {
+  const mod = await importOriginal()
+  const spawnMock = vi.fn()
+  return {
+    ...mod,
+    default: { ...mod, spawn: spawnMock },
+    spawn: spawnMock
+  }
+})
 
 // Mock tree-kill
 vi.mock('tree-kill', () => ({
@@ -37,6 +44,7 @@ function createProject(overrides?: Partial<Project>): Project {
     path: '/tmp/test',
     scripts: ['dev', 'build', 'test'],
     defaultScript: 'dev',
+    projectType: 'npm',
     tags: [],
     status: 'stopped' as const,
     createdAt: Date.now(),
@@ -74,7 +82,7 @@ describe('ProcessManager', () => {
         ['run', 'dev'],
         expect.objectContaining({
           cwd: '/tmp/test',
-          shell: false
+          shell: process.platform === 'win32'
         })
       )
     })
@@ -98,7 +106,7 @@ describe('ProcessManager', () => {
 
     it('should reject scripts not in project scripts list', async () => {
       const project = createProject()
-      await expect(pm.start(project, 'nonexistent')).rejects.toThrow('not found in package.json')
+      await expect(pm.start(project, 'nonexistent')).rejects.toThrow('not found in project configuration')
     })
 
     it('should prevent duplicate starts for the same project', async () => {

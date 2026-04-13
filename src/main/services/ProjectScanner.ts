@@ -2,13 +2,23 @@ import * as fs from 'fs/promises'
 import * as path from 'path'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
+import type { ProjectType } from '@shared/types'
+import type { GitInfo, GitCommitSummary, ProjectDependencies, DependencyEntry, LockfileType } from '@shared/types-extended'
+import { detectProjectTypes, type DetectionResult } from './projectDetectors'
 
 const execFileAsync = promisify(execFile)
+
+// Cache for git info and dependencies
+const gitInfoCache = new Map<string, { data: GitInfo; timestamp: number }>()
+const depCache = new Map<string, { data: ProjectDependencies; timestamp: number }>()
+const GIT_CACHE_TTL = 10_000   // 10 seconds
+const DEP_CACHE_TTL = 30_000   // 30 seconds
 
 export interface ScanResult {
   path: string
   name: string
   scripts: string[]
+  projectType: ProjectType
   hasPackageJson: boolean
 }
 
@@ -30,6 +40,20 @@ async function isDirectory(p: string): Promise<boolean> {
   }
 }
 
+/**
+ * Convert a DetectionResult to a ScanResult bound to a specific directory.
+ */
+function detectionToScanResult(dirPath: string, detection: DetectionResult): ScanResult {
+  const nodeTypes: ProjectType[] = ['npm', 'pnpm', 'yarn']
+  return {
+    path: dirPath,
+    name: detection.name,
+    scripts: detection.scripts,
+    projectType: detection.projectType,
+    hasPackageJson: nodeTypes.includes(detection.projectType)
+  }
+}
+
 export class ProjectScanner {
   private readonly maxDepth = 4
   private readonly excludeDirs = new Set([
@@ -44,9 +68,17 @@ export class ProjectScanner {
     '.nuxt',
     'coverage',
     '__pycache__',
-    '.cache'
+    '.cache',
+    'target',       // Rust/Maven build output
+    'vendor',       // Go vendor
+    '.venv',        // Python venv
+    'venv',
   ])
 
+  /**
+   * Scan a directory recursively for projects of any supported type.
+   * Returns one ScanResult per detected project type per directory.
+   */
   async scanDirectory(rootPath: string, depth = 0): Promise<ScanResult[]> {
     const results: ScanResult[] = []
 
@@ -63,26 +95,18 @@ export class ProjectScanner {
         return results
       }
 
-      const pkgPath = path.join(normalizedRoot, 'package.json')
-      if (await pathExists(pkgPath)) {
-        try {
-          const pkgContent = await fs.readFile(pkgPath, 'utf-8')
-          const pkg = JSON.parse(pkgContent)
-          const scripts = pkg.scripts ? Object.keys(pkg.scripts) : []
+      // Detect all project types in this directory
+      const detections = await detectProjectTypes(normalizedRoot)
 
-          results.push({
-            path: normalizedRoot,
-            name: pkg.name || path.basename(normalizedRoot),
-            scripts,
-            hasPackageJson: true
-          })
-
-          return results
-        } catch {
-          // Invalid package.json, continue scanning
+      if (detections.length > 0) {
+        for (const detection of detections) {
+          results.push(detectionToScanResult(normalizedRoot, detection))
         }
+        // Found project(s) here, don't scan deeper into this directory
+        return results
       }
 
+      // No project found here, scan subdirectories
       const entries = await fs.readdir(normalizedRoot, { withFileTypes: true })
 
       for (const entry of entries) {
@@ -103,14 +127,22 @@ export class ProjectScanner {
 
   async getAvailableDrives(): Promise<string[]> {
     try {
-      const { stdout } = await execFileAsync('wmic', ['logicaldisk', 'get', 'name'], { windowsHide: true })
+      // Migrated from deprecated wmic to Get-CimInstance Win32_LogicalDisk
+      const psCmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-CimInstance Win32_LogicalDisk | Select-Object -ExpandProperty DeviceID`
+      const { stdout } = await execFileAsync(
+        'powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-Command', psCmd],
+        { windowsHide: true, timeout: 15000, encoding: 'utf8' }
+      )
       const drives = stdout
         .split('\n')
         .map(line => line.trim())
         .filter(line => /^[A-Z]:$/.test(line))
         .map(line => line.replace(':', ''))
       return drives
-    } catch {
+    } catch (err) {
+      console.error('getAvailableDrives failed:', err instanceof Error ? err.message : err)
+      // Fallback: probe common drive letters
       const commonDrives = ['C', 'D', 'E', 'F', 'G']
       const available: string[] = []
       for (const drive of commonDrives) {
@@ -162,7 +194,8 @@ export class ProjectScanner {
   private deduplicateResults(results: ScanResult[]): ScanResult[] {
     const seen = new Set<string>()
     return results.filter(r => {
-      const key = r.path.toLowerCase()
+      // Use path + projectType as the dedup key
+      const key = `${r.path.toLowerCase()}::${r.projectType}`
       if (seen.has(key)) return false
       seen.add(key)
       return true
@@ -175,45 +208,43 @@ export class ProjectScanner {
 
     const commonResults = await this.scanCommonLocations(customDrives)
     for (const r of commonResults) {
-      discoveredPaths.add(r.path.toLowerCase())
+      const key = `${r.path.toLowerCase()}::${r.projectType}`
+      discoveredPaths.add(key)
       results.push(r)
     }
 
     const vscodePaths = await this.getVSCodeRecentProjects()
     for (const projectPath of vscodePaths) {
-      if (!discoveredPaths.has(projectPath.toLowerCase())) {
-        const scanResults = await this.scanDirectory(projectPath, 0)
-        for (const r of scanResults) {
-          if (!discoveredPaths.has(r.path.toLowerCase())) {
-            discoveredPaths.add(r.path.toLowerCase())
-            results.push(r)
-          }
+      const scanResults = await this.scanDirectory(projectPath, 0)
+      for (const r of scanResults) {
+        const key = `${r.path.toLowerCase()}::${r.projectType}`
+        if (!discoveredPaths.has(key)) {
+          discoveredPaths.add(key)
+          results.push(r)
         }
       }
     }
 
     const pnpmPaths = await this.getPnpmLinkedProjects()
     for (const projectPath of pnpmPaths) {
-      if (!discoveredPaths.has(projectPath.toLowerCase())) {
-        const scanResults = await this.scanDirectory(projectPath, 0)
-        for (const r of scanResults) {
-          if (!discoveredPaths.has(r.path.toLowerCase())) {
-            discoveredPaths.add(r.path.toLowerCase())
-            results.push(r)
-          }
+      const scanResults = await this.scanDirectory(projectPath, 0)
+      for (const r of scanResults) {
+        const key = `${r.path.toLowerCase()}::${r.projectType}`
+        if (!discoveredPaths.has(key)) {
+          discoveredPaths.add(key)
+          results.push(r)
         }
       }
     }
 
     const npmPaths = await this.getNpmCacheProjects()
     for (const projectPath of npmPaths) {
-      if (!discoveredPaths.has(projectPath.toLowerCase())) {
-        const scanResults = await this.scanDirectory(projectPath, 0)
-        for (const r of scanResults) {
-          if (!discoveredPaths.has(r.path.toLowerCase())) {
-            discoveredPaths.add(r.path.toLowerCase())
-            results.push(r)
-          }
+      const scanResults = await this.scanDirectory(projectPath, 0)
+      for (const r of scanResults) {
+        const key = `${r.path.toLowerCase()}::${r.projectType}`
+        if (!discoveredPaths.has(key)) {
+          discoveredPaths.add(key)
+          results.push(r)
         }
       }
     }
@@ -242,12 +273,12 @@ export class ProjectScanner {
             for (const item of storage.openedPathsList.workspaces3) {
               if (typeof item === 'string' && item.startsWith('file://')) {
                 const projectPath = decodeURIComponent(item.replace('file:///', '').replace(/\//g, '\\'))
-                if (await pathExists(projectPath) && await pathExists(path.join(projectPath, 'package.json'))) {
+                if (await pathExists(projectPath)) {
                   paths.push(projectPath)
                 }
               } else if (item?.folderUri?.startsWith('file://')) {
                 const projectPath = decodeURIComponent(item.folderUri.replace('file:///', '').replace(/\//g, '\\'))
-                if (await pathExists(projectPath) && await pathExists(path.join(projectPath, 'package.json'))) {
+                if (await pathExists(projectPath)) {
                   paths.push(projectPath)
                 }
               }
@@ -277,7 +308,7 @@ export class ProjectScanner {
             if (entry.isSymbolicLink()) {
               try {
                 const realPath = await fs.realpath(path.join(linksPath, entry.name))
-                if (await pathExists(path.join(realPath, 'package.json'))) {
+                if (await pathExists(realPath)) {
                   paths.push(realPath)
                 }
               } catch {
@@ -292,6 +323,136 @@ export class ProjectScanner {
     }
 
     return paths
+  }
+
+  /**
+   * Get Git repository info for a project path.
+   * Returns null if the path is not a git repository.
+   * Results are cached for 10 seconds.
+   */
+  async getGitInfo(projectPath: string): Promise<GitInfo | null> {
+    const cached = gitInfoCache.get(projectPath)
+    if (cached && Date.now() - cached.timestamp < GIT_CACHE_TTL) {
+      return cached.data
+    }
+
+    try {
+      // Check if it's a git repo
+      await execFileAsync('git', ['rev-parse', '--git-dir'], {
+        cwd: projectPath,
+        windowsHide: true,
+        timeout: 5000
+      })
+
+      // Get current branch
+      const { stdout: branchOut } = await execFileAsync(
+        'git', ['rev-parse', '--abbrev-ref', 'HEAD'],
+        { cwd: projectPath, windowsHide: true, timeout: 5000 }
+      )
+      const branch = branchOut.trim()
+
+      // Get uncommitted changes count
+      const { stdout: statusOut } = await execFileAsync(
+        'git', ['status', '--porcelain'],
+        { cwd: projectPath, windowsHide: true, timeout: 5000 }
+      )
+      const uncommittedCount = statusOut.trim() === '' ? 0 : statusOut.trim().split('\n').length
+
+      // Get recent 10 commits
+      const recentCommits: GitCommitSummary[] = []
+      try {
+        const { stdout: logOut } = await execFileAsync(
+          'git', ['log', '--oneline', '--format=%H|%s|%an|%ai', '-10'],
+          { cwd: projectPath, windowsHide: true, timeout: 5000 }
+        )
+        for (const line of logOut.trim().split('\n')) {
+          if (!line) continue
+          const parts = line.split('|')
+          if (parts.length >= 4) {
+            recentCommits.push({
+              hash: parts[0].substring(0, 7),
+              message: parts[1],
+              author: parts[2],
+              date: parts[3]
+            })
+          }
+        }
+      } catch {
+        // Empty repo or no commits yet
+      }
+
+      // Get ahead/behind
+      let ahead = 0
+      let behind = 0
+      try {
+        const { stdout: abOut } = await execFileAsync(
+          'git', ['rev-list', '--count', '--left-right', '@{upstream}...HEAD'],
+          { cwd: projectPath, windowsHide: true, timeout: 5000 }
+        )
+        const abParts = abOut.trim().split(/\s+/)
+        if (abParts.length === 2) {
+          behind = parseInt(abParts[0], 10) || 0
+          ahead = parseInt(abParts[1], 10) || 0
+        }
+      } catch {
+        // No upstream configured
+      }
+
+      const info: GitInfo = { branch, uncommittedCount, recentCommits, aheadBehind: { ahead, behind } }
+      gitInfoCache.set(projectPath, { data: info, timestamp: Date.now() })
+      return info
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * Parse dependencies from package.json at the given path.
+   * Returns null if no package.json exists.
+   * Results are cached for 30 seconds.
+   */
+  async getDependencies(projectPath: string): Promise<ProjectDependencies | null> {
+    const cached = depCache.get(projectPath)
+    if (cached && Date.now() - cached.timestamp < DEP_CACHE_TTL) {
+      return cached.data
+    }
+
+    const pkgPath = path.join(projectPath, 'package.json')
+    try {
+      if (!(await pathExists(pkgPath))) {
+        return null
+      }
+
+      const content = await fs.readFile(pkgPath, 'utf-8')
+      const pkg = JSON.parse(content) as Record<string, unknown>
+
+      const parseDeps = (raw: unknown): DependencyEntry[] => {
+        if (!raw || typeof raw !== 'object') return []
+        return Object.entries(raw as Record<string, string>).map(([name, version]) => ({
+          name,
+          version: typeof version === 'string' ? version : 'unknown'
+        })).sort((a, b) => a.name.localeCompare(b.name))
+      }
+
+      const dependencies = parseDeps(pkg.dependencies)
+      const devDependencies = parseDeps(pkg.devDependencies)
+
+      // Detect lockfile type
+      let lockfileType: LockfileType = 'none'
+      if (await pathExists(path.join(projectPath, 'pnpm-lock.yaml'))) {
+        lockfileType = 'pnpm'
+      } else if (await pathExists(path.join(projectPath, 'yarn.lock'))) {
+        lockfileType = 'yarn'
+      } else if (await pathExists(path.join(projectPath, 'package-lock.json'))) {
+        lockfileType = 'npm'
+      }
+
+      const result: ProjectDependencies = { dependencies, devDependencies, lockfileType }
+      depCache.set(projectPath, { data: result, timestamp: Date.now() })
+      return result
+    } catch {
+      return null
+    }
   }
 
   private async getNpmCacheProjects(): Promise<string[]> {
@@ -310,7 +471,7 @@ export class ProjectScanner {
             if (entry.isSymbolicLink()) {
               try {
                 const realPath = await fs.realpath(path.join(globalModules, entry.name))
-                if (await pathExists(path.join(realPath, 'package.json'))) {
+                if (await pathExists(realPath)) {
                   paths.push(realPath)
                 }
               } catch {

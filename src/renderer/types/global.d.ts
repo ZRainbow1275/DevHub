@@ -9,28 +9,50 @@ import type {
   Project,
   LogEntry,
   CodingTool,
-  AppSettings
+  AppSettings,
+  ProjectType
 } from '@shared/types'
+
+import type {
+  GitInfo,
+  ProjectDependencies
+} from '@shared/types-extended'
 
 import type {
   ProcessInfo,
   ProcessGroup,
+  ProcessRelationship,
+  ProcessDeepDetail,
+  NetworkConnectionInfo,
+  LoadedModuleInfo,
   PortInfo,
+  PortTopologyData,
+  PortFocusData,
+  PortDetailIncrementalResult,
   WindowInfo,
   WindowGroup,
   WindowLayout,
   AITask,
   AITaskHistory,
   AIToolType,
+  AIWindowAlias,
+  ProgressEstimate,
+  TimelineEntry,
   TaskStatistics,
   TaskRecord,
   TaskType,
   TaskRecordStatus,
   NotificationConfig,
   AppNotification,
-  ServiceResult
+  ServiceResult,
+  ScannerCacheSnapshot,
+  ScannerDiff,
+  SystemSummary,
+  ScannerStatus
 } from '@shared/types-extended'
 
+/** AI task-specific statistics (active/completed/error counts by tool).
+ *  Distinct from TaskStatistics in types-extended.ts which tracks historical duration metrics. */
 interface AITaskStatistics {
   totalTasks: number
   completedTasks: number
@@ -49,10 +71,18 @@ declare global {
         add: (path: string) => Promise<Project>
         remove: (id: string) => Promise<boolean>
         update: (id: string, updates: Partial<Project>) => Promise<Project | undefined>
-        scan: (scanPath?: string) => Promise<Array<{ path: string; name: string; scripts: string[] }>>
-        scanDirectory: (dirPath: string) => Promise<Array<{ path: string; name: string; scripts: string[] }>>
-        discover: () => Promise<Array<{ path: string; name: string; scripts: string[] }>>
-        onAutoDiscovered: (callback: (projects: Array<{ path: string; name: string; scripts: string[] }>) => void) => () => void
+        scan: (scanPath?: string) => Promise<Array<{ path: string; name: string; scripts: string[]; projectType: ProjectType }>>
+        scanDirectory: (dirPath: string) => Promise<Array<{ path: string; name: string; scripts: string[]; projectType: ProjectType }>>
+        discover: () => Promise<Array<{ path: string; name: string; scripts: string[]; projectType: ProjectType }>>
+        onAutoDiscovered: (callback: (projects: Array<{ path: string; name: string; scripts: string[]; projectType: ProjectType }>) => void) => () => void
+        getGitInfo: (projectPath: string) => Promise<GitInfo | null>
+        getDependencies: (projectPath: string) => Promise<ProjectDependencies | null>
+        watcher?: {
+          start: (watchPaths?: string[]) => Promise<{ running: boolean }>
+          stop: () => Promise<{ running: boolean }>
+          status: () => Promise<{ running: boolean }>
+          onDetected: (callback: (events: Array<{ type: 'added' | 'removed'; dirPath: string; detections: Array<{ projectType: ProjectType; name: string; scripts: string[] }> }>) => void) => () => void
+        }
       }
 
       // ==================== Process ====================
@@ -130,6 +160,16 @@ declare global {
         kill: (pid: number) => Promise<boolean>
         cleanupZombies: () => Promise<number>
         getGroups: () => Promise<ProcessGroup[]>
+        getProcessTree: (pid: number) => Promise<ProcessInfo[]>
+        getFullRelationship: (pid: number) => Promise<ProcessRelationship | null>
+        getProcessHistory: (pid: number) => Promise<{ cpuHistory: number[]; memoryHistory: number[] }>
+        getDeepDetail: (pid: number) => Promise<ProcessDeepDetail | null>
+        getConnections: (pid: number) => Promise<NetworkConnectionInfo[]>
+        getEnvironment: (pid: number) => Promise<{ variables: Record<string, string>; requiresElevation: boolean }>
+        killTree: (pid: number) => Promise<boolean>
+        setPriority: (pid: number, priority: string) => Promise<boolean>
+        openFileLocation: (filePath: string) => Promise<void>
+        getModules: (pid: number) => Promise<{ modules: LoadedModuleInfo[]; requiresElevation: boolean }>
         onUpdated: (callback: (processes: ProcessInfo[]) => void) => () => void
         onZombieDetected: (callback: (zombies: ProcessInfo[]) => void) => () => void
       }
@@ -143,20 +183,37 @@ declare global {
         isAvailable: (port: number) => Promise<boolean>
         findAvailable: (startPort: number) => Promise<number>
         detectConflicts: (ports: number[]) => Promise<PortInfo[]>
+        getTopology: () => Promise<PortTopologyData>
+        getPortFocusData: (port: number) => Promise<PortFocusData | null>
+        getPortDetailIncremental: (port: number) => Promise<PortDetailIncrementalResult>
+        cancelPortQuery: (port: number) => Promise<boolean>
         onConflict: (callback: (data: { port: number; resolved: boolean }) => void) => () => void
       }
 
       // Window Manager API
       windowManager: {
-        scan: () => Promise<ServiceResult<WindowInfo[]>>
+        scan: (includeSystemWindows?: boolean) => Promise<ServiceResult<WindowInfo[]>>
         focus: (hwnd: number) => Promise<ServiceResult>
         move: (hwnd: number, x: number, y: number, width: number, height: number) => Promise<ServiceResult>
         minimize: (hwnd: number) => Promise<ServiceResult>
         maximize: (hwnd: number) => Promise<ServiceResult>
         close: (hwnd: number) => Promise<ServiceResult>
+        restore: (hwnd: number) => Promise<ServiceResult>
+        setTopmost: (hwnd: number, topmost: boolean) => Promise<ServiceResult>
+        setOpacity: (hwnd: number, opacity: number) => Promise<ServiceResult>
+        sendKeys: (hwnd: number, keys: string) => Promise<ServiceResult>
+        tileLayout: (hwnds: number[]) => Promise<ServiceResult>
+        cascadeLayout: (hwnds: number[]) => Promise<ServiceResult>
+        stackLayout: (hwnds: number[]) => Promise<ServiceResult>
+        minimizeAll: () => Promise<ServiceResult>
+        restoreAll: () => Promise<ServiceResult>
+        addToGroup: (groupId: string, hwnd: number) => Promise<ServiceResult>
+        restoreGroup: (groupId: string) => Promise<ServiceResult>
         createGroup: (name: string, windowHwnds: number[], projectId?: string) => Promise<WindowGroup>
         getGroups: () => Promise<WindowGroup[]>
         removeGroup: (groupId: string) => Promise<boolean>
+        minimizeGroup?: (groupId: string) => Promise<ServiceResult>
+        closeGroup?: (groupId: string) => Promise<ServiceResult>
         saveLayout: (name: string, description?: string) => Promise<WindowLayout>
         restoreLayout: (layoutId: string) => Promise<ServiceResult>
         getLayouts: () => Promise<WindowLayout[]>
@@ -172,8 +229,12 @@ declare global {
         getHistory: (limit?: number) => Promise<AITaskHistory[]>
         startTracking: (pid: number) => Promise<AITask | null>
         stopTracking: (pid: number) => Promise<boolean>
-        onTaskComplete: (callback: (task: AITask) => void) => () => void
+        getProgress: (taskId: string) => Promise<ProgressEstimate | null>
+        getTimeline?: (taskId: string) => Promise<TimelineEntry[]>
+        /** @deprecated Use onCompleted — channel sends AITaskHistory, not AITask */
+        onTaskComplete: (callback: (entry: AITaskHistory) => void) => () => void
         onTaskUpdated: (callback: (task: AITask) => void) => () => void
+        onNavigateToTask: (callback: (taskId: string) => void) => () => void
         // Extended methods used by hooks (optional - may not be implemented)
         getAll?: () => Promise<AITask[]>
         getStatistics?: () => Promise<AITaskStatistics | null>
@@ -181,6 +242,14 @@ declare global {
         onStarted?: (callback: (task: AITask) => void) => () => void
         onStatusChanged?: (callback: (task: AITask) => void) => () => void
         onCompleted?: (callback: (entry: AITaskHistory) => void) => () => void
+      }
+
+      // AI Alias API
+      aiAlias: {
+        getAll: () => Promise<AIWindowAlias[]>
+        set: (alias: AIWindowAlias) => Promise<boolean>
+        remove: (aliasId: string) => Promise<boolean>
+        rename: (aliasId: string, newName: string) => Promise<boolean>
       }
 
       // Notification API
@@ -218,6 +287,21 @@ declare global {
         clearOld: (beforeDate: string) => Promise<number>
         onRecordAdded: (callback: (record: TaskRecord) => void) => () => void
         onRecordUpdated: (callback: (record: TaskRecord) => void) => () => void
+      }
+
+      // Scanner API (background probing)
+      scanner: {
+        subscribe: () => void
+        getSnapshot: () => Promise<ScannerCacheSnapshot | null>
+        getStatus: () => Promise<ScannerStatus | null>
+        retryScanner: (type: string) => Promise<{ success: boolean; error?: string }>
+        onProcessesDiff: (callback: (diff: ScannerDiff<ProcessInfo>) => void) => () => void
+        onPortsDiff: (callback: (diff: ScannerDiff<PortInfo>) => void) => () => void
+        onWindowsDiff: (callback: (diff: ScannerDiff<WindowInfo>) => void) => () => void
+        onAiTasksDiff: (callback: (diff: ScannerDiff<AITask>) => void) => () => void
+        onSummaryUpdate: (callback: (summary: SystemSummary) => void) => () => void
+        onSnapshotPush: (callback: (snapshot: ScannerCacheSnapshot) => void) => () => void
+        onScannerFailed: (callback: (data: { type: string; retries: number }) => void) => () => void
       }
     }
   }

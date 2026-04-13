@@ -4,7 +4,7 @@ import { GearIcon, LightningIcon } from '../icons'
 
 export function StatusBar() {
   const { tools } = useToolStatus()
-  const { projects } = useProjectStore()
+  const projects = useProjectStore(s => s.projects)
 
   const runningProjects = projects.filter(p => p.status === 'running')
   const runningCount = runningProjects.length
@@ -60,7 +60,7 @@ export function StatusBar() {
 
         {/* Recently completed */}
         {completedTools.length > 0 && runningTools.length === 0 && (
-          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-steel/10 border-l-2 border-steel text-steel-300" style={{ borderRadius: '2px' }}>
+          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-steel/10 border-l-2 border-steel text-steel-300 radius-sm">
             <span style={{ fontSize: '11px' }}>
               {completedTools[0].displayName} 已完成
             </span>
@@ -80,8 +80,7 @@ export function StatusBar() {
                     ? 'bg-steel/10 text-steel-300 border-l-2 border-steel'
                     : 'text-text-muted hover:bg-surface-800'
                 }
-              `}
-              style={{ borderRadius: '2px' }}
+               radius-sm`}
               title={`${tool.displayName}: ${tool.status === 'running' ? '运行中' : tool.status === 'completed' ? '已完成' : '空闲'}`}
             >
               <span className={`
@@ -92,7 +91,7 @@ export function StatusBar() {
                     ? 'bg-steel'
                     : 'bg-surface-500'
                 }
-              `} style={{ borderRadius: '1px' }} />
+               radius-sm`} />
               <span style={{ fontSize: '11px' }} className="font-medium">
                 {tool.displayName}
               </span>

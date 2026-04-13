@@ -1,21 +1,27 @@
 /* ========================================
-   Soviet Constructivism Typography System
+   DevHub Typography System
    ======================================== */
 
-/* Font Face Definitions */
-@font-face {
-  font-family: 'Bebas Neue';
-  src: url('https://fonts.gstatic.com/s/bebasneue/v14/JTUSjIg69CK48gW7PXoo9Wlhyw.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
+/* ---- Font Imports via @fontsource (local, no external CDN dependency) ---- */
+@import '@fontsource-variable/inter/wght.css';
+@import '@fontsource-variable/inter/wght-italic.css';
+@import '@fontsource-variable/jetbrains-mono/wght.css';
+@import '@fontsource-variable/jetbrains-mono/wght-italic.css';
+@import '@fontsource-variable/oswald/wght.css';
+@import '@fontsource-variable/orbitron/wght.css';
+@import '@fontsource-variable/exo-2/wght.css';
+@import '@fontsource-variable/playfair-display/wght.css';
+@import '@fontsource-variable/playfair-display/wght-italic.css';
+@import '@fontsource/bebas-neue';
+@import '@fontsource/share-tech-mono';
 
+/* ---- Base Typography Tokens ---- */
 :root {
   /* ---- Font Families ---- */
-  --font-display: 'Bebas Neue', 'Oswald', 'Anton', sans-serif;
-  --font-sans: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  --font-display: 'Oswald Variable', 'Bebas Neue', 'Anton', sans-serif;
+  --font-sans: 'Inter Variable', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'Fira Code', 'Consolas', monospace;
+  --font-serif: 'Playfair Display Variable', 'Noto Serif SC', Georgia, serif;
 
   /* ---- Font Sizes ---- */
   --text-hero: 48px;
@@ -47,52 +53,56 @@
   --tracking-normal: 0;
   --tracking-wide: 0.05em;
   --tracking-wider: 0.1em;
+
+  /* ---- CJK Optimizations ---- */
+  --leading-cjk-body: 1.75;
+  --leading-cjk-heading: 1.4;
 }
 
 /* ---- Typography Utility Classes ---- */
 
 /* Display / Hero Text */
 .text-display {
-  font-family: var(--font-display);
+  font-family: var(--typo-heading-family, var(--font-display));
   font-size: var(--text-hero);
   line-height: var(--leading-hero);
-  font-weight: var(--weight-regular);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
+  font-weight: var(--typo-heading-weight, var(--weight-regular));
+  text-transform: var(--typo-heading-transform, uppercase);
+  letter-spacing: var(--display-tracking, var(--tracking-wide));
 }
 
 .text-display-sm {
-  font-family: var(--font-display);
+  font-family: var(--typo-heading-family, var(--font-display));
   font-size: var(--text-h1);
   line-height: var(--leading-h1);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
+  text-transform: var(--typo-heading-transform, uppercase);
+  letter-spacing: var(--display-tracking, var(--tracking-wide));
 }
 
-/* Dynamic Tilt - Decorative Headers */
+/* Dynamic Tilt - Decorative Headers (theme-aware rotation) */
 .title-dynamic {
-  transform: rotate(-12deg);
+  transform: rotate(var(--deco-rotation, -12deg));
   transform-origin: left center;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
-  font-family: var(--font-display);
-  font-weight: var(--weight-bold);
+  text-transform: var(--typo-heading-transform, uppercase);
+  letter-spacing: var(--typo-heading-spacing, var(--tracking-wide));
+  font-family: var(--typo-heading-family, var(--font-display));
+  font-weight: var(--typo-heading-weight, var(--weight-bold));
 }
 
 .title-slogan {
-  transform: rotate(-8deg);
+  transform: rotate(var(--deco-slogan-rotation, -8deg));
   transform-origin: left center;
-  font-weight: var(--weight-bold);
-  text-transform: uppercase;
+  font-weight: var(--typo-heading-weight, var(--weight-bold));
+  text-transform: var(--typo-heading-transform, uppercase);
   letter-spacing: var(--tracking-wider);
 }
 
 /* Section Headers */
 .text-section {
   font-size: var(--text-small);
-  font-weight: var(--weight-bold);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wider);
+  font-weight: var(--typo-heading-weight, var(--weight-bold));
+  text-transform: var(--typo-heading-transform, uppercase);
+  letter-spacing: var(--typo-heading-spacing, var(--tracking-wider));
   color: var(--text-muted);
 }
 
@@ -108,4 +118,10 @@
   font-size: var(--text-small);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
+}
+
+/* CJK body text optimization */
+.text-cjk {
+  line-height: var(--leading-cjk-body);
+  letter-spacing: var(--body-tracking, 0);
 }
