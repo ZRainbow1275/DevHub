@@ -7,7 +7,10 @@ const execFileAsync = promisify(execFile)
 type CompletionCallback = (tool: CodingTool) => void
 
 // 严格的进程名白名单 - 只允许这些进程名用于检测
-const VALID_PROCESS_NAMES = ['codex', 'claude', 'gemini', 'node', 'cursor', 'code', 'windsurf'] as const
+const VALID_PROCESS_NAMES = [
+  'codex', 'claude', 'gemini', 'node', 'cursor', 'code', 'windsurf',
+  'opencode', 'aider', 'python', 'python3'
+] as const
 type ValidProcessName = typeof VALID_PROCESS_NAMES[number]
 
 function isValidProcessName(name: string): name is ValidProcessName {
@@ -23,25 +26,81 @@ interface ToolDetectionConfig {
 // 工具检测配置 - 使用精确匹配模式
 interface ToolDetectionConfigExt extends ToolDetectionConfig {
   excludePatterns?: string[]  // 排除包含这些关键词的进程
+  nativeBinaries?: string[]   // Layer 1: 原生二进制名(不需要命令行检查)
+  windowTitlePatterns?: string[] // Layer 3: 窗口标题辅助匹配
+  interpreterType?: 'node' | 'python' | 'none' // 解释器类型
 }
 
 const TOOL_DETECTION_CONFIG: Record<string, ToolDetectionConfigExt> = {
   'codex': {
     processNames: ['codex', 'node'],
-    // 精确匹配 @openai/codex 路径，避免匹配到其他包含 codex 的包
+    nativeBinaries: ['codex'],
     commandPatterns: ['@openai/codex', '/codex/bin/codex.js'],
-    excludePatterns: ['codex-mcp', 'mcp-server']
+    excludePatterns: ['codex-mcp', 'mcp-server'],
+    windowTitlePatterns: ['codex'],
+    interpreterType: 'node'
   },
   'claude-code': {
     processNames: ['claude', 'node'],
-    // 精确匹配 claude-code CLI 路径
+    nativeBinaries: ['claude'],
     commandPatterns: ['@anthropic-ai/claude-code', '/claude-code/cli.js'],
-    excludePatterns: ['mcp-server']
+    excludePatterns: ['mcp-server'],
+    windowTitlePatterns: ['claude'],
+    interpreterType: 'node'
   },
   'gemini-cli': {
     processNames: ['gemini', 'node'],
+    nativeBinaries: ['gemini'],
     commandPatterns: ['gemini-cli', '@google/gemini-cli'],
-    excludePatterns: ['mcp-server']
+    excludePatterns: ['mcp-server'],
+    windowTitlePatterns: ['gemini'],
+    interpreterType: 'node'
+  },
+  'opencode': {
+    processNames: ['opencode', 'node'],
+    nativeBinaries: ['opencode'],
+    commandPatterns: ['opencode'],
+    excludePatterns: ['mcp-server'],
+    windowTitlePatterns: ['opencode'],
+    interpreterType: 'node'
+  },
+  'aider': {
+    processNames: ['aider', 'python', 'python3'],
+    nativeBinaries: ['aider'],
+    commandPatterns: ['aider'],
+    excludePatterns: ['mcp-server'],
+    windowTitlePatterns: ['aider'],
+    interpreterType: 'python'
+  },
+  'cursor': {
+    processNames: ['cursor'],
+    nativeBinaries: ['cursor'],
+    commandPatterns: [],
+    windowTitlePatterns: ['cursor'],
+    interpreterType: 'none'
+  },
+  'windsurf': {
+    processNames: ['windsurf'],
+    nativeBinaries: ['windsurf'],
+    commandPatterns: [],
+    windowTitlePatterns: ['windsurf'],
+    interpreterType: 'none'
+  },
+  'continue-dev': {
+    processNames: ['node'],
+    nativeBinaries: [],
+    commandPatterns: ['continue', '@continue/extension'],
+    excludePatterns: ['mcp-server'],
+    windowTitlePatterns: ['continue'],
+    interpreterType: 'node'
+  },
+  'cline': {
+    processNames: ['node'],
+    nativeBinaries: [],
+    commandPatterns: ['cline'],
+    excludePatterns: ['mcp-server'],
+    windowTitlePatterns: ['cline'],
+    interpreterType: 'node'
   }
 }
 
@@ -193,17 +252,19 @@ export class ToolMonitor {
     // 二次检查：获取进程列表期间可能已被 stop()
     if (this.isStopped) return
 
-    // 预先获取命令行信息（仅在有 node 进程时才需要）
+    // 预先获取命令行信息（有 node 或 python 进程时需要）
     let commandLines: string[] | null = null
-    if (allProcessNames.has('node.exe')) {
+    const needsCommandLines = allProcessNames.has('node.exe') ||
+      allProcessNames.has('python.exe') || allProcessNames.has('python3.exe')
+    if (needsCommandLines) {
       try {
-        commandLines = await this.getNodeCommandLines()
+        commandLines = await this.getInterpreterCommandLines()
       } catch (error) {
         console.warn(
-          'Failed to get node command lines:',
+          'Failed to get interpreter command lines:',
           error instanceof Error ? error.message : 'Unknown error'
         )
-        // 如果无法获取详细命令行，则 node 进程检测会失败
+        // 如果无法获取详细命令行，则解释器进程检测会失败
         // 这是可接受的，至少进程列表是可用的
       }
     }
@@ -295,13 +356,13 @@ export class ToolMonitor {
     return names
   }
 
-  // 获取所有 node 进程的命令行（仅调用一次）
-  private async getNodeCommandLines(): Promise<string[]> {
+  // 获取所有 node/python 解释器进程的命令行（仅调用一次）
+  private async getInterpreterCommandLines(): Promise<string[]> {
     try {
       const { stdout } = await execFileAsync(
         'powershell',
-        ['-NoProfile', '-Command', "Get-CimInstance Win32_Process | Where-Object { $_.Name -like '*node*' } | Select-Object -ExpandProperty CommandLine"],
-        { windowsHide: true, maxBuffer: 1024 * 1024 }
+        ['-NoProfile', '-Command', "Get-CimInstance Win32_Process | Where-Object { $_.Name -like '*node*' -or $_.Name -like '*python*' } | Select-Object -ExpandProperty CommandLine"],
+        { windowsHide: true, maxBuffer: 1024 * 1024, timeout: 5000 }
       )
       return stdout.split('\n').filter(l => l.trim())
     } catch (error) {
@@ -313,7 +374,7 @@ export class ToolMonitor {
     }
   }
 
-  // 基于已获取的进程列表判断工具是否在运行（纯内存匹配，无系统调用）
+  // 多层检测: Layer 1 原生二进制 → Layer 2 命令行参数 → Layer 3 窗口标题辅助
   private isToolDetected(
     toolId: string,
     allProcessNames: Set<string>,
@@ -324,24 +385,46 @@ export class ToolMonitor {
       return false
     }
 
-    for (const pName of config.processNames) {
-      if (!isValidProcessName(pName)) continue
+    // Layer 1: 原生二进制名匹配 (最快，零解析开销)
+    if (config.nativeBinaries && config.nativeBinaries.length > 0) {
+      for (const binary of config.nativeBinaries) {
+        if (allProcessNames.has(`${binary}.exe`)) {
+          // 原生二进制直接命中，无需进一步检查
+          return true
+        }
+      }
+    }
 
-      // 检查进程是否存在于全局进程列表中
+    // Layer 2: 解释器进程 + 命令行参数匹配
+    const interpreterNames: string[] = []
+    if (config.interpreterType === 'node') {
+      interpreterNames.push('node')
+    } else if (config.interpreterType === 'python') {
+      interpreterNames.push('python', 'python3')
+    }
+
+    for (const pName of interpreterNames) {
+      if (!isValidProcessName(pName)) continue
       if (!allProcessNames.has(`${pName}.exe`)) continue
 
-      if (pName === 'node') {
-        // node 进程需要进一步检查命令行参数
-        if (!commandLines) continue
-        for (const line of commandLines) {
-          const lowerLine = line.toLowerCase()
-          const matchesPattern = config.commandPatterns.some(p => lowerLine.includes(p.toLowerCase()))
-          if (!matchesPattern) continue
-          const isExcluded = config.excludePatterns?.some(p => lowerLine.includes(p.toLowerCase())) ?? false
-          if (!isExcluded) return true
+      // 解释器进程需要进一步检查命令行参数
+      if (!commandLines || config.commandPatterns.length === 0) continue
+      for (const line of commandLines) {
+        const lowerLine = line.toLowerCase()
+        const matchesPattern = config.commandPatterns.some(p => lowerLine.includes(p.toLowerCase()))
+        if (!matchesPattern) continue
+        const isExcluded = config.excludePatterns?.some(p => lowerLine.includes(p.toLowerCase())) ?? false
+        if (!isExcluded) return true
+      }
+    }
+
+    // Layer 2 fallback: 对于无解释器类型的独立应用 (cursor, windsurf)
+    if (config.interpreterType === 'none') {
+      for (const pName of config.processNames) {
+        if (!isValidProcessName(pName)) continue
+        if (allProcessNames.has(`${pName}.exe`)) {
+          return true
         }
-      } else {
-        return true
       }
     }
 
@@ -363,8 +446,10 @@ export class ToolMonitor {
 
     const allProcessNames = await this.getAllProcessNames()
     let commandLines: string[] | null = null
-    if (allProcessNames.has('node.exe')) {
-      commandLines = await this.getNodeCommandLines()
+    const needsCommandLines = allProcessNames.has('node.exe') ||
+      allProcessNames.has('python.exe') || allProcessNames.has('python3.exe')
+    if (needsCommandLines) {
+      commandLines = await this.getInterpreterCommandLines()
     }
     const isRunning = this.isToolDetected(tool.id, allProcessNames, commandLines)
     tool.status = isRunning ? 'running' : 'idle'

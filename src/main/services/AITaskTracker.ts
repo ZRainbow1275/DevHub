@@ -39,6 +39,14 @@ const COMPLETION_PATTERNS = [
   /completed\s+successfully/i,
   /task\s+complete/i,
   /waiting\s+for\s+input/i,
+  // Claude Code 专有模式
+  /^\s*>\s*$/m,
+  /Welcome to Claude Code/i,
+  // Codex 专有模式
+  /codex>\s*$/m,
+  /Ready/,
+  // Gemini 专有模式
+  /gemini>\s*$/m,
 ]
 
 // 错误指示模式
@@ -113,7 +121,7 @@ export class AITaskTracker extends EventEmitter {
     childProcessWeight: 0.10,
     idleThresholdMs: 5000,
     completionThreshold: 0.80,
-    confirmationWindowMs: 3000
+    confirmationWindowMs: 8000
   }
 
   constructor(processScanner: SystemProcessScanner, aliasManager?: AIAliasManager) {
@@ -521,41 +529,37 @@ export class AITaskTracker extends EventEmitter {
         if (!this.confirmationTimers.has(taskId)) {
           const confirmMs = toolConfig?.confirmationWindowMs ?? this.config.confirmationWindowMs
           const timer = setTimeout(async () => {
-            // After confirmation window, re-compute the full confidence score
+            // Primary confirmation: re-compute the full confidence score
             const currentTask = this.tasks.get(taskId)
             if (currentTask) {
-              const { isComplete, isError, hasPrompt } = await this.detectWindowTitlePattern(currentTask)
-              let reScore = 0
-              if (isComplete) reScore += this.config.outputPatternWeight
-              const recentCpuSlice = currentTask.metrics.cpuHistory.slice(-5)
-              const recentAvgRe = recentCpuSlice.length > 0
-                ? recentCpuSlice.reduce((a, b) => a + b, 0) / recentCpuSlice.length
-                : 0
-              const reToolConfig = this.toolConfigs.get(currentTask.toolType)
-              const reCpuThreshold = reToolConfig?.cpuBaselineThreshold ?? 3
-              if (recentAvgRe < reCpuThreshold) reScore += this.config.cpuIdleWeight
-              // Signal 3 re-check: use real outputRate
-              const reOutputRate = currentTask.metrics.outputRate ?? 0
-              if (reOutputRate < 100 && currentTask.metrics.idleDuration > this.config.idleThresholdMs) {
-                reScore += this.config.cursorWaitWeight
-              }
-              if (hasPrompt) reScore += this.config.promptDetectionWeight
-              // Signal 5 re-check: use cached child process state
-              const rePrevChildren = this._prevChildPids.get(taskId)
-              if (rePrevChildren && rePrevChildren.size === 0) {
-                reScore += this.config.childProcessWeight
-              }
+              const primaryReScore = await this._recomputeCompletionScore(taskId, currentTask)
 
-              if (!isError && reScore >= this.config.completionThreshold) {
-                currentTask.status.state = 'completed'
-                currentTask.monitorState = 'completed'
-                this.recordTimelineEntry(taskId, 'completed', currentTask.status.currentAction)
-                this.emit('task-status-changed', currentTask)
-                this.completeTask(taskId, 'completed')
+              if (primaryReScore >= this.config.completionThreshold) {
+                // Secondary confirmation: wait 5s more, re-verify once more
+                const secondaryTimer = setTimeout(async () => {
+                  const stillExists = this.tasks.get(taskId)
+                  if (stillExists) {
+                    const secondaryReScore = await this._recomputeCompletionScore(taskId, stillExists)
+                    if (secondaryReScore >= this.config.completionThreshold) {
+                      stillExists.status.state = 'completed'
+                      stillExists.monitorState = 'completed'
+                      this.recordTimelineEntry(taskId, 'completed', stillExists.status.currentAction)
+                      this.emit('task-status-changed', stillExists)
+                      this.completeTask(taskId, 'completed')
+                    }
+                    // If secondary fails, cancel silently (avoid false positive)
+                  }
+                  this.confirmationTimers.delete(taskId)
+                }, 5000)
+                // Update timer to secondary
+                this.confirmationTimers.set(taskId, { timer: secondaryTimer, startedAt: Date.now() })
+              } else {
+                // Primary re-score dropped below threshold, cancel
+                this.confirmationTimers.delete(taskId)
               }
-              // If re-score drops below threshold, cancel (don't complete)
+            } else {
+              this.confirmationTimers.delete(taskId)
             }
-            this.confirmationTimers.delete(taskId)
           }, confirmMs)
           this.confirmationTimers.set(taskId, { timer, startedAt: now })
         }
@@ -590,6 +594,38 @@ export class AITaskTracker extends EventEmitter {
         task.status.lastActivity = now
       }
     }
+  }
+
+  /** Re-compute completion score for a task (used during confirmation window) */
+  private async _recomputeCompletionScore(taskId: string, currentTask: AITask): Promise<number> {
+    const { isComplete, isError, hasPrompt } = await this.detectWindowTitlePattern(currentTask)
+    if (isError) return 0 // Error detected, not a completion
+
+    let reScore = 0
+    if (isComplete) reScore += this.config.outputPatternWeight
+
+    const recentCpuSlice = currentTask.metrics.cpuHistory.slice(-5)
+    const recentAvgRe = recentCpuSlice.length > 0
+      ? recentCpuSlice.reduce((a, b) => a + b, 0) / recentCpuSlice.length
+      : 0
+    const reToolConfig = this.toolConfigs.get(currentTask.toolType)
+    const reCpuThreshold = reToolConfig?.cpuBaselineThreshold ?? 3
+    if (recentAvgRe < reCpuThreshold) reScore += this.config.cpuIdleWeight
+
+    // Signal 3 re-check: use real outputRate
+    const reOutputRate = currentTask.metrics.outputRate ?? 0
+    if (reOutputRate < 100 && currentTask.metrics.idleDuration > this.config.idleThresholdMs) {
+      reScore += this.config.cursorWaitWeight
+    }
+    if (hasPrompt) reScore += this.config.promptDetectionWeight
+
+    // Signal 5 re-check: use cached child process state
+    const rePrevChildren = this._prevChildPids.get(taskId)
+    if (rePrevChildren && rePrevChildren.size === 0) {
+      reScore += this.config.childProcessWeight
+    }
+
+    return reScore
   }
 
   /** Cancel a pending confirmation timer */
@@ -933,6 +969,10 @@ export class AITaskTracker extends EventEmitter {
       'gemini-cli': 0,
       'cursor': 0,
       'opencode': 0,
+      'aider': 0,
+      'windsurf': 0,
+      'continue-dev': 0,
+      'cline': 0,
       'other': 0
     }
 

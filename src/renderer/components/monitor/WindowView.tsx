@@ -3,6 +3,7 @@ import { useWindows } from '../../hooks/useWindows'
 import { useAITasks } from '../../hooks/useAITasks'
 import { useAliasStore } from '../../stores/aliasStore'
 import { WindowInfo, WindowGroup, WindowLayout, AITask, AIMonitorState, AI_MONITOR_STATE_INFO, ALIAS_FORBIDDEN_CHARS, ALIAS_MAX_LENGTH } from '@shared/types-extended'
+
 import { ProcessCardErrorBoundary } from './ProcessCardErrorBoundary'
 import { useToast } from '../ui/Toast'
 import { LayoutPreview } from './LayoutPreview'
@@ -89,8 +90,7 @@ const ProcessGroupCard = memo(function ProcessGroupCard({
               e.stopPropagation()
               onToggleExpand()
             }}
-            className="p-1 hover:bg-surface-700/50 transition-colors"
-            style={{ borderRadius: '2px' }}
+            className="p-1 hover:bg-surface-700/50 transition-colors radius-sm"
           >
             <ChevronIcon
               size={16}
@@ -99,8 +99,7 @@ const ProcessGroupCard = memo(function ProcessGroupCard({
           </button>
 
           <div
-            className="w-10 h-10 bg-info/20 flex items-center justify-center border-l-3 border-info"
-            style={{ borderRadius: '2px' }}
+            className="w-10 h-10 bg-info/20 flex items-center justify-center border-l-3 border-info radius-sm"
           >
             <ProcessIcon size={20} className="text-info" />
           </div>
@@ -109,14 +108,12 @@ const ProcessGroupCard = memo(function ProcessGroupCard({
             <span className="text-sm font-semibold text-text-primary">{group.processName}</span>
             <div className="flex items-center gap-2 mt-0.5">
               <span
-                className="text-xs text-text-muted bg-surface-800 px-2 py-0.5 border-l-2 border-info"
-                style={{ borderRadius: '2px' }}
+                className="text-xs text-text-muted bg-surface-800 px-2 py-0.5 border-l-2 border-info radius-sm"
               >
                 PID: {group.pid}
               </span>
               <span
-                className="text-xs text-text-muted bg-surface-800 px-2 py-0.5 border-l-2 border-surface-600"
-                style={{ borderRadius: '2px' }}
+                className="text-xs text-text-muted bg-surface-800 px-2 py-0.5 border-l-2 border-surface-600 radius-sm"
               >
                 {group.windows.length} 个窗口
               </span>
@@ -145,8 +142,7 @@ const ProcessGroupCard = memo(function ProcessGroupCard({
                     ? 'bg-surface-800 border-l-accent'
                     : 'border-surface-600 hover:bg-surface-800/50 hover:border-l-surface-500'
                   }
-                `}
-                style={{ borderRadius: '2px' }}
+                 radius-sm`}
               >
                 {/* Checkbox */}
                 <div onClick={(e) => e.stopPropagation()}>
@@ -158,8 +154,7 @@ const ProcessGroupCard = memo(function ProcessGroupCard({
                         ? 'bg-accent border-accent'
                         : 'border-surface-500 hover:border-accent'
                       }
-                    `}
-                    style={{ borderRadius: '2px' }}
+                     radius-sm`}
                   >
                     {isChecked && <CheckIcon size={10} className="text-white" />}
                   </div>
@@ -169,12 +164,11 @@ const ProcessGroupCard = memo(function ProcessGroupCard({
                 <span
                   className={`w-2 h-2 flex-shrink-0 ${
                     w.isMinimized ? 'bg-warning' : 'bg-success'
-                  }`}
-                  style={{ borderRadius: '1px' }}
+                  } radius-sm`}
                 />
 
                 {/* Icon */}
-                <div className={`w-7 h-7 bg-surface-700 flex items-center justify-center border-l-2 ${typeInfo.borderColor}`} style={{ borderRadius: '2px' }}>
+                <div className={`w-7 h-7 bg-surface-700 flex items-center justify-center border-l-2 ${typeInfo.borderColor} radius-sm`}>
                   {typeInfo.icon}
                 </div>
 
@@ -281,7 +275,7 @@ const WindowCard = memo(function WindowCard({
       style={{ animationDelay: `${index * 30}ms` }}
     >
       {/* Diagonal decoration */}
-      <div className="absolute inset-0 deco-diagonal opacity-5 pointer-events-none" style={{ borderRadius: '2px' }} />
+      <div className="absolute inset-0 deco-diagonal opacity-5 pointer-events-none radius-sm" />
 
       {/* Checkbox */}
       <div
@@ -298,8 +292,7 @@ const WindowCard = memo(function WindowCard({
               ? 'bg-accent border-accent'
               : 'border-surface-500 hover:border-accent'
             }
-          `}
-          style={{ borderRadius: '2px' }}
+           radius-sm`}
         >
           {isChecked && <CheckIcon size={12} className="text-white" />}
         </div>
@@ -308,8 +301,7 @@ const WindowCard = memo(function WindowCard({
       <div className="flex items-start gap-4 ml-6">
         {/* Icon */}
         <div
-          className={`flex-shrink-0 w-12 h-12 bg-surface-700 flex items-center justify-center border-l-3 ${typeInfo.borderColor}`}
-          style={{ borderRadius: '2px' }}
+          className={`flex-shrink-0 w-12 h-12 bg-surface-700 flex items-center justify-center border-l-3 ${typeInfo.borderColor} radius-sm`}
         >
           {typeInfo.icon}
         </div>
@@ -320,16 +312,14 @@ const WindowCard = memo(function WindowCard({
             <span
               className={`w-2 h-2 flex-shrink-0 ${
                 window.isMinimized ? 'bg-warning animate-pulse' : 'bg-success'
-              }`}
-              style={{ borderRadius: '1px' }}
+              } radius-sm`}
             />
             <TruncatedText text={window.title} className="text-sm font-semibold text-text-primary" />
           </div>
 
           <div className="flex items-center gap-3 text-xs text-text-muted">
             <span
-              className="font-mono bg-surface-800 px-2 py-0.5 border-l-2 border-surface-600"
-              style={{ borderRadius: '2px' }}
+              className="font-mono bg-surface-800 px-2 py-0.5 border-l-2 border-surface-600 radius-sm"
             >
               {window.processName}
             </span>
@@ -339,8 +329,7 @@ const WindowCard = memo(function WindowCard({
           {/* Size Info */}
           <div className="flex items-center gap-2 mt-2">
             <span
-              className="text-xs text-text-tertiary font-mono bg-surface-800/50 px-2 py-0.5 border-l-2 border-surface-600"
-              style={{ borderRadius: '2px' }}
+              className="text-xs text-text-tertiary font-mono bg-surface-800/50 px-2 py-0.5 border-l-2 border-surface-600 radius-sm"
             >
               {window.rect?.width ?? 0} × {window.rect?.height ?? 0}
             </span>
@@ -426,8 +415,7 @@ const WindowItem = memo(function WindowItem({
               ? 'bg-accent border-accent'
               : 'border-surface-500 hover:border-accent'
             }
-          `}
-          style={{ borderRadius: '2px' }}
+           radius-sm`}
         >
           {isChecked && <CheckIcon size={10} className="text-white" />}
         </div>
@@ -437,12 +425,11 @@ const WindowItem = memo(function WindowItem({
       <span
         className={`w-2 h-2 flex-shrink-0 ${
           window.isMinimized ? 'bg-warning' : 'bg-success'
-        }`}
-        style={{ borderRadius: '1px' }}
+        } radius-sm`}
       />
 
       {/* Icon */}
-      <div className={`w-8 h-8 bg-surface-700 flex items-center justify-center border-l-2 ${typeInfo.borderColor}`} style={{ borderRadius: '2px' }}>
+      <div className={`w-8 h-8 bg-surface-700 flex items-center justify-center border-l-2 ${typeInfo.borderColor} radius-sm`}>
         {typeInfo.icon}
       </div>
 
@@ -542,8 +529,7 @@ const WindowGroupCard = memo(function WindowGroupCard({
                 e.stopPropagation()
                 setIsExpanded(!isExpanded)
               }}
-              className="p-1 hover:bg-surface-700/50 transition-colors"
-              style={{ borderRadius: '2px' }}
+              className="p-1 hover:bg-surface-700/50 transition-colors radius-sm"
             >
               <ChevronIcon
                 size={16}
@@ -552,8 +538,7 @@ const WindowGroupCard = memo(function WindowGroupCard({
             </button>
 
             <div
-              className="w-10 h-10 bg-purple-500/20 flex items-center justify-center border-l-3 border-purple-500"
-              style={{ borderRadius: '2px' }}
+              className="w-10 h-10 bg-purple-500/20 flex items-center justify-center border-l-3 border-purple-500 radius-sm"
             >
               <FolderIcon size={20} className="text-purple-400" />
             </div>
@@ -562,8 +547,7 @@ const WindowGroupCard = memo(function WindowGroupCard({
               <span className="text-sm font-semibold text-text-primary">{group.name}</span>
               <div className="flex items-center gap-2 mt-0.5">
                 <span
-                  className="text-xs text-text-muted bg-surface-800 px-2 py-0.5 border-l-2 border-purple-500"
-                  style={{ borderRadius: '2px' }}
+                  className="text-xs text-text-muted bg-surface-800 px-2 py-0.5 border-l-2 border-purple-500 radius-sm"
                 >
                   {group.windows.length} 个窗口
                 </span>
@@ -625,10 +609,9 @@ const WindowGroupCard = memo(function WindowGroupCard({
             {group.windows.map((window) => (
               <div
                 key={window.hwnd}
-                className="flex items-center gap-2 p-2 bg-surface-800/30 hover:bg-surface-800/50 transition-colors border-l-2 border-surface-600"
-                style={{ borderRadius: '2px' }}
+                className="flex items-center gap-2 p-2 bg-surface-800/30 hover:bg-surface-800/50 transition-colors border-l-2 border-surface-600 radius-sm"
               >
-                <span className="w-1.5 h-1.5 bg-success" style={{ borderRadius: '1px' }} />
+                <span className="w-1.5 h-1.5 bg-success radius-sm" />
                 <TruncatedText text={window.title} className="text-xs text-text-secondary flex-1" />
                 <span className="text-xs text-text-muted font-mono">
                   {window.processName}
@@ -663,9 +646,10 @@ interface LayoutCardProps {
   onRestore: () => void
   onRemove: () => void
   index: number
+  showPreview?: boolean
 }
 
-const LayoutCard = memo(function LayoutCard({ layout, onRestore, onRemove, index }: LayoutCardProps) {
+const LayoutCard = memo(function LayoutCard({ layout, onRestore, onRemove, index, showPreview = true }: LayoutCardProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
 
@@ -678,13 +662,12 @@ const LayoutCard = memo(function LayoutCard({ layout, onRestore, onRemove, index
         onMouseLeave={() => setIsHovered(false)}
       >
         {/* Diagonal decoration */}
-        <div className="absolute inset-0 deco-diagonal opacity-5 pointer-events-none" style={{ borderRadius: '2px' }} />
+        <div className="absolute inset-0 deco-diagonal opacity-5 pointer-events-none radius-sm" />
 
         <div className="flex items-start justify-between relative z-10">
           <div className="flex items-start gap-3">
             <div
-              className="w-12 h-12 bg-cyan-500/20 flex items-center justify-center border-l-3 border-cyan-500"
-              style={{ borderRadius: '2px' }}
+              className="w-12 h-12 bg-cyan-500/20 flex items-center justify-center border-l-3 border-cyan-500 radius-sm"
             >
               <GridIcon size={24} className="text-cyan-400" />
             </div>
@@ -695,8 +678,7 @@ const LayoutCard = memo(function LayoutCard({ layout, onRestore, onRemove, index
               )}
               <div className="flex items-center gap-2 mt-2">
                 <span
-                  className="text-xs bg-surface-800 text-text-tertiary px-2 py-0.5 border-l-2 border-cyan-500"
-                  style={{ borderRadius: '2px' }}
+                  className="text-xs bg-surface-800 text-text-tertiary px-2 py-0.5 border-l-2 border-cyan-500 radius-sm"
                 >
                   {layout.groups.length} 个分组
                 </span>
@@ -707,6 +689,19 @@ const LayoutCard = memo(function LayoutCard({ layout, onRestore, onRemove, index
             </div>
           </div>
 
+          {/* Layout preview thumbnail */}
+          {showPreview && layout.groups.length > 0 && (
+            <LayoutPreview
+              windows={layout.groups.flatMap(g =>
+                g.windows.map(w => ({
+                  title: w.titlePattern,
+                  processName: w.processName,
+                  rect: w.rect
+                }))
+              )}
+            />
+          )}
+
           {/* Actions */}
           <div className={`
             flex items-center gap-2 transition-all duration-200
@@ -714,8 +709,7 @@ const LayoutCard = memo(function LayoutCard({ layout, onRestore, onRemove, index
           `}>
             <button
               onClick={onRestore}
-              className="px-3 py-1.5 text-xs font-medium bg-success/20 text-success hover:bg-success hover:text-white transition-all duration-200"
-              style={{ borderRadius: '2px' }}
+              className="px-3 py-1.5 text-xs font-medium bg-success/20 text-success hover:bg-success hover:text-white transition-all duration-200 radius-sm"
             >
               恢复布局
             </button>
@@ -763,8 +757,7 @@ const EmptyState = memo(function EmptyState({
       <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none" />
 
       <div
-        className="w-20 h-20 bg-surface-800 flex items-center justify-center mb-4 border-l-3 border-surface-600"
-        style={{ borderRadius: '4px' }}
+        className="w-20 h-20 bg-surface-800 flex items-center justify-center mb-4 border-l-3 border-surface-600 radius-md"
       >
         {icon}
       </div>
@@ -795,6 +788,8 @@ interface AIWindowCardProps {
   onMaximize: () => void
   onRestore: () => void
   onClose: () => void
+  onSetTopmost?: (hwnd: number, topmost: boolean) => void
+  onSetOpacity?: (hwnd: number, opacity: number) => void
   index: number
 }
 
@@ -811,12 +806,14 @@ const AIWindowCard = memo(function AIWindowCard({
   onMaximize,
   onRestore,
   onClose,
+  onSetTopmost,
+  onSetOpacity,
   index
 }: AIWindowCardProps) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [editValue, setEditValue] = useState(displayName)
   const [isHovered, setIsHovered] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [isTopmost, setIsTopmost] = useState(false)
+  const [opacity, setOpacity] = useState(100)
+  const [showOpacitySlider, setShowOpacitySlider] = useState(false)
 
   const stateInfo = AI_MONITOR_STATE_INFO[monitorState] || AI_MONITOR_STATE_INFO.idle
   const stateColorMap: Record<string, string> = {
@@ -830,28 +827,25 @@ const AIWindowCard = memo(function AIWindowCard({
   const dotColor = stateColorMap[stateInfo.color] || 'bg-gray-500'
   const isActive = monitorState === 'thinking' || monitorState === 'coding' || monitorState === 'compiling'
 
-  const handleStartEdit = useCallback(() => {
-    setEditValue(displayName)
-    setIsEditing(true)
-    setTimeout(() => inputRef.current?.select(), 50)
-  }, [displayName])
-
-  const handleConfirmEdit = useCallback(() => {
-    const trimmed = editValue.trim()
-    if (trimmed && trimmed.length <= ALIAS_MAX_LENGTH && !ALIAS_FORBIDDEN_CHARS.test(trimmed)) {
-      onRename(trimmed)
-    }
-    setIsEditing(false)
-  }, [editValue, onRename])
-
-  const handleCancelEdit = useCallback(() => {
-    setEditValue(displayName)
-    setIsEditing(false)
-  }, [displayName])
+  const { aliases } = useAliasStore()
+  const hasAlias = aliases.some(a => a.alias === displayName && !a.autoGenerated)
 
   const avgCpu = task?.metrics.cpuHistory.length
     ? (task.metrics.cpuHistory.reduce((a, b) => a + b, 0) / task.metrics.cpuHistory.length)
     : 0
+
+  const handleTopmostToggle = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    const next = !isTopmost
+    setIsTopmost(next)
+    onSetTopmost?.(win.hwnd, next)
+  }, [isTopmost, onSetTopmost, win.hwnd])
+
+  const handleOpacityChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = Number(e.target.value)
+    setOpacity(val)
+    onSetOpacity?.(win.hwnd, val)
+  }, [onSetOpacity, win.hwnd])
 
   return (
     <div
@@ -869,14 +863,13 @@ const AIWindowCard = memo(function AIWindowCard({
       `}
       style={{ animationDelay: `${index * 30}ms` }}
     >
-      <div className="absolute inset-0 deco-diagonal opacity-5 pointer-events-none" style={{ borderRadius: '2px' }} />
+      <div className="absolute inset-0 deco-diagonal opacity-5 pointer-events-none radius-sm" />
 
       <div className="flex items-start gap-4 relative z-10">
         {/* AI Icon with status indicator */}
         <div className="relative flex-shrink-0">
           <div
-            className="w-12 h-12 bg-blue-500/20 flex items-center justify-center border-l-3 border-blue-500"
-            style={{ borderRadius: '2px' }}
+            className="w-12 h-12 bg-blue-500/20 flex items-center justify-center border-l-3 border-blue-500 radius-sm"
           >
             <AIIcon size={20} className="text-blue-400" />
           </div>
@@ -902,15 +895,14 @@ const AIWindowCard = memo(function AIWindowCard({
                 }}
                 onBlur={handleConfirmEdit}
                 maxLength={ALIAS_MAX_LENGTH}
-                className="text-sm font-semibold bg-surface-800 border border-accent/50 px-2 py-0.5 text-text-primary focus:outline-none focus:border-accent"
-                style={{ borderRadius: '2px', minWidth: '120px' }}
+                className="text-sm font-semibold bg-surface-800 border border-accent/50 px-2 py-0.5 text-text-primary focus:outline-none focus:border-accent radius-sm" style={{ minWidth: '120px' }}
                 autoFocus
               />
             ) : (
               <span
                 className="text-sm font-semibold text-text-primary cursor-text"
                 onDoubleClick={(e) => { e.stopPropagation(); handleStartEdit() }}
-                title="Double-click to rename"
+                title="双击重命名"
               >
                 {displayName}
               </span>
@@ -918,8 +910,7 @@ const AIWindowCard = memo(function AIWindowCard({
 
             {/* AI badge */}
             <span
-              className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 font-medium"
-              style={{ borderRadius: '2px' }}
+              className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 font-medium radius-sm"
             >
               AI
             </span>
@@ -940,9 +931,8 @@ const AIWindowCard = memo(function AIWindowCard({
             {!isEditing && (
               <button
                 onClick={(e) => { e.stopPropagation(); handleStartEdit() }}
-                className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-surface-700 transition-all"
-                style={{ borderRadius: '2px' }}
-                title="Rename"
+                className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-surface-700 transition-all radius-sm"
+                title="重命名"
               >
                 <GearIcon size={12} className="text-text-muted" />
               </button>
@@ -950,7 +940,7 @@ const AIWindowCard = memo(function AIWindowCard({
           </div>
 
           <div className="flex items-center gap-3 text-xs text-text-muted">
-            <span className="font-mono bg-surface-800 px-2 py-0.5 border-l-2 border-blue-500" style={{ borderRadius: '2px' }}>
+            <span className="font-mono bg-surface-800 px-2 py-0.5 border-l-2 border-blue-500 radius-sm">
               {win.processName}
             </span>
             <span className="text-text-tertiary font-mono">PID: {win.pid}</span>
@@ -973,7 +963,7 @@ const AIWindowCard = memo(function AIWindowCard({
           <button
             onClick={(e) => { e.stopPropagation(); onFocus() }}
             className="btn-icon-sm bg-accent/20 text-accent hover:bg-accent hover:text-white"
-            title="Focus"
+            title="聚焦"
           >
             <EyeIcon size={14} />
           </button>
@@ -981,7 +971,7 @@ const AIWindowCard = memo(function AIWindowCard({
             <button
               onClick={(e) => { e.stopPropagation(); onRestore() }}
               className="btn-icon-sm bg-success/10 text-success/70 hover:bg-success hover:text-white"
-              title="Restore"
+              title="恢复"
             >
               <MaximizeIcon size={14} />
             </button>
@@ -990,14 +980,14 @@ const AIWindowCard = memo(function AIWindowCard({
               <button
                 onClick={(e) => { e.stopPropagation(); onMinimize() }}
                 className="btn-icon-sm bg-warning/10 text-warning/70 hover:bg-warning hover:text-white"
-                title="Minimize"
+                title="最小化"
               >
                 <MinimizeIcon size={14} />
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); onMaximize() }}
                 className="btn-icon-sm bg-info/10 text-info/70 hover:bg-info hover:text-white"
-                title="Maximize"
+                title="最大化"
               >
                 <MaximizeIcon size={14} />
               </button>
@@ -1006,7 +996,7 @@ const AIWindowCard = memo(function AIWindowCard({
           <button
             onClick={(e) => { e.stopPropagation(); onClose() }}
             className="btn-icon-sm bg-error/10 text-error/70 hover:bg-error hover:text-white"
-            title="Close"
+            title="关闭"
           >
             <CloseIcon size={14} />
           </button>
@@ -1021,19 +1011,25 @@ const AIWindowCard = memo(function AIWindowCard({
 // ============================================
 interface BatchToolbarProps {
   selectedCount: number
+  totalCount: number
+  onSelectAll: () => void
   onTile: () => void
   onCascade: () => void
   onMinimizeAll: () => void
   onRestoreAll: () => void
+  onCloseAll: () => void
   onClearSelection: () => void
 }
 
 const BatchToolbar = memo(function BatchToolbar({
   selectedCount,
+  totalCount,
+  onSelectAll,
   onTile,
   onCascade,
   onMinimizeAll,
   onRestoreAll,
+  onCloseAll,
   onClearSelection
 }: BatchToolbarProps) {
   if (selectedCount === 0) return null
@@ -1043,51 +1039,63 @@ const BatchToolbar = memo(function BatchToolbar({
       className="flex items-center gap-2 px-4 py-2 bg-surface-800 border-b border-surface-700 animate-fade-in"
     >
       <span className="text-xs text-text-muted">
-        {selectedCount} selected
+        已选择 {selectedCount} 个窗口
       </span>
+      {selectedCount < totalCount && (
+        <button
+          onClick={onSelectAll}
+          className="text-xs text-accent hover:text-accent/80 transition-colors"
+        >
+          全选
+        </button>
+      )}
       <div className="h-4 w-px bg-surface-600" />
       <button
         onClick={onTile}
-        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-info/10 text-info hover:bg-info hover:text-white transition-all"
-        style={{ borderRadius: '2px' }}
-        title="Tile selected windows"
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-info/10 text-info hover:bg-info hover:text-white transition-all radius-sm"
+        title="平铺选中窗口"
       >
         <GridIcon size={12} />
-        Tile
+        批量平铺
       </button>
       <button
         onClick={onCascade}
-        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-info/10 text-info hover:bg-info hover:text-white transition-all"
-        style={{ borderRadius: '2px' }}
-        title="Cascade selected windows"
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-info/10 text-info hover:bg-info hover:text-white transition-all radius-sm"
+        title="层叠选中窗口"
       >
         <LayoutIcon size={12} />
-        Cascade
+        批量层叠
       </button>
       <button
         onClick={onMinimizeAll}
-        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-warning/10 text-warning hover:bg-warning hover:text-white transition-all"
-        style={{ borderRadius: '2px' }}
-        title="Minimize selected"
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-warning/10 text-warning hover:bg-warning hover:text-white transition-all radius-sm"
+        title="最小化选中窗口"
       >
         <MinimizeIcon size={12} />
-        Minimize
+        批量最小化
       </button>
       <button
         onClick={onRestoreAll}
-        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-success/10 text-success hover:bg-success hover:text-white transition-all"
-        style={{ borderRadius: '2px' }}
-        title="Restore selected"
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-success/10 text-success hover:bg-success hover:text-white transition-all radius-sm"
+        title="恢复选中窗口"
       >
         <MaximizeIcon size={12} />
-        Restore
+        批量恢复
+      </button>
+      <button
+        onClick={onCloseAll}
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-error/10 text-error hover:bg-error hover:text-white transition-all radius-sm"
+        title="关闭选中窗口"
+      >
+        <CloseIcon size={12} />
+        批量关闭
       </button>
       <div className="flex-1" />
       <button
         onClick={onClearSelection}
         className="text-xs text-text-muted hover:text-text-primary transition-colors"
       >
-        Clear
+        清除选择
       </button>
     </div>
   )
@@ -1340,9 +1348,9 @@ export function WindowView() {
       // Use optimistic renameAlias action from store
       const success = await renameAlias(existingAlias.id, newName)
       if (success) {
-        showToast('success', `Renamed to "${newName}"`)
+        showToast('success', `已重命名为 "${newName}"`)
       } else {
-        showToast('error', 'Rename failed')
+        showToast('error', '重命名失败')
       }
     } else {
       // Create new alias with robust matchCriteria
@@ -1361,9 +1369,9 @@ export function WindowView() {
       }
       const result = await saveAlias(newAlias)
       if (result) {
-        showToast('success', `Named as "${newName}"`)
+        showToast('success', `已命名为 "${newName}"`)
       } else {
-        showToast('error', 'Save failed')
+        showToast('error', '保存失败')
       }
     }
   }, [activeTasks, aliases, saveAlias, renameAlias, showToast])
@@ -1373,16 +1381,16 @@ export function WindowView() {
     const hwnds = Array.from(selectedWindows)
     if (hwnds.length === 0) return
     const success = await tileWindows(hwnds)
-    if (success) showToast('success', `${hwnds.length} windows tiled`)
-    else showToast('error', 'Tile failed')
+    if (success) showToast('success', `${hwnds.length} 个窗口已平铺`)
+    else showToast('error', '平铺失败')
   }, [selectedWindows, tileWindows, showToast])
 
   const handleBatchCascade = useCallback(async () => {
     const hwnds = Array.from(selectedWindows)
     if (hwnds.length === 0) return
     const success = await cascadeWindows(hwnds)
-    if (success) showToast('success', `${hwnds.length} windows cascaded`)
-    else showToast('error', 'Cascade failed')
+    if (success) showToast('success', `${hwnds.length} 个窗口已层叠`)
+    else showToast('error', '层叠失败')
   }, [selectedWindows, cascadeWindows, showToast])
 
   const handleBatchMinimize = useCallback(async () => {
@@ -1390,7 +1398,7 @@ export function WindowView() {
     for (const hwnd of hwnds) {
       await minimizeWindow(hwnd)
     }
-    showToast('success', `${hwnds.length} windows minimized`)
+    showToast('success', `${hwnds.length} 个窗口已最小化`)
   }, [selectedWindows, minimizeWindow, showToast])
 
   const handleBatchRestore = useCallback(async () => {
@@ -1398,8 +1406,17 @@ export function WindowView() {
     for (const hwnd of hwnds) {
       await restoreWindow(hwnd)
     }
-    showToast('success', `${hwnds.length} windows restored`)
+    showToast('success', `${hwnds.length} 个窗口已恢复`)
   }, [selectedWindows, restoreWindow, showToast])
+
+  const handleBatchClose = useCallback(async () => {
+    const hwnds = Array.from(selectedWindows)
+    for (const hwnd of hwnds) {
+      await closeWindow(hwnd)
+    }
+    setSelectedWindows(new Set())
+    showToast('success', `${hwnds.length} 个窗口已关闭`)
+  }, [selectedWindows, closeWindow, showToast])
 
   // Filter windows
   const filteredWindows = windows.filter(w =>
@@ -1421,6 +1438,11 @@ export function WindowView() {
     w.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     w.processName.toLowerCase().includes(searchQuery.toLowerCase())
   )
+
+  const handleSelectAll = useCallback(() => {
+    const allHwnds = new Set(filteredWindows.map(w => w.hwnd))
+    setSelectedWindows(allHwnds)
+  }, [filteredWindows])
 
   // Process groups: group filteredWindows by PID
   const processGroups = useMemo((): ProcessGroupData[] => {
@@ -1480,8 +1502,7 @@ export function WindowView() {
         <div className="flex items-center justify-between mb-4 relative z-10">
           <div className="flex items-center gap-3">
             <div
-              className="w-10 h-10 bg-surface-700 flex items-center justify-center border-l-3 border-accent"
-              style={{ borderRadius: '2px' }}
+              className="w-10 h-10 bg-surface-700 flex items-center justify-center border-l-3 border-accent radius-sm"
             >
               <WindowIcon size={20} className="text-accent" />
             </div>
@@ -1525,8 +1546,7 @@ export function WindowView() {
                     ? 'bg-warning/20 text-warning border-warning'
                     : 'bg-surface-800 text-text-muted border-surface-600 hover:bg-surface-700 hover:text-text-secondary'
                   }
-                `}
-                style={{ borderRadius: '2px' }}
+                 radius-sm`}
                 title={showSystemWindows ? '隐藏系统窗口' : '显示系统窗口'}
               >
                 <EyeIcon size={14} />
@@ -1538,8 +1558,7 @@ export function WindowView() {
             {viewTab === 'windows' && selectedWindows.size > 0 && (
               <button
                 onClick={() => setShowCreateGroup(true)}
-                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-accent/20 text-accent hover:bg-accent hover:text-white transition-all duration-200 border-l-2 border-accent"
-                style={{ borderRadius: '2px' }}
+                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-accent/20 text-accent hover:bg-accent hover:text-white transition-all duration-200 border-l-2 border-accent radius-sm"
               >
                 <PlusIcon size={14} />
                 创建分组 ({selectedWindows.size})
@@ -1550,8 +1569,7 @@ export function WindowView() {
             {(viewTab === 'groups' || viewTab === 'windows') && windows.length > 0 && (
               <button
                 onClick={() => setShowSaveLayout(true)}
-                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-success/20 text-success hover:bg-success hover:text-white transition-all duration-200 border-l-2 border-success"
-                style={{ borderRadius: '2px' }}
+                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-success/20 text-success hover:bg-success hover:text-white transition-all duration-200 border-l-2 border-success radius-sm"
               >
                 <FolderIcon size={14} />
                 保存布局
@@ -1598,8 +1616,7 @@ export function WindowView() {
                   className={`
                     text-xs px-1.5 py-0.5 font-mono
                     ${viewTab === tab.key ? 'bg-accent/20' : 'bg-surface-700'}
-                  `}
-                  style={{ borderRadius: '2px' }}
+                   radius-sm`}
                 >
                   {tab.count}
                 </span>
@@ -1619,8 +1636,7 @@ export function WindowView() {
                 placeholder="搜索窗口..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 w-56 bg-surface-800 border border-surface-700 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent/50"
-                style={{ borderRadius: '2px' }}
+                className="pl-10 pr-4 py-2 w-56 bg-surface-800 border border-surface-700 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent/50 radius-sm"
               />
             </div>
           )}
@@ -1651,7 +1667,7 @@ export function WindowView() {
             />
             <StatCard
               icon={<AIIcon size={20} className="text-blue-400" />}
-              label="AI Tools"
+              label="AI 工具"
               value={stats.aiToolCount}
               color="info"
             />
@@ -1663,10 +1679,13 @@ export function WindowView() {
       {viewTab === 'windows' && (
         <BatchToolbar
           selectedCount={selectedWindows.size}
+          totalCount={filteredWindows.length}
+          onSelectAll={handleSelectAll}
           onTile={handleBatchTile}
           onCascade={handleBatchCascade}
           onMinimizeAll={handleBatchMinimize}
           onRestoreAll={handleBatchRestore}
+          onCloseAll={handleBatchClose}
           onClearSelection={() => setSelectedWindows(new Set())}
         />
       )}
@@ -1720,7 +1739,7 @@ export function WindowView() {
                   className="text-xs font-bold uppercase tracking-wider text-text-muted"
                   style={{ fontFamily: 'var(--font-display)' }}
                 >
-                  Other Windows ({filteredRegularWindows.length})
+                  其他窗口 ({filteredRegularWindows.length})
                 </span>
                 <div className="flex-1 h-px bg-surface-700" />
               </div>
@@ -1794,7 +1813,7 @@ export function WindowView() {
               <div className="flex items-center gap-2 mt-2">
                 <WindowIcon size={16} className="text-text-muted" />
                 <span className="text-xs font-bold uppercase tracking-wider text-text-muted" style={{ fontFamily: 'var(--font-display)' }}>
-                  Other Windows ({filteredRegularWindows.length})
+                  其他窗口 ({filteredRegularWindows.length})
                 </span>
                 <div className="flex-1 h-px bg-surface-700" />
               </div>
@@ -1926,16 +1945,14 @@ export function WindowView() {
       {showCreateGroup && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in">
           <div
-            className="bg-surface-900 p-6 w-[420px] border-2 border-surface-700 shadow-2xl relative"
-            style={{ borderRadius: '4px' }}
+            className="bg-surface-900 p-6 w-[420px] border-2 border-surface-700 shadow-2xl relative radius-md"
           >
             {/* Diagonal decoration */}
-            <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none" style={{ borderRadius: '4px' }} />
+            <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none radius-md" />
 
             <div className="flex items-center gap-3 mb-6 relative z-10">
               <div
-                className="w-10 h-10 bg-accent/20 flex items-center justify-center border-l-3 border-accent"
-                style={{ borderRadius: '2px' }}
+                className="w-10 h-10 bg-accent/20 flex items-center justify-center border-l-3 border-accent radius-sm"
               >
                 <FolderIcon size={20} className="text-accent" />
               </div>
@@ -1961,13 +1978,11 @@ export function WindowView() {
               value={newGroupName}
               onChange={(e) => setNewGroupName(e.target.value)}
               autoFocus
-              className="w-full px-4 py-3 bg-surface-800 border-2 border-surface-600 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent relative z-10"
-              style={{ borderRadius: '2px' }}
+              className="w-full px-4 py-3 bg-surface-800 border-2 border-surface-600 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent relative z-10 radius-sm"
             />
 
             <div
-              className="flex items-center gap-2 mt-3 p-3 bg-surface-800/50 border-l-3 border-success relative z-10"
-              style={{ borderRadius: '2px' }}
+              className="flex items-center gap-2 mt-3 p-3 bg-surface-800/50 border-l-3 border-success relative z-10 radius-sm"
             >
               <CheckIcon size={18} className="text-success" />
               <span className="text-sm text-text-secondary">
@@ -1978,16 +1993,14 @@ export function WindowView() {
             <div className="flex justify-end gap-3 mt-6 relative z-10">
               <button
                 onClick={() => setShowCreateGroup(false)}
-                className="px-5 py-2.5 text-text-secondary hover:bg-surface-800 transition-colors"
-                style={{ borderRadius: '2px' }}
+                className="px-5 py-2.5 text-text-secondary hover:bg-surface-800 transition-colors radius-sm"
               >
                 取消
               </button>
               <button
                 onClick={handleCreateGroup}
                 disabled={!newGroupName.trim()}
-                className="px-5 py-2.5 bg-accent text-white font-medium hover:bg-accent-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all border-l-2 border-accent-400"
-                style={{ borderRadius: '2px' }}
+                className="px-5 py-2.5 bg-accent text-white font-medium hover:bg-accent-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all border-l-2 border-accent-400 radius-sm"
               >
                 创建分组
               </button>
@@ -2000,16 +2013,14 @@ export function WindowView() {
       {showSaveLayout && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in">
           <div
-            className="bg-surface-900 p-6 w-[420px] border-2 border-surface-700 shadow-2xl relative"
-            style={{ borderRadius: '4px' }}
+            className="bg-surface-900 p-6 w-[420px] border-2 border-surface-700 shadow-2xl relative radius-md"
           >
             {/* Diagonal decoration */}
-            <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none" style={{ borderRadius: '4px' }} />
+            <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none radius-md" />
 
             <div className="flex items-center gap-3 mb-6 relative z-10">
               <div
-                className="w-10 h-10 bg-success/20 flex items-center justify-center border-l-3 border-success"
-                style={{ borderRadius: '2px' }}
+                className="w-10 h-10 bg-success/20 flex items-center justify-center border-l-3 border-success radius-sm"
               >
                 <GridIcon size={20} className="text-success" />
               </div>
@@ -2035,8 +2046,7 @@ export function WindowView() {
               value={newLayoutName}
               onChange={(e) => setNewLayoutName(e.target.value)}
               autoFocus
-              className="w-full px-4 py-3 bg-surface-800 border-2 border-surface-600 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent mb-3 relative z-10"
-              style={{ borderRadius: '2px' }}
+              className="w-full px-4 py-3 bg-surface-800 border-2 border-surface-600 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent mb-3 relative z-10 radius-sm"
             />
 
             <textarea
@@ -2044,13 +2054,11 @@ export function WindowView() {
               value={newLayoutDesc}
               onChange={(e) => setNewLayoutDesc(e.target.value)}
               rows={3}
-              className="w-full px-4 py-3 bg-surface-800 border-2 border-surface-600 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent resize-none relative z-10"
-              style={{ borderRadius: '2px' }}
+              className="w-full px-4 py-3 bg-surface-800 border-2 border-surface-600 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent resize-none relative z-10 radius-sm"
             />
 
             <div
-              className="flex items-center gap-2 mt-3 p-3 bg-surface-800/50 border-l-3 border-info relative z-10"
-              style={{ borderRadius: '2px' }}
+              className="flex items-center gap-2 mt-3 p-3 bg-surface-800/50 border-l-3 border-info relative z-10 radius-sm"
             >
               <AlertIcon size={18} className="text-info" />
               <span className="text-sm text-text-secondary">
@@ -2071,16 +2079,14 @@ export function WindowView() {
             <div className="flex justify-end gap-3 mt-6 relative z-10">
               <button
                 onClick={() => setShowSaveLayout(false)}
-                className="px-5 py-2.5 text-text-secondary hover:bg-surface-800 transition-colors"
-                style={{ borderRadius: '2px' }}
+                className="px-5 py-2.5 text-text-secondary hover:bg-surface-800 transition-colors radius-sm"
               >
                 取消
               </button>
               <button
                 onClick={handleSaveLayout}
                 disabled={!newLayoutName.trim()}
-                className="px-5 py-2.5 bg-success text-white font-medium hover:bg-success/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all border-l-2 border-success"
-                style={{ borderRadius: '2px' }}
+                className="px-5 py-2.5 bg-success text-white font-medium hover:bg-success/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all border-l-2 border-success radius-sm"
               >
                 保存布局
               </button>

@@ -211,14 +211,14 @@ const ProcessCard = memo(function ProcessCard({ process, index, maxMemory, cpuHi
         <div className="relative z-10">
           {/* Header */}
           <div className="flex items-start gap-3 mb-3">
-            <div className={`w-9 h-9 bg-surface-800 flex items-center justify-center border-l-3 ${typeConfig.borderColor}`} style={{ borderRadius: '2px' }}>
+            <div className={`w-9 h-9 bg-surface-800 flex items-center justify-center border-l-3 ${typeConfig.borderColor} radius-sm`}>
               {typeConfig.icon}
             </div>
             <div className="flex-1 min-w-0">
               <TruncatedText text={pName} className="text-sm font-bold text-text-primary" />
               <div className="flex items-center gap-2 mt-0.5">
                 <span className={`status-badge ${pStatus === 'running' ? 'status-badge-running' : ''}`}>
-                  <span className={`w-1.5 h-1.5 ${statusConfig.color}`} style={{ borderRadius: '1px' }} />
+                  <span className={`w-1.5 h-1.5 ${statusConfig.color} radius-sm`} />
                   {statusConfig.text}
                 </span>
                 <span className="text-[10px] text-text-muted font-mono">PID: {pPid}</span>
@@ -229,11 +229,11 @@ const ProcessCard = memo(function ProcessCard({ process, index, maxMemory, cpuHi
           {/* Ports (multi-port display) */}
           <div className="flex items-center gap-1.5 mb-3 flex-wrap">
             {pPort ? (
-              <span className="text-xs font-bold font-mono bg-gold/10 text-gold px-2 py-0.5 border-l-2 border-gold" style={{ borderRadius: '2px' }}>
+              <span className="text-xs font-bold font-mono bg-gold/10 text-gold px-2 py-0.5 border-l-2 border-gold radius-sm">
                 :{pPort}
               </span>
             ) : (
-              <span className="text-xs text-text-muted font-mono px-2 py-0.5 bg-surface-900" style={{ borderRadius: '2px' }}>
+              <span className="text-xs text-text-muted font-mono px-2 py-0.5 bg-surface-900 radius-sm">
                 无端口
               </span>
             )}
@@ -248,11 +248,11 @@ const ProcessCard = memo(function ProcessCard({ process, index, maxMemory, cpuHi
                 className="w-full text-left"
               >
                 {commandExpanded ? (
-                  <p className="text-[10px] font-mono text-text-muted bg-surface-900 px-2 py-1 hover:bg-surface-800 transition-colors break-all" style={{ borderRadius: '2px' }}>
+                  <p className="text-[10px] font-mono text-text-muted bg-surface-900 px-2 py-1 hover:bg-surface-800 transition-colors break-all radius-sm">
                     $ {pCommand}
                   </p>
                 ) : (
-                  <div className="bg-surface-900 px-2 py-1 hover:bg-surface-800 transition-colors" style={{ borderRadius: '2px' }}>
+                  <div className="bg-surface-900 px-2 py-1 hover:bg-surface-800 transition-colors radius-sm">
                     <TruncatedText text={`$ ${pCommand}`} className="text-[10px] font-mono text-text-muted" />
                   </div>
                 )}
@@ -272,7 +272,7 @@ const ProcessCard = memo(function ProcessCard({ process, index, maxMemory, cpuHi
                   <span className={`font-mono font-bold ${cpuColor.text}`}>{pCpu.toFixed(1)}%</span>
                 </div>
               </div>
-              <div className="h-1.5 bg-surface-800" style={{ borderRadius: '1px' }}>
+              <div className="h-1.5 bg-surface-800 radius-sm">
                 <div
                   className={`h-full transition-all duration-500 ${cpuColor.bg}`}
                   style={{ width: `${Math.min(pCpu, 100)}%`, borderRadius: '1px' }}
@@ -289,7 +289,7 @@ const ProcessCard = memo(function ProcessCard({ process, index, maxMemory, cpuHi
                   <span className={`font-mono font-bold ${memColor.text}`}>{pMemory}MB</span>
                 </div>
               </div>
-              <div className="h-1.5 bg-surface-800" style={{ borderRadius: '1px' }}>
+              <div className="h-1.5 bg-surface-800 radius-sm">
                 <div
                   className={`h-full transition-all duration-500 ${memColor.bg}`}
                   style={{ width: `${memPercent}%`, borderRadius: '1px' }}
@@ -432,18 +432,18 @@ const ProcessItem = memo(function ProcessItem({ process, maxMemory, isSelected, 
         onContextMenu={handleContextMenu}
         className={`
           group flex items-center gap-4 px-4 py-2 cursor-pointer transition-all duration-200
-          border-l-3 bg-surface-800
+          border-l-3 bg-surface-800 radius-sm
           ${isSelected
             ? 'border-accent bg-accent/10'
             : 'border-transparent hover:border-surface-500 hover:bg-surface-700'
           }
         `}
-        style={{ borderRadius: '2px', height: '40px' }}
+        style={{ height: '40px' }}
       >
         {/* Status + Type Icon */}
         <div className="relative flex-shrink-0">
-          <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 ${statusColor} ${pStatus === 'running' ? 'status-dot-running' : ''}`} style={{ borderRadius: '1px' }} />
-          <div className={`w-6 h-6 bg-surface-700 flex items-center justify-center border-l-2 ${typeConfig.borderColor}`} style={{ borderRadius: '2px' }}>
+          <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 ${statusColor} ${pStatus === 'running' ? 'status-dot-running' : ''} radius-sm`} />
+          <div className={`w-6 h-6 bg-surface-700 flex items-center justify-center border-l-2 ${typeConfig.borderColor} radius-sm`}>
             {React.cloneElement(typeConfig.icon as React.ReactElement, { size: 14 })}
           </div>
         </div>
@@ -461,7 +461,7 @@ const ProcessItem = memo(function ProcessItem({ process, maxMemory, isSelected, 
 
         {/* CPU */}
         <div className="flex items-center gap-1 min-w-[70px]">
-          <div className="w-[30px] h-1 bg-surface-700" style={{ borderRadius: '1px' }}>
+          <div className="w-[30px] h-1 bg-surface-700 radius-sm">
             <div className={`h-full ${cpuColor.bg}`} style={{ width: `${Math.min(pCpu, 100)}%`, borderRadius: '1px' }} />
           </div>
           <span className={`text-[10px] font-mono font-bold ${cpuColor.text}`}>{pCpu.toFixed(1)}%</span>
@@ -469,7 +469,7 @@ const ProcessItem = memo(function ProcessItem({ process, maxMemory, isSelected, 
 
         {/* Memory */}
         <div className="flex items-center gap-1 min-w-[70px]">
-          <div className="w-[30px] h-1 bg-surface-700" style={{ borderRadius: '1px' }}>
+          <div className="w-[30px] h-1 bg-surface-700 radius-sm">
             <div className={`h-full ${memColor.bg}`} style={{ width: `${memPercent}%`, borderRadius: '1px' }} />
           </div>
           <span className={`text-[10px] font-mono font-bold ${memColor.text}`}>{pMemory}MB</span>
@@ -542,7 +542,7 @@ const ProcessGroupCard = memo(function ProcessGroupCard({
           <div className={`
             w-10 h-10 bg-accent/10 flex items-center justify-center border-l-3 border-accent
             transition-transform duration-300 ${isExpanded ? 'rotate-0' : '-rotate-90'}
-          `} style={{ borderRadius: '2px' }}>
+           radius-sm`}>
             <ChevronDownIcon size={20} className="text-accent" />
           </div>
           <div className="text-left">
@@ -788,7 +788,7 @@ export function ProcessView() {
         <div className="absolute inset-0 deco-diagonal opacity-20 pointer-events-none" />
         <div className="flex items-center justify-between relative z-10">
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-surface-700 flex items-center justify-center border-l-3 border-accent" style={{ borderRadius: '2px' }}>
+            <div className="w-10 h-10 bg-surface-700 flex items-center justify-center border-l-3 border-accent radius-sm">
               <ProcessIcon size={20} className="text-accent" />
             </div>
             <div>
@@ -868,6 +868,7 @@ export function ProcessView() {
         <div className="flex-shrink-0 px-5 py-3">
           <ProcessDetailPanel
             pid={detailPid}
+            basicProcessInfo={processes.find(p => p.pid === detailPid)}
             onClose={() => setDetailPid(null)}
             onKillProcess={killProcess}
             fetchRelationship={getFullRelationship}
@@ -939,7 +940,7 @@ export function ProcessView() {
 
         {processes.length === 0 && !isScanning && (
           <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
-            <div className="w-20 h-20 bg-surface-800 flex items-center justify-center mb-6 border-l-3 border-accent" style={{ borderRadius: '4px' }}>
+            <div className="w-20 h-20 bg-surface-800 flex items-center justify-center mb-6 border-l-3 border-accent radius-md">
               <ProcessIcon size={40} className="text-text-muted" />
             </div>
             <h3
@@ -954,7 +955,7 @@ export function ProcessView() {
 
         {filteredProcesses.length === 0 && processes.length > 0 && !isScanning && (
           <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
-            <div className="w-16 h-16 bg-surface-800 flex items-center justify-center mb-4 border-l-3 border-warning" style={{ borderRadius: '4px' }}>
+            <div className="w-16 h-16 bg-surface-800 flex items-center justify-center mb-4 border-l-3 border-warning radius-md">
               <AlertIcon size={32} className="text-warning" />
             </div>
             <h3 className="text-base font-bold text-text-primary mb-2">
