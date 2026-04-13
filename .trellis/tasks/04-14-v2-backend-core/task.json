@@ -1,0 +1,45 @@
+{
+  "id": "v2-backend-core",
+  "name": "v2-backend-core",
+  "title": "Team1 Backend Core (T1 AI检测+T3 进程详情)",
+  "description": "",
+  "status": "planning",
+  "dev_type": "fullstack",
+  "scope": "devhub/src/main/services/ToolMonitor.ts devhub/src/main/services/AITaskTracker.ts devhub/src/main/services/AIAliasManager.ts devhub/src/main/services/NotificationService.ts devhub/src/main/services/SystemProcessScanner.ts devhub/src/main/ipc/processHandlers.ts devhub/src/main/ipc/aiTaskHandlers.ts devhub/src/renderer/components/monitor/ProcessDetailPanel.tsx devhub/src/renderer/components/monitor/ProcessView.tsx devhub/src/shared/types-extended.ts devhub/src/preload/extended.ts",
+  "package": null,
+  "priority": "P2",
+  "creator": "ZRainbow",
+  "assignee": "ZRainbow",
+  "createdAt": "2026-04-14",
+  "completedAt": null,
+  "branch": "feature/v2-backend-core",
+  "base_branch": "master",
+  "worktree_path": "D:\\Desktop\\trellis-worktrees\\feature\\v2-backend-core",
+  "current_phase": 3,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
