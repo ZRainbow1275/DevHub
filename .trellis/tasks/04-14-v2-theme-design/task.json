@@ -1,0 +1,45 @@
+{
+  "id": "v2-theme-design",
+  "name": "v2-theme-design",
+  "title": "Team5 Theme Design (T9 主题深度设计)",
+  "description": "",
+  "status": "planning",
+  "dev_type": "frontend",
+  "scope": "devhub/src/renderer/styles/ devhub/src/renderer/components/ui/DecorationSet.tsx devhub/src/renderer/components/ui/ThemeDecoration.tsx devhub/src/renderer/components/ui/Toast.tsx devhub/src/renderer/components/ui/LoadingSpinner.tsx devhub/src/renderer/components/ui/InitializationScreen.tsx devhub/src/renderer/components/ui/ConfirmDialog.tsx devhub/src/renderer/components/ui/CloseConfirmDialog.tsx devhub/src/renderer/components/ui/LastScanTime.tsx devhub/src/renderer/components/ui/TruncatedText.tsx devhub/src/renderer/components/ui/ViewModeToggle.tsx devhub/src/renderer/components/ui/ContextMenu.tsx devhub/src/renderer/components/ui/ScriptSelector.tsx devhub/src/renderer/utils/theme-tokens.ts devhub/src/renderer/hooks/useTheme.ts",
+  "package": null,
+  "priority": "P2",
+  "creator": "ZRainbow",
+  "assignee": "ZRainbow",
+  "createdAt": "2026-04-14",
+  "completedAt": null,
+  "branch": "feature/v2-theme-design",
+  "base_branch": "master",
+  "worktree_path": "D:\\Desktop\\trellis-worktrees\\feature\\v2-theme-design",
+  "current_phase": 3,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
