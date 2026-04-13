@@ -1,0 +1,45 @@
+{
+  "id": "v2-project-ux",
+  "name": "v2-project-ux",
+  "title": "Team4 Project UX (T2 布局+T8 项目功能)",
+  "description": "",
+  "status": "planning",
+  "dev_type": "fullstack",
+  "scope": "devhub/src/renderer/components/ui/HeroStats.tsx devhub/src/renderer/components/ui/ResponsiveMetric.tsx devhub/src/renderer/components/ui/StatCard.tsx devhub/src/renderer/components/ui/PanelSplitter.tsx devhub/src/renderer/components/ui/ResizeHandle.tsx devhub/src/renderer/components/layout/Sidebar.tsx devhub/src/renderer/components/layout/StatusBar.tsx devhub/src/renderer/components/project/ProjectCard.tsx devhub/src/renderer/components/project/ProjectList.tsx devhub/src/renderer/components/project/ProjectDetailPanel.tsx devhub/src/renderer/components/settings/SettingsDialog.tsx devhub/src/renderer/stores/projectStore.ts devhub/src/renderer/hooks/useProjects.ts devhub/src/renderer/hooks/useDensity.ts devhub/src/renderer/hooks/useBreakpoint.ts devhub/src/main/services/ProjectScanner.ts devhub/src/main/ipc/scannerHandlers.ts devhub/src/preload/extended.ts devhub/src/shared/types-extended.ts",
+  "package": null,
+  "priority": "P2",
+  "creator": "ZRainbow",
+  "assignee": "ZRainbow",
+  "createdAt": "2026-04-14",
+  "completedAt": null,
+  "branch": "feature/v2-project-ux",
+  "base_branch": "master",
+  "worktree_path": "D:\\Desktop\\trellis-worktrees\\feature\\v2-project-ux",
+  "current_phase": 3,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
