@@ -204,6 +204,7 @@ declare global {
         sendKeys: (hwnd: number, keys: string) => Promise<ServiceResult>
         tileLayout: (hwnds: number[]) => Promise<ServiceResult>
         cascadeLayout: (hwnds: number[]) => Promise<ServiceResult>
+        stackLayout: (hwnds: number[]) => Promise<ServiceResult>
         minimizeAll: () => Promise<ServiceResult>
         restoreAll: () => Promise<ServiceResult>
         addToGroup: (groupId: string, hwnd: number) => Promise<ServiceResult>

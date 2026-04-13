@@ -2,8 +2,8 @@ import { useEffect, memo, useState, useCallback, useMemo, useRef } from 'react'
 import { useWindows } from '../../hooks/useWindows'
 import { useAITasks } from '../../hooks/useAITasks'
 import { useAliasStore } from '../../stores/aliasStore'
-import { WindowInfo, WindowGroup, WindowLayout, AITask, AIMonitorState, AI_MONITOR_STATE_INFO, ALIAS_FORBIDDEN_CHARS, ALIAS_MAX_LENGTH } from '@shared/types-extended'
-
+import { WindowInfo, WindowGroup, WindowLayout, AITask, AIMonitorState, AI_MONITOR_STATE_INFO } from '@shared/types-extended'
+import { AIWindowAliasBadge } from './AIWindowAlias'
 import { ProcessCardErrorBoundary } from './ProcessCardErrorBoundary'
 import { useToast } from '../ui/Toast'
 import { LayoutPreview } from './LayoutPreview'
@@ -852,7 +852,7 @@ const AIWindowCard = memo(function AIWindowCard({
       onClick={onSelect}
       onDoubleClick={onFocus}
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseLeave={() => { setIsHovered(false); setShowOpacitySlider(false) }}
       className={`
         monitor-card group relative p-4 cursor-pointer animate-card-stagger
         border-l-3
@@ -882,42 +882,25 @@ const AIWindowCard = memo(function AIWindowCard({
         {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            {/* Editable name */}
-            {isEditing ? (
-              <input
-                ref={inputRef}
-                type="text"
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleConfirmEdit()
-                  if (e.key === 'Escape') handleCancelEdit()
-                }}
-                onBlur={handleConfirmEdit}
-                maxLength={ALIAS_MAX_LENGTH}
-                className="text-sm font-semibold bg-surface-800 border border-accent/50 px-2 py-0.5 text-text-primary focus:outline-none focus:border-accent radius-sm" style={{ minWidth: '120px' }}
-                autoFocus
-              />
-            ) : (
-              <span
-                className="text-sm font-semibold text-text-primary cursor-text"
-                onDoubleClick={(e) => { e.stopPropagation(); handleStartEdit() }}
-                title="双击重命名"
-              >
-                {displayName}
-              </span>
-            )}
+            {/* Inline alias badge with edit */}
+            <AIWindowAliasBadge
+              displayName={displayName}
+              hasAlias={hasAlias}
+              task={task}
+              hwnd={win.hwnd}
+              workingDir={task?.projectId}
+              windowTitle={win.title}
+              onRename={onRename}
+            />
 
             {/* AI badge */}
-            <span
-              className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 font-medium radius-sm"
-            >
+            <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 font-medium radius-sm flex-shrink-0">
               AI
             </span>
 
             {/* Monitor state badge */}
             <span
-              className="text-xs px-1.5 py-0.5 font-medium"
+              className="text-xs px-1.5 py-0.5 font-medium flex-shrink-0"
               style={{
                 borderRadius: '2px',
                 color: `var(--color-${stateInfo.color === 'gray' ? 'text-muted' : stateInfo.color === 'green' ? 'success' : stateInfo.color === 'red' ? 'error' : stateInfo.color === 'orange' ? 'warning' : stateInfo.color === 'yellow' ? 'warning' : 'info'}, currentColor)`,
@@ -926,17 +909,6 @@ const AIWindowCard = memo(function AIWindowCard({
             >
               {stateInfo.label}
             </span>
-
-            {/* Rename pencil icon */}
-            {!isEditing && (
-              <button
-                onClick={(e) => { e.stopPropagation(); handleStartEdit() }}
-                className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-surface-700 transition-all radius-sm"
-                title="重命名"
-              >
-                <GearIcon size={12} className="text-text-muted" />
-              </button>
-            )}
           </div>
 
           <div className="flex items-center gap-3 text-xs text-text-muted">
@@ -953,53 +925,92 @@ const AIWindowCard = memo(function AIWindowCard({
           <div className="mt-1">
             <TruncatedText text={win.title} className="text-xs text-text-tertiary" />
           </div>
+
+          {/* Opacity slider (shown on demand) */}
+          {showOpacitySlider && (
+            <div
+              className="flex items-center gap-2 mt-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <span className="text-[10px] text-text-muted w-10 flex-shrink-0">透明度</span>
+              <input
+                type="range"
+                min={20}
+                max={100}
+                step={5}
+                value={opacity}
+                onChange={handleOpacityChange}
+                className="flex-1 h-1 accent-blue-400"
+                title={`透明度: ${opacity}%`}
+              />
+              <span className="text-[10px] font-mono text-text-muted w-8 text-right">{opacity}%</span>
+            </div>
+          )}
         </div>
 
         {/* Actions */}
         <div className={`
-          flex items-center gap-1 transition-all duration-200 flex-shrink-0
+          flex flex-col items-end gap-1 transition-all duration-200 flex-shrink-0
           ${isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'}
         `}>
-          <button
-            onClick={(e) => { e.stopPropagation(); onFocus() }}
-            className="btn-icon-sm bg-accent/20 text-accent hover:bg-accent hover:text-white"
-            title="聚焦"
-          >
-            <EyeIcon size={14} />
-          </button>
-          {win.isMinimized ? (
+          <div className="flex items-center gap-1">
             <button
-              onClick={(e) => { e.stopPropagation(); onRestore() }}
-              className="btn-icon-sm bg-success/10 text-success/70 hover:bg-success hover:text-white"
-              title="恢复"
+              onClick={(e) => { e.stopPropagation(); onFocus() }}
+              className="btn-icon-sm bg-accent/20 text-accent hover:bg-accent hover:text-white"
+              title="聚焦"
             >
-              <MaximizeIcon size={14} />
+              <EyeIcon size={14} />
             </button>
-          ) : (
-            <>
+            <button
+              onClick={handleTopmostToggle}
+              className={`btn-icon-sm transition-colors ${isTopmost ? 'bg-warning/30 text-warning' : 'bg-surface-700 text-text-muted hover:text-warning'}`}
+              title={isTopmost ? '取消置顶' : '窗口置顶'}
+            >
+              <LayoutIcon size={14} />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowOpacitySlider(v => !v) }}
+              className={`btn-icon-sm transition-colors ${showOpacitySlider ? 'bg-info/30 text-info' : 'bg-surface-700 text-text-muted hover:text-info'}`}
+              title="调整透明度"
+            >
+              <GearIcon size={14} />
+            </button>
+          </div>
+          <div className="flex items-center gap-1">
+            {win.isMinimized ? (
               <button
-                onClick={(e) => { e.stopPropagation(); onMinimize() }}
-                className="btn-icon-sm bg-warning/10 text-warning/70 hover:bg-warning hover:text-white"
-                title="最小化"
-              >
-                <MinimizeIcon size={14} />
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); onMaximize() }}
-                className="btn-icon-sm bg-info/10 text-info/70 hover:bg-info hover:text-white"
-                title="最大化"
+                onClick={(e) => { e.stopPropagation(); onRestore() }}
+                className="btn-icon-sm bg-success/10 text-success/70 hover:bg-success hover:text-white"
+                title="恢复"
               >
                 <MaximizeIcon size={14} />
               </button>
-            </>
-          )}
-          <button
-            onClick={(e) => { e.stopPropagation(); onClose() }}
-            className="btn-icon-sm bg-error/10 text-error/70 hover:bg-error hover:text-white"
-            title="关闭"
-          >
-            <CloseIcon size={14} />
-          </button>
+            ) : (
+              <>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onMinimize() }}
+                  className="btn-icon-sm bg-warning/10 text-warning/70 hover:bg-warning hover:text-white"
+                  title="最小化"
+                >
+                  <MinimizeIcon size={14} />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onMaximize() }}
+                  className="btn-icon-sm bg-info/10 text-info/70 hover:bg-info hover:text-white"
+                  title="最大化"
+                >
+                  <MaximizeIcon size={14} />
+                </button>
+              </>
+            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); onClose() }}
+              className="btn-icon-sm bg-error/10 text-error/70 hover:bg-error hover:text-white"
+              title="关闭"
+            >
+              <CloseIcon size={14} />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1015,6 +1026,7 @@ interface BatchToolbarProps {
   onSelectAll: () => void
   onTile: () => void
   onCascade: () => void
+  onStack: () => void
   onMinimizeAll: () => void
   onRestoreAll: () => void
   onCloseAll: () => void
@@ -1027,6 +1039,7 @@ const BatchToolbar = memo(function BatchToolbar({
   onSelectAll,
   onTile,
   onCascade,
+  onStack,
   onMinimizeAll,
   onRestoreAll,
   onCloseAll,
@@ -1065,6 +1078,14 @@ const BatchToolbar = memo(function BatchToolbar({
       >
         <LayoutIcon size={12} />
         批量层叠
+      </button>
+      <button
+        onClick={onStack}
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-purple-500/10 text-purple-400 hover:bg-purple-500 hover:text-white transition-all radius-sm"
+        title="堆叠选中窗口 (相同位置)"
+      >
+        <WindowIcon size={12} />
+        批量堆叠
       </button>
       <button
         onClick={onMinimizeAll}
@@ -1131,8 +1152,11 @@ export function WindowView() {
     maximizeWindow,
     restoreWindow,
     closeWindow,
+    setWindowTopmost,
+    setWindowOpacity,
     tileWindows,
-    cascadeWindows
+    cascadeWindows,
+    stackWindows
   } = useWindows()
 
   const { activeTasks, fetchActiveTasks } = useAITasks()
@@ -1392,6 +1416,23 @@ export function WindowView() {
     if (success) showToast('success', `${hwnds.length} 个窗口已层叠`)
     else showToast('error', '层叠失败')
   }, [selectedWindows, cascadeWindows, showToast])
+
+  const handleBatchStack = useCallback(async () => {
+    const hwnds = Array.from(selectedWindows)
+    if (hwnds.length === 0) return
+    const success = await stackWindows(hwnds)
+    if (success) showToast('success', `${hwnds.length} 个窗口已堆叠`)
+    else showToast('error', '堆叠失败')
+  }, [selectedWindows, stackWindows, showToast])
+
+  const handleSetWindowTopmost = useCallback(async (hwnd: number, topmost: boolean) => {
+    await setWindowTopmost(hwnd, topmost)
+    showToast('success', topmost ? '窗口已置顶' : '已取消置顶')
+  }, [setWindowTopmost, showToast])
+
+  const handleSetWindowOpacity = useCallback(async (hwnd: number, opacity: number) => {
+    await setWindowOpacity(hwnd, opacity)
+  }, [setWindowOpacity])
 
   const handleBatchMinimize = useCallback(async () => {
     const hwnds = Array.from(selectedWindows)
@@ -1683,6 +1724,7 @@ export function WindowView() {
           onSelectAll={handleSelectAll}
           onTile={handleBatchTile}
           onCascade={handleBatchCascade}
+          onStack={handleBatchStack}
           onMinimizeAll={handleBatchMinimize}
           onRestoreAll={handleBatchRestore}
           onCloseAll={handleBatchClose}
@@ -1723,6 +1765,8 @@ export function WindowView() {
                         onMaximize={() => maximizeWindow(win.hwnd)}
                         onRestore={() => restoreWindow(win.hwnd)}
                         onClose={() => closeWindow(win.hwnd)}
+                        onSetTopmost={handleSetWindowTopmost}
+                        onSetOpacity={handleSetWindowOpacity}
                         index={index}
                       />
                     </ProcessCardErrorBoundary>
@@ -1800,6 +1844,8 @@ export function WindowView() {
                         onMaximize={() => maximizeWindow(win.hwnd)}
                         onRestore={() => restoreWindow(win.hwnd)}
                         onClose={() => closeWindow(win.hwnd)}
+                        onSetTopmost={handleSetWindowTopmost}
+                        onSetOpacity={handleSetWindowOpacity}
                         index={index}
                       />
                     </ProcessCardErrorBoundary>
