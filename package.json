@@ -1,0 +1,12 @@
+{
+	"dependencies": {
+		"@fontsource-variable/inter": "^5.2.8",
+		"@fontsource-variable/jetbrains-mono": "^5.2.8",
+		"@fontsource-variable/oswald": "^5.2.8",
+		"@fontsource-variable/orbitron": "^5.2.8",
+		"@fontsource-variable/exo-2": "^5.2.8",
+		"@fontsource-variable/playfair-display": "^5.2.8",
+		"@fontsource/bebas-neue": "^5.2.7",
+		"@fontsource/share-tech-mono": "^5.2.7"
+	}
+}
