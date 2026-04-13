@@ -52,12 +52,68 @@ const CATEGORIES: CategoryDef[] = [
   { key: 'advanced', label: '高级', sublabel: 'ADVANCED', icon: WrenchIcon },
 ]
 
-const THEMES: { key: ThemeName; name: string; desc: string; colors: [string, string, string] }[] = [
-  { key: 'constructivism', name: '构成主义', desc: '暗色·红金·工业·紧凑', colors: ['#1a1814', '#d64545', '#c9a227'] },
-  { key: 'cyberpunk', name: '赛博朋克', desc: '暗色·霓虹·发光·未来', colors: ['#0a0a12', '#00ffff', '#ff00aa'] },
-  { key: 'swiss', name: '瑞士极简', desc: '亮色·黑白·方角·克制', colors: ['#ffffff', '#1a1a1a', '#ff0000'] },
-  { key: 'modern-light', name: '现代明亮', desc: '亮色·蓝白·圆角·专业', colors: ['#f8f9fa', '#3b82f6', '#f59e0b'] },
-  { key: 'warm-light', name: '暖光', desc: '亮色·铜金·柔和·温暖', colors: ['#faf8f5', '#b85c38', '#c9a227'] },
+interface ThemeDef {
+  key: ThemeName
+  name: string
+  desc: string
+  colors: [string, string, string]
+  previewBg: string
+  previewBorder: string
+  previewRadius: string
+  previewFont: string
+}
+
+const THEMES: ThemeDef[] = [
+  {
+    key: 'constructivism',
+    name: '构成主义',
+    desc: '暗色·红金·工业·紧凑',
+    colors: ['#1a1814', '#d64545', '#c9a227'],
+    previewBg: '#1a1814',
+    previewBorder: '2px solid #d64545',
+    previewRadius: '2px',
+    previewFont: 'uppercase',
+  },
+  {
+    key: 'cyberpunk',
+    name: '赛博朋克',
+    desc: '暗色·霓虹·发光·未来',
+    colors: ['#0a0a12', '#00ffff', '#ff00aa'],
+    previewBg: '#0a0a12',
+    previewBorder: '1px solid rgba(0, 255, 255, 0.4)',
+    previewRadius: '8px',
+    previewFont: 'uppercase',
+  },
+  {
+    key: 'swiss',
+    name: '瑞士极简',
+    desc: '亮色·黑白·方角·克制',
+    colors: ['#ffffff', '#1a1a1a', '#ff0000'],
+    previewBg: '#ffffff',
+    previewBorder: '1px solid #e8e8e8',
+    previewRadius: '0px',
+    previewFont: 'none',
+  },
+  {
+    key: 'modern-light',
+    name: '现代明亮',
+    desc: '亮色·蓝白·圆角·专业',
+    colors: ['#f8f9fa', '#3b82f6', '#f59e0b'],
+    previewBg: '#f8f9fa',
+    previewBorder: 'none',
+    previewRadius: '16px',
+    previewFont: 'none',
+  },
+  {
+    key: 'warm-light',
+    name: '暖光',
+    desc: '亮色·铜金·柔和·温暖',
+    colors: ['#faf8f5', '#b85c38', '#c9a227'],
+    previewBg: '#faf8f5',
+    previewBorder: '1px dashed #b85c38',
+    previewRadius: '6px',
+    previewFont: 'none',
+  },
 ]
 
 // ============ Props ============
@@ -214,18 +270,16 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="settings-dialog-title"
-        className="bg-surface-900 border-2 border-surface-600 w-full max-w-4xl mx-4 shadow-elevated flex flex-col relative"
-        style={{ borderRadius: '4px', height: '80vh', maxHeight: '700px' }}
+        className="bg-surface-900 border-2 border-surface-600 w-full max-w-4xl mx-4 shadow-elevated flex flex-col relative radius-md" style={{ height: '80vh', maxHeight: '700px' }}
       >
         {/* Diagonal decoration */}
-        <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none" style={{ borderRadius: '4px' }} />
+        <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none radius-md" />
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b-2 border-surface-700 relative z-10 flex-shrink-0">
           <div className="flex items-center gap-3">
             <div
-              className="w-10 h-10 bg-gold/20 flex items-center justify-center border-l-3 border-gold"
-              style={{ borderRadius: '2px' }}
+              className="w-10 h-10 bg-gold/20 flex items-center justify-center border-l-3 border-gold radius-sm"
             >
               <SettingsIcon size={20} className="text-gold" />
             </div>
@@ -317,8 +371,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
         <div className="flex justify-end gap-3 px-6 py-3 border-t-2 border-surface-700 relative z-10 flex-shrink-0">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-text-secondary hover:bg-surface-800 transition-colors"
-            style={{ borderRadius: '2px' }}
+            className="px-4 py-2 text-text-secondary hover:bg-surface-800 transition-colors radius-sm"
           >
             关闭
           </button>
@@ -356,8 +409,7 @@ function SettingToggle({
 }) {
   return (
     <div
-      className="flex items-center justify-between p-3 bg-surface-800 hover:bg-surface-700 transition-colors cursor-pointer border-l-3 border-surface-600"
-      style={{ borderRadius: '2px' }}
+      className="flex items-center justify-between p-3 bg-surface-800 hover:bg-surface-700 transition-colors cursor-pointer border-l-3 border-surface-600 radius-sm"
       onClick={() => onChange(!checked)}
     >
       <div className="flex flex-col">
@@ -376,12 +428,10 @@ function SettingToggle({
           }
         }}
         onClick={(e) => e.stopPropagation()}
-        className={`relative w-10 h-5 transition-colors cursor-pointer flex-shrink-0 ${checked ? 'bg-accent' : 'bg-surface-600'}`}
-        style={{ borderRadius: '2px' }}
+        className={`relative w-10 h-5 transition-colors cursor-pointer flex-shrink-0 ${checked ? 'bg-accent' : 'bg-surface-600'} radius-sm`}
       >
         <div
-          className={`absolute top-0.5 w-4 h-4 bg-white transition-transform ${checked ? 'translate-x-5' : 'translate-x-0.5'}`}
-          style={{ borderRadius: '2px' }}
+          className={`absolute top-0.5 w-4 h-4 bg-white transition-transform ${checked ? 'translate-x-5' : 'translate-x-0.5'} radius-sm`}
         />
       </div>
     </div>
@@ -411,8 +461,7 @@ function SettingSlider({
 }) {
   return (
     <div
-      className="p-3 bg-surface-800 border-l-3 border-surface-600"
-      style={{ borderRadius: '2px' }}
+      className="p-3 bg-surface-800 border-l-3 border-surface-600 radius-sm"
     >
       <div className="flex items-center justify-between mb-2">
         <span className="text-text-secondary text-sm">{label}</span>
@@ -427,8 +476,7 @@ function SettingSlider({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full h-1.5 bg-surface-600 appearance-none cursor-pointer accent-accent"
-        style={{ borderRadius: '0' }}
+        className="w-full h-1.5 bg-surface-600 appearance-none cursor-pointer accent-accent radius-none"
       />
       <div className="flex justify-between text-[10px] text-text-muted mt-1">
         <span>{min}{unit && ` ${unit}`}</span>
@@ -453,15 +501,13 @@ function SettingSelect<T extends string>({
 }) {
   return (
     <div
-      className="flex items-center justify-between p-3 bg-surface-800 border-l-3 border-surface-600"
-      style={{ borderRadius: '2px' }}
+      className="flex items-center justify-between p-3 bg-surface-800 border-l-3 border-surface-600 radius-sm"
     >
       <span className="text-text-secondary text-sm">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as T)}
-        className="px-3 py-1.5 bg-surface-700 border border-surface-600 text-text-primary text-sm focus:outline-none focus:border-accent"
-        style={{ borderRadius: '2px' }}
+        className="px-3 py-1.5 bg-surface-700 border border-surface-600 text-text-primary text-sm focus:outline-none focus:border-accent radius-sm"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -514,8 +560,7 @@ function StringListEditor({
           items.map((item) => (
             <div
               key={item}
-              className="flex items-center justify-between bg-surface-800 px-4 py-2 group border-l-3 border-surface-600"
-              style={{ borderRadius: '2px' }}
+              className="flex items-center justify-between bg-surface-800 px-4 py-2 group border-l-3 border-surface-600 radius-sm"
             >
               <span className="text-text-secondary text-sm font-mono truncate flex-1" title={item}>
                 {item}
@@ -540,14 +585,12 @@ function StringListEditor({
             if (e.key === 'Enter') handleAdd()
           }}
           placeholder={placeholder ?? '输入新条目...'}
-          className="flex-1 px-4 py-2 bg-surface-800 border-2 border-surface-600 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
-          style={{ borderRadius: '2px' }}
+          className="flex-1 px-4 py-2 bg-surface-800 border-2 border-surface-600 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent radius-sm"
         />
         {allowBrowse && (
           <button
             onClick={handleBrowse}
-            className="px-3 py-2 bg-surface-800 text-text-secondary hover:bg-surface-700 text-sm transition-colors border-l-2 border-surface-600"
-            style={{ borderRadius: '2px' }}
+            className="px-3 py-2 bg-surface-800 text-text-secondary hover:bg-surface-700 text-sm transition-colors border-l-2 border-surface-600 radius-sm"
             title="浏览文件夹"
           >
             <FolderIcon size={16} />
@@ -556,8 +599,7 @@ function StringListEditor({
         <button
           onClick={handleAdd}
           disabled={!newItem.trim()}
-          className="px-3 py-2 bg-accent text-white text-sm hover:bg-accent-600 disabled:opacity-50 transition-colors"
-          style={{ borderRadius: '2px' }}
+          className="px-3 py-2 bg-accent text-white text-sm hover:bg-accent-600 disabled:opacity-50 transition-colors radius-sm"
         >
           <PlusIcon size={16} />
         </button>
@@ -602,22 +644,71 @@ function AppearancePanel({
                 }}
                 className={`relative p-3 border-2 transition-all text-left ${
                   isActive ? 'border-accent bg-surface-800' : 'border-surface-600 bg-surface-800/50 hover:border-surface-500'
-                }`}
-                style={{ borderRadius: '4px' }}
+                } radius-md`}
               >
                 {isActive && (
                   <div className="absolute top-1.5 right-1.5">
                     <CheckIcon size={14} className="text-accent" />
                   </div>
                 )}
-                <div className="flex gap-1.5 mb-2">
-                  {t.colors.map((c, i) => (
-                    <div
-                      key={i}
-                      className="w-5 h-5 border border-surface-600"
-                      style={{ backgroundColor: c, borderRadius: '2px' }}
-                    />
-                  ))}
+                {/* Mini preview card */}
+                <div
+                  style={{
+                    width: '100%',
+                    height: '50px',
+                    marginBottom: '8px',
+                    background: t.previewBg,
+                    border: t.previewBorder,
+                    borderRadius: t.previewRadius,
+                    boxShadow: isActive ? '0 0 0 2px var(--accent)' : 'none',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px',
+                    padding: '6px 8px',
+                    overflow: 'hidden',
+                    position: 'relative',
+                  }}
+                >
+                  {/* Sample text line */}
+                  <div style={{
+                    height: '7px',
+                    width: '60%',
+                    background: t.colors[1],
+                    borderRadius: t.previewRadius,
+                    opacity: 0.9,
+                  }} />
+                  {/* Sample content row */}
+                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                    <div style={{
+                      height: '5px',
+                      width: '30%',
+                      background: t.colors[2],
+                      borderRadius: t.previewRadius,
+                      opacity: 0.7,
+                    }} />
+                    <div style={{
+                      height: '5px',
+                      width: '20%',
+                      background: t.colors[1],
+                      borderRadius: t.previewRadius,
+                      opacity: 0.4,
+                    }} />
+                  </div>
+                  {/* Color swatches */}
+                  <div style={{ display: 'flex', gap: '3px', marginTop: 'auto' }}>
+                    {t.colors.map((c, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          width: '12px',
+                          height: '12px',
+                          background: c,
+                          borderRadius: t.previewRadius,
+                          border: '1px solid rgba(128,128,128,0.2)',
+                        }}
+                      />
+                    ))}
+                  </div>
                 </div>
                 <div className="text-sm font-medium text-text-primary">{t.name}</div>
                 <div className="text-xs text-text-muted">{t.desc}</div>
@@ -734,8 +825,7 @@ function ScanPanel({
                     isSelected
                       ? 'bg-accent/20 border-accent text-accent'
                       : 'bg-surface-800 border-surface-600 text-text-muted hover:border-surface-500 hover:text-text-secondary'
-                  } ${isOnlyOne ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                  style={{ borderRadius: '2px' }}
+                  } ${isOnlyOne ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} radius-sm`}
                   title={isOnlyOne ? '至少需要保留一个盘符' : isSelected ? '点击取消选择' : '点击选择此盘符'}
                 >
                   {drive}:
@@ -807,8 +897,7 @@ function ScanPanel({
       <section>
         <SectionHeader title="默认扫描路径" borderColor="border-gold" />
         <div
-          className="text-xs text-text-muted space-y-1.5 font-mono bg-surface-800/50 p-4 border-2 border-surface-700"
-          style={{ borderRadius: '2px' }}
+          className="text-xs text-text-muted space-y-1.5 font-mono bg-surface-800/50 p-4 border-2 border-surface-700 radius-sm"
         >
           <p className="text-text-tertiary mb-2">用户目录：</p>
           <p>- 用户/Desktop</p>
@@ -1023,24 +1112,21 @@ function NotificationPanel({
           />
           {notif.quietHoursEnabled && (
             <div
-              className="flex items-center gap-3 p-3 bg-surface-800 border-l-3 border-surface-600"
-              style={{ borderRadius: '2px' }}
+              className="flex items-center gap-3 p-3 bg-surface-800 border-l-3 border-surface-600 radius-sm"
             >
               <span className="text-text-secondary text-sm">时间段</span>
               <input
                 type="time"
                 value={notif.quietHoursStart}
                 onChange={(e) => updateNotification({ quietHoursStart: e.target.value })}
-                className="px-2 py-1 bg-surface-700 border border-surface-600 text-text-primary text-sm focus:outline-none focus:border-accent"
-                style={{ borderRadius: '2px' }}
+                className="px-2 py-1 bg-surface-700 border border-surface-600 text-text-primary text-sm focus:outline-none focus:border-accent radius-sm"
               />
               <span className="text-text-muted text-sm">至</span>
               <input
                 type="time"
                 value={notif.quietHoursEnd}
                 onChange={(e) => updateNotification({ quietHoursEnd: e.target.value })}
-                className="px-2 py-1 bg-surface-700 border border-surface-600 text-text-primary text-sm focus:outline-none focus:border-accent"
-                style={{ borderRadius: '2px' }}
+                className="px-2 py-1 bg-surface-700 border border-surface-600 text-text-primary text-sm focus:outline-none focus:border-accent radius-sm"
               />
             </div>
           )}
@@ -1183,16 +1269,14 @@ function AdvancedPanel({
           <div className="flex gap-3">
             <button
               onClick={onExport}
-              className="flex items-center gap-2 px-4 py-2.5 bg-surface-800 border-2 border-surface-600 text-text-secondary hover:border-surface-500 hover:text-text-primary transition-all text-sm"
-              style={{ borderRadius: '2px' }}
+              className="flex items-center gap-2 px-4 py-2.5 bg-surface-800 border-2 border-surface-600 text-text-secondary hover:border-surface-500 hover:text-text-primary transition-all text-sm radius-sm"
             >
               <DownloadIcon size={16} />
               导出设置
             </button>
             <button
               onClick={onImport}
-              className="flex items-center gap-2 px-4 py-2.5 bg-surface-800 border-2 border-surface-600 text-text-secondary hover:border-surface-500 hover:text-text-primary transition-all text-sm"
-              style={{ borderRadius: '2px' }}
+              className="flex items-center gap-2 px-4 py-2.5 bg-surface-800 border-2 border-surface-600 text-text-secondary hover:border-surface-500 hover:text-text-primary transition-all text-sm radius-sm"
             >
               <UploadIcon size={16} />
               导入设置
@@ -1204,16 +1288,14 @@ function AdvancedPanel({
             {!showResetConfirm ? (
               <button
                 onClick={() => setShowResetConfirm(true)}
-                className="flex items-center gap-2 px-4 py-2.5 text-error border-2 border-error/30 hover:bg-error hover:text-white transition-all text-sm"
-                style={{ borderRadius: '2px' }}
+                className="flex items-center gap-2 px-4 py-2.5 text-error border-2 border-error/30 hover:bg-error hover:text-white transition-all text-sm radius-sm"
               >
                 <TrashIcon size={16} />
                 重置为默认设置
               </button>
             ) : (
               <div
-                className="p-4 bg-error/10 border-2 border-error/30"
-                style={{ borderRadius: '2px' }}
+                className="p-4 bg-error/10 border-2 border-error/30 radius-sm"
               >
                 <p className="text-sm text-text-secondary mb-3">
                   确定要将所有设置恢复为默认值吗？此操作无法撤销。
@@ -1224,15 +1306,13 @@ function AdvancedPanel({
                       onReset()
                       setShowResetConfirm(false)
                     }}
-                    className="px-4 py-2 bg-error text-white text-sm hover:bg-error/80 transition-colors"
-                    style={{ borderRadius: '2px' }}
+                    className="px-4 py-2 bg-error text-white text-sm hover:bg-error/80 transition-colors radius-sm"
                   >
                     确认重置
                   </button>
                   <button
                     onClick={() => setShowResetConfirm(false)}
-                    className="px-4 py-2 bg-surface-700 text-text-secondary text-sm hover:bg-surface-600 transition-colors"
-                    style={{ borderRadius: '2px' }}
+                    className="px-4 py-2 bg-surface-700 text-text-secondary text-sm hover:bg-surface-600 transition-colors radius-sm"
                   >
                     取消
                   </button>

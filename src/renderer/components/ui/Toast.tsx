@@ -91,16 +91,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                   ${config.styles}
                 `}
                 style={{
-                  borderRadius: '4px',
+                  borderRadius: 'var(--radius-sm, 4px)',
                   animationDelay: `${index * 50}ms`
                 }}
               >
                 {/* Diagonal decoration */}
-                <div className="absolute inset-0 deco-diagonal opacity-5 pointer-events-none" style={{ borderRadius: '4px' }} />
+                <div className="absolute inset-0 deco-diagonal opacity-5 pointer-events-none radius-md" />
 
                 <div
-                  className="w-8 h-8 bg-surface-800 flex items-center justify-center border-l-2 border-current flex-shrink-0"
-                  style={{ borderRadius: '2px' }}
+                  className="w-8 h-8 bg-surface-800 flex items-center justify-center border-l-2 border-current flex-shrink-0 radius-sm"
                 >
                   {config.icon}
                 </div>

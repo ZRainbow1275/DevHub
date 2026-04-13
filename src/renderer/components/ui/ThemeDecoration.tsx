@@ -22,13 +22,12 @@ import { useTheme, type ThemeName } from '../../hooks/useTheme'
 /** Soviet Constructivism: diagonal stripes + geometric corner cut */
 const SovietDecoration: React.FC = () => (
   <>
-    {/* Diagonal stripe texture */}
+    {/* Diagonal stripe texture — driven by CSS vars */}
     <div
       className="absolute inset-0 pointer-events-none"
       style={{
-        opacity: 0.03,
-        backgroundImage:
-          'repeating-linear-gradient(45deg, transparent, transparent 10px, currentColor 10px, currentColor 11px)',
+        opacity: 'var(--deco-pattern-opacity, 0.06)',
+        backgroundImage: 'var(--deco-pattern-image)',
       }}
       aria-hidden="true"
     />
@@ -47,29 +46,16 @@ const SovietDecoration: React.FC = () => (
   </>
 )
 
-/** Cyberpunk Neon: dot-grid background + scanline sweep + vignette */
+/** Cyberpunk Neon: CSS-var driven grid + scanline sweep */
 const CyberpunkDecoration: React.FC = () => (
   <>
-    {/* Dot-grid background */}
+    {/* Grid pattern — driven by CSS vars */}
     <div
       className="absolute inset-0 pointer-events-none"
       style={{
-        opacity: 0.06,
-        backgroundImage: 'radial-gradient(circle, rgba(0, 255, 255, 0.2) 1px, transparent 1px)',
-        backgroundSize: '24px 24px',
-      }}
-      aria-hidden="true"
-    />
-    {/* Faint grid lines */}
-    <div
-      className="absolute inset-0 pointer-events-none"
-      style={{
-        opacity: 0.025,
-        backgroundImage: [
-          'linear-gradient(rgba(0, 255, 255, 0.2) 1px, transparent 1px)',
-          'linear-gradient(90deg, rgba(0, 255, 255, 0.2) 1px, transparent 1px)',
-        ].join(', '),
-        backgroundSize: '80px 80px',
+        opacity: 'var(--deco-pattern-opacity, 0.035)',
+        backgroundImage: 'var(--deco-pattern-image)',
+        backgroundSize: '20px 20px',
       }}
       aria-hidden="true"
     />
@@ -77,7 +63,7 @@ const CyberpunkDecoration: React.FC = () => (
     <div
       className="absolute inset-0 pointer-events-none"
       style={{
-        opacity: 0.03,
+        opacity: 'var(--deco-scanline-opacity, 0.03)',
         backgroundImage: 'repeating-linear-gradient(to bottom, transparent, transparent 2px, rgba(0, 0, 0, 0.15) 2px, rgba(0, 0, 0, 0.15) 4px)',
       }}
       aria-hidden="true"
@@ -94,8 +80,7 @@ const CyberpunkDecoration: React.FC = () => (
           left: 0,
           right: 0,
           height: '2px',
-          background:
-            'linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.3), transparent)',
+          background: 'linear-gradient(90deg, transparent, var(--deco-glow-color, rgba(0, 255, 255, 0.3)), transparent)',
           animation: 'scanline 6s linear infinite',
         }}
       />
@@ -107,6 +92,19 @@ const CyberpunkDecoration: React.FC = () => (
 /*  Main Component                                                     */
 /* ------------------------------------------------------------------ */
 
+/** Warm Light: paper texture via CSS var */
+const WarmLightDecoration: React.FC = () => (
+  <div
+    className="absolute inset-0 pointer-events-none"
+    style={{
+      opacity: 'var(--deco-pattern-opacity, 0.025)',
+      backgroundImage: 'var(--deco-pattern-image)',
+      backgroundSize: '40px 40px',
+    }}
+    aria-hidden="true"
+  />
+)
+
 /**
  * Map of theme name to its decoration component.
  * Themes without decorations are simply omitted (render null).
@@ -114,7 +112,8 @@ const CyberpunkDecoration: React.FC = () => (
 const DECORATION_MAP: Partial<Record<ThemeName, React.FC>> = {
   constructivism: SovietDecoration,
   cyberpunk: CyberpunkDecoration,
-  // swiss, 'modern-light', 'warm-light' intentionally omitted — no decoration
+  'warm-light': WarmLightDecoration,
+  // swiss, 'modern-light' intentionally omitted — no decoration
 }
 
 export interface ThemeDecorationProps {

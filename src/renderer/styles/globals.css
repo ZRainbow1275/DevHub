@@ -9,6 +9,45 @@
 @tailwind utilities;
 
 /* ========================================
+   Theme-Aware Utility Classes
+   Radius, shadow, and border utilities
+   driven by CSS custom properties.
+   ======================================== */
+
+.radius-none { border-radius: 0; }
+.radius-sm { border-radius: var(--radius-sm); }
+.radius-md { border-radius: var(--radius-md); }
+.radius-lg { border-radius: var(--radius-lg); }
+.radius-xl { border-radius: var(--radius-xl); }
+.radius-card { border-radius: var(--radius-card); }
+.radius-button { border-radius: var(--radius-button); }
+.radius-input { border-radius: var(--radius-input); }
+.radius-badge { border-radius: var(--radius-badge); }
+
+.shadow-theme-sm { box-shadow: var(--shadow-sm); }
+.shadow-theme-md { box-shadow: var(--shadow-md); }
+.shadow-theme-lg { box-shadow: var(--shadow-lg); }
+.shadow-theme-card { box-shadow: var(--shadow-card); }
+.shadow-theme-button { box-shadow: var(--shadow-button); }
+
+/* PRD-named aliases */
+.shadow-card { box-shadow: var(--shadow-card); }
+.shadow-card-hover:hover { box-shadow: var(--shadow-card-hover); }
+.shadow-md-t { box-shadow: var(--shadow-md); }
+
+.border-theme-card { border: var(--border-card); }
+.border-theme-input { border: var(--border-input); }
+.border-theme-button { border: var(--border-button); }
+
+/* PRD-named aliases */
+.border-card { border: var(--border-card); }
+.border-input-t { border: var(--border-input); }
+
+/* Transition utilities */
+.transition-t { transition: var(--transition-default); }
+.transition-t-fast { transition: var(--transition-fast); }
+
+/* ========================================
    Base Styles - Theme-aware
    ======================================== */
 
