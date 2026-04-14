@@ -1469,3 +1469,88 @@ teammate 完成后仍有 40 个文件未 commit，包括：
 ### Next Steps
 
 - None - task complete
+
+
+## Session 19: DevHub v2 Code Review 第五轮 — 3 Agent Team 并行修复
+
+**Date**: 2026-04-14
+**Task**: DevHub v2 Code Review 第五轮 — 3 Agent Team 并行修复
+**Branch**: `master`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## 背景
+
+R3/R4 合并后的第五轮 code review，使用各类 MCP 工具（GitNexus / Serena / ABCoder / Sequential-Thinking）深度扫描 devhub 子模块，组织 3 个 agent team 并行修复。
+
+## 发现清单
+
+| 维度 | 问题 | 严重 |
+|------|------|------|
+| Lint 基线 | splash-preload.js require + BackgroundScannerManager console.log | 2E+1W |
+| 类型安全 | 9 处生产代码裸 as-unknown-as 断言（aiTaskHandlers/AppStore/types/ScannerCache） | 类型安全缺陷 |
+| 性能 | WindowManager.scanWindows 内嵌 C# 代码每次重复 | 源码可读性 |
+| 预存测试 | AITaskTracker.test.ts 4 个测试失败（R3/R4 权重调整未同步） | 测试过期 |
+
+## 3 个 Agent Team 并行分工
+
+- **Team A** — Lint 基线：eslint.config.js + BackgroundScannerManager.ts
+- **Team B** — 类型安全：新增 isAIWindowAlias/isSettingsObject/isWindowBounds 3 个类型守卫，消除所有生产代码裸断言
+- **Team C** — WindowManager C# 提取：新增 HELPER_WINDOW_ENUMERATOR 静态常量，scanWindows 瘦身 -91%
+
+## 预存测试修复（附带）
+
+- AITaskTracker.test.ts：同步 R3/R4 权重调整 (outputPatternWeight 0.4→0.20, completionThreshold 0.7→0.80 等)
+- 删除 calculateCompletionScore describe 块（方法已被内联到 scanForAITasks）
+
+## 验证基线
+
+| 检查 | 前 | 后 |
+|------|-----|------|
+| TypeCheck | 0 errors | 0 errors |
+| Lint | 2 errors + 1 warning | 0 errors + 0 warnings |
+| Vitest | 250/254 (4 预存 fails) | 252/252 通过 |
+| GitNexus detect_changes | — | 25 执行流受影响，无越界 |
+
+## 关键文件
+
+- `devhub/eslint.config.js` (+18)
+- `devhub/src/main/ipc/aiTaskHandlers.ts`
+- `devhub/src/main/services/AITaskTracker.test.ts`
+- `devhub/src/main/services/BackgroundScannerManager.ts`
+- `devhub/src/main/services/ScannerCache.ts`
+- `devhub/src/main/services/WindowManager.ts` (-40 lines in scanWindows)
+- `devhub/src/main/store/AppStore.ts`
+- `devhub/src/shared/types-extended.ts`
+- `devhub/src/shared/types.ts`
+- `devhub/CODE_REVIEW_ROUND5_SUMMARY.md` (新增)
+
+## 提交记录
+
+- devhub 子模块：`aa1300c` — 10 文件 +359/-111
+- 主仓库指针：`f9f6ff6` — devhub 指针更新
+- 任务归档：`.trellis/tasks/archive/2026-04/04-13-devhub-v2-critical-fix`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `aa1300c` | (see git log) |
+| `f9f6ff6` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
