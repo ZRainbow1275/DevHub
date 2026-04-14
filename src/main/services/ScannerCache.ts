@@ -51,13 +51,19 @@ export function computeDiff<T>(
   const removed = prev.filter(x => !nextMap.has(getId(x)))
   const updated = next
     .filter(x => prevMap.has(getId(x)))
-    .map(x => ({
-      id: getId(x),
-      changes: shallowDiff(
-        prevMap.get(getId(x))! as unknown as Record<string, unknown>,
-        x as unknown as Record<string, unknown>
-      ) as Partial<T>
-    }))
+    .map(x => {
+      // computeDiff is called by callers with Scanner item shapes (ProcessInfo,
+      // PortInfo, WindowInfo, AITask) that are all plain objects, so they
+      // structurally match Record<string, unknown>. The single cast at the
+      // call site is safer than dual-as-unknown chains.
+      const prevItem = prevMap.get(getId(x))!
+      const prevRecord = prevItem as Record<string, unknown>
+      const nextRecord = x as Record<string, unknown>
+      return {
+        id: getId(x),
+        changes: shallowDiff(prevRecord, nextRecord) as Partial<T>
+      }
+    })
     .filter(x => Object.keys(x.changes).length > 0)
 
   const hasChanges = added.length > 0 || removed.length > 0 || updated.length > 0

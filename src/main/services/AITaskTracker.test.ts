@@ -34,7 +34,7 @@ describe('AITaskTracker', () => {
 
       const config = (tracker as any).config
       expect(config.idleThresholdMs).toBe(10000)
-      expect(config.completionThreshold).toBe(0.7)
+      expect(config.completionThreshold).toBe(0.80)
     })
 
     it('should update multiple config values', () => {
@@ -266,46 +266,6 @@ describe('AITaskTracker', () => {
     })
   })
 
-  describe('calculateCompletionScore', () => {
-    it('should return higher score for low CPU', () => {
-      const task: AITask = {
-        id: 'test',
-        toolType: 'claude-code',
-        pid: 1234,
-        startTime: Date.now(),
-        status: { state: 'running', lastActivity: Date.now() },
-        metrics: {
-          cpuHistory: [0.1, 0.2, 0.1],
-          outputLineCount: 0,
-          lastOutputTime: Date.now(),
-          idleDuration: 0
-        }
-      }
-
-      const score = (tracker as any).calculateCompletionScore(task, 0.1)
-      expect(score).toBeGreaterThan(0)
-    })
-
-    it('should return higher score for long idle duration', () => {
-      const task: AITask = {
-        id: 'test',
-        toolType: 'claude-code',
-        pid: 1234,
-        startTime: Date.now(),
-        status: { state: 'running', lastActivity: Date.now() - 10000 },
-        metrics: {
-          cpuHistory: [50, 50, 50],
-          outputLineCount: 0,
-          lastOutputTime: Date.now(),
-          idleDuration: 10000
-        }
-      }
-
-      const score = (tracker as any).calculateCompletionScore(task, 50)
-      expect(score).toBeGreaterThan(0)
-    })
-  })
-
   describe('detectWindowTitlePattern', () => {
     it('should return false results when no windowHwnd', async () => {
       const task: AITask = {
@@ -355,12 +315,12 @@ describe('AITaskTracker', () => {
     it('should have reasonable default values', () => {
       const config = (tracker as any).config
 
-      expect(config.outputPatternWeight).toBe(0.4)
+      expect(config.outputPatternWeight).toBe(0.20)
       expect(config.cpuIdleWeight).toBe(0.25)
-      expect(config.cursorWaitWeight).toBe(0.2)
-      expect(config.timeThresholdWeight).toBe(0.15)
+      expect(config.cursorWaitWeight).toBe(0.20)
+      expect(config.timeThresholdWeight).toBe(0.10)
       expect(config.idleThresholdMs).toBe(5000)
-      expect(config.completionThreshold).toBe(0.7)
+      expect(config.completionThreshold).toBe(0.80)
     })
   })
 

@@ -61,5 +61,23 @@ export default tseslint.config(
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       'no-console': ['warn', { allow: ['warn', 'error'] }]
     }
+  },
+  {
+    files: ['resources/**/*.js'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        require: 'readonly',
+        module: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        process: 'readonly'
+      },
+      sourceType: 'commonjs'
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+      'no-undef': 'off'
+    }
   }
 )

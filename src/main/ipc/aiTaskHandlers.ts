@@ -1,5 +1,5 @@
 import { ipcMain, BrowserWindow } from 'electron'
-import { IPC_CHANNELS_EXT, AITask, AITaskHistory, AIToolType, AIWindowAlias, AIToolDetectionConfig, ProgressEstimate, TimelineEntry } from '@shared/types-extended'
+import { IPC_CHANNELS_EXT, AITask, AITaskHistory, AIToolType, AIWindowAlias, AIToolDetectionConfig, ProgressEstimate, TimelineEntry, isAIWindowAlias } from '@shared/types-extended'
 import { AITaskTracker } from '../services/AITaskTracker'
 import { AIAliasManager } from '../services/AIAliasManager'
 import { getProcessScanner } from './processHandlers'
@@ -230,14 +230,16 @@ export function setupAITaskHandlers(mainWindow: BrowserWindow): void {
     async (_, alias: unknown): Promise<boolean> => {
       if (!aliasManager) return false
       validateObject(alias, 'alias')
-      const a = alias as unknown as AIWindowAlias
       guardProtoPollution(alias)
-      validateString(a.id, 'alias.id')
-      validateString(a.alias, 'alias.alias', 100)
-      if (!a.matchCriteria || typeof a.matchCriteria !== 'object') {
-        throw new Error('Invalid alias: matchCriteria must be an object')
+      if (!isAIWindowAlias(alias)) {
+        throw new Error(
+          'Invalid alias: schema mismatch (required fields: id: string, alias: string, matchCriteria: object)'
+        )
       }
-      return aliasManager.set(a)
+      // Post-guard narrowing: alias is now typed as AIWindowAlias
+      validateString(alias.id, 'alias.id')
+      validateString(alias.alias, 'alias.alias', 100)
+      return aliasManager.set(alias)
     }
   ))
 

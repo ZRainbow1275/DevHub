@@ -287,8 +287,15 @@ export function migrateSettings(raw: Record<string, unknown>): AppSettings {
       firstLaunchDone: typeof raw.firstLaunchDone === 'boolean' ? raw.firstLaunchDone : defaults.firstLaunchDone,
     }
   }
-  // Already in new format or close enough — fill in any missing fields with defaults
-  return deepMergeSettingsImpl(DEFAULT_SETTINGS as unknown as Record<string, unknown>, raw) as unknown as AppSettings
+  // Already in new format or close enough — fill in any missing fields with defaults.
+  // The double-cast is required because AppSettings lacks an index signature;
+  // at runtime AppSettings is a plain object assignable to Record<string, unknown>.
+  // The inverse cast is safe because deepMergeSettingsImpl starts from
+  // DEFAULT_SETTINGS and only overwrites keys with values from raw (which has
+  // already passed the isSettingsObject gate in AppStore.getSettings).
+  const defaultsAsRecord = DEFAULT_SETTINGS as unknown as Record<string, unknown>
+  const merged = deepMergeSettingsImpl(defaultsAsRecord, raw)
+  return merged as unknown as AppSettings
 }
 
 /**
@@ -325,12 +332,17 @@ function deepMergeSettingsImpl(target: Record<string, unknown>, source: Record<s
 
 /**
  * Public deep merge wrapper that accepts AppSettings or partial updates.
+ * The double-casts through unknown are required because AppSettings lacks
+ * an index signature. Runtime safety: both target and source are typed
+ * AppSettings / Partial<AppSettings>, so they are guaranteed plain objects
+ * without symbol keys or class instances; the merge preserves every key
+ * from target, so the returned object retains the AppSettings shape.
  */
 export function deepMergeSettings(target: AppSettings, source: Partial<AppSettings>): AppSettings {
-  return deepMergeSettingsImpl(
-    target as unknown as Record<string, unknown>,
-    source as unknown as Record<string, unknown>
-  ) as unknown as AppSettings
+  const targetAsRecord = target as unknown as Record<string, unknown>
+  const sourceAsRecord = source as unknown as Record<string, unknown>
+  const merged = deepMergeSettingsImpl(targetAsRecord, sourceAsRecord)
+  return merged as unknown as AppSettings
 }
 
 // ============ Project Type Display Info ============

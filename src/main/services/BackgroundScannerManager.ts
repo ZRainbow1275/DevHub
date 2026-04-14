@@ -229,7 +229,7 @@ export class BackgroundScannerManager {
       try {
         await this.runScan(type)
         this.retryCounts.set(type, 0)
-        console.log(`BackgroundScannerManager: ${type} scanner recovered after retry ${nextRetry}`)
+        console.warn(`BackgroundScannerManager: ${type} scanner recovered after retry ${nextRetry}`)
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
         this.cache.setError(type, msg)

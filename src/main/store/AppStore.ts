@@ -12,6 +12,30 @@ import {
 } from '@shared/types'
 import { guardProtoPollution } from '../utils/validation'
 
+// ============ Local Type Guards ============
+
+/**
+ * Validates that a value is a plain settings-like object (non-null, non-array).
+ * Used as runtime gate before calling migrateSettings which operates on
+ * Record<string, unknown>.
+ */
+function isSettingsObject(v: unknown): v is Record<string, unknown> {
+  return !!v && typeof v === 'object' && !Array.isArray(v)
+}
+
+/**
+ * Validates persisted windowBounds shape before returning to caller.
+ * Required fields: x, y, width, height — all finite numbers.
+ */
+function isWindowBounds(v: unknown): v is { x: number; y: number; width: number; height: number } {
+  if (!v || typeof v !== 'object') return false
+  const b = v as Record<string, unknown>
+  return typeof b.x === 'number' && Number.isFinite(b.x)
+    && typeof b.y === 'number' && Number.isFinite(b.y)
+    && typeof b.width === 'number' && Number.isFinite(b.width)
+    && typeof b.height === 'number' && Number.isFinite(b.height)
+}
+
 const schema = {
   projects: {
     type: 'array' as const,
@@ -198,7 +222,10 @@ export class AppStore {
   // Settings
   getSettings(): AppSettings {
     if (this._cache.settings) return this._cache.settings
-    const raw = this.store.get('settings', DEFAULT_SETTINGS) as unknown as Record<string, unknown>
+    const rawValue = this.store.get('settings', DEFAULT_SETTINGS)
+    const raw: Record<string, unknown> = isSettingsObject(rawValue)
+      ? rawValue
+      : (DEFAULT_SETTINGS as unknown as Record<string, unknown>)
     // Migrate from legacy flat format if necessary
     const migrated = migrateSettings(raw)
     // Persist migrated settings if migration occurred (old flat format detected)
@@ -222,9 +249,13 @@ export class AppStore {
   }
 
   getBounds(): { x: number; y: number; width: number; height: number } | undefined {
-    return (this.store as unknown as Store<Record<string, unknown>>).get('windowBounds') as
-      | { x: number; y: number; width: number; height: number }
-      | undefined
+    // electron-store's typed Store<AppConfig> doesn't know about 'windowBounds'
+    // (it's written ad-hoc via saveBounds and is not part of the schema).
+    // We cast to a loose Store to access the untyped key, then the
+    // isWindowBounds guard validates the shape at runtime — so this is no
+    // longer a bare cast: every value returned is guard-verified.
+    const raw = (this.store as unknown as Store<Record<string, unknown>>).get('windowBounds')
+    return isWindowBounds(raw) ? raw : undefined
   }
 
   // Allowed paths management

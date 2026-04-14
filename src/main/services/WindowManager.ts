@@ -59,6 +59,49 @@ export class WindowManager {
 using System; using System.Runtime.InteropServices; public class WindowHelper { [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd); [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow); [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int W, int H, bool repaint); [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd); [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam); [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId); [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow(); [DllImport("user32.dll")] public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach); [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr hWnd); [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId(); [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo); [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags); [DllImport("user32.dll")] public static extern bool SetLayeredWindowAttributes(IntPtr hwnd, uint crKey, byte bAlpha, uint dwFlags); [DllImport("user32.dll")] public static extern int GetWindowLong(IntPtr hWnd, int nIndex); [DllImport("user32.dll")] public static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong); private const int SW_RESTORE = 9; private const int SW_MINIMIZE = 6; private const int SW_MAXIMIZE = 3; private const int SW_SHOW = 5; private const byte VK_MENU = 0x12; private const uint KEYEVENTF_EXTENDEDKEY = 0x0001; private const uint KEYEVENTF_KEYUP = 0x0002; private static readonly IntPtr HWND_TOPMOST = new IntPtr(-1); private static readonly IntPtr HWND_NOTOPMOST = new IntPtr(-2); private const uint SWP_NOMOVE = 0x0002; private const uint SWP_NOSIZE = 0x0001; private const int GWL_EXSTYLE = -20; private const int WS_EX_LAYERED = 0x80000; private const uint LWA_ALPHA = 0x02; public static void Focus(IntPtr h) { if(IsIconic(h)) ShowWindow(h, SW_RESTORE); IntPtr fg = GetForegroundWindow(); if(fg == h) return; uint pid1; uint targetThread = GetWindowThreadProcessId(h, out pid1); uint pid2; uint fgThread = (fg != IntPtr.Zero) ? GetWindowThreadProcessId(fg, out pid2) : 0; bool attached = false; try { if(fgThread != 0 && targetThread != fgThread) { attached = AttachThreadInput(fgThread, targetThread, true); } BringWindowToTop(h); SetForegroundWindow(h); } finally { if(attached) AttachThreadInput(fgThread, targetThread, false); } if(GetForegroundWindow() != h) { keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY, UIntPtr.Zero); keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, UIntPtr.Zero); SetForegroundWindow(h); } } public static void Move(IntPtr h,int x,int y,int w,int ht) { MoveWindow(h,x,y,w,ht,true); } public static void Minimize(IntPtr h) { ShowWindow(h,SW_MINIMIZE); } public static void Maximize(IntPtr h) { ShowWindow(h,SW_MAXIMIZE); } public static void Restore(IntPtr h) { ShowWindow(h,SW_RESTORE); } public static void Close(IntPtr h) { PostMessage(h,0x0010,IntPtr.Zero,IntPtr.Zero); } public static void SetTopmost(IntPtr h, bool topmost) { SetWindowPos(h, topmost ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE); } public static void SetOpacity(IntPtr h, byte alpha) { int exStyle = GetWindowLong(h, GWL_EXSTYLE); SetWindowLong(h, GWL_EXSTYLE, exStyle | WS_EX_LAYERED); SetLayeredWindowAttributes(h, 0, alpha, LWA_ALPHA); } }
 "@`
 
+  // scanWindows 用的 C# 代码块（缓存避免源码重复；PowerShell 每次仍是新进程）
+  private static readonly HELPER_WINDOW_ENUMERATOR = `Add-Type @"
+using System; using System.Runtime.InteropServices; using System.Text; using System.Collections.Generic;
+public class WindowEnumerator {
+  [DllImport("user32.dll")] private static extern bool EnumWindows(EnumWindowsProc enumProc, IntPtr lParam);
+  [DllImport("user32.dll")] private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+  [DllImport("user32.dll")] private static extern int GetWindowTextLength(IntPtr hWnd);
+  [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hWnd);
+  [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr hWnd);
+  [DllImport("user32.dll")] private static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+  [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+  [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+  [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
+  private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+  public static string GetWindows() {
+    Console.OutputEncoding = System.Text.Encoding.UTF8;
+    var result = new List<string>();
+    EnumWindows((hWnd, lParam) => {
+      if (!IsWindowVisible(hWnd)) return true;
+      int length = GetWindowTextLength(hWnd);
+      if (length == 0) return true;
+      StringBuilder title = new StringBuilder(length + 1);
+      GetWindowText(hWnd, title, title.Capacity);
+      StringBuilder className = new StringBuilder(256);
+      GetClassName(hWnd, className, className.Capacity);
+      RECT rect; GetWindowRect(hWnd, out rect);
+      uint pid; GetWindowThreadProcessId(hWnd, out pid);
+      bool isMinimized = IsIconic(hWnd);
+      result.Add(string.Format("{0}|{1}|{2}|{3}|{4}|{5}|{6}|{7}|{8}",
+        hWnd.ToInt64(),
+        title.ToString().Replace("|", " "),
+        className.ToString(),
+        pid, rect.Left, rect.Top,
+        rect.Right - rect.Left,
+        rect.Bottom - rect.Top,
+        isMinimized ? 1 : 0));
+      return true;
+    }, IntPtr.Zero);
+    return string.Join("\\n", result);
+  }
+}
+"@`
+
   constructor() {
     this.store = new Store<WindowLayoutData>({
       name: 'devhub-window-layouts',
@@ -112,47 +155,7 @@ using System; using System.Runtime.InteropServices; public class WindowHelper { 
       // 使用管道分隔文本格式（避免 JSON 转义在多层嵌入中的复杂性）
       const script = `$OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-Add-Type @"
-using System; using System.Runtime.InteropServices; using System.Text; using System.Collections.Generic;
-public class WindowEnumerator {
-  [DllImport("user32.dll")] private static extern bool EnumWindows(EnumWindowsProc enumProc, IntPtr lParam);
-  [DllImport("user32.dll")] private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
-  [DllImport("user32.dll")] private static extern int GetWindowTextLength(IntPtr hWnd);
-  [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hWnd);
-  [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr hWnd);
-  [DllImport("user32.dll")] private static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
-  [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
-  [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-  [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
-  private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
-  public static string GetWindows() {
-    Console.OutputEncoding = System.Text.Encoding.UTF8;
-    var result = new List<string>();
-    EnumWindows((hWnd, lParam) => {
-      if (!IsWindowVisible(hWnd)) return true;
-      int length = GetWindowTextLength(hWnd);
-      if (length == 0) return true;
-      StringBuilder title = new StringBuilder(length + 1);
-      GetWindowText(hWnd, title, title.Capacity);
-      StringBuilder className = new StringBuilder(256);
-      GetClassName(hWnd, className, className.Capacity);
-      RECT rect; GetWindowRect(hWnd, out rect);
-      uint pid; GetWindowThreadProcessId(hWnd, out pid);
-      bool isMinimized = IsIconic(hWnd);
-      result.Add(string.Format("{0}|{1}|{2}|{3}|{4}|{5}|{6}|{7}|{8}",
-        hWnd.ToInt64(),
-        title.ToString().Replace("|", " "),
-        className.ToString(),
-        pid, rect.Left, rect.Top,
-        rect.Right - rect.Left,
-        rect.Bottom - rect.Top,
-        isMinimized ? 1 : 0));
-      return true;
-    }, IntPtr.Zero);
-    return string.Join("\\n", result);
-  }
-}
-"@
+${WindowManager.HELPER_WINDOW_ENUMERATOR}
 [WindowEnumerator]::GetWindows()`
 
       const { stdout } = await execFileAsync(
