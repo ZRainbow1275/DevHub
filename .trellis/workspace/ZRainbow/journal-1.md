@@ -1646,3 +1646,75 @@ R3/R4 合并后的第五轮 code review，使用各类 MCP 工具（GitNexus / S
 ### Next Steps
 
 - None - task complete
+
+
+## Session 21: R5 归档收尾：devhub 字体修复上链 + submodule 指针同步
+
+**Date**: 2026-04-20
+**Task**: R5 归档收尾：devhub 字体修复上链 + submodule 指针同步
+**Branch**: `master`
+
+### Summary
+
+devhub 子仓库 commit de634f9 (vite fs.allow 字体修复) + push 到 origin/master；父仓库 commit efb9d43 同步 submodule 指针；下次会话进入手测环节
+
+### Main Changes
+
+## 会话收尾
+
+R5 归档完成后，处理遗留的 devhub 字体修复提交链路。
+
+## 提交链路
+
+| # | 仓库 | Commit | 内容 |
+|---|------|--------|------|
+| 1 | `devhub/` (submodule) | `de634f9` | `fix(vite): 允许父目录 node_modules 下的 fontsource 字体包加载` |
+| 2 | `devhub/` remote | `aa1300c..de634f9 master -> master` | push 到 GitHub `ZRainbow1275/DevHub` |
+| 3 | 父仓库 (local) | `efb9d43` | `chore(submodule): 更新 devhub 到 de634f9 (fix vite fs.allow)` |
+
+父仓库**未** push（等用户决定）。
+
+## 遗留
+
+- 父仓库 `git status` 仍有 22 个未 commit 的无关变更（`.claude/hooks/*`、`.codex/hooks/*`、`.trellis/scripts/*` 等），按用户指令"其余可以不管"保留原状
+- `prompts/0415/` 10 份 R5 归档文档仍未 commit（用户此前未指示）
+- 9 个 powershell.exe 僵尸进程（~330MB）仍残留系统，作为 N1 的实时证据保留
+
+## 下次会话指引
+
+**用户明确下次会话进入手测环节**。入口操作：
+
+```bash
+cd "D:/Desktop/CREATOR ONE/devhub" && pnpm dev
+```
+
+新对话 Claude 可以直接：
+1. 启动 devhub dev server（字体修复已生效，不应再出现 fs.allow 警告）
+2. 让用户手测
+3. 若用户要定位问题 → 读 `prompts/0415/00-round5-overview.md` §六找切入点
+
+不要在下次会话里主动修代码，等用户明示。
+
+## 更新文件
+
+无（本次仅提交 git 记录 + record-session 自动 commit workspace metadata）
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `de634f9` | (see git log) |
+| `efb9d43` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
