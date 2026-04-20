@@ -1554,3 +1554,95 @@ R3/R4 合并后的第五轮 code review，使用各类 MCP 工具（GitNexus / S
 ### Next Steps
 
 - None - task complete
+
+
+## Session 20: DevHub v2 Round 5 测试归档 + 启动字体修复
+
+**Date**: 2026-04-20
+**Task**: DevHub v2 Round 5 测试归档 + 启动字体修复
+**Branch**: `master`
+
+### Summary
+
+启动前后端手测；修复 Vite 字体 fs.allow 配置；归档 Round 5 测试发现到 prompts/0415/ (10份文档) + 更新 Trellis PRD §六 Round 5 章节
+
+### Main Changes
+
+## 会话目标
+
+按用户请求启动 DevHub 前后端进行手测；手测中发现大量问题，按用户要求**仅归档不修代码**。
+
+## 关键产出
+
+| 类别 | 内容 |
+|------|------|
+| 配置修复 | `devhub/electron.vite.config.ts` 加 `renderer.server.fs.allow: [resolve(__dirname, '..')]` 解决 6 个字体包加载被阻（父目录 node_modules 下的 `@fontsource-variable/*` / `@fontsource/bebas-neue`） |
+| Runtime 诊断 | 日志 2.3MB/16613 行；识别 `process:get-history` IPC 限流 971 次；PowerShell CIM `Get-CimInstance Win32_Process` 内存不足爆炸（HRESULT 0x80041006 / 0x800705AF）；应用关闭后遗留 9 个 powershell.exe 僵尸 330MB |
+| R5 归档目录 | `prompts/0415/` 10 份文档共 52KB |
+| Trellis PRD | `.trellis/tasks/04-10-devhub-v2-testing-findings/prd.md` 追加 §六 Round 5 章节（新发现 N1-N5 + 需求校准 C1 + 四轮顽疾 O1-O6 + 新优先级矩阵 + 证据锚点） |
+| Memory | `memory/project_r5_findings.md` + `MEMORY.md` 索引更新 |
+
+## Round 5 分类
+
+**R5 新发现（P0-Blocker 两项）**：
+- N1 PowerShell CIM 爆炸 + 僵尸进程遗留 → `01-runtime-resource-explosion.md`
+- N2 process:get-history IPC 死循环 → `02-ipc-rate-limit-loop.md`
+- N3 项目卡片下拉遮挡
+- N4 PID 详情获取失败
+- N5 AI 任务卡片重复
+
+**R5 需求校准（P0-Design 唯一一项，最重要）**：
+- C1 拓扑图 + 流程图应为进程/端口/窗口的附属功能而非顶级独立模块，点击对象后以该对象为中心展开关系图 → `08-topology-flow-design-intent.md`（推翻 R1 PRD §2.5 + §2.7 的"全局视图"方向）
+
+**四轮未实现老顽疾（第 5 次反馈）**：
+- O1 AI 窗口自命名（R4 方案 `0413/06-window-rename-chain.md` 未落地）
+- O2 分组/布局（R4 `0413` I1+I6 未落地）
+- O3 AI 感测准确性（R4 `0413/02-terminal-signal-fusion.md` + `07-aitask-confidence-state.md` 未落地）
+- O4 响应式缩放
+- O5 主题仅换色缺视觉体系
+- O6 端口滚动+布局+查询超时
+
+## 更新文件
+
+- `devhub/electron.vite.config.ts`（字体 fs.allow，submodule）
+- `.trellis/tasks/04-10-devhub-v2-testing-findings/prd.md`（追加 Round 5 章节 + 轮次索引更新）
+- `prompts/0415/00-round5-overview.md`（9.3KB 总览）
+- `prompts/0415/01-runtime-resource-explosion.md`（7.1KB N1 深度分析）
+- `prompts/0415/02-ipc-rate-limit-loop.md`（4.0KB N2）
+- `prompts/0415/03-project-card-dropdown-overlay.md`（2.5KB N3）
+- `prompts/0415/04-process-detail-unavailable.md`（3.5KB N4）
+- `prompts/0415/05-port-scroll-layout-timeout.md`（3.6KB O6）
+- `prompts/0415/06-window-management-unmet-needs.md`（6.4KB O1/O2/O3 + §5 功能不足 + §6 溢出）
+- `prompts/0415/07-ai-task-icons-and-duplicates.md`（3.7KB AI-2 + N5）
+- `prompts/0415/08-topology-flow-design-intent.md`（5.9KB C1 需求校准）
+- `prompts/0415/09-responsive-and-theme-depth.md`（5.7KB O4/O5）
+- `memory/project_r5_findings.md`（R5 memory）
+- `memory/MEMORY.md`（索引加 R5 条目）
+
+## 下一步（新对话）
+
+1. **先对齐 C1** 拓扑附属化方案（影响最大，推翻已有实现）
+2. **做 N1 + N2** Runtime 救火（gitnexus impact + serena find_symbol 入口已在 `00-overview.md` §六）
+3. **落地 O1/O2/O3** 启用 `prompts/0413/` 已有方案（02/06/07）
+
+## 遗留事项
+
+- 9 个 powershell.exe 僵尸（330MB）由用户决定是否清理
+- `prompts/0415/`、`devhub` submodule 字体配置、`.claude/hooks/*` 等 23 个未 commit 变更由用户决定何时 commit
+
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

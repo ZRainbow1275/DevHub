@@ -146,7 +146,8 @@ DevHub 基础框架运行正常（Electron 启动、React 渲染、IPC 通信）
 | Round 1 | 2026-04-10 | `prompts/0410/` | 基础问题发现（进程/端口/窗口/主题） |
 | Round 2 | 2026-04-10 | `prompts/0410-2/` | 深化确认（启动勘探/深层探查/布局自适应） |
 | Round 3 | 2026-04-11 | `prompts/0411/` | 启动黑屏/端口慢/性能安全/感测不准 |
-| **Round 4** | **2026-04-12** | **`prompts/0411/`** | **进程渲染报错/四轮问题确认/安全性能后置** |
+| Round 4 | 2026-04-12 | `prompts/0411/` + `prompts/0413/` | 进程渲染报错/四轮问题确认/code review 遗留 17 项 |
+| **Round 5** | **2026-04-15** | **`prompts/0415/`** | **Runtime 资源爆炸 + IPC 死循环 + 拓扑/流程图设计定位校准 + 四轮老顽疾** |
 
 ## 五、优先级排序（Round 4 更新 — 2026-04-12）
 
@@ -178,3 +179,73 @@ DevHub 基础框架运行正常（Electron 启动、React 渲染、IPC 通信）
 └── 安全加固（CSP、IPC 校验、注入防护）
      → 归档参考: prompts/0411/06-performance-security-spec.md
 ```
+
+---
+
+## 六、Round 5 新增（2026-04-15）
+
+> 完整归档: `prompts/0415/`（11 份文档，入口 `00-round5-overview.md`）
+
+### 6.1 Round 5 新发现（R1-R4 未暴露）
+
+| ID | 问题 | 文档 | 优先级 |
+|----|------|------|--------|
+| N1 | PowerShell CIM 调用爆炸 + 长时间运行 330MB 僵尸进程堆积 | `prompts/0415/01-runtime-resource-explosion.md` | **P0-Blocker** |
+| N2 | `process:get-history` IPC 被渲染层死循环调用 971 次限流 | `prompts/0415/02-ipc-rate-limit-loop.md` | **P0-Blocker** |
+| N3 | 项目卡片运行下拉菜单被下一张卡片遮挡，功能残缺 | `prompts/0415/03-project-card-dropdown-overlay.md` | P1 |
+| N4 | 进程详情面板"无法获取进程信息 (PID: 9148)" | `prompts/0415/04-process-detail-unavailable.md` | P1 |
+| N5 | AI 任务卡片出现两张 `Codex CLI-1`（PID 不同，数据相同） | `prompts/0415/07-ai-task-icons-and-duplicates.md` | P1 |
+
+### 6.2 Round 5 核心需求校准（影响设计线）
+
+| ID | 内容 | 文档 | 优先级 |
+|----|------|------|--------|
+| C1 | **拓扑图 / 流程图应为进程/端口/窗口的附属功能**，不应独立成顶级模块；点击任一对象后以该对象为中心展开关系图 | `prompts/0415/08-topology-flow-design-intent.md` | **P0-Design** |
+
+> C1 是对 R1 PRD §2.5（进程神经流线图）和 §2.7（端口拓扑）的根本性需求校准，**推翻**"全局拓扑视图"的实现路径。
+
+### 6.3 四轮未实现的老问题（R5 第 5 次反馈）
+
+| ID | 老问题 | R1-R4 出处 | R5 状态 |
+|----|--------|-----------|---------|
+| O1 | AI 窗口自命名 + 通知携带名称 | R1 PRD §2.1、R4 `0413/06-window-rename-chain.md` | **仍未实现，第 5 次反馈** |
+| O2 | 分组 / 布局功能真正可用 | R1 PRD §2.2、R4 `0413/` I1/I6 | **仍不可用，第 5 次反馈** |
+| O3 | AI 感测误报/漏报/迟报 | R1 PRD §2.3、R4 `0413/02` + `0413/07` | **仍存在，第 5 次反馈** |
+| O4 | 小尺寸不缩放只挤压 | R3/R4 响应式 spec | 仍存在 |
+| O5 | 主题仅换色，缺视觉体系深度 | R1 PRD §2.8、R4 `0413/03` | 仍存在 |
+| O6 | 端口滚动失效 + 布局挤压 + 查询超时 | R3 端口性能 | **新增超时症状** |
+
+Round 5 详细内容汇总见 `prompts/0415/06-window-management-unmet-needs.md`（O1/O2/O3/O5/§5+§6）与 `prompts/0415/05-port-scroll-layout-timeout.md`（O6）与 `prompts/0415/09-responsive-and-theme-depth.md`（O4/O5）。
+
+### 6.4 Round 5 新优先级顺序（对原有"三批"的覆盖）
+
+```
+批次 0 — Runtime 救火（Round 5 强制插队）
+├── N1 PowerShell CIM 爆炸 + 僵尸进程清理          [P0-Blocker]
+└── N2 process:get-history IPC 死循环              [P0-Blocker]
+
+批次 1 — 需求校准（先确认，再动手）
+└── C1 拓扑/流程图附属化（改写 §2.5 + §2.7）       [P0-Design]
+
+批次 2 — 四轮未实现的核心需求（已有方案未落地）
+├── O1 AI 窗口自命名（启用 0413/06 方案）
+├── O2 分组/布局（启用 0413 I1 + I6）
+└── O3 AI 感测（启用 0413/02 + 0413/07 方案）
+
+批次 3 — R5 显性 Bug
+├── N3 下拉遮挡
+├── N4 PID 详情获取失败（依赖 N1）
+├── N5 AI 任务重复卡片
+└── O6 端口三大问题（依赖 N1）
+
+批次 4 — 视觉体验（R1 老问题）
+├── O4 响应式缩放
+├── O5 主题视觉体系深度（启用 0413/03 方案）
+└── AI-2 AI 工具图标改用 Logo 替代 Emoji
+```
+
+### 6.5 证据锚点
+
+- Runtime 日志: `bw1n9enib.output` (2.3MB / 16613 行, rate-limit 971 次)
+- 僵尸进程: 应用关闭后遗留 9 个 powershell.exe 占用 330MB
+- 截图证据: 用户提供 10 张（Image #1 ~ #10），映射见 `prompts/0415/00-round5-overview.md` §五
