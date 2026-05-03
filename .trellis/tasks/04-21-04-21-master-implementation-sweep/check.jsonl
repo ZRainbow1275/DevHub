@@ -1,0 +1,7 @@
+{"file": ".claude/commands/trellis/finish-work.md", "reason": "Finish work checklist"}
+{"file": ".claude/commands/trellis/check.md", "reason": "Code quality check spec"}
+{"file": "prompts/0421/00-acceptance-matrix.md", "reason": "验收回归标准"}
+{"file": "prompts/0421/playbooks/30-r7-daily-verification-checklist.md", "reason": "检查门禁"}
+{"file": "prompts/0421/rca/01-r5-archive-metadata-only.md", "reason": "防止文档假完成"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "跨层回归"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "重复代码检查"}

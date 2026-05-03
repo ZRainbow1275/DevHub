@@ -2,7 +2,7 @@
   "id": "devhub-v2-testing-findings",
   "name": "devhub-v2-testing-findings",
   "title": "DevHub v2 Manual Testing Findings & Design Overhaul",
-  "description": "Four rounds of manual testing findings (R1-R4). PRD & specs in prompts/0410/ (round1), prompts/0410-2/ (round2), prompts/0411/ (round3+4). Security & performance deferred to later phase.",
+  "description": "Six rounds of manual testing findings (R1-R6). PRD & specs in prompts/0410/ (R1), prompts/0410-2/ (R2), prompts/0411/ (R3+R4), prompts/0413/ (code review), prompts/0415/ (R5), prompts/0420/ (R6). R5 had 6 archived v2 fix tasks but R6 manual testing confirmed all P0-Blocker/Critical/Design regressions still present. Current top priority: P2.1 monitor module resource explosion (P0-Blocker), P6.2 topology-as-attached redesign (P0-Design), P4.2 window 5 unmet demands (6th feedback).",
   "status": "planning",
   "dev_type": "fullstack",
   "scope": null,
@@ -40,6 +40,17 @@
   "children": [],
   "parent": null,
   "relatedFiles": [],
-  "notes": "",
-  "meta": {}
+  "notes": "R6 (2026-04-20) 回归测试：R5 六个 archive 修复任务全部合并后，用户手测确认 R5 P0-Blocker/Critical/Design 全部未达手测通过标准。详见 prompts/0420/00-round6-overview.md。下一轮对话必须先对齐 P6.2 拓扑附属化设计，再处理 P2.1 Runtime 救火 + P4.2 六次反馈未实现的五项需求。",
+  "meta": {
+    "rounds": ["R1", "R2", "R3", "R4", "R5", "R6"],
+    "latest_round": "R6",
+    "latest_round_date": "2026-04-20",
+    "latest_round_archive": "prompts/0420/",
+    "regression_status": "R5 fixes failed manual test validation",
+    "top_priorities": {
+      "P0-Blocker": ["P2.1 monitor resource explosion"],
+      "P0-Design": ["P6.2 topology-as-attached"],
+      "P0-Critical": ["P4.2-a AI window rename+notify", "P4.2-b AI sensing accuracy", "P4.2-c groups+layout", "P4.2-d progress alignment", "P5.1 AI progress broken"]
+    }
+  }
 }

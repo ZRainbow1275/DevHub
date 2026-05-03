@@ -1,0 +1,16 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": "prompts/0503-2/00-r8-master-prd.md", "reason": "Master PRD: 元约束矩阵 + 批次依赖 + 13 章节模板 + 三套图体系强约束 + 全局契约（IPC/Schema/事件）"}
+{"file": "prompts/0503-2/00-r8-implementation-quickstart.md", "reason": "实施 agent 入口指南：6 角色 5 分钟入门 / 9 周排期 / 13 硬约束自检 / 5 反馈直达"}
+{"file": "prompts/0503-2/R8.A/prd.md", "reason": "R8.A PRD: 急修 + 集成库 + 可见性，11 spec / 5 用户感知断言"}
+{"file": "prompts/0503-2/R8.B/prd.md", "reason": "R8.B PRD: 收纳 + 体验，17 spec / 8 用户感知断言"}
+{"file": "prompts/0503-2/R8.C/prd.md", "reason": "R8.C PRD: AI 编排核心，39 spec / 11 用户感知断言"}
+{"file": "prompts/0503-2/_shared/audit-report.md", "reason": "71 文件 8 维度审计报告 PASS"}
+{"file": "prompts/0503-2/_shared/ipc-channels.md", "reason": "218 channel × 34 namespace 注册表"}
+{"file": "prompts/0503-2/_shared/zod-schemas.md", "reason": "Zod schema 单源索引"}
+{"file": "prompts/0503-2/_shared/feature-flags.md", "reason": "85 flag 全表（R8.{batch}.{module}.{feature}）"}
+{"file": "prompts/0503-2/_shared/feedback-traceability-matrix.md", "reason": "5 大用户反馈 × spec 完整追踪 + GWT 锚点"}
+{"file": "prompts/0503-2/_shared/spec-dependency-graph.md", "reason": "67 spec Mermaid + YAML 依赖图 + 7 level 拓扑序"}
+{"file": "prompts/0503-2/_shared/testing-strategy.md", "reason": "测试金字塔 + 全部 GWT 矩阵 + Playwright 草案 + 性能预算"}
+{"file": "prompts/0503-2/_shared/risk-register.md", "reason": "风险登记 + 缓解方案 + 残余风险"}
+{"file": "prompts/0503-2/_shared/glossary.md", "reason": "全项目术语表（OS/数据契约/业务/集成库/AI 工具）"}
+{"file": ".trellis/tasks/05-03-r8-prd-spec-batches/HANDOFF.md", "reason": "Codex CLI 接入说明 + 80 文件交付清单 + 实施起点"}

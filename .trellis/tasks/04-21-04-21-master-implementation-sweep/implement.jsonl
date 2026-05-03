@@ -1,0 +1,11 @@
+{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend development guide"}
+{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend development guide"}
+{"file": "prompts/0421/00-round7-overview.md", "reason": "R7总纲与硬约束"}
+{"file": "prompts/0421/00-acceptance-matrix.md", "reason": "29项验收矩阵"}
+{"file": "prompts/0421/rca/01-r5-archive-metadata-only.md", "reason": "防止metadata-only假完成"}
+{"file": "prompts/0421/rca/03-architecture-debt-ledger.md", "reason": "架构债务优先级"}
+{"file": "prompts/0421/playbooks/29-rollout-phasing-plan.md", "reason": "Stage推进顺序"}
+{"file": "prompts/0421/playbooks/30-r7-daily-verification-checklist.md", "reason": "每日与stage gate验证"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "跨层边界检查"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "避免重复实现"}
