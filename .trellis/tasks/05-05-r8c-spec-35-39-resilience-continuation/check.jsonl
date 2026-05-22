@@ -1,0 +1,13 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend review guidance index"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Review degradation, explicit errors, and local artifact handling"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Review no fake success, timeouts, and quality gates"}
+{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend review guidance index"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Review renderer quality and no-emoji compliance"}
+{"file": "prompts/0503-2/R8.C/spec-35-backup-restore.md", "reason": "Check spec-35 acceptance criteria"}
+{"file": "prompts/0503-2/R8.C/spec-36-diagnostic-pack-export.md", "reason": "Check spec-36 acceptance criteria"}
+{"file": "prompts/0503-2/R8.C/spec-37-permissions-time-bounded.md", "reason": "Check spec-37 acceptance criteria"}
+{"file": "prompts/0503-2/R8.C/spec-38-skill-cloud-sync-deferred.md", "reason": "Check spec-38 acceptance criteria"}
+{"file": "prompts/0503-2/R8.C/spec-39-ocr-interface-disabled.md", "reason": "Check spec-39 acceptance criteria"}
+{"file": "prompts/0503-2/_shared/ipc-channels.md", "reason": "Check shared IPC synchronization"}
+{"file": "prompts/0503-2/_shared/zod-schemas.md", "reason": "Check schema registry synchronization"}
+{"file": ".trellis/tasks/05-05-r8c-spec-35-39-resilience-continuation/research/implementation-inventory.md", "reason": "Check known gaps were closed or documented"}

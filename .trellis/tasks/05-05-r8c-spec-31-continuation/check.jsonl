@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend quality rules for service and IPC verification."}
+{"file": ".trellis/spec/frontend/index.md", "reason": "Cross-layer renderer/preload verification rules."}
+{"file": "prompts/0503-2/00-r8-master-prd.md", "reason": "Global no-delete, no-emoji, no-mock, no-refactor gates."}
+{"file": "prompts/0503-2/R8.C/spec-31-ipc-rate-limit.md", "reason": "Acceptance criteria and implementation checklist to verify."}
+{"file": "prompts/0503-2/_shared/ipc-channels.md", "reason": "Channel/rateClass registry consistency checks."}
+{"file": "prompts/0503-2/_shared/testing-strategy.md", "reason": "Required R8 testing and release gate strategy."}

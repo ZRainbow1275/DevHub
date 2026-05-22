@@ -1,0 +1,7 @@
+{"file":"prompts/0503-2/R8.C/spec-32-observability-panel.md","reason":"Primary spec-32 source: observability metrics, IPC, UI, export, and acceptance checklist."}
+{"file":"prompts/0503-2/R8.C/prd.md","reason":"R8.C batch constraints, upstream dependencies, and no-telemetry product requirements."}
+{"file":"prompts/0503-2/_shared/ipc-channels.md","reason":"Shared IPC contract registry and rate-class alignment."}
+{"file":"prompts/0503-2/_shared/zod-schemas.md","reason":"Shared Zod source-of-truth registry to update after implementation."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Backend service, IPC, validation, and rate-limit quality conventions."}
+{"file":".trellis/spec/frontend/index.md","reason":"Frontend implementation conventions for renderer route and panel work."}
+{"file":".trellis/tasks/05-05-r8c-spec-32-observability-panel/research/electron-observability-dashboard.md","reason":"External best-practice notes constrained to local-only implementation."}

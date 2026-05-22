@@ -1,0 +1,12 @@
+{"file": "prompts/0503-2/R8.C/spec-34-crash-recovery.md", "reason": "Primary spec-34 requirements, data contracts, IPC contracts, GWT acceptance, and performance budget."}
+{"file": "prompts/0503-2/R8.C/prd.md", "reason": "R8.C batch constraints, dependency graph, feature-flag naming, and no-telemetry/no-mock boundaries."}
+{"file": "prompts/0503-2/_shared/zod-schemas.md", "reason": "Shared Zod source-of-truth registry and recovery schema placement guidance."}
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend spec index for relevant quality and error-handling guidance."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Backend rules for bounded subprocess calls, truthful runtime state, IPC rate limits, and no fake executor success."}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Project error-handling patterns for partial OS reads and bounded teardown."}
+{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend spec index for renderer recovery dialog guidance."}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Frontend rules for no nested assertions, no console.log, and race-protected async interactions."}
+{"file": ".trellis/spec/guides/index.md", "reason": "Shared thinking-guide index for cross-layer and reuse checks."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Recovery spans schema, service, IPC, preload, and renderer boundaries."}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Avoid duplicating existing R8 runtime and snapshot patterns."}
+{"file": ".trellis/tasks/05-05-r8c-spec-34-crash-recovery/research/crash-recovery-patterns.md", "reason": "External research notes on Electron crash recovery UX and SQLite backup/integrity practices."}

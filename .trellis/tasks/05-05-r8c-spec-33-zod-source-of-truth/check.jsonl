@@ -1,0 +1,5 @@
+{"file": "prompts/0503-2/R8.C/spec-33-zod-source-of-truth.md", "reason": "Acceptance criteria for spec-33 verification"}
+{"file": "prompts/0503-2/_shared/zod-schemas.md", "reason": "Schema inventory and SoT consistency checks"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Quality gate and no-mock validation expectations"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Validation error contract checks"}
+{"file": ".trellis/tasks/05-05-r8c-spec-33-zod-source-of-truth/research/zod-sot-context7.md", "reason": "Research-backed validation behavior"}

@@ -1,0 +1,13 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend guidance index for main-process R8 services"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Error-handling and degradation patterns for Windows/local runtime services"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "No fake success, timeout, and quality constraints"}
+{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend guidance index for renderer surfaces"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Frontend quality and no-emoji constraints"}
+{"file": "prompts/0503-2/R8.C/spec-35-backup-restore.md", "reason": "Primary spec-35 backup/restore requirements"}
+{"file": "prompts/0503-2/R8.C/spec-36-diagnostic-pack-export.md", "reason": "Primary spec-36 diagnostic pack requirements"}
+{"file": "prompts/0503-2/R8.C/spec-37-permissions-time-bounded.md", "reason": "Primary spec-37 permission TTL requirements"}
+{"file": "prompts/0503-2/R8.C/spec-38-skill-cloud-sync-deferred.md", "reason": "Primary spec-38 cloud-sync deferred requirements"}
+{"file": "prompts/0503-2/R8.C/spec-39-ocr-interface-disabled.md", "reason": "Primary spec-39 OCR-disabled requirements"}
+{"file": "prompts/0503-2/_shared/ipc-channels.md", "reason": "Shared R8 IPC inventory that must remain synchronized"}
+{"file": "prompts/0503-2/_shared/zod-schemas.md", "reason": "Shared schema source-of-truth inventory"}
+{"file": ".trellis/tasks/05-05-r8c-spec-35-39-resilience-continuation/research/implementation-inventory.md", "reason": "Current existing implementation and known gaps"}

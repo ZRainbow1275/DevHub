@@ -1718,3 +1718,210 @@ cd "D:/Desktop/CREATOR ONE/devhub" && pnpm dev
 ### Next Steps
 
 - None - task complete
+
+## Session 22: R8.A implementation gates completed
+
+**Date**: 2026-05-03
+**Task**: R8.A implementation per `prompts/0503-2/R8.A` and handoff gates
+**Branch**: `master`
+
+### Summary
+
+Implemented the R8.A gate slice in `devhub` without deleting existing modules or using mock data. The five R8.B/R8.C gates now have executable contracts: process field parity, topology first glance, theme non-color delta, always-on-top functionality, and port panel breathing room.
+
+### Main Changes
+
+- Added R8.A feature flag and integration manifest contracts, including real package names and license exception tracking.
+- Added native integration adapters and renderer integration bridges for the R8.A dependency surface.
+- Added shared process VM field contract and `data-vm-*` parity markers for process card, list, detail panel, and detail drawer.
+- Added topology entry markers for process, port, and window detail surfaces.
+- Added runtime theme non-color delta enforcement and tests.
+- Added always-on-top IPC/preload/hook/UI state hydration and audit coverage.
+- Added port card breathing-room tokens, DOM markers, and contract tests.
+- Added real license checker script and synchronized preload whitelist docs.
+- Wrote `docs/r8a-implementation-report.md`.
+
+### Validation
+
+- [OK] `pnpm typecheck`
+- [OK] `pnpm check:license`
+- [OK] targeted R8.A contract tests: 47 passed
+- [OK] `pnpm test --run src/preload/preloadContract.test.ts`: 4 passed
+- [OK] `pnpm lint` including `check:no-emoji`: no emoji found in 246 files
+- [OK] `pnpm test --run --maxWorkers=1`: 47 files / 433 tests passed
+- [WARN] `gitnexus.detect_changes(scope=all)` completed with critical risk because the working tree already contains broad pre-existing DevHub modifications; R8.A-specific gates are covered by the passing tests above.
+
+### Notes
+
+- `nut-js` spec package reality was corrected to `@nut-tree-fork/nut-js` and remains disabled by default for R8.C automation.
+- Native build scripts had previously been ignored by pnpm; `package.json` now explicitly lists R8.A native packages in `pnpm.onlyBuiltDependencies` for future installs.
+
+### Status
+
+[OK] **R8.A implementation gates completed and verified**
+
+## 2026-05-03 — R8.B/R8.C continuation implementation
+
+- Continued `prompts/0503-2` R8.B/R8.C development after resource-pressure interruption.
+- Added R8.B/R8.C shared feature flag registry and R8 runtime Zod schema registry.
+- Added `R8RuntimeService` with real persisted runtime state for popouts, drawers, CLI parser events, tool detection, CSV queue runs, DAG readiness, signal fusion, feedback, injection guards, notifications, permissions, backups, diagnostics, skills, OCR-disabled contract, and cloud-sync deferred contract.
+- Added `r8RuntimeHandlers` and `window.devhub.r8` preload bridge without exposing raw `ipcRenderer`.
+- Added R8 command palette, status badges, and Monitor `R8 运营` panel.
+- Updated `prompts/0421/contracts/23-ipc-contracts-master.md` Renderer Preload whitelist to match the public preload bridge.
+- Added `devhub/docs/r8bc-implementation-report.md` with no-mock guarantees and verification evidence.
+- Verification passed:
+  - `pnpm test --run src/shared/feature-flags.test.ts src/shared/schemas/r8-runtime.test.ts src/main/services/R8RuntimeService.test.ts --maxWorkers=1`
+  - `pnpm test --run src/preload/preloadContract.test.ts --maxWorkers=1`
+  - `pnpm typecheck`
+
+## 2026-05-04 — R8.C operation loop continuation
+
+- Continued `prompts/0503-2` R8.B/R8.C implementation in low-resource mode after the previous resource-pressure interruption.
+- Restored typecheck first, then expanded the R8.C operation loop across schema registry, main-process service, IPC handlers, preload bridge, renderer global types, and R8OpsPanel.
+- Added real guarded APIs for CLI detect-one/tool override, SKILL get/write/delete/templates/reload, CSV launch/session/template, task retry/skip, injection resolve/history/cancel, watchdog history/manual restart/supervisor status, AI misreport/fusion profile, notification aggregation, backup restore/delete, diagnostic purge, permission allowlist/reset, recovery report/dismiss, and recording/replay lifecycle.
+- Preserved no-mock boundaries: CSV launch queues only, watchdog supervisor reports `not-installed`, native injection remains disabled unless explicitly enabled, and side-effect operations require `confirmedBy`.
+- Updated `prompts/0421/contracts/23-ipc-contracts-master.md` from the actual public preload bridge; contract now covers 253 invoke, 8 send, and 26 listener channels.
+- Verification passed:
+  - `pnpm typecheck`
+  - `pnpm test --run src/shared/feature-flags.test.ts src/shared/schemas/r8-runtime.test.ts src/main/services/R8RuntimeService.test.ts src/preload/preloadContract.test.ts --maxWorkers=1`
+  - Result: 4 files / 30 tests passed.
+
+### Final Verification Addendum
+
+- `pnpm typecheck`: passed.
+- `pnpm lint`: passed; no emoji found in 253 files.
+- `pnpm check:license`: passed; 377 production package entries validated and 1 manifest exception retained.
+- `pnpm test --run --maxWorkers=1`: 49 files / 456 tests passed.
+- `npx gitnexus analyze --force`: indexed 3,047 nodes / 8,640 edges / 236 clusters / 242 flows.
+- `npx gitnexus impact R8RuntimeService --repo devhub --direction upstream --depth 2`: LOW risk.
+- `npx gitnexus impact setupR8RuntimeHandlers --repo devhub --direction upstream --depth 2`: LOW risk.
+
+## 2026-05-04 — R8 prompts/0503-2 full contract coverage continuation
+
+- Continued the R8 PRD/spec implementation sweep in low-resource mode after context compaction.
+- Rebuilt the mechanical contract metric from `prompts/0503-2/**/*.md`: 297 declared IPC channels.
+- Expanded `R8_FEATURE_FLAGS` to 123 entries and added the missing aggregate/library flags without removing existing flags.
+- Expanded `R8_IPC_CHANNELS` to 305 entries through a static `R8_SPEC_DECLARED_IPC_CHANNELS` contract layer; missing declared channels are now 0.
+- Added `ContractOnlyResponse` and `R8RuntimeService.invokeContractOnlyChannel` so non-executable spec channels return truthful `success: false` / `executable: false` responses rather than fake success.
+- Updated `r8RuntimeHandlers` so every R8 runtime channel has an IPC handler registration, with concrete handlers taking precedence over contract-only fallbacks.
+- Verification passed:
+  - `pnpm test --run src/shared/feature-flags.test.ts src/shared/schemas/r8-runtime.test.ts src/main/services/R8RuntimeService.test.ts src/main/ipc/r8RuntimeHandlers.test.ts src/preload/preloadContract.test.ts --maxWorkers=1` — 5 files / 34 tests passed.
+  - `pnpm typecheck` — passed.
+  - `pnpm lint` — passed, no emoji found in 254 files.
+
+### Full Verification Addendum
+
+- `pnpm check:license` — passed; 377 production package entries validated and 1 documented exception retained.
+- `pnpm test --run --maxWorkers=1` — 50 files / 460 tests passed.
+- `npx gitnexus analyze --force` — indexed 3,039 nodes / 8,657 edges / 235 clusters / 241 flows.
+- `npx gitnexus impact R8RuntimeService --repo devhub --direction upstream --depth 2` — LOW risk.
+- `npx gitnexus impact setupR8RuntimeHandlers --repo devhub --direction upstream --depth 2` — LOW risk.
+
+## 2026-05-04 — R8.C spec-01 CLIOutputParser verified implementation
+
+- Continued the `prompts/0503-2` implementation sweep after confirming the full 80-plus document corpus is not yet completely implemented.
+- Implemented `R8.C/spec-01-cli-output-parser.md` as a real vertical parser slice: `IParser`, `ParserRegistry`, `StreamMultiplexer`, `CLIOutputParser`, and NDJSON/SHIM/line/SSE strategies.
+- Extended the R8 shared Zod schema registry with CLI parser payload/session/progress contracts and wired concrete R8 runtime IPC methods for sessions, progress, shim install, strategy select, and event streaming.
+- Added explicit GWT coverage for NDJSON, line Step N/M payload, SHIM rawSource, malformed JSON low-confidence unknown events, and line plus shim progress fusion.
+- Preserved no-mock behavior: invalid stream data remains real low-confidence data, strategy switching is audited, and shim installation does not pretend the external CLI ran.
+- Verification passed:
+  - `pnpm test --run src/main/services/cli-parser/CLIOutputParser.test.ts src/main/services/R8RuntimeService.test.ts src/main/ipc/r8RuntimeHandlers.test.ts src/shared/schemas/r8-runtime.test.ts --maxWorkers=1` — 4 files / 35 tests passed.
+  - `pnpm typecheck` — passed.
+  - `pnpm lint` — passed, no emoji found in 264 files.
+  - `pnpm test --run --maxWorkers=1` — 51 files / 468 tests passed.
+  - `pnpm check:license` — passed.
+  - `npx gitnexus analyze --force` — indexed 3,133 nodes / 8,958 edges / 246 clusters / 248 flows.
+  - `npx gitnexus impact CLIOutputParser --repo devhub --direction upstream --depth 2` — LOW risk.
+  - `npx gitnexus impact R8RuntimeService --repo devhub --direction upstream --depth 2` — LOW risk.
+  - `npx gitnexus impact setupR8RuntimeHandlers --repo devhub --direction upstream --depth 2` — LOW risk.
+
+## 2026-05-04 — R8.C SHIM parser foundation continuation
+
+- Continued from verified R8.C spec-01 into the directly blocked SHIM parser work.
+- Added strict Codex marker parsing for `DEVHUB::MARKER::v=1::*`, high-confidence phase marker events, and malformed marker spoof protection.
+- Added Gemini stdout parser rules for thinking/progress and `[tool: name]` tool-call extraction, registered through `ParserRegistry` without replacing the generic fallback path.
+- Extended shared Zod schemas with Codex marker, SHIM manifest, SHIM frame, and richer CLI event payload contracts.
+- Did not claim full PATH-level SHIM install or named-pipe passthrough completion; documented spec-02/spec-04 as partial verified parser foundation only.
+- Verification passed:
+  - targeted parser suite — 4 files / 18 tests passed.
+  - full Vitest — 53 files / 472 tests passed.
+  - `pnpm typecheck`, `pnpm lint`, `pnpm check:license` — passed.
+  - GitNexus impact for `CodexParser`, `GeminiParser`, `ParserRegistry` — LOW risk.
+
+## 2026-05-04 R8.C continuation checkpoint
+
+- Continued R8.C spec-02..06 implementation in `devhub` without touching unrelated root dirty state.
+- Verified executable parser/detection slice: 9 files / 56 tests passed with `--maxWorkers=1`; `pnpm typecheck` passed.
+- Added truthful docs/spec evidence for Claude stream-json, Gemini rule reload/stat IPC, Cursor/Copilot title detection, and CLI detect init hardening.
+
+## 2026-05-04 R8.C validation checkpoint
+
+- Full DevHub Vitest passed: 56 files / 489 tests with `--maxWorkers=1`.
+- `pnpm lint`, `pnpm typecheck`, `pnpm check:license`, and GitNexus analyze/impact/status all passed.
+- Current GitNexus impacts for `CursorCopilotDetector`, `GeminiParser`, and `R8RuntimeService` are LOW risk.
+
+## 2026-05-04 R8.C monitor continuation checkpoint
+
+- Continued from verified R8.C spec-02..06 into spec-07 and spec-08 with low-resource execution.
+- Implemented executable main/schema/IPC slices for monitor snapshot, monitor BrowserWindow open/close, guarded window prefs, focus-instance, and per-tool monitor popouts.
+- Verified target suite: 3 files / 39 tests; full Vitest: 56 files / 494 tests; `pnpm typecheck`, `pnpm lint`, `pnpm check:no-emoji`, `pnpm check:license` all passed.
+- GitNexus analyze refreshed to 3378 nodes / 9770 edges / 272 clusters / 269 flows; `R8RuntimeService` and `setupR8RuntimeHandlers` remain LOW risk.
+- Boundary remains explicit: dedicated renderer/preload entries, snapshot streams, Playwright e2e, and audit rows are not yet claimed complete.
+
+
+
+## 2026-05-04 R8.C skill continuation checkpoint
+
+- Continued from verified R8.C spec-07..08 into spec-09 and spec-10 with low-resource execution.
+- Implemented strict Skill schemas, dual-source builtin/user loading, user override, local install/uninstall, builtin readme/fork, and executable skill IPC handlers.
+- Verified target suite: 3 files / 43 tests; full Vitest: 56 files / 498 tests; `pnpm typecheck`, `pnpm lint`, `pnpm check:license` all passed.
+- GitNexus analyze refreshed to 3385 nodes / 9851 edges / 272 clusters / 270 flows; `R8RuntimeService` and `setupR8RuntimeHandlers` remain LOW risk.
+- Boundary remains explicit: chokidar/list-stream, audit rows, renderer skill editor, and spec-15 skill execution are not claimed complete.
+
+## 2026-05-04 R8.C spec-11 skill editor checkpoint
+
+- Recovered after resource-pressure interruption and continued the R8.C skill lane from spec-09/spec-10 into `prompts/0503-2/R8.C/spec-11-skill-editor.md`.
+- Fixed the Monaco YAML schema TypeScript/lint blocker by typing the offline schema as `JSONSchema` and replacing escaped digit/dot regex with lint-safe character classes.
+- Implemented and verified the integrated skill editor slice: local Monaco workers, offline YAML schema, YAML/Body/Script buffers, main-process validation/write/template routes, preload contracts, renderer global types, and R8 Ops embedding.
+- Used real IPC-shaped tests and real filesystem-backed service tests; no business mock success path was introduced.
+- Verification passed: `pnpm typecheck`, `pnpm lint`, and targeted Vitest suite `src/shared/schemas/r8-runtime.test.ts src/main/services/R8RuntimeService.test.ts src/main/ipc/r8RuntimeHandlers.test.ts src/renderer/views/skills/SkillEditorPanel.test.tsx --maxWorkers=1` with 4 files / 45 tests.
+- Remaining boundary: full Electron/Playwright Monaco e2e, standalone skills route, close-confirm/delete UI polish, list-stream/hot reload/audit rows, and spec-15 execution sandbox.
+## 2026-05-04 R8.C spec-12..15 CSV continuation
+
+- Continued low-resource R8.C work after typecheck regression; restored missing R8RuntimeService executable methods instead of deleting existing IPC/test coverage.
+- Added strict CSV 18-col schema tests, real filesystem CsvTaskDriver tests, and service tests for CSV group reload/enqueue, CLI launch, DevHub dry-run launch, and Python E_DEPENDENCY_MISSING.
+- Synced new CSV/task IPC channels into shared registry and contracts/23 preload whitelist.
+- Passed `pnpm typecheck`, `pnpm lint`, and targeted 5-file Vitest suite with `--maxWorkers=1`.
+
+
+## Session 22: R8 0503-2 completion ledger closure
+
+**Date**: 2026-05-23
+**Task**: R8 0503-2 completion ledger closure
+**Branch**: `master`
+
+### Summary
+
+Closed R8 0503-2 by committing DevHub implementation surface c325220, preserving elevated external blocker evidence, fixing completion-state owner checks, updating strict evidence docs, verifying pnpm --silent check:0503-strict:vd-watch, pnpm --silent check:0503-no-emoji, pnpm -C devhub --silent check:no-emoji, and diff --check gates.
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8fbd2f8` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

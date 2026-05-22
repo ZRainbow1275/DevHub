@@ -1,0 +1,10 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend implementation guidelines for main-process services and IPC."}
+{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend/preload contract expectations for cross-layer IPC exposure."}
+{"file": "prompts/0503-2/00-r8-implementation-quickstart.md", "reason": "R8 execution quickstart and mandatory hard constraints."}
+{"file": "prompts/0503-2/00-r8-master-prd.md", "reason": "Master R8 constraints, Zod SoT policy, IPC and performance contracts."}
+{"file": "prompts/0503-2/R8.C/prd.md", "reason": "R8.C batch scope and dependency ordering."}
+{"file": "prompts/0503-2/R8.C/spec-31-ipc-rate-limit.md", "reason": "Primary implementation spec for IPC token bucket rate limiting."}
+{"file": "prompts/0503-2/_shared/ipc-channels.md", "reason": "Shared channel registry and rateClass assignments."}
+{"file": "prompts/0503-2/_shared/zod-schemas.md", "reason": "Shared Zod schema registry and SoT integration expectations."}
+{"file": "prompts/0503-2/_shared/feature-flags.md", "reason": "Feature flag default and fallback behavior for R8.C.ipc.rate-limit."}
+{"file": "prompts/0503-2/_shared/testing-strategy.md", "reason": "R8 validation matrix and CI expectations."}

@@ -1,0 +1,6 @@
+{"file":"prompts/0503-2/R8.C/spec-32-observability-panel.md","reason":"Acceptance checklist and GWT validation target for review."}
+{"file":"prompts/0503-2/_shared/ipc-channels.md","reason":"Verify IPC names, directions, and rate classes."}
+{"file":"prompts/0503-2/_shared/zod-schemas.md","reason":"Verify schema registry documentation remains current."}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Verify IPC/service validation and no-mock backend behavior."}
+{"file":".trellis/spec/frontend/index.md","reason":"Verify renderer conventions, no emoji, and panel integration."}
+{"file":".trellis/tasks/05-05-r8c-spec-32-observability-panel/research/electron-observability-dashboard.md","reason":"Confirm external research did not introduce prohibited telemetry or broad redesign."}
