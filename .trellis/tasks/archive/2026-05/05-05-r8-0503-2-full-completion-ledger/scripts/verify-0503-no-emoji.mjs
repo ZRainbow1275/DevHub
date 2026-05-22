@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const taskDir = dirname(scriptDir)
-const repoRoot = join(taskDir, '..', '..', '..')
+const repoRoot = findRepoRoot(taskDir)
 const researchDir = join(taskDir, 'research')
 
 const promptRoots = [
@@ -30,6 +30,20 @@ const selfTest = process.argv.includes('--self-test')
 
 function assert(condition, message) {
   if (!condition) throw new Error(message)
+}
+
+function findRepoRoot(startDir) {
+  let current = startDir
+  while (current !== dirname(current)) {
+    try {
+      readdirSync(join(current, 'prompts', '0503'))
+      readdirSync(join(current, 'prompts', '0503-2'))
+      return current
+    } catch {
+      current = dirname(current)
+    }
+  }
+  throw new Error(`Unable to locate repository root from ${startDir}`)
 }
 
 function relativeRepoPath(filePath) {

@@ -1,0 +1,2 @@
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Validate that committed changes avoid generated junk, mock evidence, and unsafe broad cleanup."}
+{"file":".trellis/workflow.md","reason":"Validate task completion via explicit git status, commit, push, and branch state evidence."}

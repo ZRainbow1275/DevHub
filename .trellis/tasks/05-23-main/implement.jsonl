@@ -1,0 +1,2 @@
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Use project quality guidance for safe Git hygiene, evidence handling, and avoiding destructive cleanup."}
+{"file":".trellis/workflow.md","reason":"Use Trellis workflow guidance for task state, commits, and archive/journal handling."}

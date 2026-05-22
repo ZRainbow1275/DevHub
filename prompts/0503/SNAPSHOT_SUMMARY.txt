@@ -1,0 +1,12 @@
+==== DevHub R8 源码现状快照 - 200字摘要 ====
+
+DevHub master 分支已落地核心功能完整：
+(1) 4-Tab MonitorPanel (process|port|window|ai-task) 100% 完成，各Tab左列表+右详情双面板架构成熟
+(2) Process 卡片/列表双路径均实现，IPC 字段结构差异待文档化
+(3) Window IPC 全 35 个 channel 已实现，always-on-top [DONE]，inject-text 限键盘模拟
+(4) AI 任务感测采用启发式进度 (0%-100% 阶段映射)，非真实 stdout 读取
+(5) Theme 4 维系统 (palette/density/radius/motion) 代码完整，但切换时 UX 无自动协调
+
+主要缺陷：拓扑功能非"消失"，而是入口隐藏——全局 TopologyView.tsx 完全实现但无 Tab 一级菜单入口，关系视图下沉到各面板内嵌。Skill/Watchdog 未实现，CSV 仅导入。Port popout 无浮窗 detach 能力。
+
+快照已存储：/d/Desktop/CREATOR ONE/prompts/0503/refs/source-snapshot-v2.md (4200+ 字)
