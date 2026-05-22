@@ -1,12 +1,12 @@
 import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
-import { dirname, join, relative } from 'node:path'
+import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const taskDir = dirname(scriptDir)
-const repoRoot = join(taskDir, '..', '..', '..')
+const repoRoot = findRepoRoot(taskDir)
 const researchDir = join(taskDir, 'research')
 
 const rootPackageJsonPath = join(repoRoot, 'package.json')
@@ -47,6 +47,17 @@ const completionAuditSchemaVersion = 'devhub-0503-completion-audit-v1'
 const ownerActionQueueSchemaVersion = 'devhub-0503-owner-action-queue-v1'
 const ownerClosureBundleSchemaVersion = 'devhub-0503-owner-closure-bundles-v2'
 const evidencePackVerifierRequirement = 'Verify schemaVersion guards, pack hashes, source hashes, prompt manifests with filesystem-count parity, task context JSONL coverage, external blocker report JSON, ledger verification JSON, completion ledger markdown, survey acceptance ledger markdown, acceptance pack markdown including failed gate verification notes, prompt-to-artifact machine evidence fields and JSON pointer targets, checkbox totals, checkbox manifest markdown, owner actions, owner action queue markdown rows, owner verification command notes across queue/raw/submission templates, current owner template JSON files, raw owner evidence template schemaVersion, owner closure bundles with verification command notes, owner closure bundles with source-file dossier commands plus action/raw/submission command columns and verification command notes in markdown rows, benchmark evidence schemas, completion status, completion status markdown sections, completion status owner lane command sets, completion status failed external gate command sets with verification notes, manual testing dual-running-surface docs, startup config dual-running-surface contract, completion audit startup source evidence paths, temporary owner template artifact absence, HANDOFF current summary, strict completion report rows, strict completion report failed gate verification notes, strict completion report owner lane command sets, completion audit alignment, completion audit open requirement external/owner boundary, completion audit markdown including source evidence rows, partial R8 linked owner attribution, current owner template README workflow guidance, and referenced evidence file paths with repo-root containment.'
+
+function findRepoRoot(startDir) {
+  let current = resolve(startDir)
+  while (current !== dirname(current)) {
+    if (existsSync(join(current, 'prompts', '0503')) && existsSync(join(current, 'prompts', '0503-2'))) {
+      return current
+    }
+    current = dirname(current)
+  }
+  throw new Error(`Unable to locate repository root from ${startDir}`)
+}
 
 function buildWindowsServiceVerificationCommandNote() {
   return `Windows Service evidence must come from a real elevated DevHub service flow: run DevHub from an Administrator Windows session, invoke window.devhub.watchdog.supervisorInstallService(true, '<real operator identity>') through the preload bridge or equivalent application control path, accept the UAC prompt, then rerun pnpm -C devhub check:r8-external-blockers -- --write-report ../.trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/r8-external-blockers-current.json and preserve admin.isAdministrator=true, service.installed=true, service.scExitCode=0, and service.status. Do not close from a dry-run command plan, service-name assumption, or non-admin report. Final closure should rerun ${shellPortableStrictCompletionCommand}.`
@@ -719,7 +730,7 @@ function buildCompletionStatus(pack, ownerActionQueue) {
       completionAudit: relativePath(completionAuditJsonPath),
       ownerActionQueue: relativePath(ownerActionQueueJsonPath),
       ownerClosureBundles: relativePath(ownerClosureBundlesJsonPath),
-      strictReport: '.trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-strict-completion-report.md'
+      strictReport: relativePath(strictCompletionReportPath)
     },
     blockedSuccessCriteriaOwnerLinks,
     complete,
@@ -2717,7 +2728,7 @@ mkdirSync(researchDir, { recursive: true })
 writeFileSync(acceptancePackJsonPath, `${JSON.stringify(pack, null, 2)}\n`, 'utf8')
 writeFileSync(acceptancePackMarkdownPath, renderAcceptancePackMarkdown(pack), 'utf8')
 writeFileSync(completionStatusJsonPath, `${JSON.stringify(completionStatus, null, 2)}\n`, 'utf8')
-writeFileSync(completionStatusMarkdownPath, renderCompletionStatusMarkdown(completionStatus), 'utf8')
+writeFileSync(completionStatusMarkdownPath, `${renderCompletionStatusMarkdown(completionStatus).trimEnd()}\n`, 'utf8')
 writeFileSync(completionAuditJsonPath, `${JSON.stringify(completionAudit, null, 2)}\n`, 'utf8')
 writeFileSync(completionAuditMarkdownPath, renderCompletionAuditMarkdown(completionAudit), 'utf8')
 writeFileSync(ownerActionQueueJsonPath, `${JSON.stringify(ownerActionQueue, null, 2)}\n`, 'utf8')

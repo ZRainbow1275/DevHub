@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const taskDir = dirname(scriptDir)
-const repoRoot = join(taskDir, '..', '..', '..')
+const repoRoot = findRepoRoot(taskDir)
 const resolvedRepoRoot = resolve(repoRoot)
 const researchDir = join(taskDir, 'research')
 
@@ -52,6 +52,18 @@ const ownerRawEvidenceTemplateSchemaVersion = 'devhub-0503-owner-raw-evidence-te
 const popoutBwRssBenchmarkSchemaVersion = 'devhub-r8-popout-bw-rss-benchmark-v1'
 const thumbnailCaptureBenchmarkSchemaVersion = 'devhub-r8-thumbnail-capture-benchmark-v1'
 const evidencePackVerifierRequirement = 'Verify schemaVersion guards, pack hashes, source hashes, prompt manifests with filesystem-count parity, task context JSONL coverage, external blocker report JSON, ledger verification JSON, completion ledger markdown, survey acceptance ledger markdown, acceptance pack markdown including failed gate verification notes, prompt-to-artifact machine evidence fields and JSON pointer targets, checkbox totals, checkbox manifest markdown, owner actions, owner action queue markdown rows, owner verification command notes across queue/raw/submission templates, current owner template JSON files, raw owner evidence template schemaVersion, owner closure bundles with verification command notes, owner closure bundles with source-file dossier commands plus action/raw/submission command columns and verification command notes in markdown rows, benchmark evidence schemas, completion status, completion status markdown sections, completion status owner lane command sets, completion status failed external gate command sets with verification notes, manual testing dual-running-surface docs, startup config dual-running-surface contract, completion audit startup source evidence paths, temporary owner template artifact absence, HANDOFF current summary, strict completion report rows, strict completion report failed gate verification notes, strict completion report owner lane command sets, completion audit alignment, completion audit open requirement external/owner boundary, completion audit markdown including source evidence rows, partial R8 linked owner attribution, current owner template README workflow guidance, and referenced evidence file paths with repo-root containment.'
+
+function findRepoRoot(startDir) {
+  let current = resolve(startDir)
+  while (current !== dirname(current)) {
+    if (existsSync(join(current, 'prompts', '0503')) && existsSync(join(current, 'prompts', '0503-2'))) {
+      return current
+    }
+    current = dirname(current)
+  }
+  throw new Error(`Unable to locate repository root from ${startDir}`)
+}
+
 const evidencePackVerifierSuccessCoverageItems = [
   'acceptance pack schemaVersion',
   'checkbox manifest schemaVersion',
@@ -124,8 +136,8 @@ const requiredCompletionAuditSourceEvidencePaths = [
   relativeRepoPath(devhubElectronViteConfigPath)
 ]
 const temporaryOwnerTemplateArtifactPaths = [
-  '.trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/_tmp-submission-templates',
-  '.trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/_tmp-raw-evidence-templates'
+  relativeRepoPath(join(researchDir, '_tmp-submission-templates')),
+  relativeRepoPath(join(researchDir, '_tmp-raw-evidence-templates'))
 ]
 const requiredTaskContextFiles = [
   'prompts/0503-2/00-r8-implementation-quickstart.md',
@@ -137,7 +149,7 @@ const requiredTaskContextFiles = [
   'prompts/0503-2/R8.B/prd.md',
   'prompts/0503-2/R8.C/prd.md',
   '.trellis/spec/backend/quality-guidelines.md',
-  '.trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-2-completion-ledger.md'
+  '.trellis/tasks/archive/2026-05/05-05-r8-0503-2-full-completion-ledger/research/0503-2-completion-ledger.md'
 ]
 
 const selfTest = process.argv.includes('--self-test')
@@ -2361,7 +2373,7 @@ function buildExpectedStatusArtifacts(pack) {
     completionAudit: relativeRepoPath(completionAuditJsonPath),
     ownerActionQueue: relativeRepoPath(ownerActionQueueJsonPath),
     ownerClosureBundles: relativeRepoPath(ownerClosureBundlesJsonPath),
-    strictReport: '.trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-strict-completion-report.md'
+    strictReport: relativeRepoPath(strictCompletionReportMarkdownPath)
   }
 }
 
@@ -2966,18 +2978,19 @@ function verifyCompletionAuditMarkdown(completionAudit) {
 function verifyRootPackageScripts() {
   const packageJson = readJson(rootPackageJsonPath)
   const scripts = packageJson.scripts ?? {}
+  const scriptPath = (fileName) => relativeRepoPath(join(scriptDir, fileName))
   assert(
-    scripts['check:0503-acceptance-pack:no-refresh'] === 'node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/generate-0503-acceptance-pack.mjs --no-refresh && node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/verify-0503-evidence-pack.mjs',
+    scripts['check:0503-acceptance-pack:no-refresh'] === `node ${scriptPath('generate-0503-acceptance-pack.mjs')} --no-refresh && node ${scriptPath('verify-0503-evidence-pack.mjs')}`,
     'root package.json missing check:0503-acceptance-pack:no-refresh script'
   )
   assert(scripts['check:0503-local'] === 'pnpm check:0503-checkbox-manifest:self-test && pnpm check:0503-ledgers:self-test && pnpm check:0503-acceptance-pack:self-test && pnpm check:0503-evidence-pack:self-test && pnpm check:0503-no-emoji:self-test && pnpm check:0503-owner-evidence:self-test && pnpm check:0503-acceptance-pack:no-refresh && pnpm check:0503-owner-evidence -- --owner-summary && pnpm check:0503-owner-evidence -- --owner-output-matrix && pnpm check:0503-owner-evidence -- --list-actions && pnpm check:0503-owner-evidence -- --next-owner-commands && pnpm check:0503-strict:self-test && pnpm -C devhub check:browserwindow-second-display:self-test && pnpm -C devhub check:r8-external-blockers:self-test && pnpm -C devhub check:no-emoji && pnpm -C devhub check:zod-sot && pnpm -C devhub check:no-cloud-deps && pnpm -C devhub check:no-ocr-deps && pnpm -C devhub typecheck && pnpm -C devhub lint && git -C devhub diff --check && git diff --check && pnpm check:0503-acceptance-pack:no-refresh && pnpm check:0503-no-emoji', 'root package.json missing check:0503-local script')
-  assert(scripts['check:0503-no-emoji'] === 'node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/verify-0503-no-emoji.mjs', 'root package.json missing check:0503-no-emoji script')
-  assert(scripts['check:0503-no-emoji:self-test'] === 'node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/verify-0503-no-emoji.mjs --self-test', 'root package.json missing check:0503-no-emoji:self-test script')
-  assert(scripts['check:0503-owner-evidence'] === 'node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/verify-0503-owner-evidence.mjs', 'root package.json missing check:0503-owner-evidence script')
-  assert(scripts['check:0503-owner-evidence:self-test'] === 'node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/verify-0503-owner-evidence.mjs --self-test', 'root package.json missing check:0503-owner-evidence:self-test script')
-  assert(scripts['check:0503-strict'] === 'node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/run-0503-strict-completion.mjs', 'root package.json missing check:0503-strict script')
-  assert(scripts['check:0503-strict:vd-watch'] === 'node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/run-0503-strict-completion.mjs --vd-foreground-watch', 'root package.json missing check:0503-strict:vd-watch script')
-  assert(scripts['check:0503-strict:self-test'] === 'node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/run-0503-strict-completion.mjs --self-test', 'root package.json missing check:0503-strict:self-test script')
+  assert(scripts['check:0503-no-emoji'] === `node ${scriptPath('verify-0503-no-emoji.mjs')}`, 'root package.json missing check:0503-no-emoji script')
+  assert(scripts['check:0503-no-emoji:self-test'] === `node ${scriptPath('verify-0503-no-emoji.mjs')} --self-test`, 'root package.json missing check:0503-no-emoji:self-test script')
+  assert(scripts['check:0503-owner-evidence'] === `node ${scriptPath('verify-0503-owner-evidence.mjs')}`, 'root package.json missing check:0503-owner-evidence script')
+  assert(scripts['check:0503-owner-evidence:self-test'] === `node ${scriptPath('verify-0503-owner-evidence.mjs')} --self-test`, 'root package.json missing check:0503-owner-evidence:self-test script')
+  assert(scripts['check:0503-strict'] === `node ${scriptPath('run-0503-strict-completion.mjs')}`, 'root package.json missing check:0503-strict script')
+  assert(scripts['check:0503-strict:vd-watch'] === `node ${scriptPath('run-0503-strict-completion.mjs')} --vd-foreground-watch`, 'root package.json missing check:0503-strict:vd-watch script')
+  assert(scripts['check:0503-strict:self-test'] === `node ${scriptPath('run-0503-strict-completion.mjs')} --self-test`, 'root package.json missing check:0503-strict:self-test script')
 }
 
 function verifyReferencedArtifacts(pack, completionStatus, completionAudit) {
@@ -3017,25 +3030,25 @@ function verifyBenchmarkReportSchemaVersions() {
   const benchmarkReports = [
 	    {
 	      label: 'popout 3-BrowserWindow RSS benchmark',
-	      path: '.trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/popout-bw-rss-3bw-2026-05-19.json',
+	      path: relativeRepoPath(join(researchDir, 'popout-bw-rss-3bw-2026-05-19.json')),
 	      requirePassed: true,
 	      schemaVersion: popoutBwRssBenchmarkSchemaVersion
 	    },
 	    {
 	      label: 'popout 3-BrowserWindow RSS debug benchmark',
-	      path: '.trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/popout-bw-rss-3bw-debug-2026-05-19.json',
+	      path: relativeRepoPath(join(researchDir, 'popout-bw-rss-3bw-debug-2026-05-19.json')),
 	      requirePassed: false,
 	      schemaVersion: popoutBwRssBenchmarkSchemaVersion
 	    },
 	    {
 	      label: 'popout 8-BrowserWindow RSS benchmark',
-	      path: '.trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/popout-bw-rss-8bw-2026-05-19.json',
+	      path: relativeRepoPath(join(researchDir, 'popout-bw-rss-8bw-2026-05-19.json')),
 	      requirePassed: true,
 	      schemaVersion: popoutBwRssBenchmarkSchemaVersion
 	    },
 	    {
 	      label: 'thumbnail 100-HWND capture benchmark',
-	      path: '.trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/thumbnail-capture-100hwnd-2026-05-19.json',
+	      path: relativeRepoPath(join(researchDir, 'thumbnail-capture-100hwnd-2026-05-19.json')),
 	      requirePassed: true,
 	      schemaVersion: thumbnailCaptureBenchmarkSchemaVersion
 	    }

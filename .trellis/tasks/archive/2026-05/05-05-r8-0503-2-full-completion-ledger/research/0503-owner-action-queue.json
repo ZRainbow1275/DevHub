@@ -10,13 +10,13 @@
     "virtualDesktopCount": 2,
     "zeroEgressPreflightReady": true
   },
-  "generatedAt": "2026-05-22T17:43:48.007Z",
+  "generatedAt": "2026-05-22T18:49:17.393Z",
   "ownerCounts": {},
   "ownerLaneCommands": [],
   "schemaVersion": "devhub-0503-owner-action-queue-v1",
   "sourceEvidence": [
-    ".trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-acceptance-pack.json",
-    ".trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-checkbox-manifest.json",
+    ".trellis/tasks/archive/2026-05/05-05-r8-0503-2-full-completion-ledger/research/0503-acceptance-pack.json",
+    ".trellis/tasks/archive/2026-05/05-05-r8-0503-2-full-completion-ledger/research/0503-checkbox-manifest.json",
     "devhub/docs/r8bc-implementation-report.md"
   ]
 }

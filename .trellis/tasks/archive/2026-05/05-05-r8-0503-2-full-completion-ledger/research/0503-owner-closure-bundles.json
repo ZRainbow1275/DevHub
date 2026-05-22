@@ -1,13 +1,13 @@
 {
   "acceptanceStatus": "complete",
-  "generatedAt": "2026-05-22T17:43:48.012Z",
+  "generatedAt": "2026-05-22T18:49:17.398Z",
   "ownerCount": 0,
   "owners": [],
   "recommendedStrictCompletionCommand": "pnpm --silent check:0503-strict:vd-watch",
   "schemaVersion": "devhub-0503-owner-closure-bundles-v2",
   "sourceEvidence": [
-    ".trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-owner-action-queue.json",
-    ".trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-completion-audit.json"
+    ".trellis/tasks/archive/2026-05/05-05-r8-0503-2-full-completion-ledger/research/0503-owner-action-queue.json",
+    ".trellis/tasks/archive/2026-05/05-05-r8-0503-2-full-completion-ledger/research/0503-completion-audit.json"
   ],
   "status": "complete",
   "totalActionCount": 0

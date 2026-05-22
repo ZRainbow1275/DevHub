@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const taskDir = dirname(scriptDir)
-const repoRoot = join(taskDir, '..', '..', '..')
+const repoRoot = findRepoRoot(taskDir)
 const researchDir = join(taskDir, 'research')
 const outputJsonPath = join(researchDir, '0503-checkbox-manifest.json')
 const outputMarkdownPath = join(researchDir, '0503-checkbox-manifest.md')
@@ -21,6 +21,20 @@ const emojiPattern = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/gu
 
 function assert(condition, message) {
   if (!condition) throw new Error(message)
+}
+
+function findRepoRoot(startDir) {
+  let current = startDir
+  while (current !== dirname(current)) {
+    try {
+      readdirSync(join(current, 'prompts', '0503'))
+      readdirSync(join(current, 'prompts', '0503-2'))
+      return current
+    } catch {
+      current = dirname(current)
+    }
+  }
+  throw new Error(`Unable to locate repository root from ${startDir}`)
 }
 
 function normalizePath(filePath) {

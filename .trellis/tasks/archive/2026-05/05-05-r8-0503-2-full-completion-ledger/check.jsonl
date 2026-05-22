@@ -14,4 +14,4 @@
 {"file":".trellis/spec/backend/quality-guidelines.md","reason":"Check backend quality expectations"}
 {"file":".trellis/spec/backend/error-handling.md","reason":"Check error handling consistency"}
 {"file":".trellis/spec/frontend/index.md","reason":"Check frontend spec compliance"}
-{"file":".trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-2-completion-ledger.md","reason":"Check implementation claims against mechanical completion ledger"}
+{"file":".trellis/tasks/archive/2026-05/05-05-r8-0503-2-full-completion-ledger/research/0503-2-completion-ledger.md","reason":"Check implementation claims against mechanical completion ledger"}

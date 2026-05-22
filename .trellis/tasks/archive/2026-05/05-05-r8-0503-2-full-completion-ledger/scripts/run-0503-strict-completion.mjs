@@ -1,11 +1,11 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const taskDir = dirname(scriptDir)
-const repoRoot = join(taskDir, '..', '..', '..')
+const repoRoot = findRepoRoot(taskDir)
 const devhubRoot = join(repoRoot, 'devhub')
 const ledgerScript = join(scriptDir, 'verify-0503-ledgers.mjs')
 const acceptancePackScript = join(scriptDir, 'generate-0503-acceptance-pack.mjs')
@@ -19,6 +19,17 @@ const ownerActionQueuePath = join(taskDir, 'research', '0503-owner-action-queue.
 const shellPortableStrictCommand = 'pnpm --silent check:0503-strict:vd-watch'
 function hasArg(flag, args = process.argv) {
   return args.includes(flag)
+}
+
+function findRepoRoot(startDir) {
+  let current = resolve(startDir)
+  while (current !== dirname(current)) {
+    if (existsSync(join(current, 'prompts', '0503')) && existsSync(join(current, 'prompts', '0503-2'))) {
+      return current
+    }
+    current = dirname(current)
+  }
+  throw new Error(`Unable to locate repository root from ${startDir}`)
 }
 
 const selfTest = hasArg('--self-test')

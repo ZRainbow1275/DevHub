@@ -1,6 +1,6 @@
 # 0503 Strict Completion Report
 
-Generated at: 2026-05-22T17:43:47.895Z
+Generated at: 2026-05-22T18:39:47.536Z
 
 ## Summary
 
@@ -12,7 +12,7 @@ Generated at: 2026-05-22T17:43:47.895Z
 - External gate runbook missing fields: 0
 - Survey acceptance rows: 0
 - External blocker report fresh: true
-- External blocker report age seconds: 6234
+- External blocker report age seconds: 9593
 - Recommended strict command: pnpm --silent check:0503-strict:vd-watch
 
 ## Strict Completion Guard
@@ -35,11 +35,11 @@ Generated at: 2026-05-22T17:43:47.895Z
 
 | Artifact | Path | Purpose |
 | --- | --- | --- |
-| Acceptance evidence pack | .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-acceptance-pack.md | Human-readable prompt coverage, failed gates, checkbox ownership, and non-completion boundary. |
-| Completion status | .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-completion-status.md | Machine-derived completion guard evidence, current environment snapshot, and owner command index. |
-| Completion audit | .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-completion-audit.md | Prompt-to-artifact checklist, command checklist, guard crosswalk, and missing requirement taxonomy. |
-| Owner action queue | .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-owner-action-queue.md | Canonical owner actions, evidence templates, verification commands, and intake workflow. |
-| Owner closure bundles | .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-owner-closure-bundles.md | Owner-scoped closure bundles linking blockers, guards, partial R8 rows, and evidence commands. |
+| Acceptance evidence pack | .trellis/tasks/archive/2026-05/05-05-r8-0503-2-full-completion-ledger/research/0503-acceptance-pack.md | Human-readable prompt coverage, failed gates, checkbox ownership, and non-completion boundary. |
+| Completion status | .trellis/tasks/archive/2026-05/05-05-r8-0503-2-full-completion-ledger/research/0503-completion-status.md | Machine-derived completion guard evidence, current environment snapshot, and owner command index. |
+| Completion audit | .trellis/tasks/archive/2026-05/05-05-r8-0503-2-full-completion-ledger/research/0503-completion-audit.md | Prompt-to-artifact checklist, command checklist, guard crosswalk, and missing requirement taxonomy. |
+| Owner action queue | .trellis/tasks/archive/2026-05/05-05-r8-0503-2-full-completion-ledger/research/0503-owner-action-queue.md | Canonical owner actions, evidence templates, verification commands, and intake workflow. |
+| Owner closure bundles | .trellis/tasks/archive/2026-05/05-05-r8-0503-2-full-completion-ledger/research/0503-owner-closure-bundles.md | Owner-scoped closure bundles linking blockers, guards, partial R8 rows, and evidence commands. |
 
 
 ## Partial R8 Rows

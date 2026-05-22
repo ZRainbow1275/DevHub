@@ -14,4 +14,4 @@
 {"file":".trellis/spec/backend/quality-guidelines.md","reason":"Backend validation and no-mock quality expectations"}
 {"file":".trellis/spec/backend/error-handling.md","reason":"Error handling contracts for IPC and service boundaries"}
 {"file":".trellis/spec/frontend/index.md","reason":"Frontend spec index and UI integration expectations"}
-{"file":".trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-2-completion-ledger.md","reason":"Mechanical completion ledger and prioritized remaining gaps"}
+{"file":".trellis/tasks/archive/2026-05/05-05-r8-0503-2-full-completion-ledger/research/0503-2-completion-ledger.md","reason":"Mechanical completion ledger and prioritized remaining gaps"}

@@ -1,10 +1,10 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { dirname, join, relative } from 'node:path'
+import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const taskDir = dirname(scriptDir)
-const repoRoot = join(taskDir, '..', '..', '..')
+const repoRoot = findRepoRoot(taskDir)
 const researchDir = join(taskDir, 'research')
 
 const completionLedgerPath = join(researchDir, '0503-2-completion-ledger.md')
@@ -31,6 +31,17 @@ function normalizePath(value) {
     .replace(/^`|`$/g, '')
     .replaceAll('\\\\', '/')
     .replaceAll('\\', '/')
+}
+
+function findRepoRoot(startDir) {
+  let current = resolve(startDir)
+  while (current !== dirname(current)) {
+    if (existsSync(join(current, 'prompts', '0503')) && existsSync(join(current, 'prompts', '0503-2'))) {
+      return current
+    }
+    current = dirname(current)
+  }
+  throw new Error(`Unable to locate repository root from ${startDir}`)
 }
 
 function readText(path) {

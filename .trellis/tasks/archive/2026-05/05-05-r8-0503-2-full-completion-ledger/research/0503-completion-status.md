@@ -1,6 +1,6 @@
 # 0503 Completion Status
 
-Generated at: 2026-05-22T17:43:48.007Z
+Generated at: 2026-05-22T18:49:17.394Z
 Schema version: devhub-0503-completion-status-v1
 Complete: true
 Acceptance status: complete
@@ -9,12 +9,12 @@ Acceptance status: complete
 
 | Artifact | Path |
 | --- | --- |
-| acceptancePack | .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-acceptance-pack.json |
-| checkboxManifest | .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-checkbox-manifest.json |
-| completionAudit | .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-completion-audit.json |
-| ownerActionQueue | .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-owner-action-queue.json |
-| ownerClosureBundles | .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-owner-closure-bundles.json |
-| strictReport | .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-strict-completion-report.md |
+| acceptancePack | .trellis/tasks/archive/2026-05/05-05-r8-0503-2-full-completion-ledger/research/0503-acceptance-pack.json |
+| checkboxManifest | .trellis/tasks/archive/2026-05/05-05-r8-0503-2-full-completion-ledger/research/0503-checkbox-manifest.json |
+| completionAudit | .trellis/tasks/archive/2026-05/05-05-r8-0503-2-full-completion-ledger/research/0503-completion-audit.json |
+| ownerActionQueue | .trellis/tasks/archive/2026-05/05-05-r8-0503-2-full-completion-ledger/research/0503-owner-action-queue.json |
+| ownerClosureBundles | .trellis/tasks/archive/2026-05/05-05-r8-0503-2-full-completion-ledger/research/0503-owner-closure-bundles.json |
+| strictReport | .trellis/tasks/archive/2026-05/05-05-r8-0503-2-full-completion-ledger/research/0503-strict-completion-report.md |
 
 
 ## Continuation Commands
@@ -30,7 +30,7 @@ Acceptance status: complete
 - Owner source file dossier: `pnpm check:0503-owner-evidence -- --source-file-dossier --action <actionId> --file <prompt-file>`
 - Owner blocker taxonomy: `pnpm check:0503-owner-evidence -- --blocker-taxonomy --owner <owner>`
 - Owner closure bundle query: `pnpm check:0503-owner-evidence -- --owner-closure-bundles --owner <owner>`
-- Owner closure bundles: `.trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-owner-closure-bundles.md`
+- Owner closure bundles: `.trellis/tasks/archive/2026-05/05-05-r8-0503-2-full-completion-ledger/research/0503-owner-closure-bundles.md`
 
 ## Completion Guard
 

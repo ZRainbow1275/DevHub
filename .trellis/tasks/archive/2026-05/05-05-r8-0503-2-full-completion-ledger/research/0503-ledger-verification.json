@@ -8,7 +8,7 @@
     ],
     "missingMarkers": [],
     "externalReport": {
-      "ageSeconds": 6234,
+      "ageSeconds": 9593,
       "failedGateIds": [],
       "fresh": true,
       "generatedAt": "2026-05-22T15:59:54.248Z",
@@ -865,7 +865,7 @@
       }
     ]
   },
-  "generatedAt": "2026-05-22T17:43:47.895Z",
+  "generatedAt": "2026-05-22T18:39:47.536Z",
   "surveyLedger": {
     "extraRows": [],
     "expectedMarkdownFiles": 34,
@@ -1228,7 +1228,7 @@
   },
   "strictCompletion": {
     "checked": true,
-    "externalReportAgeSeconds": 6234,
+    "externalReportAgeSeconds": 9593,
     "externalReportFresh": true,
     "failedExternalGateDetails": [],
     "failedExternalGateIds": [],
