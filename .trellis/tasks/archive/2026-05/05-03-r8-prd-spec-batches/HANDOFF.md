@@ -1,5 +1,9 @@
 # R8 PRD/Spec 重写交付 — Codex CLI 接入说明
 
+## 2026-05-21 implementation-continuation note
+
+- Owner evidence submission intake is now hardened as a strict schema boundary in the active completion ledger: unknown owner-submission wrapper fields are rejected by `verify-0503-owner-evidence.mjs`, generated owner template README files tell evidence owners that unknown fields are rejected, `verify-0503-evidence-pack.mjs` locks that README guidance, and `.trellis/spec/backend/quality-guidelines.md` records the rule. The canonical `pnpm --silent check:0503-strict:vd-watch` run still exits `1` truthfully with `missingOrIncompleteRequirements=19`, `partialRows=5`, `missingEvidenceRows=0`, `failedExternalGateIds=6`, `surveyAcceptanceRows=3`, and `externalReportFresh=true`; the remaining blockers require real second-display hardware, physical monitor hotplug, Administrator shell, Windows Service installation, Administrator `pktmon` zero-egress capture, and legal/product license decision evidence.
+
 **完成日期**: 2026-05-03
 **完成者**: Claude (Opus 4.7) team `r8-rewrite-v2`（main + prd-writer + spec-r8a + spec-r8b）
 **交付状态**: 100% 完成，可进入实施阶段
@@ -170,3 +174,37 @@ CI 化强制：见 `_shared/testing-strategy.md` §6
 **审阅**: ZRainbow（待审）
 **质量门禁**: 8 维度 PASS（emoji 0 / 13 节齐全 / V1+V2 锚点合规 / 5 反馈完整映射 / 三套图体系 / 自研白名单 / master §7 一致 / 跨 spec 契约一致）
 **实施 GO**: R8.A 立刻可启动；R8.B 等 R8.A 5 断言通过；R8.C 子模块可与 R8.B 并行
+
+---
+
+## 当前结论
+
+目标仍未完成；不要调用 `update_goal complete`。
+
+最新真实门禁命令：`pnpm --silent check:0503-strict:vd-watch`。
+
+最新结果仍为非零退出，但 evidence pack 一致性通过。
+
+推荐 VD watch 入口当前摘要：partialRows=5；missingEvidenceRows=0；failedExternalGateIds=6；surveyAcceptanceRows=3；externalReportFresh=true。
+
+兼容普通 strict 入口当前摘要：partialRows=5；missingEvidenceRows=0；failedExternalGateIds=7；surveyAcceptanceRows=3；externalReportFresh=true。
+
+## 当前剩余外部门禁
+
+- `ASSERT_BROWSERWINDOW_SECOND_DISPLAY`
+- `R8B_SPEC11_PHYSICAL_MONITOR_DISCONNECT_RECONNECT_READY`
+- `R8B_SPEC11_TRUE_VD_SWITCH_EVENT_READY`
+- `R8C_SPEC17_ADMIN_SHELL`
+- `R8C_SPEC17_WINDOWS_SERVICE_INSTALLED`
+- `H1_J16_ZERO_EGRESS_CAPTURE_READY`
+- `R8_LICENSE_LEGAL_DECISION_RECORDED`
+
+## 当前剩余 owner lanes
+
+- `operator`：8
+- `operator`：7
+- `legal-product`：2
+- `product`：1
+- `user-product`：1
+
+边界说明：普通 strict 未注入 foreground watch，因此会把 `R8B_SPEC11_TRUE_VD_SWITCH_EVENT_READY` 也列入待关闭门禁；推荐入口 `pnpm --silent check:0503-strict:vd-watch` 会在 Node runner 内注入该 opt-in，当前机器仍剩 6 个真实外部门禁。以上摘要只是当前机器证据索引，不是完成声明。
