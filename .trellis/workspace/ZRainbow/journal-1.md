@@ -1958,3 +1958,36 @@ Closed R8 0503-2 by committing DevHub implementation surface c325220, preserving
 ### Next Steps
 
 - None - task complete
+
+
+## Session 24: Archived 0503 check repair and full local verification
+
+**Date**: 2026-05-23
+**Task**: Archived 0503 check repair and full local verification
+**Branch**: `main`
+
+### Summary
+
+修复归档后的 0503 校验脚本仓库根定位、上下文路径和生成报告路径；重新生成证据包并跑通 pnpm --silent check:0503-local。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `048477a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
