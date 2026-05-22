@@ -1925,3 +1925,36 @@ Closed R8 0503-2 by committing DevHub implementation surface c325220, preserving
 ### Next Steps
 
 - None - task complete
+
+
+## Session 23: Git dirty cleanup and main branch migration
+
+**Date**: 2026-05-23
+**Task**: Git dirty cleanup and main branch migration
+**Branch**: `main`
+
+### Summary
+
+整理历史脏变更并提交可解释文件；devhub 与外层本地分支迁移到 main；远端 DevHub 默认分支确认为 main，外层 Trellis 包装仓库推送到安全分支 r8-0503-2-completion-ledger-parent，避免覆盖 app 主线。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9278ac9` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

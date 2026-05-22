@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 22
+- **Total Sessions**: 23
 - **Last Active**: 2026-05-23
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~1927 | Active |
+| `journal-1.md` | ~1960 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 23 | 2026-05-23 | Git dirty cleanup and main branch migration | `9278ac9` | `main` |
 | 22 | 2026-05-23 | R8 0503-2 completion ledger closure | `8fbd2f8` | `master` |
 | 21 | 2026-04-20 | R5 归档收尾：devhub 字体修复上链 + submodule 指针同步 | `de634f9`, `efb9d43` | `master` |
 | 20 | 2026-04-20 | DevHub v2 Round 5 测试归档 + 启动字体修复 | - | `master` |
