@@ -1,0 +1,17 @@
+{"file":"prompts/0503-2/00-r8-implementation-quickstart.md","reason":"R8 implementation order, hard gates, and standard workflow"}
+{"file":"prompts/0503-2/00-r8-master-prd.md","reason":"Global R8 constraints, batch definitions, and acceptance assertions"}
+{"file":".trellis/tasks/archive/2026-05/05-03-r8-prd-spec-batches/HANDOFF.md","reason":"Archived R8 PRD/spec batch handoff, delivery checklist, and implementation starting point"}
+{"file":"prompts/0503-2/_shared/feedback-traceability-matrix.md","reason":"Maps user feedback to R8 specs and gates"}
+{"file":"prompts/0503-2/_shared/spec-dependency-graph.md","reason":"Dependency ordering for R8.A, R8.B, and R8.C"}
+{"file":"prompts/0503-2/_shared/testing-strategy.md","reason":"Verification strategy and test expectations"}
+{"file":"prompts/0503-2/_shared/zod-schemas.md","reason":"Schema single-source registry"}
+{"file":"prompts/0503-2/_shared/ipc-channels.md","reason":"IPC registry and rate-class expectations"}
+{"file":"prompts/0503-2/_shared/feature-flags.md","reason":"Feature flag naming and fallback behavior"}
+{"file":"prompts/0503-2/R8.A/prd.md","reason":"R8.A gate batch requirements"}
+{"file":"prompts/0503-2/R8.B/prd.md","reason":"R8.B collection and UX batch requirements"}
+{"file":"prompts/0503-2/R8.C/prd.md","reason":"R8.C AI orchestration batch requirements"}
+{"file":".trellis/spec/backend/index.md","reason":"Backend spec index and local coding standards"}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Backend validation and no-mock quality expectations"}
+{"file":".trellis/spec/backend/error-handling.md","reason":"Error handling contracts for IPC and service boundaries"}
+{"file":".trellis/spec/frontend/index.md","reason":"Frontend spec index and UI integration expectations"}
+{"file":".trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-2-completion-ledger.md","reason":"Mechanical completion ledger and prioritized remaining gaps"}

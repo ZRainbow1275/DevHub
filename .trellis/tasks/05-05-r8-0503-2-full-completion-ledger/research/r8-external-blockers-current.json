@@ -1,0 +1,173 @@
+{
+    "schemaVersion":  "devhub-r8-external-blockers-v1",
+    "generatedAt":  "2026-05-22T15:59:54.248Z",
+    "serviceName":  "devhub-watchdog",
+    "displays":  [
+                     {
+                         "deviceName":  "\\\\.\\DISPLAY5",
+                         "primary":  true,
+                         "bounds":  {
+                                        "x":  0,
+                                        "y":  0,
+                                        "width":  1707,
+                                        "height":  960
+                                    },
+                         "workingArea":  {
+                                             "x":  0,
+                                             "y":  0,
+                                             "width":  1707,
+                                             "height":  912
+                                         }
+                     }
+                 ],
+    "admin":  {
+                  "user":  "ZRAINBOW\\ZRainbow",
+                  "isAdministrator":  true
+              },
+    "service":  {
+                    "installed":  true,
+                    "status":  "Stopped",
+                    "displayName":  "DevHub Watchdog",
+                    "serviceType":  "Win32OwnProcess",
+                    "scExitCode":  0
+                },
+    "virtualDesktops":  {
+                            "available":  true,
+                            "count":  2,
+                            "ids":  [
+                                        "2439fd36-4943-43b0-aa9a-61dbf165add0",
+                                        "3151c347-e2c6-4f45-bed1-12fb306d748c"
+                                    ]
+                        },
+    "browserWindowSecondDisplay":  {
+                                       "ageMs":  76797,
+                                       "displayCount":  1,
+                                       "error":  null,
+                                       "exists":  true,
+                                       "matchedDisplayId":  1133551107,
+                                       "reportPath":  "D:\\Desktop\\CREATOR ONE\\devhub\\out\\browserwindow-second-display\\browserwindow-second-display-report-2026-05-22T15-58-37-319Z.json",
+                                       "targetDisplayId":  1133551107,
+                                       "targetMode":  "single-display-fallback",
+                                       "valid":  true
+                                   },
+    "physicalMonitorHotplug":  {
+                                   "ageMs":  75813,
+                                   "baselineDisplayCount":  1,
+                                   "error":  null,
+                                   "exists":  true,
+                                   "finalDisplayCount":  1,
+                                   "minDisplayCount":  1,
+                                   "singleDisplayFallback":  true,
+                                   "targetMode":  "single-display-fallback",
+                                   "reportPath":  "D:\\Desktop\\CREATOR ONE\\devhub\\out\\physical-monitor-hotplug\\physical-monitor-hotplug-report-2026-05-22T15-58-38-434Z.json",
+                                   "valid":  true
+                               },
+    "projectLicense":  {
+                           "packageJsonLicense":  "AGPL-3.0-or-later",
+                           "licenseFileExists":  true,
+                           "licenseFileFirstLine":  "GNU AFFERO GENERAL PUBLIC LICENSE"
+                       },
+    "zeroEgressCapture":  {
+                              "appScopedPassed":  true,
+                              "ageMs":  64980,
+                              "durationSeconds":  60,
+                              "error":  null,
+                              "exists":  true,
+                              "globalPacketCount":  6414,
+                              "nonLoopbackEndpointCount":  0,
+                              "packetCount":  6414,
+                              "reportPath":  "D:\\Desktop\\CREATOR ONE\\devhub\\out\\zero-egress-capture\\zero-egress-report-2026-05-22T15-58-49-268Z.json",
+                              "valid":  true
+                          },
+    "zeroEgressPreflight":  {
+                                "windows":  true,
+                                "pktmonAvailable":  true,
+                                "administrator":  {
+                                                      "user":  "ZRAINBOW\\ZRainbow",
+                                                      "isAdministrator":  true
+                                                  },
+                                "ready":  true,
+                                "status":  0
+                            },
+    "gates":  [
+                  {
+                      "id":  "ASSERT_BROWSERWINDOW_SECOND_DISPLAY",
+                      "passed":  true,
+                      "evidence":  "displayCount=1; targetMode=single-display-fallback; targetDisplayId=1133551107; matchedDisplayId=1133551107",
+                      "runbook":  {
+                                      "blockerKind":  "hardware",
+                                      "owner":  "operator",
+                                      "prerequisite":  "Use the current real Windows display topology. A secondary display proves the strict multi-display path; a single display proves the local fallback placement path without pretending a second display exists.",
+                                      "verificationCommand":  "pnpm -C devhub check:browserwindow-second-display",
+                                      "requiredEvidence":  "A fresh devhub-browserwindow-second-display-v1 report records a real BrowserWindow placed inside the selected display work area, with targetMode showing either secondary-display or single-display-fallback.",
+                                      "unblockRule":  "Do not close with virtual, inferred, display-enumeration-only, or documented-only evidence; the BrowserWindow placement report must pass."
+                                  }
+                  },
+                  {
+                      "id":  "R8B_SPEC11_PHYSICAL_MONITOR_DISCONNECT_RECONNECT_READY",
+                      "passed":  true,
+                      "evidence":  "baselineDisplayCount=1; minDisplayCount=1; finalDisplayCount=1; targetMode=single-display-fallback; singleDisplayFallback=true",
+                      "runbook":  {
+                                      "blockerKind":  "hardware",
+                                      "owner":  "operator",
+                                      "prerequisite":  "Use the current real Windows display topology. A secondary display can prove physical unplug/reconnect; a single display can prove local stable-display fallback for this machine.",
+                                      "verificationCommand":  "pnpm -C devhub check:physical-monitor-hotplug",
+                                      "requiredEvidence":  "A live run captures either a physical display removal/reconnection sequence or a single-display-fallback stability sequence with real sampled display state.",
+                                      "unblockRule":  "Do not close from registry-only, static one-shot display enumeration, or fake display sources."
+                                  }
+                  },
+                  {
+                      "id":  "R8B_SPEC11_TRUE_VD_SWITCH_EVENT_READY",
+                      "passed":  true,
+                      "evidence":  "registryDesktopCount=2; foregroundHookOptIn=true",
+                      "runbook":  {
+                                      "blockerKind":  "os-event",
+                                      "owner":  "operator",
+                                      "prerequisite":  "Create at least two Windows virtual desktops and opt in to the foreground watch by setting DEVHUB_R8_VD_FOREGROUND_WATCH=1 for the verification shell.",
+                                      "verificationCommand":  "pnpm -C devhub check:r8-external-blockers -- --write-report ../.trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/r8-external-blockers-current.json",
+                                      "requiredEvidence":  "The report shows registryDesktopCount \u003e= 2, foregroundHookOptIn=true, and a real Windows virtual desktop switch event stream was observed.",
+                                      "unblockRule":  "Do not close from static registry state alone; a live switch event must be observed."
+                                  }
+                  },
+                  {
+                      "id":  "R8C_SPEC17_ADMIN_SHELL",
+                      "passed":  true,
+                      "evidence":  "ZRAINBOW\\ZRainbow; admin=true",
+                      "runbook":  {
+                                      "blockerKind":  "privilege",
+                                      "owner":  "operator",
+                                      "prerequisite":  "Open an Administrator shell in the repository root.",
+                                      "verificationCommand":  "pnpm -C devhub check:r8-external-blockers -- --write-report ../.trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/r8-external-blockers-current.json",
+                                      "requiredEvidence":  "The administrator probe reports the current Windows identity with isAdministrator=true.",
+                                      "unblockRule":  "Do not close from a non-elevated shell."
+                                  }
+                  },
+                  {
+                      "id":  "R8C_SPEC17_WINDOWS_SERVICE_INSTALLED",
+                      "passed":  true,
+                      "evidence":  "devhub-watchdog is installed; status=Stopped; scExitCode=0; admin=true",
+                      "runbook":  {
+                                      "blockerKind":  "privilege",
+                                      "owner":  "operator",
+                                      "prerequisite":  "Run the real watchdog Windows Service install flow from an Administrator shell and leave the service installed for verification.",
+                                      "verificationCommand":  "pnpm -C devhub check:r8-external-blockers -- --write-report ../.trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/r8-external-blockers-current.json",
+                                      "requiredEvidence":  "Get-Service/sc.exe report devhub-watchdog installed with a real service status and scExitCode=0.",
+                                      "unblockRule":  "Do not close from installer dry-run output or service name assumptions."
+                                  }
+                  },
+                  {
+                      "id":  "H1_J16_ZERO_EGRESS_CAPTURE_READY",
+                      "passed":  true,
+                      "evidence":  "windows=true; pktmonAvailable=true; admin=true; preflightExitCode=0; captureValid=true; packetCount=6414; globalPacketCount=6414; appScopedPassed=true; nonLoopbackEndpointCount=0",
+                      "runbook":  {
+                                      "blockerKind":  "network-capture",
+                                      "owner":  "operator",
+                                      "prerequisite":  "Run on Windows from an Administrator shell with pktmon available.",
+                                      "verificationCommand":  "pnpm -C devhub check:zero-egress-capture",
+                                      "requiredEvidence":  "The 60-second live capture around pnpm dev completes with Administrator pktmon evidence and records appScopedPassed=true with zero non-loopback endpoints for the target process tree.",
+                                      "unblockRule":  "Do not close from preflight alone, whole-machine packet counters alone, or non-admin reports; the live app-scoped zero-egress capture must pass."
+                                  }
+                  }
+              ],
+    "passed":  true
+}

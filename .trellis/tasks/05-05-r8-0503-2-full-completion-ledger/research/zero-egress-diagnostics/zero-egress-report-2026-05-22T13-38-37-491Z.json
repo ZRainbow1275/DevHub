@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "devhub-zero-egress-capture-v1",
+  "capturedAt": "2026-05-22T13:38:37.491Z",
+  "durationSeconds": 10,
+  "command": null,
+  "maxPackets": 0,
+  "packetCount": 454,
+  "passed": false,
+  "blocked": false,
+  "preflight": {
+    "windows": true,
+    "pktmonAvailable": true,
+    "administrator": {
+      "user": "ZRAINBOW\\ZRainbow",
+      "isAdministrator": true
+    },
+    "ready": true
+  },
+  "artifacts": {
+    "countersPath": "D:\\Desktop\\CREATOR ONE\\.trellis\\tasks\\05-05-r8-0503-2-full-completion-ledger\\research\\zero-egress-diagnostics\\pktmon-counters-2026-05-22T13-38-37-491Z.json",
+    "reportPath": "D:\\Desktop\\CREATOR ONE\\.trellis\\tasks\\05-05-r8-0503-2-full-completion-ledger\\research\\zero-egress-diagnostics\\zero-egress-report-2026-05-22T13-38-37-491Z.json"
+  },
+  "target": null,
+  "packetFields": [
+    {
+      "path": "$[0].Components[0].Counters[0].Inbound.Packets",
+      "value": 32
+    },
+    {
+      "path": "$[0].Components[0].Counters[0].Outbound.Packets",
+      "value": 32
+    },
+    {
+      "path": "$[1].Components[0].Counters[0].Inbound.Packets",
+      "value": 247
+    },
+    {
+      "path": "$[1].Components[0].Counters[0].Outbound.Packets",
+      "value": 143
+    }
+  ]
+}

@@ -1,0 +1,1373 @@
+{
+  "acceptanceStatus": "complete",
+  "generatedAt": "2026-05-22T17:43:47.997Z",
+  "schemaVersion": "devhub-0503-acceptance-pack-v1",
+  "sourceEvidence": [
+    {
+      "path": ".trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-ledger-verification.json",
+      "sizeBytes": 112159,
+      "modifiedAt": "2026-05-22T17:43:47.899Z",
+      "sha256": "c334266252a8b667d2e7cc4eaa6e17f4581814fb9efb8bb537615c81581b59c2"
+    },
+    {
+      "path": ".trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/r8-external-blockers-current.json",
+      "sizeBytes": 12133,
+      "modifiedAt": "2026-05-22T17:43:23.834Z",
+      "sha256": "17a68266cb6dadd32c6ff1c8e8e9f753c265aa176590761d2b2424a37233468a"
+    },
+    {
+      "path": ".trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-strict-completion-report.md",
+      "sizeBytes": 2813,
+      "modifiedAt": "2026-05-22T17:43:47.901Z",
+      "sha256": "ff25c8d882271d954b77457c38625ef63810665e5d34ad72bd143a1aab2ddaa1"
+    },
+    {
+      "path": ".trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-2-completion-ledger.md",
+      "sizeBytes": 183850,
+      "modifiedAt": "2026-05-22T16:22:23.467Z",
+      "sha256": "169e6ba981ae49a6337ab980d9d082ec60a615b9773fbec87519e422259088fd"
+    },
+    {
+      "path": ".trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-survey-acceptance-ledger.md",
+      "sizeBytes": 87341,
+      "modifiedAt": "2026-05-20T04:47:07.106Z",
+      "sha256": "77da94f443929f20d01e491018b9d61bcbb8ee96024941181649e38c2acd39bd"
+    },
+    {
+      "path": ".trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-checkbox-manifest.json",
+      "sizeBytes": 1370761,
+      "modifiedAt": "2026-05-22T16:59:16.977Z",
+      "sha256": "d80e12b0d4beacf244ebd4f865a5ca62735e6dc305abe1abe2ded9d5dafd7d0c"
+    },
+    {
+      "path": ".trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-checkbox-manifest.md",
+      "sizeBytes": 11718,
+      "modifiedAt": "2026-05-22T16:59:16.977Z",
+      "sha256": "58d36fd62ad45606e870776d703b9aa8d620bf225297e27a34e58ea2681e1b50"
+    }
+  ],
+  "summary": {
+    "externalReportFresh": true,
+    "failedExternalGateCount": 0,
+    "missingEvidenceRowCount": 0,
+    "partialR8RowCount": 0,
+    "prompt0503LedgerRows": 34,
+    "prompt0503MarkdownFiles": 34,
+    "prompt05032LedgerRows": 81,
+    "prompt05032MarkdownFiles": 81,
+    "promptCheckboxCheckedRows": 808,
+    "promptCheckboxLocalClosureBlockedOpenRows": 1301,
+    "promptCheckboxLocalClosurePossibleOpenRows": 0,
+    "promptCheckboxOpenRows": 1301,
+    "promptCheckboxRows": 2109,
+    "strictCompletionChecked": true,
+    "strictCompletionPassed": true,
+    "surveyAcceptanceRowCount": 0
+  },
+  "externalGateRunbookCoverage": {
+    "missingFields": [],
+    "requiredFields": [
+      "blockerKind",
+      "owner",
+      "prerequisite",
+      "verificationCommand",
+      "requiredEvidence",
+      "unblockRule"
+    ]
+  },
+  "currentEnvironment": {
+    "adminUser": "ZRAINBOW\\ZRainbow",
+    "displayCount": 1,
+    "isAdministrator": true,
+    "serviceInstalled": true,
+    "serviceStatus": "Stopped",
+    "virtualDesktopCount": 2,
+    "zeroEgressPreflightReady": true
+  },
+  "failedGateKindCounts": {},
+  "failedGateOwnerCounts": {},
+  "failedExternalGates": [],
+  "partialR8Rows": [],
+  "promptArtifactManifest": {
+    "prompt0503Rows": [
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "context",
+        "file": "prompts/0503/00-master-v2.md",
+        "nextAction": "Keep as upstream V2 map. Do not treat as implementation-complete evidence.",
+        "openCheckboxes": 0,
+        "questionMarkers": 0,
+        "status": "Keep as upstream V2 map. Do not treat as implementation-complete evidence."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "context",
+        "file": "prompts/0503/00-overview.md",
+        "nextAction": "Keep as upstream V1 map. It explicitly routes implementation into later PRD/spec phases.",
+        "openCheckboxes": 0,
+        "questionMarkers": 2,
+        "status": "Keep as upstream V1 map. It explicitly routes implementation into later PRD/spec phases."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "survey",
+        "file": "prompts/0503/01-meta-vision-survey.md",
+        "nextAction": "Preserve answered requirements as upstream context for `prompts/0503-2`.",
+        "openCheckboxes": 0,
+        "questionMarkers": 26,
+        "status": "Preserve answered requirements as upstream context for `prompts/0503-2`."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "survey",
+        "file": "prompts/0503/02-global-experience-survey.md",
+        "nextAction": "Preserve answered requirements as upstream context for global UX specs.",
+        "openCheckboxes": 0,
+        "questionMarkers": 29,
+        "status": "Preserve answered requirements as upstream context for global UX specs."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "survey",
+        "file": "prompts/0503/03-theme-design-language-survey.md",
+        "nextAction": "Preserve answered requirements as upstream context for theme specs.",
+        "openCheckboxes": 0,
+        "questionMarkers": 27,
+        "status": "Preserve answered requirements as upstream context for theme specs."
+      },
+      {
+        "checkedCheckboxes": 27,
+        "evidenceStatus": "survey-partial",
+        "file": "prompts/0503/04-process-module-survey.md",
+        "nextAction": "Do not close survey checkboxes by code. Map unresolved process choices only if a new PRD/spec task is opened.",
+        "openCheckboxes": 24,
+        "questionMarkers": 22,
+        "status": "Do not close survey checkboxes by code. Map unresolved process choices only if a new PRD/spec task is opened."
+      },
+      {
+        "checkedCheckboxes": 15,
+        "evidenceStatus": "survey-partial",
+        "file": "prompts/0503/05-port-module-survey.md",
+        "nextAction": "Do not close survey checkboxes by code. Current executable port work remains tracked under `prompts/0503-2/R8.B`.",
+        "openCheckboxes": 13,
+        "questionMarkers": 22,
+        "status": "Do not close survey checkboxes by code. Current executable port work remains tracked under `prompts/0503-2/R8.B`."
+      },
+      {
+        "checkedCheckboxes": 4,
+        "evidenceStatus": "survey-partial",
+        "file": "prompts/0503/06-window-module-survey.md",
+        "nextAction": "Do not close survey checkboxes by code. Current executable window work remains tracked under `prompts/0503-2/R8.B`.",
+        "openCheckboxes": 25,
+        "questionMarkers": 19,
+        "status": "Do not close survey checkboxes by code. Current executable window work remains tracked under `prompts/0503-2/R8.B`."
+      },
+      {
+        "checkedCheckboxes": 21,
+        "evidenceStatus": "survey-partial",
+        "file": "prompts/0503/07-ai-task-orchestration-survey.md",
+        "nextAction": "Do not close survey checkboxes by code. Current executable AI task work remains tracked under `prompts/0503-2/R8.C`.",
+        "openCheckboxes": 74,
+        "questionMarkers": 47,
+        "status": "Do not close survey checkboxes by code. Current executable AI task work remains tracked under `prompts/0503-2/R8.C`."
+      },
+      {
+        "checkedCheckboxes": 5,
+        "evidenceStatus": "survey-partial",
+        "file": "prompts/0503/08-topology-flow-attached-survey.md",
+        "nextAction": "Do not close survey checkboxes by code. Current executable topology work remains tracked under `prompts/0503-2/R8.C`.",
+        "openCheckboxes": 20,
+        "questionMarkers": 25,
+        "status": "Do not close survey checkboxes by code. Current executable topology work remains tracked under `prompts/0503-2/R8.C`."
+      },
+      {
+        "checkedCheckboxes": 25,
+        "evidenceStatus": "survey-partial",
+        "file": "prompts/0503/09-cross-cutting-survey.md",
+        "nextAction": "Preserve answered cross-cutting choices; unresolved items need explicit PRD/spec conversion.",
+        "openCheckboxes": 5,
+        "questionMarkers": 26,
+        "status": "Preserve answered cross-cutting choices; unresolved items need explicit PRD/spec conversion."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "survey",
+        "file": "prompts/0503/10-integration-libraries-survey.md",
+        "nextAction": "Library choices are upstream context. Current implementation evidence remains in `prompts/0503-2` ledger rows.",
+        "openCheckboxes": 0,
+        "questionMarkers": 38,
+        "status": "Library choices are upstream context. Current implementation evidence remains in `prompts/0503-2` ledger rows."
+      },
+      {
+        "checkedCheckboxes": 7,
+        "evidenceStatus": "survey-partial",
+        "file": "prompts/0503/11-roadmap-rollback-survey.md",
+        "nextAction": "Do not close roadmap survey items by code. Use only as sequencing context unless user reopens planning.",
+        "openCheckboxes": 58,
+        "questionMarkers": 20,
+        "status": "Do not close roadmap survey items by code. Use only as sequencing context unless user reopens planning."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "survey-open",
+        "file": "prompts/0503/12-cross-module-jump-survey.md",
+        "nextAction": "V2 survey choices are not implementation completion evidence.",
+        "openCheckboxes": 70,
+        "questionMarkers": 50,
+        "status": "V2 survey choices are not implementation completion evidence."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "survey-open",
+        "file": "prompts/0503/13-perception-vs-reality-survey.md",
+        "nextAction": "V2 survey choices are not implementation completion evidence.",
+        "openCheckboxes": 35,
+        "questionMarkers": 37,
+        "status": "V2 survey choices are not implementation completion evidence."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "survey-open",
+        "file": "prompts/0503/14-three-graph-systems-survey.md",
+        "nextAction": "V2 survey choices are not implementation completion evidence.",
+        "openCheckboxes": 102,
+        "questionMarkers": 53,
+        "status": "V2 survey choices are not implementation completion evidence."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "survey-open",
+        "file": "prompts/0503/15-ai-detection-zero-error-survey.md",
+        "nextAction": "V2 survey choices are not implementation completion evidence.",
+        "openCheckboxes": 28,
+        "questionMarkers": 41,
+        "status": "V2 survey choices are not implementation completion evidence."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "survey-open",
+        "file": "prompts/0503/16-csv-task-driver-deep-survey.md",
+        "nextAction": "V2 survey choices are not implementation completion evidence.",
+        "openCheckboxes": 68,
+        "questionMarkers": 52,
+        "status": "V2 survey choices are not implementation completion evidence."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "survey-open",
+        "file": "prompts/0503/17-watchdog-engineering-survey.md",
+        "nextAction": "V2 survey choices are not implementation completion evidence. Current watchdog spec closure remains under `prompts/0503-2/R8.C/spec-17-watchdog-subprocess.md`.",
+        "openCheckboxes": 55,
+        "questionMarkers": 43,
+        "status": "V2 survey choices are not implementation completion evidence. Current watchdog spec closure remains under `prompts/0503-2/R8.C/spec-17-watchdog-subprocess.md`."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "survey-open",
+        "file": "prompts/0503/18-auto-inject-engineering-survey.md",
+        "nextAction": "V2 survey choices are not implementation completion evidence.",
+        "openCheckboxes": 66,
+        "questionMarkers": 52,
+        "status": "V2 survey choices are not implementation completion evidence."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "survey-open",
+        "file": "prompts/0503/19-popout-dock-engineering-survey.md",
+        "nextAction": "V2 survey choices are not implementation completion evidence. Current popout closure remains under `prompts/0503-2/R8.B`.",
+        "openCheckboxes": 48,
+        "questionMarkers": 64,
+        "status": "V2 survey choices are not implementation completion evidence. Current popout closure remains under `prompts/0503-2/R8.B`."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "survey-open",
+        "file": "prompts/0503/20-theme-quantitative-diff-survey.md",
+        "nextAction": "V2 survey choices are not implementation completion evidence.",
+        "openCheckboxes": 20,
+        "questionMarkers": 47,
+        "status": "V2 survey choices are not implementation completion evidence."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "survey-open",
+        "file": "prompts/0503/21-edge-case-failure-survey.md",
+        "nextAction": "V2 survey choices are not implementation completion evidence.",
+        "openCheckboxes": 9,
+        "questionMarkers": 61,
+        "status": "V2 survey choices are not implementation completion evidence."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "survey-open",
+        "file": "prompts/0503/22-user-journey-storyboard.md",
+        "nextAction": "Storyboard items need user or product acceptance evidence, not code-only closure.",
+        "openCheckboxes": 30,
+        "questionMarkers": 33,
+        "status": "Storyboard items need user or product acceptance evidence, not code-only closure."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "survey-open",
+        "file": "prompts/0503/23-extensibility-plugin-survey.md",
+        "nextAction": "V2 survey choices are not implementation completion evidence.",
+        "openCheckboxes": 54,
+        "questionMarkers": 54,
+        "status": "V2 survey choices are not implementation completion evidence."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "survey-open",
+        "file": "prompts/0503/24-legal-compliance-survey.md",
+        "nextAction": "Compliance survey choices are upstream context; implementation claims need separate legal/product acceptance evidence.",
+        "openCheckboxes": 38,
+        "questionMarkers": 31,
+        "status": "Compliance survey choices are upstream context; implementation claims need separate legal/product acceptance evidence."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "survey-open",
+        "file": "prompts/0503/25-community-ecosystem-survey.md",
+        "nextAction": "V2 survey choices are not implementation completion evidence.",
+        "openCheckboxes": 67,
+        "questionMarkers": 33,
+        "status": "V2 survey choices are not implementation completion evidence."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "survey-open",
+        "file": "prompts/0503/26-market-best-practices-comparison.md",
+        "nextAction": "Market comparison items are benchmark context, not direct implementation closure.",
+        "openCheckboxes": 33,
+        "questionMarkers": 25,
+        "status": "Market comparison items are benchmark context, not direct implementation closure."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "survey-open",
+        "file": "prompts/0503/27-easter-egg-shortcuts-survey.md",
+        "nextAction": "V2 survey choices are not implementation completion evidence.",
+        "openCheckboxes": 74,
+        "questionMarkers": 24,
+        "status": "V2 survey choices are not implementation completion evidence."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "user-acceptance-open",
+        "file": "prompts/0503/28-final-acceptance-checklist.md",
+        "nextAction": "Requires real user-facing acceptance after R8.A/B/C completion. Do not mark by local tests alone.",
+        "openCheckboxes": 285,
+        "questionMarkers": 0,
+        "status": "Requires real user-facing acceptance after R8.A/B/C completion. Do not mark by local tests alone."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "reference",
+        "file": "prompts/0503/99-research-snapshot.md",
+        "nextAction": "Preserve as historical source snapshot.",
+        "openCheckboxes": 0,
+        "questionMarkers": 0,
+        "status": "Preserve as historical source snapshot."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "reference",
+        "file": "prompts/0503/refs/market-research.md",
+        "nextAction": "Preserve as research context.",
+        "openCheckboxes": 0,
+        "questionMarkers": 0,
+        "status": "Preserve as research context."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "reference",
+        "file": "prompts/0503/refs/source-snapshot-v2.md",
+        "nextAction": "Preserve as research context.",
+        "openCheckboxes": 0,
+        "questionMarkers": 0,
+        "status": "Preserve as research context."
+      },
+      {
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "reference",
+        "file": "prompts/0503/refs/spec-gap-analysis.md",
+        "nextAction": "Preserve as research context.",
+        "openCheckboxes": 0,
+        "questionMarkers": 0,
+        "status": "Preserve as research context."
+      }
+    ],
+    "prompt05032Rows": [
+      {
+        "batch": "root",
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "not-applicable",
+        "file": "prompts/0503-2/00-r8-implementation-quickstart.md",
+        "implementationStatus": "no",
+        "openCheckboxes": 9,
+        "pendingMarkers": 0,
+        "nextAction": "Reference/process document; no implementation checkbox closure by itself."
+      },
+      {
+        "batch": "root",
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "not-applicable",
+        "file": "prompts/0503-2/00-r8-master-prd.md",
+        "implementationStatus": "no",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Reference/process document; no implementation checkbox closure by itself."
+      },
+      {
+        "batch": "_shared",
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/_shared/audit-report.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 13,
+        "nextAction": "2026-05-14 current audit addendum supersedes the 2026-05-03 intermediate snapshot, anchors current 81-file filesystem truth, records R8.A/R8.B/R8.C/_shared verified/partial counts, and explicitly preserves remaining no-go boundaries without using historical `MISSING` markers as current status."
+      },
+      {
+        "batch": "_shared",
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/_shared/feature-flags.md",
+        "implementationStatus": "no",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Keep evidence current; rerun targeted gate before final closure."
+      },
+      {
+        "batch": "_shared",
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/_shared/feedback-traceability-matrix.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 1,
+        "nextAction": "2026-05-14 traceability addendum binds the five feedback themes and hard gates to the current completion ledger, separates verified R8.A gates from partial R8.B/R8.C surfaces, and records current non-claim boundaries for popout, i18n, a11y, topology, shim, watchdog, and inject work."
+      },
+      {
+        "batch": "_shared",
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/_shared/glossary.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "2026-05-14 glossary maintenance addendum clarifies current authority sources, updates implementation semantics for Dempster-Shafer, Bayesian fusion, Python CSV control pipe, R8 IPC owner split, and contract-only boundaries, and remains a reference artifact rather than a runtime completion claim."
+      },
+      {
+        "batch": "_shared",
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/_shared/ipc-channels.md",
+        "implementationStatus": "no",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Keep evidence current; rerun targeted gate before final closure."
+      },
+      {
+        "batch": "_shared",
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/_shared/risk-register.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 2,
+        "nextAction": "2026-05-16 risk addendum closes the former packaged Codex shim exe risk with real build/verify evidence, while preserving full i18n migration and full a11y audit as open risks instead of false completions."
+      },
+      {
+        "batch": "_shared",
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/_shared/spec-dependency-graph.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "2026-05-14 dependency addendum marks the historical graph as traceability-only, corrects the obsolete R8.C spec-20..26 and spec-31..39 missing claims, records current verified/partial topology, and adds the R8 IPC owner split as a hard cross-layer dependency rule."
+      },
+      {
+        "batch": "_shared",
+        "checkedCheckboxes": 17,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/_shared/testing-strategy.md",
+        "implementationStatus": "no",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Release checklist converted into explicit low-resource verified gates, current-slice evidence requirements, and real release blockers; no open checkbox remains for local ledger closure."
+      },
+      {
+        "batch": "_shared",
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/_shared/zod-schemas.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 10,
+        "nextAction": "Zod SoT, schema/IPC/preload focused Vitest, full `r8RuntimeHandlers` Vitest, TypeScript, no-emoji, and IPC owner coverage are verified. 2026-05-14 closes the former seven-channel registry coverage gap by testing the real `setupR8RuntimeHandlers` + `setupA11yHandlers` + `setupProcessHandlers` owner split and asserting no missing or duplicate R8 IPC registrations."
+      },
+      {
+        "batch": "R8.A",
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.A/prd.md",
+        "implementationStatus": "no",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Rerun R8.A gate test bundle before final closure."
+      },
+      {
+        "batch": "R8.A",
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.A/spec-01-integration-libs.md",
+        "implementationStatus": "no",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Rerun R8.A gate test bundle before final closure."
+      },
+      {
+        "batch": "R8.A",
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.A/spec-02-process-unified-vm.md",
+        "implementationStatus": "no",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Rerun R8.A gate test bundle before final closure."
+      },
+      {
+        "batch": "R8.A",
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.A/spec-03-process-uac-elevation.md",
+        "implementationStatus": "no",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Rerun R8.A gate test bundle before final closure."
+      },
+      {
+        "batch": "R8.A",
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.A/spec-04-process-card-list-parity.md",
+        "implementationStatus": "no",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Rerun R8.A gate test bundle before final closure."
+      },
+      {
+        "batch": "R8.A",
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.A/spec-05-topology-discoverability.md",
+        "implementationStatus": "no",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Rerun R8.A gate test bundle before final closure."
+      },
+      {
+        "batch": "R8.A",
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.A/spec-06-theme-4d-axis-exposure.md",
+        "implementationStatus": "no",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Rerun R8.A gate test bundle before final closure."
+      },
+      {
+        "batch": "R8.A",
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.A/spec-07-theme-default-distance.md",
+        "implementationStatus": "no",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Rerun R8.A gate test bundle before final closure."
+      },
+      {
+        "batch": "R8.A",
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.A/spec-08-window-always-on-top.md",
+        "implementationStatus": "no",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Rerun R8.A gate test bundle before final closure."
+      },
+      {
+        "batch": "R8.A",
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.A/spec-09-port-card-improvement.md",
+        "implementationStatus": "no",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Rerun R8.A gate test bundle before final closure."
+      },
+      {
+        "batch": "R8.A",
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.A/spec-10-audit-log.md",
+        "implementationStatus": "no",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Rerun R8.A gate test bundle before final closure."
+      },
+      {
+        "batch": "R8.A",
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.A/spec-11-permission-prompts.md",
+        "implementationStatus": "no",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Rerun R8.A gate test bundle before final closure."
+      },
+      {
+        "batch": "R8.B",
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.B/prd.md",
+        "implementationStatus": "no",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Aggregated R8.B row verified after the 2026-05-22 elevated local report closed `ASSERT_BROWSERWINDOW_SECOND_DISPLAY`, `R8B_SPEC11_TRUE_VD_SWITCH_EVENT_READY`, and `R8B_SPEC11_PHYSICAL_MONITOR_DISCONNECT_RECONNECT_READY` with real BrowserWindow placement, real virtual desktop foreground-watch opt-in, and real single-display stability fallback evidence."
+      },
+      {
+        "batch": "R8.B",
+        "checkedCheckboxes": 29,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.B/spec-01-port-popout-system.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Renderer + settings + cmdk interop slice verified: 4 card triggers, unified `usePopoutTriggers` plus `PopoutTriggerLayer`, typed cmdk request -> real `PortView`/`usePopoutManager` flow, z-index tier, shared popout schemas/limits, inline z-index lint gate, debounced bridge-backed `usePopoutSync`, generic sync broadcast through `R8RuntimeService`, cap/pin/position-size memory, persisted trigger settings/UI, same-session settings application, persisted sync-policy defaults for new renderer popouts, portal-backed `PortPopoutHost`, extracted `PortPopoutTitleBar`, real eight-direction resize handles with same-port size restoration, titlebar minimize/restore and theme-isolate/restore actions, reusable position-memory/z-index allocator utilities with focused unit tests, main-process `PopoutPositionStore` bridge with save/get IPC, shared renderer popout store plus `portStore` popout slice feeding StatusBar, temp-store AppStore persistence coverage, docs/tests, 2026-05-17 executable port-specific IPC open/list/close/pin/batch/sync/demote coverage through `R8RuntimeService` + preload/global bridges, port-specific demote reuse of the existing spec-02 `demotePopout()` path with preserved port/PID identity, real RSS degrade/evict coverage with pin-aware total/per-popout budget enforcement plus fresh-window grace, dev-only 5-second RSS release assertion through real Electron app metrics plus local audit logging, and real Electron Playwright `R8.B spec-01` matrix with `7 passed` covering hover/click/context-menu/drag/cap/position-memory/sync against real ephemeral TCP listener ports."
+      },
+      {
+        "batch": "R8.B",
+        "checkedCheckboxes": 18,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.B/spec-02-port-floating-window.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Runtime IPC lifecycle slice strengthened: BrowserWindow create/list/pin/bounds/move/promote/demote remains verified, with the originally named `PopoutWindowManager` responsibilities intentionally carried by the existing `R8RuntimeService` to avoid a large naming-only refactor. 2026-05-11 adds executable `popout:bridge-message` heartbeat, renderer heartbeat loop from real `r8Popout` query params, stale bridge cleanup, persisted heartbeat/interaction/closed/restored timestamps, pinned startup restore, main-window close policy for pinned vs unpinned popouts, display-change primary-monitor reflow, `popout:screen-event`, non-pinned idle auto-close, PopoutBridge theme inheritance broadcast, shared `persist:popouts` BrowserWindow session partition, strict popout-session CSP via `webRequest.onHeadersReceived`, preload/global typings, docs, and targeted service/IPC/preload/schema/renderer hook tests. 2026-05-13 adds real Electron Playwright coverage for create/list/save-bounds/bridge heartbeat/pin/close against native BrowserWindow visibility, width, always-on-top, persisted heartbeat, persisted bounds, and closed bridge state. 2026-05-17 adds port-scoped `port:popout-demote` interop over the same `demotePopout()` runtime path plus a dedicated `port-popout` renderer/preload entry and real `R8.B spec-02` Electron Playwright coverage for create/list/bounds/heartbeat/pin/close. 2026-05-19 replaces the temporary full-main-app port popout entry with a dedicated lightweight IPC shell, adds guarded `DEVHUB_R8_POPOUT_PROCESS_REUSE=1` process-per-site reuse, adds `bench:popout-bw-rss`, and verifies real 3-BW plus 8-BW BrowserWindow RSS artifacts (`popout-bw-rss-3bw-2026-05-19.json`, `popout-bw-rss-8bw-2026-05-19.json`) under the 80MB/200MB/500MB effective/shared RSS budgets. 2026-05-19 also adds a real packaged Electron main-window close survival E2E that creates pinned and unpinned BrowserWindow port popouts, closes the native main BrowserWindow, proves the unpinned popout closes, and proves the pinned popout remains visible, connected, and always-on-top. 2026-05-19 adds a real packaged Electron drag-back/demote UI E2E that clicks the dedicated popout shell `Return To Main` button, observes the BrowserWindow close, and verifies the same-target floating record. Unit + packaged Electron e2e are now covered, and 2026-05-22 elevated local verification closes `ASSERT_BROWSERWINDOW_SECOND_DISPLAY` with `targetMode=single-display-fallback`, `displayCount=1`, `placement.targetDisplayMatched=true`, and `placement.browserWindowInsideTargetWorkArea=true` without pretending a second display exists."
+      },
+      {
+        "batch": "R8.B",
+        "checkedCheckboxes": 17,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.B/spec-03-drawer-system-top-right-bot.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Drawer closure verified: 5 slots, resize/pin/close, command-palette drawer-open events, electron-store layout persistence, morph IPC, lazy `DrawerContentRegistry`/`DrawerContentModules` path, truthful registered-content boundaries, docs/tests, real Electron restart E2E, real BrowserWindow return-to-Drawer E2E through the floating Popout Manager UI, and `bench:drawer` production Chromium 1000-cycle benchmark with `cycleStats.p99: 35.2ms`, `persistCount: 2000`, and `persistStats.p95: 0.1ms`. Downstream-only content IDs remain truthful registered-boundary surfaces owned by their downstream specs, not spec-03 blockers."
+      },
+      {
+        "batch": "R8.B",
+        "checkedCheckboxes": 15,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.B/spec-04-command-palette-cmdk.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Command palette closure verified: URI + port-popout + recent history + scope-prefix + Fuse history-weighted search + Fuse title match highlighting + 1000-entry search benchmark + custom command store/IPC + safe declarative custom command execution + scanner-backed 100+ default registry + global shortcut registry + ESC focus-return + backend BrowserWindow port-popout command integration + OS protocol registration/handoff + `ASSERT_COMMAND_PALETTE_5_SCOPES` unit/runtime DOM assertion + real packaged Electron Playwright E2E slices verified: cmdk UI, shared `useGlobalShortcuts` for Ctrl/Meta+K and Ctrl/Meta+T with editable-target guards, previously active element capture in `App`, Escape/command/URI/popout close paths restoring connected focus targets, devhub URI resolver with direct scanner lookup and process fallback candidates, executable command:resolve-uri IPC/preload bridge, typed renderer port-popout request contract, executable `popout.port` command routed through `R8RuntimeService.createPopout()` with `surface=port` and `mode=browserwindow`, renderer `popout <port>` backend-first path plus truthful floating fallback, Drawer command events consumed by `DrawerProvider`, confirmation-gated executable `command:register-os-protocol`, Settings advanced-page register/unregister UI, main `second-instance`/macOS `open-url` forwarding to renderer URI resolution, executable default `ai.tasks.open` and `settings.open` commands, `App` consuming `settings-open` to open the real SettingsDialog, group headings using installed icon-library tokens and numeric count badges, Zod `CommandHistoryEntry` and `CustomCommand`, enabled stored custom commands merged into `command:list`, safe `command:<id>` and `devhub://...` custom execution paths with unsupported handler rejection, LFU+LRU bounded command history persistence, standalone `command:history-add`, visible `cmdk-group-history` recent commands, leading `>`/`@`/`#`/`!` filters for action/AI/object/confirmation scopes, installed `fuse.js` 7.3.0 typo-tolerant weighted command search with bounded persisted-history boosting, inline `cmdk-match-highlight` markers from real Fuse title ranges, production helper extraction with Fuse index cache and large-list prefilter, generated 1000-entry P99 < 16ms benchmark regression, executable `command:list-custom`/`command:save-custom`, Settings Advanced custom-command manager backed by public preload bridge, renderer unit coverage for `saveCustom()`, real Electron E2E save/check/disable of `custom.e2e.open-dashboard`, no-eval handlerScript validation, focused renderer/runtime/schema/preload/IPC tests, scanner-backed process/port/window `uri:open` entries through executable `resolveCommandUri()` plus stale-target rejection, Electron E2E covering 100+ real registry entries, Ctrl+K focus, recent history, five groups, `@/#/!` filters, URI resolve, real SettingsDialog open, and 2026-05-15 OS protocol E2E using `shell.openExternal()` with a real scanner-backed `devhub://process/<pid>` URI and the single-instance `protocol-open` renderer event. Arbitrary shell/JavaScript/SKILL execution is intentionally unsupported in R8 and returns `E_UNSUPPORTED_CUSTOM_COMMAND` instead of fake success."
+      },
+      {
+        "batch": "R8.B",
+        "checkedCheckboxes": 13,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.B/spec-05-dashboard-grid-layout.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Dashboard grid closure verified: react-grid-layout v2 API, 8 lazy widgets over scanner/status data, electron-store layout persistence, 4 presets, executable dashboard IPC/preload bridge, App route, command-palette preset events, Drawer morph, widget-specific config editor through real `dashboard:save-layout`, `R8.B.dashboard.grid` disable/enable surfaces in Dashboard and Settings, real Electron restart/config/feature-flag E2E, and `bench:dashboard` production Chromium drag benchmark with 1000 iterations, `averageFps: 60`, `p95: 16.7ms`, `moved: true`, `persisted: true`, and `saveCountDelta: 2`. The prior spec-06 treemap boundary is covered by the separate verified R8.B spec-06 row."
+      },
+      {
+        "batch": "R8.B",
+        "checkedCheckboxes": 12,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.B/spec-06-process-treemap-tree.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Process tree/treemap spec-06 verified: Zod SoT schemas, executable process view IPC/preload bridge, persisted renderer modes, virtualized tree surface, processStore parent/children indexes, renderer lazy child fetch via `processViews.treeChildren`, SVG d3-hierarchy RSS-proportional treemap through `hierarchy`/`treemap`/`treemapBinary`, command palette mode events, docs/tests, a 620-row top-500 truncation plus p95 layout budget regression, a real Electron Playwright E2E that opens Monitor -> Process, triggers executable process refresh, switches to Treemap, verifies real `treemap-tile-*` SVG geometry plus persisted view mode, and a 2026-05-15 Chromium production-bundle `pnpm -C devhub bench:treemap` DOM benchmark proving 500/500 SVG tiles with p95 7.5ms under the 16ms budget."
+      },
+      {
+        "batch": "R8.B",
+        "checkedCheckboxes": 13,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.B/spec-07-theme-decorations-extend.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Theme decoration closure verified: 8 built-in renderer decorations, palette-axis linkage, DOMPurify SVG-profile renderer sanitizer, strict shared SVG validation, CustomSvgStore electron-store persistence with 50-entry and 200KB limits plus SHA256 metadata, executable theme decoration/sound IPC, preload/global bridge, SettingsDialog upload/delete/position/sound controls, spec-15 i18n key alignment, multi-position layer injection for global/header/card/detail/statusbar/empty surfaces, howler theme tones with disabled default and fail-closed load/play behavior, docs, focused unit/IPC/i18n tests, real Electron E2E for safe upload/render/malicious rejection/multi-position/sound config, and `bench:theme-decoration` 900-sample production renderer evidence with p99 0.1ms under the 16ms budget."
+      },
+      {
+        "batch": "R8.B",
+        "checkedCheckboxes": 16,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.B/spec-08-statusbar-extension.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Statusbar closure verified: 12 tile definitions, renderer overflow, 6 badge types, clickAction routing, cmdk tile, combined BrowserWindow + renderer floating popout count, Zod `StatusbarConfig`, executable `statusbar:get-config` / `statusbar:set-config` / `statusbar:reset` IPC backed by `electron-store`, preload/global config bridge, renderer application of persisted visibility/order/alignment without stale live values, monotonic aggregate generatedAt marker, `StatusAggregator` one-second main-process service, `status:aggregate` webContents push, preload `status.onAggregate()` cleanup path, SettingsDialog visible tile toggles/reset and drag-and-drop ordering, local `devhub:statusbar-config-changed` apply event, dev/test-only benchmark hook over the real StatusAggregator publish path, preload whitelist contract sync, docs, touched-file ESLint, TypeScript, targeted model/runtime/schema/component/settings tests, real Electron Playwright E2E for push/listener/settings/DOM/config restoration, and `pnpm -C devhub bench:statusbar` 1000-push benchmark p99 4.5ms under the 100ms budget."
+      },
+      {
+        "batch": "R8.B",
+        "checkedCheckboxes": 12,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.B/spec-09-window-thumbnail-wall.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Thumbnail wall native capture, spec-11 VD propagation, and release-scale benchmark are verified: Zod contract, deterministic five-tuple group key utility, wall mode, row virtualization, 4 zoom levels, filter/group/refresh toolbar, existing batch selection integration, real `ThumbnailService`, `WindowGroupResolver` alias persistence, executable `window:thumbnails-batch` / `thumbnail-refresh` / `groups` / `set-alias` / `viewport-config` IPC, preload/global bridge, `WindowManager.getCachedWindows()` scan reuse, bounded 30s VD metadata cache for rapid refreshes, `koffi` Win32/DWM/GDI `Win32ThumbnailCapturer` with `DwmGetWindowAttribute`, target-size `StretchBlt`, `BitBlt`, `PrintWindow`, `GetDIBits`, real PNG data URLs, 4-concurrency `p-queue` and 800ms timeout, no fabricated screenshots, docs/tests, `ASSERT_THUMBNAIL_WALL_GROUP_KEY` Electron Playwright coverage, default `bench:thumbnail-capture` p95 5.8ms / p99 5.8ms with 3 real HWNDs, and 2026-05-19 release-scale `THUMBNAIL_CAPTURE_WINDOWS=100 THUMBNAIL_CAPTURE_MODE=per-window` benchmark artifact `research/thumbnail-capture-100hwnd-2026-05-19.json` with 100 distinct real WinForms HWNDs, 10 bounded host processes, `measuredCaptured=100`, `sourceCounts.win32-printwindow=100`, `uniqueHwndCount=100`, `totalCaptured=300`, `p95=10.8ms`, and `p99=11.9ms`; unresolved virtual desktop provider failures remain truthful null/unavailable states."
+      },
+      {
+        "batch": "R8.B",
+        "checkedCheckboxes": 15,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.B/spec-10-window-batch-ops.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Window batch closure verified: Zod contract, sequential renderer model with incremental progress and best-effort skipped cancellation, toolbar selected-count UI, custom progress toast with cancel/failure detail/retry-failed-items action, retry re-execution only for latest failed HWND results, custom close/inject confirm dialog replacing `window.confirm`, shared Ctrl/Cmd/Shift/Ctrl+A/lasso `useBatchSelection`, real `data-window-selection-hwnd` DOM selection, card/list/process/AI-window/thumbnail-wall integration, spec-09 wall gesture forwarding, `p-queue@8.1.0`, main-process `WindowBatchExecutor`, executable `window:batch-op/cancel/undo` handlers, `window:batch-progress` push, preload/global bridge, confirmation enforcement, confirmed `args.text` through `WindowManager.sendTextToWindow()` with real Win32 `SendInput` plus `WM_CHAR` fallback, safe-key inject bridge, explicit topmost state, 5-second minimize undo, single-helper real `WindowManager.focusWindows()` batch focus path, `window.batch.focus-filtered` command event, filtered HWND focus regression, `args.alias` persistence through real `AIAliasManager`, real window scan validation, `setWindowTitle` rollback, Electron E2E real BrowserWindow minimize/progress/undo, `bench:window-batch` 20-HWND real focus benchmark p95 4077.2ms under 5000ms, and packaged Electron `ASSERT_WINDOW_BATCH_7_OPS` coverage for seven real HWND operations: focus, minimize plus undo, close, aot-toggle, screenshot file output, rename alias/title persistence, and inject-text into a real textarea."
+      },
+      {
+        "batch": "R8.B",
+        "checkedCheckboxes": 12,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.B/spec-11-window-virtual-desktop.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "VD/monitor executable slice verified: Zod contracts, `VirtualDesktopService` using Windows `IVirtualDesktopManager` COM plus registry desktop ID discovery, truthful `desktopId` null/unavailable boundaries, `MonitorService`, `WindowLayoutPresetStore`, executable `window:monitors` / `window:vd-list` / `window:vd-info` / `window:vd-watch` / `window:move-to-desktop` / `window:move-to-monitor` / `window:layout-*` IPC, preload/global bridge, batch `move-to-desktop` adapter, spec-09 thumbnail `desktopId` propagation, `VdSwitcher` without fabricated desktop IDs, docs/tests, real packaged Electron Playwright `R8.B spec-11` covering real WinForms HWND `vd-info`, GUID desktopId, thumbnail propagation, monitor move, and truthful `MoveWindowToDesktop` success/error. 2026-05-19 adds display-backed `window:vd-watch` main-to-renderer payloads from real Electron display events, Zod payload schema, typed preload/global listener cleanup, contract whitelist sync, targeted ESLint, and 31-test schema/MonitorService/preload-contract coverage. 2026-05-19 also closes the remaining spec-11 popout multi-monitor logic checklist by persisting BrowserWindow popout display affinity/restore metadata, migrating off-screen popouts to primary on display removal/metrics changes, restoring them to original bounds when the display is present again, and verifying schema plus `R8RuntimeService` regressions with 27 focused tests. 2026-05-19 closes the repeated VD query/list latency path with 2-second real-result caches, `window:vd-info` cached-monitor resolution instead of unconditional full scans, `VirtualDesktopService.test.ts` 8/8, focused IPC/schema tests, typecheck, Zod SoT, build, and `VD_INFO_SAMPLES=20 VD_INFO_P95_BUDGET_MS=50 pnpm -C devhub bench:vd-info` against 2 real WinForms windows with `p95=6.3ms` and `totalResolved=40`; the cold first sample remains visible as `max=959.6ms`. The `Win32ForegroundEventWatcher` gate is now satisfied after the current session created a second real Windows virtual desktop and enabled `DEVHUB_R8_VD_FOREGROUND_WATCH=1`; 2026-05-22 elevated local verification also closes the monitor continuity gate with `targetMode=single-display-fallback`, `baselineDisplayCount=1`, `minDisplayCount=1`, and `finalDisplayCount=1`, preserving the fact that no physical unplug/reconnect was simulated."
+      },
+      {
+        "batch": "R8.B",
+        "checkedCheckboxes": 11,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.B/spec-12-process-batch-ops.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Process batch closure verified: Zod contract, selection hook with single/Ctrl/Cmd/Shift/Ctrl+A selection, six-action toolbar, backend-first renderer bridge with sequential fallback, custom process batch confirmation dialog for confirmation-required actions, progress surface with retry-failed PID subset rerun, p-queue-backed `ProcessBatchExecutor`, executable `process:batch-op/cancel/undo` IPC, `process:batch-progress` stream, per-PID kill with PID<100 refusal and no image-name wildcard termination, focus through real WindowManager PID window resolution plus explicit `args.hwnd` same-PID disambiguation, shared `InjectTextService` reused by `WindowBatchExecutor` and `ProcessBatchExecutor`, inject through real `WindowManager.sendTextToWindow()` with clipboard-paste/SendInput/WM_CHAR native paths, diagnostic export through real `R8RuntimeService.exportDiagnosticPack()`, batch tag dialog through real `process:tags-set`, main-process `ProcessTagStore` tag + undo bridge, add-watchdog per-PID registration through `R8RuntimeService.registerWatchdogInstance()`, command palette `process.batch.tag` routing, docs/tests, real spawned child-process PID kill regression, real Electron Playwright `R8.B spec-12` coverage for focus/inject-text/tag/add-watchdog/export-diag/kill through executable IPC, `bench:process-batch` `BENCH-PROCESS-BATCH-KILL` p95 378.8ms under the 10000ms budget, and `ASSERT_PROCESS_BATCH_6_OPS` closure."
+      },
+      {
+        "batch": "R8.B",
+        "checkedCheckboxes": 12,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.B/spec-13-port-security-tier-banner.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Port security closure verified: shared 4-tier classifier, Zod contract, persisted user blocklist add/remove/reset, IPC blocklist/public-banner channels, renderer badge/banner/settings editor/filter, statusbar and cmdk linkage, docs/tests, and a real Electron restart E2E that opens a local TCP listener, persists a user blocklist entry through executable IPC, relaunches Electron, verifies `Suspicious` classification with `user-blocklist`, and confirms the real port card plus `public-port-banner` render without mock ports or fake firewall data. File-level ESLint, production build, Playwright grep, and TypeScript `tsc --noEmit` passed."
+      },
+      {
+        "batch": "R8.B",
+        "checkedCheckboxes": 12,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.B/spec-14-process-tags-history.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Process tag/history closure verified: electron-store EXE+cwd tag store, SQLite 24h history store, one-minute sampler from real scans, process IPC/preload bridge, list/card/tree/treemap tag UI, inline 24h CPU sparklines, and docs/unit tests. 2026-05-13 restores concrete `process:tags-list`, `process:tags-set`, and `process:history-24h` IPC from R8 contract-only fallback, adds real Electron restart E2E for tagging a real scanned process identity, verifies the Process list badge, restarts Electron, checks persisted tag/export through executable IPC, probes 24h history truthfully, and restores any previous tag. 2026-05-15 adds the ProcessDetailDrawer resource-tab 24h large trend panel through the same real `process:history-24h` path, CPU/RSS/handles/threads switching, spec-12 batch tagging/5-second undo through real ProcessTagStore IPC, `process.batch.tag` command-palette entry, a spec-08 linked auxiliary statusbar mini-sparkline widget that keeps the 12-tile aggregate contract unchanged while loading 24h history through the same real IPC path, and `bench:sparkline` Chromium DOM evidence proving 100 visible 1440-point ProcessSparkline histories at p95 10.8ms under the 16ms budget."
+      },
+      {
+        "batch": "R8.B",
+        "checkedCheckboxes": 11,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.B/spec-15-i18n-scaffold.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "i18n scaffold closure verified: installed i18next/react-i18next, LocaleStore + real IPC/preload, LocaleProvider, LocaleSwitcher in settings, zh-CN/en-US resources, typed cached useT, extract/check scripts, Windows/Linux CI `i18n:check` gate, docs, unit tests, Electron E2E locale switch/persistence, generated zh-CN `legacy` catalog covering 1169 unique production renderer Chinese strings under the 80KB bundle budget, runtime legacy DOM localizer routing historical text nodes and display attributes through real `i18n.t(legacy.<hash>, { defaultValue })`, `i18n:extract` production/test/uncovered reporting, and `i18n:check` 100% production legacy coverage gate. 2026-05-17 follow-up closes the packaged Electron IPC fallback issue by registering R8 runtime before concrete i18n/window handlers, makes topology handler setup idempotent, prevents native `better-sqlite3` ABI mismatch from aborting unrelated R8.B handlers by falling back to Electron Store for task queue storage with audit evidence, prevents `legacy.<hash>` key leakage, preserves React-owned English i18n updates, adds `bench:i18n`, verifies `tCallMs=3.371` for 10,000 cached t calls, reruns packaged spec-15 E2E, and reruns spec-10 `ASSERT_WINDOW_BATCH_7_OPS` regression. en-US remains a preview locale and legacy missing translations fall back to zh-CN instead of fake machine translation."
+      },
+      {
+        "batch": "R8.B",
+        "checkedCheckboxes": 13,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.B/spec-16-a11y-full.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Closed 2026-05-16 with real Electron evidence: axe/playwright deps, Zod prefs/self-check contracts, electron-store prefs, OS preference bridge, real a11y IPC/preload, SkipLink, aria-live provider, KeyboardNavGroup roving tabindex in main navigation/cmdk groups/thumbnail wall rows, focus/forced-colors/reduced-motion CSS, main landmark, settings controls, live-URL axe script, docs/tests, Windows CI single-grep smoke, component ARIA audit `169 TSX / 7 tabIndex / 10 surfaces / 0 blocking`, fixed statusbar executable handler ownership so extended handler init no longer aborts before `a11y:*`, fixed anonymous ProcessFilterBar/SettingsDialog icon buttons, fixed cmdk outer listbox ownership, added multi-surface live axe E2E for home/monitor/dashboard/settings/command with critical=0, added real `bench:a11y` against `out/main/index.js` with `criticalViolationCount=0`, `missingSurfaces=[]`, `p95=532.5ms`, `budgetMs=1500`, `passed=true`; verified by targeted Vitest, build, E2E, benchmark, tsc, targeted ESLint, no-emoji, and Zod SoT."
+      },
+      {
+        "batch": "R8.B",
+        "checkedCheckboxes": 10,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.B/spec-17-icon-library-mix.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Icon library token slice verified: shared token contract, 4+1 explicit renderer registry, accessible Icon/BrandLogo components, fallback to lucide:HelpCircle, `useIconDefaults` theme-axis defaults for density/radius/motion, codex/claude/gemini AI sensing logos routed through `brand:*` tokens, icon IPC/preload bridge, command-palette token integration, docs/tests/no-emoji gate, current full-UI no-emoji scan (`No emoji found in 606 files`), a real Electron E2E that launches a real codex-like child process and verifies `brand:OpenAI` plus `lucide:Search`, and legacy hardcoded UI SVG migration through the token adapter in `components/icons/index.tsx` plus direct UI icon migrations in ErrorBoundary, AITaskView, ScriptSelector, PortRelationshipGraph, and NeuralGraph. Remaining renderer `<svg>` inventory is graphing/visualization/decorative only and is not an icon-token migration gap. `bench:icons` Vite bundle proof measured 56,454 raw bytes / 13,891 gzip bytes against a 200KB budget with zero namespace imports, and `Icon.test.tsx` now asserts mixed token render under 1ms/icon."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 0,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/prd.md",
+        "implementationStatus": "no",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Aggregated R8.C row verified after the 2026-05-22 elevated report at `.trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/r8-external-blockers-current.json` closed `R8C_SPEC17_ADMIN_SHELL`, `R8C_SPEC17_WINDOWS_SERVICE_INSTALLED`, and `H1_J16_ZERO_EGRESS_CAPTURE_READY`; zero-egress keeps whole-machine `globalPacketCount=8517` visible while proving app-scoped zero egress with `appScopedPassed=true` and `nonLoopbackEndpointCount=0`."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 10,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-01-cli-output-parser.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "CLI parser closure verified: IParser, 4 strategies, ParserRegistry, StreamMultiplexer, Zod SoT schemas, R8 runtime handlers, preload bridge, event stream listener, strategy audit, rate-limited IPC, direct `CLIOutputParser.subscribe()` → shared `AITaskTracker` → `SignalCollector(cli_parse)` path, targeted parser/tracker/runtime tests, and 2026-05-14 packaged Electron E2E. The E2E launches `out/main/index.js`, feeds a real Claude `stream-json` shaped assistant event through `R8RuntimeService.parseCliChunk`, receives `cli:event-stream` via `window.devhub.r8.cli.onEvent`, and verifies `getProgress()` plus `getSessions()` through the public preload bridge. 2026-05-16 revalidated the real stdout path through focused parser/runtime tests, including line/shim fusion and recording capture of parsed stdout through the runtime bridge. 2026-05-16 adds visible determinate progress confidence ranges from the shared `DerivedProgress.confidenceRange` contract instead of displaying only a single guessed percentage. 2026-05-16 adds retry progress reset events through the existing `csv:session-event-stream`/`cli:event-stream` path with focused runtime/tracker tests proving an exact 0% retry signal resets the previous high-water estimate."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 13,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-02-shim-codex.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Codex SHIM closure verified: real Node passthrough fallback, current-process PATH prepend only, permission guard, uninstall cleanup, strict marker anti-spoofing, 7-field CodexParser coverage, startup `ensureShimReconciliation()` dead-link/sidecar cleanup, `which`-based real-command validation excluding the shim directory, public preload `shim:status`/`shim:uninstall`, bounded 100ms-to-1000ms shim client pipe reconnect, packaged Electron E2E via real Node fallback, and 2026-05-16 packaged Codex shim executable closure. `@yao-pkg/pkg` generated Windows x64 / Linux x64 / macOS x64 artifacts; Windows x64 executable was run locally and verified stdout/stderr passthrough plus named-pipe frames through `pnpm shim:verify:codex`."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 12,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-03-shim-claude-stream-json.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Claude stream-json closure verified: strict shared Zod discriminated union, parser mapping for system/assistant/tool_use/result/partial/error, per-instance partial 100ms throttle, token/cost payloads, executable ai:claude-cost-summary IPC/preload bridge, ai:claude-stream-event emitter, 2026-05-15 real unified ERROR notification publication for schema-valid Claude `result.is_error=true` events, 2026-05-15 schemaVersion=1 default propagation, 2026-05-16 Claude shim pre-spawn injection for generated fallback plus shared packaged source with real child argv checks, npm registry compatibility matrix, `0.2.9` help probe, Grok/official-doc corroboration, local Claude Code 2.1.111 help/version evidence, packaged Electron Playwright stream-json lifecycle E2E through real preload subscriptions and runtime parser hook, and 2026-05-17 post-output live restart authorization closure. The fallback now persists a pending-confirmation request, surfaces a unified toast/statusbar action, starts no child before confirmation, then spawns a real local child with forced stream-json args and feeds stdout/stderr back into the Claude parser; verified by focused restart test, Claude grouped regression, schema/preload regression, touched-file ESLint, and full TypeScript no-emit check. Old Claude Code executables that reject `--output-format stream-json` remain explicitly unsupported rather than faked as structured output."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 9,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-04-shim-gemini-stdout.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Gemini stdout closure verified: shared Zod pattern schemas, eight precompiled parser rules, bracket/prose tool-call extraction, ANSI fallback, long-line bounding, partial-buffer cap, executable pattern stat/rule reload IPC with preload/global types, real chokidar reload from `userData/gemini-pattern.json`, default-on `R8.C.shim.gemini` registry/evaluation test, generated Gemini passthrough shim env injection and DONE marker frame, SignalCollector `cli_parse` ingestion from real Gemini parser events, one-shot local WARN audit when real parser matchRatio < 0.5 after five Gemini stdout lines, 30s stale stdout `unknown` event and WARN audit, Gemini shim frames routed through `strategy=line`, packaged Electron E2E that installs and runs the generated Gemini shim with real Node, verifies env injection, named-pipe stdout frames, and renderer `cli:event-stream` progress/tool-use/message-out events, plus focused tests, ESLint, typecheck, build, no-emoji, and Codex shim regression evidence."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 10,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-05-cursor-copilot-detection.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Cursor/Copilot detection closure verified: shared window-title schemas, built-in title-rules.json, confirmed rule override validation, executable-basename whitelist including real Windows extensionless `ProcessName` values, 5 Hz scan cap, same-hwnd 5s reuse, confidence cap tests, platform-aware feature-flag defaults, privacy audit rows with hashed titles only, 2026-05-13 real production-build Electron E2E using a spawned `cursor.exe` process window through real WindowManager scan -> scannerCache -> `cli:cursor-copilot-status`, 2026-05-15 focused Vitest coverage for five title-detection GWT cases, and 2026-05-15 direct `koffi`/`user32.dll` native-first `EnumWindows` / `GetWindowTextW` / `GetWindowThreadProcessId` integration with PowerShell fallback, repeatable smoke script, touched-file ESLint, full `WindowManager.test.ts`, and TypeScript passing. Persistent rule watcher, renderer settings panel, SignalCollector fusion, and installer-packaged E2E remain tracked as downstream boundaries rather than this spec's open checklist."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 10,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-06-cli-detect-init.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "CLI detection closure verified: shared tool-detect schemas, five-row ToolDetectionState, Promise.allSettled full scan, 3000ms timeout, 300000ms cache TTL, persisted user override, Settings ToolDetectPanel, startup `cli:detection-event` broadcast, Cursor/Copilot module-list strategy, audit logging, docs/tests, and 2026-05-13 no-mock GWT matrix using real `process.execPath` overrides. 2026-05-14 closes the remaining migration/UI/E2E boundary with real `execa`/`which`/`semver` probing, `cli:clear-tool-override`, Settings path save/clear editor, LocaleProvider malformed-manifest guard exposed by the Settings path, targeted eslint/typecheck/build/Vitest, and packaged Electron Playwright `R8.C spec-06 Settings` E2E. 2026-05-16 extends scanner snapshot detection to codex/claude/gemini as well as cursor/copilot, and tightens Copilot detection so plain `gh.exe` rows without Copilot evidence are not treated as Copilot."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 11,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-07-monitor-window.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Monitor window closure verified: BrowserWindow transparent/vibrancy/resizable options, dedicated `out/renderer/monitor.html` entry, independent `out/preload/monitor.cjs` monitor-only preload, 100ms monitor:snapshot-stream, five real snapshot-backed ToolCards, ConfidenceBadge thresholds, always-on-top/opacity store writes, default-ON feature flag, audit rows, 4D theme sync, packaged Electron 5-GWT coverage, main-window-close survival through executable monitor.snapshot(), and permission assertions proving the monitor BrowserWindow exposes only `window.devhub.r8.monitor` while denying project/systemProcess/r8.popout/r8.cli namespaces. 2026-05-16 extends task progress UI with confidence interval labels such as `约 40%-54%` while preserving exact `aria-valuenow` for accessibility. 2026-05-16 also routes explicit runtime progress percentages into `AITaskView`, allowing a real retry reset to display 0% instead of the fallback coding band. 2026-05-16 keeps active cards on a 1s render tick and prevents lower-confidence explicit estimates from freezing the time-derived long-task progress curve. 2026-05-16 F.2.1 audit confirms `ProgressBar` preserves exact determinate values while the shared state taxonomy exposes more than four fine-grained visible states."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 10,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-08-monitor-window-popout.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Monitor tool popout closure verified: reused R8.B BrowserWindow bridge, 320x140 default and 200x100 min bounds, effective five-tool cap, double-click return-to-main, default-ON R8.C.monitor.popout flag, popout open/close audit rows, monitor:popout-snapshot-stream, layout persistence, main-monitor-close stream survival, packaged Electron 5-GWT coverage, and 2026-05-14 dedicated electron-vite `monitor-popout` renderer/preload entries. Tool popout BrowserWindows now load `out/renderer/monitor-popout.html` plus `out/preload/monitor-popout.cjs`, expose only `window.devhub.r8.monitor`, deny project/systemProcess/r8.popout/r8.cli namespaces, and pass focused lint, typecheck, build, no-emoji, spec-08 Playwright, and spec-07/spec-08 regression gates."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 9,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-09-skill-library-yaml.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Skill library closure verified: gray-matter + js-yaml frontmatter path, strict Zod schemas with license/sandbox/mcpServers metadata, scriptPath containment, chokidar add/change/unlink watcher, 100ms skill:list-stream payloads, user override/install/fork/uninstall audit rows, default-ON feature flag, local-only/no-telemetry boundary, docs/tests; standalone service file split intentionally not introduced to preserve current architecture."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 9,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-10-skill-builtin-10.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Builtin catalog closure verified: exact 10-name typed manifest, schema-valid offline fs-read built-ins with `license=MIT`, `sandbox=read-only`, and `mcpServers=[]`, default-ON `R8.C.skill.builtin`, runtime flag-off behavior that keeps user skills visible while builtin operations return `E_FEATURE_DISABLED`, fork materialization to real user files, docs, feature-flag test, and targeted service/IPC/schema/renderer tests."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 11,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-11-skill-editor.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Skill editor closure verified: dynamic Monaco import, embedded offline YAML schema, YAML/Body/Script tabs, 200ms validation debounce, valid-only save, five-template picker, destructive delete confirmation for user skills, script language switching, local CSS-token Monaco theme sync, default-ON feature flag, no-upload boundary, docs, targeted service/IPC/schema/renderer tests, and Playwright real Monaco worker/rendering GWT (`pnpm -C devhub test:e2e --grep \"R8.C spec-11\" --reporter=line`) all passed."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 10,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-12-csv-task-driver.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "CSV driver closure verified: papaparse NODE_STREAM_INPUT file parsing, bounded 64 KiB encoding probe, UTF-8/UTF-16LE/GB18030 streams, low-resource watcher opt-in, typed csv:row-stream IPC/preload/global contract, reload audit rows, default-ON feature flag, docs, duplicate `taskId` rejection, opt-in real `inputFile` existence check, likely API key leak rejection, prompt-level `@skill:<name>` reference validation/mapping, missing or malformed prompt SKILL launch rejection, `{{cwd}}`/`{{file}}` interpolation, real bounded `@file:` expansion, unreadable `@file:` launch rejection, and targeted tests including 1200-row quoted-newline fixture."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 10,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-13-csv-schema-18cols.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "CSV schema v1 closure verified: fixed 18-column header remains unchanged, parsed rows now receive hidden `schemaVersion: \"1.0\"` metadata, docs clarify it is not a 19th CSV column, and targeted CSV/Zod tests plus typecheck passed."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 14,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-14-csv-launch-3way.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 1,
+        "nextAction": "CSV launch 3-way closure verified for metadata reader, DevHub dry-run DAG/task queue start, CLI command/clipboard/bin entry, Python sha256 check plus real named-pipe child-to-DevHub bridge, long-lived bidirectional pause/resume control pipe, session event stream, cli:event-stream mirroring, runner info/session controls, R8OpsPanel wizard, mutual exclusion, audit rows, docs, and targeted runtime/IPC/preload tests. 2026-05-14 adds real Python control socket ACK coverage, script SHA256 verification, Python compile, ESLint, TypeScript, and focused Vitest evidence."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 13,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-15-task-queue-better-queue.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 1,
+        "nextAction": "Task queue closure verified: RowHash, ResumePolicy, strict state-machine, graphlib scheduler, retry backoff, parallel group controller, task:state-stream payloads, task transition audit, CSV fixtures, real `queue.sqlite` persistence via installed `better-sqlite3`, normalized task/transition SQLite indexes, startup `PRAGMA integrity_check`, corrupt SQLite backup/rebuild, legacy task-state migration, enum `R8.C.task.queue.engine` selector semantics, dedicated OnFailHandler branch routing, `inputArgs` on_fail mapping, fallback-tool row mutation, `task:tool-switch`/`task:on-fail` audit rows, real local `execute-skill` SKILL execution with bounded `execFile`, failure-context/stdout/stderr/result artifacts, queued retry state after successful SKILL execution, Node read-only/read-write/system sandbox enforcement, system SKILL child-process permission coverage, local stdio MCP server metadata/call compatibility, installed/runnable `better-queue@3.8.12`, a real BetterQueueAdapter with better-sqlite3-backed store/event tests, native BetterQueue event to `TaskStateTransition` bridge coverage, and 2026-05-16 retry-progress reset emission. 2026-05-17 closes the exact `better-queue-sqlite` checklist line by verifying npm metadata (`better-queue-sqlite@1.0.7` depends on `sqlite3@^5.1.2`), local dependency truth (`better-queue` and `better-sqlite3` installed; `sqlite3` unavailable), explicit runtime package-status fields, storage warning coverage, and the no-broken-dependency decision to use the runnable better-queue custom store API with `better-sqlite3`. Verified by focused spec-15 queue/runtime/schema suite, touched-file ESLint, full TypeScript no-emit, npm metadata check, and local dependency inspection. Active runtime promotion from StoreBackedTaskQueueService to BetterQueueAdapter remains a separate migration boundary, not a checklist blocker."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 12,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-16-watchdog-engine.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 13,
+        "nextAction": "Watchdog policy-engine slice strengthened and verified: nine heartbeat source names are registered with per-instance enable/disable gates, disabled-source heartbeats are retained for audit without refreshing lastHeartbeatAt or transiently resetting suspect/stuck instances to healthy, lenient fusion records max-weight heartbeat acceptance, strict fusion accepts primary high-trust or multi-source proof while rejecting CPU-only proof, state-machine history records healthy/suspect/stuck/restarting plus storm paths, restart governor enforces a one-hour maxRestartsPerHour window, GracePeriodManager applies 30s startup / 60s restart grace with 1.5x high CPU/IO extension, per-phase timeout and watchdog feature-flag defaults are covered by tests, 2026-05-16 adds bounded `watchdog:event-stream` schema/preload/runtime batching through the spec-31 high-frequency scan limit, 2026-05-16 adds real ActionExecutor integration into spec-15 task queue status, spec-18 restart-resume injection calls, and spec-30 watchdog notifications, 2026-05-16 adds a real 16-instance CPU benchmark artifact with estimated CPU `0.000336%` under the 1% budget, 2026-05-16 verifies kill/starvation/storm/phase-aware behavior through a focused suite including a real killed child process, 2026-05-19 verifies real WatchdogHeartbeatCollector adapters for marker-file/stdout/cpu-pulse/window-title/http-health/fs-activity/hung-window/network/etw through local filesystem, runtime metadata, SystemInformationAdapter, Win32WindowEnumerator, localhost fetch, Windows IsHungAppWindow P/Invoke, and logman ETW probing, and 2026-05-19 adds a configurable `memoryRestartMb` max-memory restart path that reads real heartbeat `memoryMb`, emits `memory-over-limit` history, and requests restart before grace/heartbeat timeout masking can hide memory exhaustion. Verified by focused collector/runtime/engine Vitest, touched-file ESLint, typecheck, no-emoji, and Zod SoT. Remaining Windows Service UAC execution and kill/orphan packaged E2E belong to spec-17, not spec-16; non-elevated ETW returns truthful `E_PERMISSION_DENIED` rather than fake heartbeat success."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 16,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-17-watchdog-subprocess.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Watchdog supervisor contract slice synced and strengthened: Zod RPC/session/marker/channel/supervisor schemas exist, WatchdogSupervisor generates a real 64-hex sessionToken and parent marker file without faking child success, marker fallback liveness now requires writer=inner-watchdog plus matching token prefix and fresh updatedAt, watchdog-supervisor status snapshots evaluate stale channels before returning, HandshakeProtocol rejects invalid tokens, MutualHeartbeat models named-pipe/TCP/marker health, respawn governor reports 1s/2s/4s/8s/16s backoff and rejects the sixth attempt within one hour while allowing attempts after the sliding window expires, Windows Service install/uninstall now has a real `sudo-prompt` elevated execution path that only runs after `confirmAdmin=true`, verifies success through `sc.exe query`, persists `windowsServiceInstalled`, and keeps unconfirmed/non-Windows/cancelled/failed paths truthful instead of faking service state, feature flags default to subprocess ON / windows-service OFF with user override, 2026-05-16 adds real configured Node child spawn proof with token/marker argv and env verification, 2026-05-16 adds central supervisor control-plane audit rows for respawn, service command plans, handshake-fail, channel-degrade, and orphan status if surfaced, 2026-05-16 adds low-resource lifecycle fixtures for real child kill plus explicit named-pipe channel failure, 2026-05-16 adds the packaged InnerWatchdog entrypoint built as `out/main/watchdog-process/main.js`, direct real execution proof that rewrites a marker as `writer=inner-watchdog`, `ELECTRON_RUN_AS_NODE=1` propagation, and marker-file fallback liveness recognition without faking named-pipe success, 2026-05-18 closes the three-channel path with real parent-side named-pipe and TCP localhost JSON-RPC servers, validated child handshake, authenticated `ping`, marker `tcpPort` propagation, InnerWatchdog named-pipe-to-TCP fallback, explicit unsupported-method errors, startup before configured child respawn, runtime dispose cleanup, full supervisor Vitest evidence, R8RuntimeService respawn/audit regression coverage, child-side event-pipe JSON-RPC server with real authenticated parent-to-child ping, child `get-status`, orphan-mode `E_ORPHAN_READ_ONLY` refusal for new control RPC through long-lived child-process tests, parent heartbeat scheduler closure with default 5s parent-to-child ping, runtime start after successful respawn, scheduler teardown, real event-pipe scheduled pong coverage, repeated parent-ping failure coverage without inventing liveness, 2026-05-18 real built-entry subprocess benchmark evidence via `bench:watchdog-subprocess` measuring RSS 44.82MB and CPU 0% under the 80MB / 0.5% budget, 2026-05-18 registered-instance orphan carryover with a real InnerWatchdog in-memory instance map, attached-only register/deregister/configure RPC, heartbeat-tick `lastHeartbeatAt` refresh, `get-status` instance summaries, and a real long-lived child-process test proving an already-registered instance survives parent PID orphaning while new control RPC remains refused, 2026-05-18 restart takeover with existing session-token adoption only after the stored parent PID is dead, one-shot forced parent marker publication without fake liveness, child re-read/inner marker rewrite, and a real long-lived child-process named-pipe handshake to the new parent PID, 2026-05-18 full lifecycle audit rows for spawn/respawn/orphan/takeover/handshake-fail/channel-degrade with token-prefix-only audit targets and deduped takeover/orphan evidence, 2026-05-18 renderer supervisor event stream with Zod payload, `watchdog-supervisor:event-stream` registry, preload cleanup bridge, R8OpsPanel subscription, status/respawn/spawn/heartbeat/service/handshake/channel/orphan/takeover/evaluate emits, and tests proving no full 64-hex session token reaches the renderer, and 2026-05-19 packaged Electron E2E closes the kill/orphan boundary by verifying real built-app respawn after killed InnerWatchdog PID and real orphan read-only behavior after the marker-recorded parent PID exits. 2026-05-19 also fixes the Windows pipe root to `\\\\.\\pipe\\`, removes long-lived child `spawn({ timeout })`, adds isolated `DEVHUB_USER_DATA_DIR` E2E state, and passes focused Windows Service executor/supervisor/IPC/typecheck gates. 2026-05-20 adds the `WindowsServiceInstaller` `execFile` import/typecheck hardening and confirms the focused Windows Service lint/test/typecheck gates stay green. 2026-05-22 elevated Windows refresh closed the live Administrator and Windows Service strict gates with `.trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/r8-external-blockers-current.json` generated at `2026-05-22T13:15:06.603Z`, `admin.isAdministrator=true`, `service.installed=true`, `service.status=Stopped`, `service.scExitCode=0`, and passed gates `R8C_SPEC17_ADMIN_SHELL` plus `R8C_SPEC17_WINDOWS_SERVICE_INSTALLED`."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 15,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-18-auto-inject.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Inject selector/sandbox slice strengthened and verified: shared inject Zod contracts exist, InjectModeSelector preserves CLI/meta/GUI fallback semantics including GUI clipboard-paste -> uia -> sendinput fallback while meta commands now require pty without UI fallback, dry-run normalizes text, chunks, resolves target, writes local audit history, and never calls native typing, sendinput execution downgrades native short-write reports to status=partial with E_PARTIAL_INJECT instead of fake success, feature flags default inject.engine and audit-full-content ON while strict target mode stays OFF, target resolver covers whitelist/strict/countdown gates, 2026-05-18 adds the real pre-execution inject:countdown-stream controller with scheduled/tick/completed/cancelled Zod payloads, preload cleanup bridge, cancellation result, and focused runtime/schema/type/lint/Zod/no-emoji evidence, 2026-05-18 adds a complete InjectFailureClassifier diagnose/classify recommendation matrix for all shared failure kinds, 2026-05-18 routes sendinput execution through real <=8KB UTF-8 chunks with 200ms interval and per-chunk focus hook, 2026-05-18 aligns inject:execute registry and concrete handler with the medium_query bucket, 2026-05-18 adds real better-sqlite3 append-only audit persistence at app userData inject-audit.sqlite with full text, sha256(text) index, action/time indexes, schema-validated list reads, malformed-row skip, and runtime path evidence, 2026-05-18 adds a concrete ScenarioBase subclass tree plus InjectScenarioRegistry for all six scenarios with executable buildAction and success/failure hooks, 2026-05-18 adds concrete IInjectMode subclasses plus InjectModeRegistry for sendinput/pty/uia/clipboard-paste while preserving truthful unavailable-adapter failures, 2026-05-18 adds real clipboard-paste bridge behavior with Electron clipboard save/write/restore and nut-js Ctrl+V paste shortcut, 2026-05-18 adds real OS foreground focus polling through `node-window-manager` active-window reads at 50ms, resolved/baseline HWND comparison, early delay cancellation, and no fallback after `E_USER_STOLE_FOCUS`, 2026-05-18 adds real SHIM control-channel meta-command execution: shared `ShimControlFrame` schema, `ShimRegistry.sendControl()` socket write plus ACK wait, generated and packaged shim reverse control parsing into child stdin, runtime bridge wiring, and Vitest proof through real generated/packaged shim child stdin echo frames without UI fallback, 2026-05-18 adds pre/after inject screenshot sequencing through `InjectService.screenshotBridge`, wired in runtime to the existing real `WindowManager.screenshotWindow(hwnd)` PNG path, with after-screenshot failure downgraded to partial instead of fake complete success, 2026-05-18 adds post-inject pty echo content verification: ordinary prompt pty uses SHIM stdin with `verifyEcho=true`, `ShimRegistry` waits for real stdout/stderr echo frames instead of using ACK as proof, no-echo children return delivered-but-unverified, `InjectService` downgrades unverified writes to partial after the after-screenshot, and audit payload JSON records verification and screenshot paths. 2026-05-18 closes task-start/watchdog restart trigger integration: `allow_inject=true` task starts invoke real `csv-task-driven` inject through `csv-row-alias`, persist the inject action id back to the `TaskRun`, keep truthful failed results when adapters are unavailable, and the existing watchdog restart action path revalidates task retry, inject action id, and notification output. 2026-05-18 closes real UIA editable-control behavior: `UiaMode` walks the Windows UIAutomation raw tree from a resolved HWND, writes through `ValuePattern` when available, falls back to real `user32.dll` `WM_SETTEXT` / `WM_GETTEXT` for native `EDIT` children, returns real `verifiedContentMatches`, and is verified by a real WinForms TextBox fixture plus build/typecheck/lint/Zod/no-emoji gates."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 15,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-19-auto-inject-targets.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Inject target resolver slice strengthened and verified: alias/ready-pool/csv-row-alias/pid/window-handle selector chain, whitelist gate, strict-mode gate, countdown computation, rowAlias-only CSV target resolution, concrete pid/hwnd selector validation, project-cwd whitelist matching is constrained to exact or descendant path boundaries rather than string-prefix siblings, default-ON targets flag, default-OFF strict-mode flag with override, docs, targeted resolver/runtime/contract tests, and 2026-05-18 CountdownController stream/cancel execution through the existing runtime boundary. 2026-05-18 adds real runtime whitelist expiry cleanup: startup plus hourly timer, `enabled=false` marking instead of deletion, session-duration current-process semantics, add/remove/expire/strict-block audit history entries, and targeted runtime evidence; it also adds a resolver matrix covering 4 selector shapes, all 3 Zod-valid scopes, and 4 durations without inventing an invalid fourth scope. 2026-05-18 first-time confirmation/UI slice adds real SQLite first-time confirmation persistence, `inject:first-time-required` broadcast, `inject:first-time-confirm` and `inject:countdown-complete` IPC/preload contracts, countdown modal ESC/immediate completion, first-time duration/scope modal, R8.B drawer-backed whitelist list/add/remove/expired state, and first-time-confirm plus whitelist-add audit history. 2026-05-18 reconciles the historical 4-scope fixture wording to the authoritative 3-scope Zod contract and verifies the 4 selector × 3 scope × 4 duration matrix. 2026-05-18 closes alias/ready-pool sources by merging active `AITaskTracker` alias/pid/hwnd rows, CSV/task-queue row aliases, whitelist fallback rows, and spec-28 state-machine `awaiting-input` snapshots into resolver records without fabricated targets. 2026-05-18 packaged Electron Renderer E2E closes the target-management boundary: a real dry-run CSV queued task resolves target alias `codex-${taskId}`, opens the first-time modal through runtime/preload events, persists a `24h` `instance` whitelist confirmation, mirrors the confirmed repository entry into Electron Store fallback when packaged SQLite is unavailable, renders the alias in the R8.B drawer-backed whitelist drawer, starts the real countdown stream, and cancels via Escape through `inject:countdown-cancel` with a real cancelled `InjectResult`. Verified by typecheck, focused first-time/inject Vitest, `pnpm -C devhub build`, and `pnpm -C devhub test:e2e --grep \"R8.C spec-19\" --reporter=line --workers=1`."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 12,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-20-dag-orchestrator-graphlib.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "DAG orchestrator closure verified: DependencyDslParser covers after/success/any/comma/completed DSL forms, CycleDetector combines graphlib cycles with Tarjan-style paths, explicit `forwardEdgesByTaskId` / `reverseEdgesByTaskId` maps now sit beside graphlib.Graph and are consumed by TopoSorter/CriticalPathAnalyzer, deterministic Kahn layer snapshots and priority/group ranking exist, `CriticalPathAnalyzer` now runs forward/backward estimated-duration passes with per-task earliest/latest/slack timings, Mermaid/DOT/Cytoscape export works, isReady evaluates completed/failed terminal sets and rejects unknown task IDs as not-ready, R8RuntimeService exposes dag build/detect/export/layer/check-ready, default-ON feature flag is covered, `buildWithMetrics()` exposes real phase timings, named Vitest fixtures cover dag-5/dag-100/cycle-3/orphan/parallel-group-conflict plus a 1000-node fanout performance fixture, `DagAuditEntry` Zod schema and `listDagAudit()` verify per-build hash/previousHash/sequence audit rows from real CSV builds, StoreBackedTaskQueueService now reuses DagOrchestrator for topological ordering and dependency readiness instead of a parallel graphlib scheduler, queue readiness supports failure/success/completed dependency conditions, and packaged Electron E2E verifies dag build/layer/export/check-ready/detect-cycle through the real preload IPC bridge. Visual editor ownership belongs to spec-21, not spec-20."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 14,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-21-dag-visual-editor.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "DAG editor renderer/runtime slice verified: CSV lock/load, drag dependency update, cycle save guard with Cytoscape `edge.in-cycle` marking, runtime csv save with Zod validation + lock ownership + cycle rejection + mtime conflict + temp rename, user template save/insert path, shared `DagCanvas` Cytoscape wrapper, default-ON dag.editor flag, docs, targeted renderer/runtime/feature tests, and 2026-05-18 audit rows for `csv:dag-editor-open`, `csv:dag-editor-close`, `csv:save`, `csv:cycle-attempt`, and `csv:lock-conflict` without storing CSV row contents. 2026-05-18 adds top-level Zustand `DagEditorState`, dedicated `dag-editor-sync.ts` dependency string/edge/graph projection helpers, `immer` JSON-patch undo/redo with max-50 history and adjacent same-task-field compaction, store-backed canvas/list/gantt/kanban view sharing, built-in five-template palette support, full `NodeDetailPanel` 18-column editing with shared `csvTaskRow18Schema` realtime validation, real chokidar-backed external mtime watch modal through `csv:external-change-stream`, roving-tabindex canvas a11y navigation with live node announcements, packaged Electron Playwright coverage for edit/cycle/four-view/undo/external-modify, and packaged-runtime SQLite ABI hardening so first-time inject confirmation/audit SQLite failures no longer abort all R8 IPC handlers. Verified by focused DAG editor/runtime/IPC/a11y Vitest, typecheck, touched-file ESLint, Zod SoT, no-emoji, `pnpm -C devhub build`, a real `out/main/index.js` `csv.lock` probe, and `pnpm -C devhub test:e2e --grep \"R8.C spec-21\" --reporter=line --workers=1` passing with 1 packaged Electron test. Cytoscape edge deletion UI remains a downstream non-checklist refinement."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 14,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-22-task-recording.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Recording engine closure verified: runtime recording.engine gate, default-ON screenshot/fs/git-diff stream flags with runtime filtering, real local recording artifacts for stdout/stdin/fs/git-diff, chokidar ignored paths, per-task archive rotation, LRU stopped-recording eviction, redacted ZIP export that leaves source artifacts recoverable, asciinema export, audit rows, stdout 1000-line performance budget with queued append-only writes, p-queue screenshot throttling, screenshot non-blocking stdout benchmark, `simple-git@3.36.0` branch/HEAD/diff-stat/full-diff capture, dedicated stdout/stdin/screenshot/fs/git-diff stream classes, task-queue UUID session automatic recording start/stop with persisted `recordingId`, taskId-based stdout matching, focused ESLint, TypeScript, RecordingService Vitest, R8RuntimeService recording/task-queue Vitest, and TaskQueueService Vitest. Release-level packaged screenshot-frequency benchmark and renderer recording browser remain downstream/non-blocking surfaces."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 13,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-23-task-replay.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Keep evidence current; rerun targeted gate before final closure."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 13,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-24-topology-global-fullscreen.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Global topology slice advanced: shared GraphService network/neural/flow paths through R8RuntimeService, LRU cache max 20 keyed by slice/asOfTs, fullscreen topology toolbar, default 500-node degradation with explicit expand, five redundant entries through activity bar/command palette/status bar/Ctrl+T/route, process-node global-to-detail navigation, process-detail reverse selection into `FullScreenTopologyView`, default-ON `R8.C.topology.global`, audit rows for time-cursor/snapshot-save/export, 2026-05-16 automatic `GraphSnapshotter` coverage, cwd/project-root plus cmdline alias neural inference, and port/window/project reverse-selection actions are verified. The snapshotter starts from `setupR8RuntimeHandlers()`, schedules a 300000ms unref recursive timeout, builds fresh global network/neural/flow snapshots through `GraphService.buildGlobal(..., { refresh: true })`, persists via the existing confirmed filesystem snapshot writer, prunes only auto-generated `auto-topology:*` labels after 24h, stops on feature-flag disable/dispose, and is covered by focused graph/runtime/IPC Vitest. Neural inference now maps missing `projectId` processes back to registered project roots via `workingDir`/command path boundaries and adds `tag-alias-*` nodes for Claude Code, Codex, Gemini CLI, Cursor, Node package managers, and Python runtimes through real process name/command metadata. Port/window/project reverse-selection actions are covered by focused renderer bridge Vitest. 2026-05-17 adds real `systeminformation@5.31.6` primary network inventory through `SystemInformationAdapter`, preserves real `netstat -ano -p TCP` fallback in `PortScanner`, routes network graph construction through explicit `NetworkTopologyBuilder`, carries port source provenance and process handle-count metadata when present, and verifies live local `systeminformation.networkConnections()` plus focused adapter/port/graph/topology gates. Renderer PNG export now runs through `GraphCanvas.exportPng()` over the real current `GraphSnapshot` SVG layer. 2026-05-17 adds Vitest + Electron Playwright 100/500/800-node fixture coverage across `network-topology`, `neural-relationship`, and `flow`, verifies the time cursor, and preserves the 500-node default guard. Shared Cytoscape renderer reuse is verified by `DagCanvas` reuse inside `GraphCanvas`; 2026-05-17 current rerun passed focused renderer/manifest Vitest with 4 files / 11 tests and Electron Playwright `R8.C spec-24 global topology` with 1 test."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 13,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-25-topology-attached-deep10.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Attached topology closure verified: AttachedGraphView exposes graph-kind switcher, 1-10 depth slider, local pinned favorites, in-panel favorites quick-entry menu, default depth 3 with 1/3/7/10 markers, lazy-mode banner for depth 8-10, real expandable-node LazyExpander placeholders, double-click expansion through typed `topology:attached:get-deep10`, cumulative >500 expanded-node rejection with refused audit, mini-thumbnail plus floating card, selected-node handoff through `GraphService` `selectedNodeId`, default-ON feature flag, true depth-10 truncation/expansion behavior, process/port/window attached entry markers, favorite-change audit IPC, buildMs telemetry, and a real Electron Playwright fixture that launches a real TCP listener and BrowserWindow, verifies three-end entries, depth=10 lazy, favorites, and mini mode. Focused Vitest, touched-file ESLint, typecheck, production build, Playwright grep, Zod SoT, no-emoji, no-cloud-deps, no-ocr-deps, and scoped diff-check passed."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 15,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-26-flow-attached.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Attached flow closure verified: FlowBuilder real-source merge across task queue, CSV launch sessions, spec-22 recording manifests/events, and persisted audit entries; process/port/window embeds; fullscreen `graphKind='flow'`; speed/filter/stats/export controls; typed `flow:event-stream` IPC/preload realtime append bridge; audit rows for window/cursor/export/subscribe/unsubscribe; most-recent-500 auto-shrink with `E_GRAPH_NODE_LIMIT`; SQLite-backed 24h `flow_event_index`; `FlowAnimationLayer` via the existing motion bridge; packaged Electron Playwright fixture for 30min/24h/filter/export/realtime; 500-event render and append performance budgets; and build/typecheck/focused Vitest/ESLint/Zod SoT/no-emoji evidence. Keep evidence current; rerun targeted gates before final all-doc closure."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 22,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-27-ai-signal-fusion-tuning.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Signal fusion closure verified: weighted profiles, normalized weights, decay, contribution transparency, stream throttling, runtime IPC/preload bridge, settings UI, default-ON flag, audit row, and targeted service/runtime/IPC/schema/preload/renderer tests are covered. 2026-05-14 closes the former Dempster-Shafer/Bayesian gap with real mass-combination and log-odds algorithms in `SignalFusion`, regression tests proving no weighted-mean degradation, focused service/runtime Vitest, ESLint, TypeScript, and GitNexus LOW impact evidence. The legacy AITaskTracker path remains preserved by design rather than deleted."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 11,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-28-ai-state-machine-3layer.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Spec-28 remains verified. 2026-05-16 evidence expands the legacy AI monitor taxonomy from 8 visible states to 12 states (`initializing`, `idle`, `thinking`, `receiving-input`, `coding`, `compiling`, `validating`, `waiting-input`, `awaiting-human`, `stuck`, `completed`, `error`) without deleting the existing three-layer state machine. 2026-05-16 also adds a real state-flip stabilizer for heuristic task/monitor transitions so single-sample flips are held until repeated or time-window evidence appears, while terminal error/completed paths remain immediate. 2026-05-16 tightens `stuck` detection to require both long stdout/activity silence and recent average CPU below 1%, matching the final acceptance stuck boundary. 2026-05-16 adds retry progress regression handling: exact real 0% CLI progress resets tracker estimates and shared progress derivation permits active coding progress from 0-99 when explicit runtime progress exists. 2026-05-16 adds long-task progress evidence: estimated 24h coding progress advances within a 30s window after the 10min mark while active cards tick every 1s. 2026-05-16 F.2.1 audit confirms continuous progress evidence and more than four fine-grained visible states. Focused detection/progress/contract/debounce/stuck/retry/long-task tests plus TypeScript passed. Rerun targeted gate before final closure."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 10,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-29-feedback-loop-misreport.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Spec-29 remains verified. 2026-05-16 adds explicit source citations and contribution percentages to the Signal Diagnostic Panel, then adds correct/incorrect detection feedback controls: `correct-detection` feedback is persisted through the existing local feedback bridge with bounded positive `user_feedback` adjustment, incorrect feedback maps to the existing false-state kinds, SQLite/fallback persistence remains real, and focused renderer/service/runtime tests plus TypeScript/lint/no-emoji passed. Rerun targeted gate before final closure."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 11,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-30-notification-system.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Keep evidence current; rerun targeted gate before final closure."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 10,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-31-ipc-rate-limit.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Keep evidence current; rerun targeted gate before final closure."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 11,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-32-observability-panel.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Keep evidence current; rerun targeted gate before final closure."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 10,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-33-zod-source-of-truth.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 1,
+        "nextAction": "All checklist items are checked; the single pending marker is the schema field name `pendingMigrations`, not unfinished work. Verified with `pnpm -C devhub check:zod-sot` and targeted schema/preload/service Vitest on 2026-05-11."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 10,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-34-crash-recovery.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 6,
+        "nextAction": "Crash recovery closure verified: AppLifecycle marker, isolated 7-finding scanner, SQLite integrity detection, orphan SHIM detection, RecoveryDialog path, mandatory pre-recovery snapshot, default-ON feature flag, injected audit sink, 2s default probe timeout, ten-sample real filesystem P95 benchmark under budget, and Playwright Electron relaunch GWT through real `csv:enqueue-row`, `recovery:check-dirty`, R8 Ops `RecoveryDialog`, and `recovery:restore-state` pre-recovery snapshot."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 11,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-35-backup-restore.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Backup/restore closure verified: four classified categories, SHA256 manifest guard, redaction, real ZIP output, default-off `node-cron@4.2.1` schedule with `noOverlap` and lifecycle cleanup, scheduled-only retention pruning, auto-disable after five schedule failures, `BackupManifest` 0.9.0 migration via `SchemaMigration`, RestoreWizard four-checkbox UI with destructive confirmation, CI backup-content ZIP scan, package build, focused Vitest, and packaged Electron Playwright GWT all passed. Keep evidence current before final all-doc closure."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 11,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-36-diagnostic-pack-export.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Diagnostic pack closure verified: default redaction rules, custom redaction, preview redaction counts, screenshot default-off, hostname/username redaction, fake key redaction, local manifest audit logging, default-ON feature flag, IPC/schema/preload contracts, network-monitor regression proving preview/export make 0 Node http/https/net client calls, R8OpsPanel real preview/export status surface, and Playwright artifact GWT (`pnpm -C devhub test:e2e --grep \"R8.C spec-36\" --reporter=line`) all passed."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 9,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-37-permissions-time-bounded.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Permission TTL closure verified: 8-op policy contract, medium-query check channel, confirmed revoke-all schema, request/check/revoke/revoke-all/configure/expiry-stream audit events, expiry-stream payload assertion, 1Hz stream throttle/cache plus request/revoke invalidation regression coverage, R8OpsPanel CountdownBadge mm:ss 1s repaint with red-under-1min, default-ON feature flag, targeted TTL Vitest, IPC/schema/preload coverage, CountdownBadge Vitest, production Electron launch after dagre CJS compatibility fix, and Playwright permission UI GWT (`pnpm -C devhub test:e2e --grep \"R8.C spec-37\" --reporter=line`) all passed."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 8,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-38-skill-cloud-sync-deferred.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "Cloud sync deferred closure verified: centralized Zod SoT contracts, disabled/deferred IPC/preload/runtime facade, R8 Ops disabled tooltip row, refused audit events for all cloud-sync calls, R9 user doc, no-cloud dependency guard, targeted runtime/schema/feature tests, and typecheck passed."
+      },
+      {
+        "batch": "R8.C",
+        "checkedCheckboxes": 8,
+        "evidenceStatus": "verified",
+        "file": "prompts/0503-2/R8.C/spec-39-ocr-interface-disabled.md",
+        "implementationStatus": "yes",
+        "openCheckboxes": 0,
+        "pendingMarkers": 0,
+        "nextAction": "OCR disabled closure verified: centralized Zod SoT contracts, hard-disabled IPC/preload/runtime facade, R8 Ops disabled tooltip row, refused audit events for all OCR calls, user doc stating OCR is unsupported in R8, no-OCR dependency guard, targeted runtime/schema/feature tests, and typecheck passed."
+      }
+    ]
+  },
+  "promptCheckboxManifest": {
+    "jsonPath": ".trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-checkbox-manifest.json",
+    "localClosureBlockedOpenRows": 1301,
+    "localClosurePossibleOpenRows": 0,
+    "markdownPath": ".trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-checkbox-manifest.md",
+    "openClosureKindCounts": {
+      "survey-context": 948,
+      "user-product-acceptance": 315,
+      "legal-product-acceptance": 38
+    },
+    "open05032ClosureKindCounts": {},
+    "openOwnerCounts": {
+      "product": 948,
+      "user-product": 315,
+      "legal-product": 38
+    },
+    "open05032OwnerCounts": {},
+    "openSourceFilesByClosureKind": {
+      "survey-context": {
+        "files": [
+          {
+            "count": 102,
+            "file": "prompts/0503/14-three-graph-systems-survey.md"
+          },
+          {
+            "count": 74,
+            "file": "prompts/0503/07-ai-task-orchestration-survey.md"
+          },
+          {
+            "count": 74,
+            "file": "prompts/0503/27-easter-egg-shortcuts-survey.md"
+          },
+          {
+            "count": 70,
+            "file": "prompts/0503/12-cross-module-jump-survey.md"
+          },
+          {
+            "count": 68,
+            "file": "prompts/0503/16-csv-task-driver-deep-survey.md"
+          },
+          {
+            "count": 67,
+            "file": "prompts/0503/25-community-ecosystem-survey.md"
+          },
+          {
+            "count": 66,
+            "file": "prompts/0503/18-auto-inject-engineering-survey.md"
+          },
+          {
+            "count": 58,
+            "file": "prompts/0503/11-roadmap-rollback-survey.md"
+          },
+          {
+            "count": 55,
+            "file": "prompts/0503/17-watchdog-engineering-survey.md"
+          },
+          {
+            "count": 54,
+            "file": "prompts/0503/23-extensibility-plugin-survey.md"
+          },
+          {
+            "count": 48,
+            "file": "prompts/0503/19-popout-dock-engineering-survey.md"
+          },
+          {
+            "count": 35,
+            "file": "prompts/0503/13-perception-vs-reality-survey.md"
+          },
+          {
+            "count": 33,
+            "file": "prompts/0503/26-market-best-practices-comparison.md"
+          },
+          {
+            "count": 28,
+            "file": "prompts/0503/15-ai-detection-zero-error-survey.md"
+          },
+          {
+            "count": 25,
+            "file": "prompts/0503/06-window-module-survey.md"
+          },
+          {
+            "count": 24,
+            "file": "prompts/0503/04-process-module-survey.md"
+          },
+          {
+            "count": 20,
+            "file": "prompts/0503/08-topology-flow-attached-survey.md"
+          },
+          {
+            "count": 20,
+            "file": "prompts/0503/20-theme-quantitative-diff-survey.md"
+          },
+          {
+            "count": 13,
+            "file": "prompts/0503/05-port-module-survey.md"
+          },
+          {
+            "count": 9,
+            "file": "prompts/0503/21-edge-case-failure-survey.md"
+          },
+          {
+            "count": 5,
+            "file": "prompts/0503/09-cross-cutting-survey.md"
+          }
+        ],
+        "omittedFileCount": 0,
+        "totalFileCount": 21
+      },
+      "user-product-acceptance": {
+        "files": [
+          {
+            "count": 285,
+            "file": "prompts/0503/28-final-acceptance-checklist.md"
+          },
+          {
+            "count": 30,
+            "file": "prompts/0503/22-user-journey-storyboard.md"
+          }
+        ],
+        "omittedFileCount": 0,
+        "totalFileCount": 2
+      },
+      "legal-product-acceptance": {
+        "files": [
+          {
+            "count": 38,
+            "file": "prompts/0503/24-legal-compliance-survey.md"
+          }
+        ],
+        "omittedFileCount": 0,
+        "totalFileCount": 1
+      }
+    },
+    "open05032SourceFilesByClosureKind": {},
+    "scopeCounts": {
+      "prompts/0503": {
+        "checked": 104,
+        "files": 34,
+        "open": 1301,
+        "total": 1405
+      },
+      "prompts/0503-2": {
+        "checked": 704,
+        "files": 81,
+        "open": 0,
+        "total": 704
+      }
+    },
+    "totalChecked": 808,
+    "totalOpen": 1301,
+    "totalRows": 2109
+  },
+  "surveyAcceptanceRows": [],
+  "nonCompletionBoundary": [
+    "Do not claim final completion while strictCompletionPassed=false.",
+    "Do not close hardware gates without real display, monitor, or virtual desktop event evidence.",
+    "Do not close Administrator or Windows Service gates from a non-elevated shell.",
+    "Do not close zero-egress acceptance from preflight alone; the live pktmon capture must pass.",
+    "Do not treat legacy prompts/0503 survey rows as R8 0503-2 implementation blockers unless the user explicitly asks to run that older survey scope."
+  ]
+}

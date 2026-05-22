@@ -1,12 +1,32 @@
 {
-	"dependencies": {
-		"@fontsource-variable/inter": "^5.2.8",
-		"@fontsource-variable/jetbrains-mono": "^5.2.8",
-		"@fontsource-variable/oswald": "^5.2.8",
-		"@fontsource-variable/orbitron": "^5.2.8",
-		"@fontsource-variable/exo-2": "^5.2.8",
-		"@fontsource-variable/playfair-display": "^5.2.8",
-		"@fontsource/bebas-neue": "^5.2.7",
-		"@fontsource/share-tech-mono": "^5.2.7"
-	}
+  "packageManager": "pnpm@9.1.0+sha512.67f5879916a9293e5cf059c23853d571beaf4f753c707f40cb22bed5fb1578c6aad3b6c4107ccb3ba0b35be003eb621a16471ac836c87beb53f9d54bb4612724",
+  "scripts": {
+    "check:0503-acceptance-pack": "node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/generate-0503-acceptance-pack.mjs && node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/verify-0503-evidence-pack.mjs",
+    "check:0503-acceptance-pack:no-refresh": "node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/generate-0503-acceptance-pack.mjs --no-refresh && node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/verify-0503-evidence-pack.mjs",
+    "check:0503-acceptance-pack:self-test": "node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/generate-0503-acceptance-pack.mjs --self-test",
+    "check:0503-checkbox-manifest": "node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/generate-0503-checkbox-manifest.mjs",
+    "check:0503-checkbox-manifest:self-test": "node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/generate-0503-checkbox-manifest.mjs --self-test",
+    "check:0503-evidence-pack": "node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/verify-0503-evidence-pack.mjs",
+    "check:0503-evidence-pack:self-test": "node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/verify-0503-evidence-pack.mjs --self-test",
+    "check:0503-ledgers": "node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/verify-0503-ledgers.mjs --write-report",
+    "check:0503-ledgers:self-test": "node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/verify-0503-ledgers.mjs --self-test",
+    "check:0503-local": "pnpm check:0503-checkbox-manifest:self-test && pnpm check:0503-ledgers:self-test && pnpm check:0503-acceptance-pack:self-test && pnpm check:0503-evidence-pack:self-test && pnpm check:0503-no-emoji:self-test && pnpm check:0503-owner-evidence:self-test && pnpm check:0503-acceptance-pack:no-refresh && pnpm check:0503-owner-evidence -- --owner-summary && pnpm check:0503-owner-evidence -- --owner-output-matrix && pnpm check:0503-owner-evidence -- --list-actions && pnpm check:0503-owner-evidence -- --next-owner-commands && pnpm check:0503-strict:self-test && pnpm -C devhub check:browserwindow-second-display:self-test && pnpm -C devhub check:r8-external-blockers:self-test && pnpm -C devhub check:no-emoji && pnpm -C devhub check:zod-sot && pnpm -C devhub check:no-cloud-deps && pnpm -C devhub check:no-ocr-deps && pnpm -C devhub typecheck && pnpm -C devhub lint && git -C devhub diff --check && git diff --check && pnpm check:0503-acceptance-pack:no-refresh && pnpm check:0503-no-emoji",
+    "check:0503-no-emoji": "node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/verify-0503-no-emoji.mjs",
+    "check:0503-no-emoji:self-test": "node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/verify-0503-no-emoji.mjs --self-test",
+    "check:0503-owner-evidence": "node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/verify-0503-owner-evidence.mjs",
+    "check:0503-owner-evidence:self-test": "node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/verify-0503-owner-evidence.mjs --self-test",
+    "check:0503-strict": "node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/run-0503-strict-completion.mjs",
+    "check:0503-strict:vd-watch": "node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/run-0503-strict-completion.mjs --vd-foreground-watch",
+    "check:0503-strict:self-test": "node .trellis/tasks/05-05-r8-0503-2-full-completion-ledger/scripts/run-0503-strict-completion.mjs --self-test"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.2.8",
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
+    "@fontsource-variable/oswald": "^5.2.8",
+    "@fontsource-variable/orbitron": "^5.2.8",
+    "@fontsource-variable/exo-2": "^5.2.8",
+    "@fontsource-variable/playfair-display": "^5.2.8",
+    "@fontsource/bebas-neue": "^5.2.7",
+    "@fontsource/share-tech-mono": "^5.2.7"
+  }
 }

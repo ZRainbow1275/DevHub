@@ -1,0 +1,49 @@
+﻿{
+    "schemaVersion":  "devhub-r8-admin-elevation-run-v1",
+    "generatedAt":  "2026-05-22T15:18:40.1898579+08:00",
+    "repo":  "D:\\Desktop\\CREATOR ONE",
+    "identity":  "ZRAINBOW\\ZRainbow",
+    "isAdministrator":  true,
+    "serviceName":  "devhub-watchdog",
+    "nodeExe":  "C:\\Program Files\\nodejs\\node.exe",
+    "watchdogEntry":  "D:\\Desktop\\CREATOR ONE\\devhub\\out\\main\\watchdog-process\\main.js",
+    "externalReport":  "D:\\Desktop\\CREATOR ONE\\.trellis\\tasks\\05-05-r8-0503-2-full-completion-ledger\\research\\r8-external-blockers-current.json",
+    "logPath":  "D:\\Desktop\\CREATOR ONE\\.trellis\\tasks\\05-05-r8-0503-2-full-completion-ledger\\research\\r8-admin-elevation-2026-05-22T15-17-31.log",
+    "results":  [
+                    {
+                        "name":  "admin-probe",
+                        "exitCode":  0,
+                        "startedAt":  "2026-05-22T15:17:31.9611344+08:00",
+                        "endedAt":  "2026-05-22T15:17:32.0070751+08:00",
+                        "outputPath":  "D:\\Desktop\\CREATOR ONE\\.trellis\\tasks\\05-05-r8-0503-2-full-completion-ledger\\research\\r8-admin-elevation-2026-05-22T15-17-31-admin-probe.out.log"
+                    },
+                    {
+                        "name":  "install-devhub-watchdog-service",
+                        "exitCode":  1,
+                        "startedAt":  "2026-05-22T15:17:32.0197597+08:00",
+                        "endedAt":  "2026-05-22T15:17:32.0580794+08:00",
+                        "outputPath":  "D:\\Desktop\\CREATOR ONE\\.trellis\\tasks\\05-05-r8-0503-2-full-completion-ledger\\research\\r8-admin-elevation-2026-05-22T15-17-31-install-devhub-watchdog-service.out.log"
+                    },
+                    {
+                        "name":  "zero-egress-capture",
+                        "exitCode":  1,
+                        "startedAt":  "2026-05-22T15:17:32.0663897+08:00",
+                        "endedAt":  "2026-05-22T15:18:34.4582426+08:00",
+                        "outputPath":  "D:\\Desktop\\CREATOR ONE\\.trellis\\tasks\\05-05-r8-0503-2-full-completion-ledger\\research\\r8-admin-elevation-2026-05-22T15-17-31-zero-egress-capture.out.log"
+                    },
+                    {
+                        "name":  "refresh-r8-external-blockers",
+                        "exitCode":  1,
+                        "startedAt":  "2026-05-22T15:18:34.4647759+08:00",
+                        "endedAt":  "2026-05-22T15:18:36.9385579+08:00",
+                        "outputPath":  "D:\\Desktop\\CREATOR ONE\\.trellis\\tasks\\05-05-r8-0503-2-full-completion-ledger\\research\\r8-admin-elevation-2026-05-22T15-17-31-refresh-r8-external-blockers.out.log"
+                    },
+                    {
+                        "name":  "strict-vd-watch",
+                        "exitCode":  1,
+                        "startedAt":  "2026-05-22T15:18:36.9465902+08:00",
+                        "endedAt":  "2026-05-22T15:18:40.1898579+08:00",
+                        "outputPath":  "D:\\Desktop\\CREATOR ONE\\.trellis\\tasks\\05-05-r8-0503-2-full-completion-ledger\\research\\r8-admin-elevation-2026-05-22T15-17-31-strict-vd-watch.out.log"
+                    }
+                ]
+}

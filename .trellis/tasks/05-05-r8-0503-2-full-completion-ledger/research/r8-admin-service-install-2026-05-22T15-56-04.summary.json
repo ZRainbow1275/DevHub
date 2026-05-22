@@ -1,0 +1,60 @@
+﻿{
+    "schemaVersion":  "devhub-r8-admin-service-install-run-v1",
+    "generatedAt":  "2026-05-22T15:56:10.6063025+08:00",
+    "repo":  "D:\\Desktop\\CREATOR ONE",
+    "identity":  "ZRAINBOW\\ZRainbow",
+    "isAdministrator":  true,
+    "serviceName":  "devhub-watchdog",
+    "nodeExe":  "C:\\Program Files\\nodejs\\node.exe",
+    "watchdogEntry":  "D:\\Desktop\\CREATOR ONE\\devhub\\out\\main\\watchdog-process\\main.js",
+    "externalReport":  "D:\\Desktop\\CREATOR ONE\\.trellis\\tasks\\05-05-r8-0503-2-full-completion-ledger\\research\\r8-external-blockers-current.json",
+    "logPath":  "D:\\Desktop\\CREATOR ONE\\.trellis\\tasks\\05-05-r8-0503-2-full-completion-ledger\\research\\r8-admin-service-install-2026-05-22T15-56-04.log",
+    "results":  [
+                    {
+                        "name":  "admin-probe",
+                        "exitCode":  0,
+                        "allowedExitCodes":  [
+                                                 0
+                                             ],
+                        "passed":  true,
+                        "startedAt":  "2026-05-22T15:56:04.7958244+08:00",
+                        "endedAt":  "2026-05-22T15:56:04.8438977+08:00",
+                        "outputPath":  "D:\\Desktop\\CREATOR ONE\\.trellis\\tasks\\05-05-r8-0503-2-full-completion-ledger\\research\\r8-admin-service-install-2026-05-22T15-56-04-admin-probe.out.log"
+                    },
+                    {
+                        "name":  "install-devhub-watchdog-service",
+                        "exitCode":  0,
+                        "allowedExitCodes":  [
+                                                 0
+                                             ],
+                        "passed":  true,
+                        "startedAt":  "2026-05-22T15:56:04.8667845+08:00",
+                        "endedAt":  "2026-05-22T15:56:04.9360130+08:00",
+                        "outputPath":  "D:\\Desktop\\CREATOR ONE\\.trellis\\tasks\\05-05-r8-0503-2-full-completion-ledger\\research\\r8-admin-service-install-2026-05-22T15-56-04-install-devhub-watchdog-service.out.log"
+                    },
+                    {
+                        "name":  "refresh-r8-external-blockers",
+                        "exitCode":  1,
+                        "allowedExitCodes":  [
+                                                 0,
+                                                 1
+                                             ],
+                        "passed":  true,
+                        "startedAt":  "2026-05-22T15:56:04.9385310+08:00",
+                        "endedAt":  "2026-05-22T15:56:07.6024614+08:00",
+                        "outputPath":  "D:\\Desktop\\CREATOR ONE\\.trellis\\tasks\\05-05-r8-0503-2-full-completion-ledger\\research\\r8-admin-service-install-2026-05-22T15-56-04-refresh-r8-external-blockers.out.log"
+                    },
+                    {
+                        "name":  "strict-vd-watch",
+                        "exitCode":  1,
+                        "allowedExitCodes":  [
+                                                 0,
+                                                 1
+                                             ],
+                        "passed":  true,
+                        "startedAt":  "2026-05-22T15:56:07.6120697+08:00",
+                        "endedAt":  "2026-05-22T15:56:10.6032788+08:00",
+                        "outputPath":  "D:\\Desktop\\CREATOR ONE\\.trellis\\tasks\\05-05-r8-0503-2-full-completion-ledger\\research\\r8-admin-service-install-2026-05-22T15-56-04-strict-vd-watch.out.log"
+                    }
+                ]
+}

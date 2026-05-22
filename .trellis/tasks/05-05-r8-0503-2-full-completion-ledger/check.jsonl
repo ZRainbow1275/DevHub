@@ -1,0 +1,17 @@
+{"file":"prompts/0503-2/00-r8-implementation-quickstart.md","reason":"Check R8 ordering, hard gates, and standard workflow"}
+{"file":"prompts/0503-2/00-r8-master-prd.md","reason":"Check hard constraints and batch-level acceptance assertions"}
+{"file":".trellis/tasks/archive/2026-05/05-03-r8-prd-spec-batches/HANDOFF.md","reason":"Check against archived R8 handoff delivery checklist and implementation starting point"}
+{"file":"prompts/0503-2/_shared/feedback-traceability-matrix.md","reason":"Check feedback traceability coverage"}
+{"file":"prompts/0503-2/_shared/spec-dependency-graph.md","reason":"Check dependency and gate ordering"}
+{"file":"prompts/0503-2/_shared/testing-strategy.md","reason":"Check validation commands and acceptance evidence"}
+{"file":"prompts/0503-2/_shared/zod-schemas.md","reason":"Check Zod single-source consistency"}
+{"file":"prompts/0503-2/_shared/ipc-channels.md","reason":"Check IPC registry consistency"}
+{"file":"prompts/0503-2/_shared/feature-flags.md","reason":"Check flags and fallback behavior"}
+{"file":"prompts/0503-2/R8.A/prd.md","reason":"Check R8.A gate evidence"}
+{"file":"prompts/0503-2/R8.B/prd.md","reason":"Check R8.B acceptance evidence"}
+{"file":"prompts/0503-2/R8.C/prd.md","reason":"Check R8.C acceptance evidence"}
+{"file":".trellis/spec/backend/index.md","reason":"Check backend spec compliance"}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Check backend quality expectations"}
+{"file":".trellis/spec/backend/error-handling.md","reason":"Check error handling consistency"}
+{"file":".trellis/spec/frontend/index.md","reason":"Check frontend spec compliance"}
+{"file":".trellis/tasks/05-05-r8-0503-2-full-completion-ledger/research/0503-2-completion-ledger.md","reason":"Check implementation claims against mechanical completion ledger"}

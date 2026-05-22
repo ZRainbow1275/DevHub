@@ -1,0 +1,106 @@
+{
+  "schemaVersion": "devhub-r8-popout-bw-rss-benchmark-v1",
+  "appRssIncrementMb": 415.4,
+  "baselineTotalAppRssMb": 511.53,
+  "budgets": {
+    "perWindowMb": 80,
+    "threeWindowIncrementMb": 200,
+    "totalUniquePopoutMb": 500
+  },
+  "final": {
+    "maxPerWindowRssMb": 166.81,
+    "missingMetricWindowIds": [],
+    "rows": [
+      {
+        "bounds": {
+          "x": 64,
+          "y": 64,
+          "width": 430,
+          "height": 360
+        },
+        "pid": 14760,
+        "rssMb": 166.81,
+        "title": "R8.B spec-02 RSS bench 1779128671708 01",
+        "windowId": "popout-4156e20a-584a-4fc9-a51e-f0d7597250e5"
+      },
+      {
+        "bounds": {
+          "x": 88,
+          "y": 64,
+          "width": 430,
+          "height": 360
+        },
+        "pid": 20264,
+        "rssMb": 146.2,
+        "title": "R8.B spec-02 RSS bench 1779128671708 02",
+        "windowId": "popout-a8ff8a44-9234-4824-bd76-10005f477ba8"
+      },
+      {
+        "bounds": {
+          "x": 112,
+          "y": 64,
+          "width": 430,
+          "height": 360
+        },
+        "pid": 28380,
+        "rssMb": 144.78,
+        "title": "R8.B spec-02 RSS bench 1779128671708 03",
+        "windowId": "popout-6ae58cf6-84cc-4e7d-a777-46144cf72f95"
+      }
+    ],
+    "totalUniquePopoutRssMb": 457.79,
+    "uniqueProcessCount": 3
+  },
+  "finalTotalAppRssMb": 926.93,
+  "firstThree": {
+    "maxPerWindowRssMb": 166.71,
+    "missingMetricWindowIds": [],
+    "rows": [
+      {
+        "bounds": {
+          "x": 64,
+          "y": 64,
+          "width": 430,
+          "height": 360
+        },
+        "pid": 14760,
+        "rssMb": 166.71,
+        "title": "R8.B spec-02 RSS bench 1779128671708 01",
+        "windowId": "popout-4156e20a-584a-4fc9-a51e-f0d7597250e5"
+      },
+      {
+        "bounds": {
+          "x": 88,
+          "y": 64,
+          "width": 430,
+          "height": 360
+        },
+        "pid": 20264,
+        "rssMb": 148.2,
+        "title": "R8.B spec-02 RSS bench 1779128671708 02",
+        "windowId": "popout-a8ff8a44-9234-4824-bd76-10005f477ba8"
+      },
+      {
+        "bounds": {
+          "x": 112,
+          "y": 64,
+          "width": 430,
+          "height": 360
+        },
+        "pid": 28380,
+        "rssMb": 146.54,
+        "title": "R8.B spec-02 RSS bench 1779128671708 03",
+        "windowId": "popout-6ae58cf6-84cc-4e7d-a777-46144cf72f95"
+      }
+    ],
+    "totalUniquePopoutRssMb": 461.45,
+    "uniqueProcessCount": 3
+  },
+  "firstThreeAppRssIncrementMb": 430.46,
+  "firstThreeTotalAppRssMb": 941.99,
+  "label": "BENCH-POPOUT-BW-RSS",
+  "passed": false,
+  "sampleSource": "Electron app.getAppMetrics() + BrowserWindow webContents OS process ids",
+  "settleMs": 1000,
+  "targetWindowCount": 3
+}

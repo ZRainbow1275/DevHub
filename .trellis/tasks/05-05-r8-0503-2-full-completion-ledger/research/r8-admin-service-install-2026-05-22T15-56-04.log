@@ -1,0 +1,13 @@
+﻿[2026-05-22T15:56:04.7377839+08:00] R8 admin service install run started
+[2026-05-22T15:56:04.7694234+08:00] Repo=D:\Desktop\CREATOR ONE
+[2026-05-22T15:56:04.7822873+08:00] Identity=ZRAINBOW\ZRainbow Administrator=True
+[2026-05-22T15:56:04.7945110+08:00] STEP_START admin-probe
+[2026-05-22T15:56:04.8581285+08:00] STEP_END admin-probe exitCode=0 output=D:\Desktop\CREATOR ONE\.trellis\tasks\05-05-r8-0503-2-full-completion-ledger\research\r8-admin-service-install-2026-05-22T15-56-04-admin-probe.out.log
+[2026-05-22T15:56:04.8641460+08:00] STEP_START install-devhub-watchdog-service
+[2026-05-22T15:56:04.9360130+08:00] STEP_END install-devhub-watchdog-service exitCode=0 output=D:\Desktop\CREATOR ONE\.trellis\tasks\05-05-r8-0503-2-full-completion-ledger\research\r8-admin-service-install-2026-05-22T15-56-04-install-devhub-watchdog-service.out.log
+[2026-05-22T15:56:04.9385310+08:00] STEP_START refresh-r8-external-blockers
+[2026-05-22T15:56:07.6024614+08:00] STEP_END refresh-r8-external-blockers exitCode=1 output=D:\Desktop\CREATOR ONE\.trellis\tasks\05-05-r8-0503-2-full-completion-ledger\research\r8-admin-service-install-2026-05-22T15-56-04-refresh-r8-external-blockers.out.log
+[2026-05-22T15:56:07.6024614+08:00] STEP_START strict-vd-watch
+[2026-05-22T15:56:10.6032788+08:00] STEP_END strict-vd-watch exitCode=1 output=D:\Desktop\CREATOR ONE\.trellis\tasks\05-05-r8-0503-2-full-completion-ledger\research\r8-admin-service-install-2026-05-22T15-56-04-strict-vd-watch.out.log
+[2026-05-22T15:56:10.6179660+08:00] SUMMARY D:\Desktop\CREATOR ONE\.trellis\tasks\05-05-r8-0503-2-full-completion-ledger\research\r8-admin-service-install-2026-05-22T15-56-04.summary.json
+[2026-05-22T15:56:10.6239958+08:00] R8 admin service install run finished

@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "devhub-r8-thumbnail-capture-benchmark-v1",
+  "label": "BENCH-THUMBNAIL-CAPTURE",
+  "budgetMs": 200,
+  "captureMode": "per-window",
+  "hostProcessCount": 10,
+  "passed": true,
+  "measuredCaptured": 100,
+  "postWarmupSettleMs": 250,
+  "sampleCount": 1,
+  "sourceCounts": {
+    "win32-printwindow": 100
+  },
+  "stats": {
+    "max": 709.8,
+    "min": 4.4,
+    "p50": 6.3,
+    "p95": 10.8,
+    "p99": 11.9,
+    "samples": 100
+  },
+  "targetWindowCount": 100,
+  "uniqueHwndCount": 100,
+  "totalCaptured": 300
+}

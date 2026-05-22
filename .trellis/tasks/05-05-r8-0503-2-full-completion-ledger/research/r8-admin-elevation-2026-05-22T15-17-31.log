@@ -1,0 +1,15 @@
+﻿[2026-05-22T15:17:31.9087622+08:00] R8 admin elevation run started
+[2026-05-22T15:17:31.9388313+08:00] Repo=D:\Desktop\CREATOR ONE
+[2026-05-22T15:17:31.9506332+08:00] Identity=ZRAINBOW\ZRainbow Administrator=True
+[2026-05-22T15:17:31.9581271+08:00] STEP_START admin-probe
+[2026-05-22T15:17:32.0144202+08:00] STEP_END admin-probe exitCode=0 output=D:\Desktop\CREATOR ONE\.trellis\tasks\05-05-r8-0503-2-full-completion-ledger\research\r8-admin-elevation-2026-05-22T15-17-31-admin-probe.out.log
+[2026-05-22T15:17:32.0176744+08:00] STEP_START install-devhub-watchdog-service
+[2026-05-22T15:17:32.0580794+08:00] STEP_END install-devhub-watchdog-service exitCode=1 output=D:\Desktop\CREATOR ONE\.trellis\tasks\05-05-r8-0503-2-full-completion-ledger\research\r8-admin-elevation-2026-05-22T15-17-31-install-devhub-watchdog-service.out.log
+[2026-05-22T15:17:32.0647856+08:00] STEP_START zero-egress-capture
+[2026-05-22T15:18:34.4597649+08:00] STEP_END zero-egress-capture exitCode=1 output=D:\Desktop\CREATOR ONE\.trellis\tasks\05-05-r8-0503-2-full-completion-ledger\research\r8-admin-elevation-2026-05-22T15-17-31-zero-egress-capture.out.log
+[2026-05-22T15:18:34.4597649+08:00] STEP_START refresh-r8-external-blockers
+[2026-05-22T15:18:36.9385579+08:00] STEP_END refresh-r8-external-blockers exitCode=1 output=D:\Desktop\CREATOR ONE\.trellis\tasks\05-05-r8-0503-2-full-completion-ledger\research\r8-admin-elevation-2026-05-22T15-17-31-refresh-r8-external-blockers.out.log
+[2026-05-22T15:18:36.9444177+08:00] STEP_START strict-vd-watch
+[2026-05-22T15:18:40.1898579+08:00] STEP_END strict-vd-watch exitCode=1 output=D:\Desktop\CREATOR ONE\.trellis\tasks\05-05-r8-0503-2-full-completion-ledger\research\r8-admin-elevation-2026-05-22T15-17-31-strict-vd-watch.out.log
+[2026-05-22T15:18:40.2040406+08:00] SUMMARY D:\Desktop\CREATOR ONE\.trellis\tasks\05-05-r8-0503-2-full-completion-ledger\research\r8-admin-elevation-2026-05-22T15-17-31.summary.json
+[2026-05-22T15:18:40.2040406+08:00] R8 admin elevation run finished

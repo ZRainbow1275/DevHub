@@ -1,0 +1,52 @@
+[
+    {
+        "Group":"sing-tun Tunnel",
+        "Components":[
+            {
+                "Name":"sing-tun Tunnel",
+                "Id":304,
+                "Counters":[
+                    {
+                        "Name":"Upper",
+                        "Type":"流",
+                        "Inbound":{
+                            "DirectionTag":"Rx",
+                            "Packets":32,
+                            "Bytes":1280
+                        },
+                        "Outbound":{
+                            "DirectionTag":"Tx",
+                            "Packets":32,
+                            "Bytes":1309
+                        }
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "Group":"Intel(R) Wi-Fi 6E AX211 160MHz",
+        "Components":[
+            {
+                "Name":"Intel(R) Wi-Fi 6E AX211 160MHz",
+                "Id":18,
+                "Counters":[
+                    {
+                        "Name":"Upper",
+                        "Type":"流",
+                        "Inbound":{
+                            "DirectionTag":"Rx",
+                            "Packets":247,
+                            "Bytes":162307
+                        },
+                        "Outbound":{
+                            "DirectionTag":"Tx",
+                            "Packets":143,
+                            "Bytes":13483
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+]
