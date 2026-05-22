@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { AIWindowAlias } from '@shared/types-extended'
+import { AIWindowAlias, AIRenameAndApplyRequest, AIRenameAndApplyResult } from '@shared/types-extended'
 
 const isElectron = typeof window !== 'undefined' && window.devhub !== undefined
 
@@ -12,6 +12,7 @@ interface AliasState {
   saveAlias: (alias: AIWindowAlias) => Promise<boolean>
   deleteAlias: (aliasId: string) => Promise<boolean>
   renameAlias: (aliasId: string, newName: string) => Promise<boolean>
+  renameAndApply: (request: AIRenameAndApplyRequest) => Promise<AIRenameAndApplyResult>
 }
 
 export const useAliasStore = create<AliasState>((set, get) => ({
@@ -95,10 +96,30 @@ export const useAliasStore = create<AliasState>((set, get) => ({
       console.warn('Failed to rename alias:', error instanceof Error ? error.message : 'Unknown error')
       return false
     }
+  },
+
+  renameAndApply: async (request) => {
+    const failed = (error: string): AIRenameAndApplyResult => ({
+      success: false,
+      titleApplied: false,
+      error,
+    })
+    if (!isElectron) return failed('Electron API unavailable')
+    try {
+      const result = await window.devhub.aiAlias.renameAndApply(request)
+      if (result.success && result.alias) {
+        get().addOrUpdateAlias(result.alias)
+      } else {
+        await get().fetchAliases()
+      }
+      return result
+    } catch (error) {
+      await get().fetchAliases()
+      return failed(error instanceof Error ? error.message : 'Unknown error')
+    }
   }
 }))
 
-// Auto-hydrate on startup
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && window.devhub?.aiAlias) {
   queueMicrotask(() => useAliasStore.getState().fetchAliases())
 }

@@ -1,0 +1,5 @@
+export * from './HandshakeProtocol'
+export * from './MutualHeartbeat'
+export * from './WatchdogSpawner'
+export * from './WatchdogSupervisor'
+export * from './WindowsServiceInstaller'

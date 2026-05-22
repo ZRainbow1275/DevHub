@@ -1,5 +1,5 @@
 import { ipcMain, BrowserWindow, dialog, shell, app } from 'electron'
-import { IPC_CHANNELS, Project } from '@shared/types'
+import { IPC_CHANNELS, LAYOUT_MODE_VALUES, Project, ProjectOpenTarget } from '@shared/types'
 import { ProjectWatcher } from '../services/ProjectWatcher'
 import { AppStore } from '../store/AppStore'
 import { ProcessManager } from '../services/ProcessManager'
@@ -15,18 +15,35 @@ import { setupAITaskHandlers, cleanupAITaskHandlers } from './aiTaskHandlers'
 import { setupNotificationHandlers, cleanupNotificationHandlers } from './notificationHandlers'
 import { setupTaskHistoryHandlers, cleanupTaskHistoryHandlers } from './taskHistoryHandlers'
 import { setupScannerHandlers, cleanupScannerHandlers } from './scannerHandlers'
+import { setupDevObservabilityHandlers, cleanupDevObservabilityHandlers } from './devObservabilityHandlers'
+import { setupTopologyHandlers, cleanupTopologyHandlers } from './topologyHandlers'
+import { setupR8RuntimeHandlers, cleanupR8RuntimeHandlers } from './r8RuntimeHandlers'
+import { setupI18nHandlers, cleanupI18nHandlers } from './i18nHandlers'
+import { setupA11yHandlers, cleanupA11yHandlers } from './a11yHandlers'
+import { setupIconHandlers, cleanupIconHandlers } from './iconHandlers'
 import { BackgroundScannerManager } from '../services/BackgroundScannerManager'
+import { R8RuntimeService } from '../services/R8RuntimeService'
+import type { SharedMonitorRuntime } from './runtimeBundle'
+import { openProjectInTarget } from '../utils/projectLauncher'
 
 const projectScanner = new ProjectScanner()
 const projectWatcher = new ProjectWatcher()
+let activeR8RuntimeServiceForTests: R8RuntimeService | null = null
+
+export function getR8RuntimeServiceForTests(): R8RuntimeService | null {
+  return activeR8RuntimeServiceForTests
+}
 
 export function registerIpcHandlers(
   appStore: AppStore,
   processManager: ProcessManager,
   toolMonitor: ToolMonitor,
   getMainWindow: () => BrowserWindow | null,
-  scannerManager?: BackgroundScannerManager
+  scannerManager?: BackgroundScannerManager,
+  runtime?: SharedMonitorRuntime
 ): void {
+  let r8RuntimeService: R8RuntimeService | null = null
+
   // ==================== Project Handlers ====================
 
   ipcMain.handle(IPC_CHANNELS.PROJECTS_LIST, withRateLimit(
@@ -174,6 +191,8 @@ export function registerIpcHandlers(
   const activeLogUnsubscribes = new WeakMap<Electron.WebContents, () => void>()
 
   ipcMain.on('log:subscribe', (event, projectId: string) => {
+    runtime?.metricsCollector?.trackIpcChannel('log:subscribe')
+
     // Clean up previous subscription from the same sender (project switch)
     const prevUnsubscribe = activeLogUnsubscribes.get(event.sender)
     if (prevUnsubscribe) {
@@ -195,6 +214,18 @@ export function registerIpcHandlers(
     })
   })
 
+  ipcMain.on(IPC_CHANNELS.LOG_CLEAR, (_event, projectId: unknown) => {
+    runtime?.metricsCollector?.trackIpcChannel(IPC_CHANNELS.LOG_CLEAR)
+
+    if (typeof projectId !== 'string') {
+      return
+    }
+
+    // The visible log buffer is renderer-owned today. This receiver keeps the
+    // public preload channel live and leaves room for future persisted sinks.
+    void projectId
+  })
+
   // ==================== Settings Handlers ====================
 
   // 允许更新的顶级设置分类白名单
@@ -204,12 +235,61 @@ export function registerIpcHandlers(
 
   // 每个分类允许的字段白名单
   const ALLOWED_CATEGORY_FIELDS: Record<string, readonly string[]> = {
-    appearance: ['theme', 'fontSize', 'sidebarPosition', 'compactMode', 'enableAnimations', 'informationDensity'],
+    appearance: ['theme', 'followSystemTheme', 'fontSize', 'sidebarPosition', 'compactMode', 'enableAnimations', 'layoutMode', 'informationDensity', 'radiusFamily', 'motionLevel'],
     scan: ['scanDrives', 'allowedPaths', 'excludePaths', 'checkInterval', 'maxScanDepth', 'fileTypeFilters'],
     process: ['enabled', 'scanInterval', 'autoCleanZombies', 'zombieThresholdMinutes', 'cpuWarningThreshold', 'memoryWarningThresholdMB', 'whitelist', 'blacklist'],
     notification: ['enabled', 'typeToggles', 'sound', 'persistent', 'quietHoursEnabled', 'quietHoursStart', 'quietHoursEnd'],
-    window: ['enabled', 'autoGroupStrategy', 'saveLayoutOnExit', 'snapToEdges'],
+    window: ['enabled', 'autoGroupStrategy', 'saveLayoutOnExit', 'snapToEdges', 'portPopout'],
     advanced: ['autoStartOnBoot', 'minimizeToTray', 'dataStoragePath', 'logLevel', 'developerMode'],
+  }
+
+  function sanitizePortPopoutSettings(value: unknown): Record<string, unknown> | null {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) return null
+    guardProtoPollution(value)
+
+    const candidate = value as Record<string, unknown>
+    const sanitized: Record<string, unknown> = {}
+    const triggerEnabled = candidate.triggerEnabled
+    if (typeof triggerEnabled === 'object' && triggerEnabled !== null && !Array.isArray(triggerEnabled)) {
+      guardProtoPollution(triggerEnabled)
+      const triggerCandidate = triggerEnabled as Record<string, unknown>
+      const sanitizedTriggers: Record<string, boolean> = {}
+      for (const key of ['hover', 'click', 'drag', 'contextMenu'] as const) {
+        if (typeof triggerCandidate[key] === 'boolean') {
+          sanitizedTriggers[key] = triggerCandidate[key] as boolean
+        }
+      }
+      if (Object.keys(sanitizedTriggers).length > 0) {
+        sanitized.triggerEnabled = sanitizedTriggers
+      }
+    }
+
+    if (typeof candidate.hoverDelayMs === 'number') {
+      sanitized.hoverDelayMs = candidate.hoverDelayMs
+    }
+    if (typeof candidate.dragThresholdPx === 'number') {
+      sanitized.dragThresholdPx = candidate.dragThresholdPx
+    }
+
+    const syncPolicyDefault = candidate.syncPolicyDefault
+    if (typeof syncPolicyDefault === 'object' && syncPolicyDefault !== null && !Array.isArray(syncPolicyDefault)) {
+      guardProtoPollution(syncPolicyDefault)
+      const syncPolicyCandidate = syncPolicyDefault as Record<string, unknown>
+      const sanitizedSyncPolicy: Record<string, unknown> = {}
+      for (const key of ['selection', 'filters', 'sort', 'search', 'theme', 'density', 'hover', 'scroll'] as const) {
+        if (typeof syncPolicyCandidate[key] === 'boolean') {
+          sanitizedSyncPolicy[key] = syncPolicyCandidate[key] as boolean
+        }
+      }
+      if (typeof syncPolicyCandidate.direction === 'string') {
+        sanitizedSyncPolicy.direction = syncPolicyCandidate.direction
+      }
+      if (Object.keys(sanitizedSyncPolicy).length > 0) {
+        sanitized.syncPolicyDefault = sanitizedSyncPolicy
+      }
+    }
+
+    return Object.keys(sanitized).length > 0 ? sanitized : null
   }
 
   /**
@@ -238,7 +318,13 @@ export function registerIpcHandlers(
       const sanitizedCategory: Record<string, unknown> = {}
       for (const field of Object.keys(categoryValue as Record<string, unknown>)) {
         if (allowedFields.includes(field)) {
-          sanitizedCategory[field] = (categoryValue as Record<string, unknown>)[field]
+          const fieldValue = (categoryValue as Record<string, unknown>)[field]
+          if (key === 'window' && field === 'portPopout') {
+            const sanitizedPortPopout = sanitizePortPopoutSettings(fieldValue)
+            if (sanitizedPortPopout) sanitizedCategory[field] = sanitizedPortPopout
+            continue
+          }
+          sanitizedCategory[field] = fieldValue
         }
       }
       if (Object.keys(sanitizedCategory).length > 0) {
@@ -262,6 +348,18 @@ export function registerIpcHandlers(
       }
       if ('sidebarPosition' in appearance && !['left', 'right'].includes(appearance.sidebarPosition as string)) {
         throw new Error('sidebarPosition must be left or right')
+      }
+      if ('layoutMode' in appearance && !LAYOUT_MODE_VALUES.includes(appearance.layoutMode as typeof LAYOUT_MODE_VALUES[number])) {
+        throw new Error('layoutMode must be auto, split, or stacked')
+      }
+      if ('informationDensity' in appearance && !['compact', 'standard', 'comfortable'].includes(appearance.informationDensity as string)) {
+        throw new Error('informationDensity must be compact, standard, or comfortable')
+      }
+      if ('radiusFamily' in appearance && !['sharp', 'soft', 'round'].includes(appearance.radiusFamily as string)) {
+        throw new Error('radiusFamily must be sharp, soft, or round')
+      }
+      if ('motionLevel' in appearance && !['reduced', 'balanced', 'expressive'].includes(appearance.motionLevel as string)) {
+        throw new Error('motionLevel must be reduced, balanced, or expressive')
       }
     }
     const scan = sanitized.scan as Record<string, unknown> | undefined
@@ -299,6 +397,40 @@ export function registerIpcHandlers(
       if ('autoGroupStrategy' in windowSettings && !['none', 'by-project', 'by-type'].includes(windowSettings.autoGroupStrategy as string)) {
         throw new Error('autoGroupStrategy must be none, by-project, or by-type')
       }
+      const portPopout = windowSettings.portPopout as Record<string, unknown> | undefined
+      if (portPopout) {
+        guardProtoPollution(portPopout)
+        const triggerEnabled = portPopout.triggerEnabled as Record<string, unknown> | undefined
+        if (triggerEnabled) {
+          guardProtoPollution(triggerEnabled)
+          for (const field of ['hover', 'click', 'drag', 'contextMenu'] as const) {
+            if (field in triggerEnabled && typeof triggerEnabled[field] !== 'boolean') {
+              throw new Error(`window.portPopout.triggerEnabled.${field} must be boolean`)
+            }
+          }
+        }
+        if ('hoverDelayMs' in portPopout && (typeof portPopout.hoverDelayMs !== 'number' || portPopout.hoverDelayMs < 200 || portPopout.hoverDelayMs > 3000)) {
+          throw new Error('window.portPopout.hoverDelayMs must be a number between 200 and 3000')
+        }
+        if ('dragThresholdPx' in portPopout && (typeof portPopout.dragThresholdPx !== 'number' || portPopout.dragThresholdPx < 4 || portPopout.dragThresholdPx > 32)) {
+          throw new Error('window.portPopout.dragThresholdPx must be a number between 4 and 32')
+        }
+        const syncPolicyDefault = portPopout.syncPolicyDefault as Record<string, unknown> | undefined
+        if (syncPolicyDefault) {
+          guardProtoPollution(syncPolicyDefault)
+          for (const field of ['selection', 'filters', 'sort', 'search', 'theme', 'density', 'hover', 'scroll'] as const) {
+            if (field in syncPolicyDefault && typeof syncPolicyDefault[field] !== 'boolean') {
+              throw new Error(`window.portPopout.syncPolicyDefault.${field} must be boolean`)
+            }
+          }
+          if (
+            'direction' in syncPolicyDefault
+            && !['both', 'main-to-popout', 'popout-to-main', 'isolated'].includes(syncPolicyDefault.direction as string)
+          ) {
+            throw new Error('window.portPopout.syncPolicyDefault.direction must be a valid sync direction')
+          }
+        }
+      }
     }
   }
 
@@ -325,7 +457,13 @@ export function registerIpcHandlers(
       validateSettingsFields(sanitized)
 
       appStore.updateSettings(sanitized)
-      return appStore.getSettings()
+      const updatedSettings = appStore.getSettings()
+      try {
+        r8RuntimeService?.broadcastPopoutThemeSettings(updatedSettings)
+      } catch (error) {
+        console.warn('Popout theme broadcast failed:', error instanceof Error ? error.message : error)
+      }
+      return updatedSettings
     }
   ))
 
@@ -341,10 +479,12 @@ export function registerIpcHandlers(
   // ==================== Window Controls ====================
 
   ipcMain.on(IPC_CHANNELS.WINDOW_MINIMIZE, () => {
+    runtime?.metricsCollector?.trackIpcChannel(IPC_CHANNELS.WINDOW_MINIMIZE)
     getMainWindow()?.minimize()
   })
 
   ipcMain.on(IPC_CHANNELS.WINDOW_MAXIMIZE, () => {
+    runtime?.metricsCollector?.trackIpcChannel(IPC_CHANNELS.WINDOW_MAXIMIZE)
     const win = getMainWindow()
     if (win?.isMaximized()) {
       win.unmaximize()
@@ -355,6 +495,7 @@ export function registerIpcHandlers(
 
   // 请求关闭 - 发送确认事件到渲染进程
   ipcMain.on(IPC_CHANNELS.WINDOW_CLOSE, () => {
+    runtime?.metricsCollector?.trackIpcChannel(IPC_CHANNELS.WINDOW_CLOSE)
     const win = getMainWindow()
     if (win) {
       // 发送确认事件到渲染进程，让用户选择
@@ -364,11 +505,13 @@ export function registerIpcHandlers(
 
   // 最小化到托盘
   ipcMain.on(IPC_CHANNELS.WINDOW_HIDE_TO_TRAY, () => {
+    runtime?.metricsCollector?.trackIpcChannel(IPC_CHANNELS.WINDOW_HIDE_TO_TRAY)
     getMainWindow()?.hide()
   })
 
   // 强制关闭
   ipcMain.on(IPC_CHANNELS.WINDOW_FORCE_CLOSE, () => {
+    runtime?.metricsCollector?.trackIpcChannel(IPC_CHANNELS.WINDOW_FORCE_CLOSE)
     const win = getMainWindow()
     if (win) {
       win.destroy()
@@ -385,6 +528,21 @@ export function registerIpcHandlers(
         throw new Error('Project path must be a string')
       }
       return projectScanner.getGitInfo(projectPath)
+    }
+  ))
+
+  ipcMain.handle('project:get-git-info-batch', withRateLimit(
+    'project:get-git-info-batch', RATE_LIMITS.QUERY,
+    async (_, projectPaths: unknown) => {
+      if (!Array.isArray(projectPaths)) {
+        throw new Error('Project paths must be an array')
+      }
+
+      const uniquePaths = Array.from(new Set(projectPaths.filter((entry): entry is string => typeof entry === 'string')))
+      return Promise.all(uniquePaths.map(async (projectPath) => ({
+        path: projectPath,
+        info: await projectScanner.getGitInfo(projectPath)
+      })))
     }
   ))
 
@@ -478,6 +636,39 @@ export function registerIpcHandlers(
       }
 
       return shell.openPath(validation.normalized!)
+    }
+  ))
+
+  ipcMain.handle('project:open-in-editor', withRateLimit(
+    'project:open-in-editor', RATE_LIMITS.ACTION,
+    async (_, request: unknown) => {
+      if (!request || typeof request !== 'object') {
+        throw new Error('Request must be an object')
+      }
+
+      const { projectPath, target } = request as {
+        projectPath?: unknown
+        target?: unknown
+      }
+
+      if (typeof projectPath !== 'string') {
+        throw new Error('Project path must be a string')
+      }
+
+      const allowedTargets: ProjectOpenTarget[] = ['vscode', 'cursor', 'explorer', 'terminal']
+      if (typeof target !== 'string' || !allowedTargets.includes(target as ProjectOpenTarget)) {
+        throw new Error('Invalid open target')
+      }
+
+      const settings = appStore.getSettings()
+      const validation = validatePath(projectPath, settings.scan.allowedPaths)
+
+      if (!validation.valid) {
+        throw new Error(validation.error || 'Invalid path')
+      }
+
+      await openProjectInTarget(target as ProjectOpenTarget, validation.normalized!)
+      return true
     }
   ))
 
@@ -608,14 +799,36 @@ export function registerIpcHandlers(
     const mainWin = getMainWindow()
     if (mainWin) {
       try {
-        setupProcessHandlers(mainWin, appStore)
-        setupPortHandlers(mainWin, undefined, scannerManager?.getCache())
-        setupWindowHandlers(mainWin)
-        setupAITaskHandlers(mainWin)
+        r8RuntimeService = new R8RuntimeService(appStore, getMainWindow, runtime)
+        activeR8RuntimeServiceForTests = r8RuntimeService
+        setupR8RuntimeHandlers(r8RuntimeService)
+        setupWindowHandlers(mainWin, runtime)
+        setupI18nHandlers()
+        setupA11yHandlers()
+        setupProcessHandlers(mainWin, appStore, runtime, r8RuntimeService)
+        setupPortHandlers(
+          mainWin,
+          runtime?.portScanner,
+          runtime?.scannerCache ?? scannerManager?.getCache(),
+          runtime
+        )
+        setupTopologyHandlers(appStore, runtime)
+        setupAITaskHandlers(mainWin, runtime)
         setupNotificationHandlers(mainWin)
         setupTaskHistoryHandlers(mainWin)
+        setupDevObservabilityHandlers(runtime)
+        setupIconHandlers()
+        void r8RuntimeService.runStartupRecoveryProbe()
+        void r8RuntimeService.restorePinnedPopouts().catch(error => {
+          console.warn('Pinned popout restoration failed:', error instanceof Error ? error.message : error)
+        })
+        setTimeout(() => {
+          void r8RuntimeService?.detectTools({ force: false }).catch(error => {
+            console.warn('Startup CLI detection failed:', error instanceof Error ? error.message : error)
+          })
+        }, 1_500)
         if (scannerManager) {
-          setupScannerHandlers(mainWin, scannerManager)
+          setupScannerHandlers(mainWin, scannerManager, runtime?.metricsCollector)
         }
         extendedHandlersInitialized = true
       } catch (error) {
@@ -641,8 +854,15 @@ export async function cleanupIpcHandlers(): Promise<void> {
   cleanupProcessHandlers()
   cleanupPortHandlers()
   cleanupWindowHandlers()
+  cleanupTopologyHandlers()
   cleanupAITaskHandlers()
   cleanupNotificationHandlers()
   cleanupTaskHistoryHandlers()
+  cleanupDevObservabilityHandlers()
+  cleanupI18nHandlers()
+  cleanupA11yHandlers()
+  cleanupIconHandlers()
+  cleanupR8RuntimeHandlers()
+  activeR8RuntimeServiceForTests = null
   cleanupScannerHandlers()
 }

@@ -9,7 +9,7 @@
 
 import { useEffect, useRef, useCallback, useState, memo } from 'react'
 import { NeuralGraphEngine, type GraphNode, type GraphEdge, type NeuralForceConfig } from './NeuralGraphEngine'
-import { SearchIcon, RefreshIcon, CloseIcon } from '../../icons'
+import { SearchIcon, RefreshIcon, CloseIcon, NetworkIcon } from '../../icons'
 
 // ============ Types ============
 
@@ -312,13 +312,7 @@ export const NeuralGraphWithControls = memo(function NeuralGraphWithControls({
             <div
               className="w-16 h-16 bg-surface-800 flex items-center justify-center mb-4 border-l-3 border-surface-600 radius-sm"
             >
-              <svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                strokeLinecap="square" strokeLinejoin="miter" className="text-text-muted">
-                <rect x="2" y="2" width="6" height="6" />
-                <rect x="16" y="2" width="6" height="6" />
-                <rect x="9" y="16" width="6" height="6" />
-                <path d="M8 5h8M5 8v5l4 3M19 8v5l-4 3" />
-              </svg>
+              <NetworkIcon className="text-text-muted" size={32} />
             </div>
             <h3
               className="text-lg font-bold text-text-primary mb-2 uppercase tracking-wider"

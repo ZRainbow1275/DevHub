@@ -34,11 +34,38 @@ jobs:
       - name: TypeScript type check
         run: pnpm typecheck
 
+      - name: No emoji guard
+        run: pnpm check:no-emoji
+
+      - name: Zod source of truth
+        run: pnpm check:zod-sot
+
+      - name: License policy check
+        run: pnpm check:license
+
+      - name: SBOM generation check
+        run: pnpm check:sbom
+
+      - name: No cloud dependency guard
+        run: pnpm check:no-cloud-deps
+
+      - name: No OCR dependency guard
+        run: pnpm check:no-ocr-deps
+
+      - name: Zero egress diagnostic guard
+        run: pnpm exec vitest run src/main/services/R8RuntimeService.test.ts --maxWorkers=1 -t "without opening outbound network clients"
+
+      - name: i18n coverage check
+        run: pnpm i18n:check
+
       - name: Run unit tests
         run: pnpm test -- --run
 
       - name: Build application
         run: pnpm build
+
+      - name: Accessibility axe smoke
+        run: pnpm test:e2e -- --grep "R8.B spec-16" --workers=1 --reporter=line
 
   test-linux:
     runs-on: ubuntu-latest
@@ -66,6 +93,30 @@ jobs:
 
       - name: TypeScript type check
         run: pnpm typecheck
+
+      - name: No emoji guard
+        run: pnpm check:no-emoji
+
+      - name: Zod source of truth
+        run: pnpm check:zod-sot
+
+      - name: License policy check
+        run: pnpm check:license
+
+      - name: SBOM generation check
+        run: pnpm check:sbom
+
+      - name: No cloud dependency guard
+        run: pnpm check:no-cloud-deps
+
+      - name: No OCR dependency guard
+        run: pnpm check:no-ocr-deps
+
+      - name: Zero egress diagnostic guard
+        run: pnpm exec vitest run src/main/services/R8RuntimeService.test.ts --maxWorkers=1 -t "without opening outbound network clients"
+
+      - name: i18n coverage check
+        run: pnpm i18n:check
 
       - name: Run unit tests
         run: pnpm test -- --run

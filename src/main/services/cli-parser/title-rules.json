@@ -1,0 +1,48 @@
+{
+  "cursor": [
+    {
+      "tool": "cursor",
+      "regex": "Cursor\\s*-\\s*Editing|Editing .*Cursor|\\(busy\\)",
+      "flags": "i",
+      "phase": "editing",
+      "confidence": 0.6
+    },
+    {
+      "tool": "cursor",
+      "regex": "Cursor.*(thinking|generating|applying|running)",
+      "flags": "i",
+      "phase": "thinking",
+      "confidence": 0.58
+    },
+    {
+      "tool": "cursor",
+      "regex": "\\bCursor\\b",
+      "flags": "i",
+      "phase": "idle",
+      "confidence": 0.35
+    }
+  ],
+  "copilot": [
+    {
+      "tool": "copilot",
+      "regex": "Copilot.*(suggest|thinking|chat|generating)",
+      "flags": "i",
+      "phase": "thinking",
+      "confidence": 0.5
+    },
+    {
+      "tool": "copilot",
+      "regex": "gh copilot|copilot cli",
+      "flags": "i",
+      "phase": "running",
+      "confidence": 0.5
+    },
+    {
+      "tool": "copilot",
+      "regex": "\\bCopilot\\b",
+      "flags": "i",
+      "phase": "idle",
+      "confidence": 0.35
+    }
+  ]
+}

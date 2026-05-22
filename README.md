@@ -15,6 +15,8 @@
   <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react" alt="React" />
   <img src="https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript" alt="TypeScript" />
   <img src="https://img.shields.io/badge/License-AGPL--3.0-blue" alt="License" />
+  <img src="https://img.shields.io/github/actions/workflow/status/ZRainbow/DevHub/ci.yml?branch=main&label=CI" alt="CI" />
+  <img src="https://img.shields.io/github/stars/ZRainbow/DevHub?style=social" alt="Stars" />
 </p>
 
 ---
@@ -127,7 +129,31 @@ pnpm test             # Vitest unit tests
 pnpm test:ui          # Vitest UI panel
 pnpm test:coverage    # Coverage report (v8)
 pnpm test:e2e         # Playwright E2E tests
+pnpm check:license    # Production dependency license policy
+pnpm check:sbom       # Generate and validate a CycloneDX SBOM
+pnpm check:no-cloud-deps
+pnpm check:no-ocr-deps
+pnpm check:zero-egress-capture:preflight
 ```
+
+### 60-second zero-egress verification
+
+DevHub R8 is designed as a local-first desktop app. The fastest local verification is:
+
+```bash
+pnpm check:no-cloud-deps
+pnpm check:no-ocr-deps
+pnpm exec vitest run src/main/services/R8RuntimeService.test.ts --maxWorkers=1 -t "without opening outbound network clients"
+```
+
+For the packet-level Windows acceptance check, run the capture verifier from an Administrator shell. It starts `pktmon` counters, launches `pnpm dev`, observes startup for 60 seconds, writes JSON evidence under `out/zero-egress-capture`, and fails if any packet counter is non-zero:
+
+```powershell
+pnpm check:zero-egress-capture:preflight
+pnpm check:zero-egress-capture
+```
+
+The verifier exits with code `2` when Windows, `pktmon`, or Administrator privileges are missing. That state is a blocked acceptance precondition, not a pass. Expected result for idle launch is zero captured packets unless the operator explicitly starts an update, feedback, or external-link action.
 
 ### Tech Stack
 
@@ -218,12 +244,20 @@ src/renderer/
 
 ## Roadmap
 
-- [ ] Virtual scrolling for all monitor views (performance)
-- [ ] Visibility-aware polling (pause when minimized)
-- [ ] Full ARIA accessibility support
-- [ ] WMIC to Get-CimInstance migration (Windows 11 future-proofing)
-- [ ] Unified polling scheduler
-- [ ] macOS / Linux support
+See [ROADMAP.md](ROADMAP.md) for the public quarterly roadmap and current monthly plan.
+
+## Governance
+
+- Security disclosure: [SECURITY.md](SECURITY.md)
+- Privacy policy: [PRIVACY.md](PRIVACY.md)
+- Contributor guide: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Code of conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- Changelog: [CHANGELOG.md](CHANGELOG.md)
+- Third-party notices: [NOTICE](NOTICE)
+
+## Trademark and fair-use notice
+
+DevHub may display names or logos for third-party developer tools such as OpenAI, Claude, Gemini, Cursor, GitHub Copilot, npm, Node.js, Electron, React, and TypeScript solely to identify user-installed tools, dependency ecosystems, or compatibility targets. Those names and marks remain the property of their respective owners. DevHub is not endorsed by or affiliated with those vendors unless a written agreement says otherwise.
 
 ---
 

@@ -82,6 +82,10 @@ const DEFAULT_CONFIG: NeuralForceConfig = {
   yLayerGap: 150
 }
 
+function computeLayerGap(height: number): number {
+  return clamp(72, height / 3.2, 240)
+}
+
 // ============ Visual Constants ============
 
 const NODE_COLOR_MAP: Record<string, { base: string; glow: string }> = {
@@ -232,16 +236,15 @@ export class NeuralGraphEngine {
 
   private init(): void {
     const rect = this.container.getBoundingClientRect()
-    this.width = rect.width
-    this.height = rect.height
+    const hasInitialSize = rect.width > 0 && rect.height > 0
+    this.width = hasInitialSize ? rect.width : 1
+    this.height = hasInitialSize ? rect.height : 1
 
     // If container has zero dimensions (mount timing), retry after a short delay
-    if (this.width === 0 || this.height === 0) {
+    if (!hasInitialSize) {
       if (import.meta.env.DEV) {
         console.warn('[NeuralGraphEngine] Container has 0 dimensions, retrying in 100ms')
       }
-      this.width = 800
-      this.height = 600
       this.initRetryTimer = setTimeout(() => {
         if (this.destroyed) return
         const retryRect = this.container.getBoundingClientRect()
@@ -251,6 +254,10 @@ export class NeuralGraphEngine {
           this.svg.attr('viewBox', `0 0 ${this.width} ${this.height}`)
           this.simulation
             .force('center', forceCenter(this.width / 2, this.height / 2).strength(this.config.centerStrength))
+            .force('y', forceY<GraphNode>()
+              .y((d) => (d.depth ?? 0) * computeLayerGap(this.height) + this.height / 4)
+              .strength(this.config.yStrength)
+            )
           if (this.nodes.length > 0) {
             this.simulation.alpha(0.3).restart()
           }
@@ -423,7 +430,7 @@ export class NeuralGraphEngine {
         .radius((d) => (d.visualRadius ?? 20) + this.config.collisionPadding)
       )
       .force('y', forceY<GraphNode>()
-        .y((d) => (d.depth ?? 0) * this.config.yLayerGap + this.height / 4)
+        .y((d) => (d.depth ?? 0) * computeLayerGap(this.height) + this.height / 4)
         .strength(this.config.yStrength)
       )
       .alpha(0.4)
@@ -445,9 +452,13 @@ export class NeuralGraphEngine {
     const enter = edgeSel.enter()
       .append('line')
       .attr('class', 'neural-edge neural-edge-flow')
+      .attr('data-testid', 'graph-edge')
       .attr('stroke-dasharray', '8 4')
 
     enter.merge(edgeSel as Selection<SVGLineElement, GraphEdge, SVGGElement, unknown>)
+      .attr('data-testid', 'graph-edge')
+      .attr('data-edge-id', (d) => d.id)
+      .attr('data-edge-type', (d) => d.edgeType)
       .attr('stroke', (d) => getEdgeColor(d))
       .attr('stroke-width', (d) => clamp(1, d.weight * 4, 6))
       .attr('stroke-opacity', (d) => clamp(0.3, d.weight * 0.7, 0.8))
@@ -472,6 +483,11 @@ export class NeuralGraphEngine {
     const enter = nodeSel.enter()
       .append('g')
       .attr('class', (d) => `neural-node neural-node-${d.nodeType} ${enterIds.has(d.id) ? 'neural-node-enter' : ''}`)
+      .attr('data-testid', 'graph-node')
+      .attr('data-node-id', (d) => d.id)
+      .attr('data-node-kind', (d) => d.nodeType)
+      .attr('data-node-depth', (d) => String(d.depth))
+      .attr('data-root', (d) => String(Boolean(d.metadata?.root)))
       .style('cursor', 'pointer')
 
     // Glow ring (circle fallback — fine for all shapes)
@@ -590,6 +606,11 @@ export class NeuralGraphEngine {
 
     // Merge: update existing node visuals
     const merged = enter.merge(nodeSel as Selection<SVGGElement, GraphNode, SVGGElement, unknown>)
+      .attr('data-testid', 'graph-node')
+      .attr('data-node-id', (d) => d.id)
+      .attr('data-node-kind', (d) => d.nodeType)
+      .attr('data-node-depth', (d) => String(d.depth))
+      .attr('data-root', (d) => String(Boolean(d.metadata?.root)))
 
     merged.each(function (d) {
       const colors = getNodeColor(d)
@@ -758,13 +779,18 @@ export class NeuralGraphEngine {
 
   resize(): void {
     const rect = this.container.getBoundingClientRect()
-    this.width = rect.width || 800
-    this.height = rect.height || 600
+    if (rect.width <= 0 || rect.height <= 0) return
+    this.width = rect.width
+    this.height = rect.height
     this.svg.attr('viewBox', `0 0 ${this.width} ${this.height}`)
 
     // Re-center the force
     this.simulation.force('center', forceCenter(this.width / 2, this.height / 2).strength(this.config.centerStrength))
-    this.simulation.alpha(0.1).restart()
+    this.simulation.force('y', forceY<GraphNode>()
+      .y((d) => (d.depth ?? 0) * computeLayerGap(this.height) + this.height / 4)
+      .strength(this.config.yStrength)
+    )
+    this.simulation.alpha(0.3).restart()
   }
 
   destroy(): void {

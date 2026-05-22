@@ -8,7 +8,8 @@ export default defineConfig({
     build: {
       rollupOptions: {
         input: {
-          index: resolve(__dirname, 'src/main/index.ts')
+          index: resolve(__dirname, 'src/main/index.ts'),
+          'watchdog-process/main': resolve(__dirname, 'src/watchdog-process/main.ts')
         }
       }
     },
@@ -20,16 +21,24 @@ export default defineConfig({
     }
   },
   preload: {
-    plugins: [externalizeDepsPlugin()],
+    plugins: [externalizeDepsPlugin({ exclude: ['zod'] })],
     build: {
       lib: {
-        entry: resolve(__dirname, 'src/preload/index.ts'),
+        entry: {
+          index: resolve(__dirname, 'src/preload/index.ts'),
+          monitor: resolve(__dirname, 'src/preload/monitor.ts'),
+          'port-popout': resolve(__dirname, 'src/preload/port-popout.ts'),
+          'monitor-popout': resolve(__dirname, 'src/preload/monitor-popout.ts')
+        },
         formats: ['cjs'],
-        fileName: () => 'index.cjs'
+        fileName: (_format, entryName) => `${entryName}.cjs`
       },
       rollupOptions: {
         input: {
-          index: resolve(__dirname, 'src/preload/index.ts')
+          index: resolve(__dirname, 'src/preload/index.ts'),
+          monitor: resolve(__dirname, 'src/preload/monitor.ts'),
+          'port-popout': resolve(__dirname, 'src/preload/port-popout.ts'),
+          'monitor-popout': resolve(__dirname, 'src/preload/monitor-popout.ts')
         },
         output: {
           entryFileNames: '[name].cjs'
@@ -60,7 +69,10 @@ export default defineConfig({
     build: {
       rollupOptions: {
         input: {
-          index: resolve(__dirname, 'src/renderer/index.html')
+          index: resolve(__dirname, 'src/renderer/index.html'),
+          monitor: resolve(__dirname, 'src/renderer/monitor.html'),
+          'port-popout': resolve(__dirname, 'src/renderer/port-popout.html'),
+          'monitor-popout': resolve(__dirname, 'src/renderer/monitor-popout.html')
         }
       }
     }

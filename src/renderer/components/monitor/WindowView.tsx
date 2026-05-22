@@ -1,12 +1,30 @@
-import { useEffect, memo, useState, useCallback, useMemo, useRef } from 'react'
+import { useEffect, memo, useState, useCallback, useMemo, useRef, type MouseEvent } from 'react'
 import { useWindows } from '../../hooks/useWindows'
 import { useAITasks } from '../../hooks/useAITasks'
+import { useBatchSelection, type WindowSelectionGesture } from '../../hooks/useBatchSelection'
 import { useAliasStore } from '../../stores/aliasStore'
-import { WindowInfo, WindowGroup, WindowLayout, AITask, AIMonitorState, AI_MONITOR_STATE_INFO } from '@shared/types-extended'
+import { usePortStore } from '../../stores/portStore'
+import { WindowInfo, WindowGroup, WindowLayout, AITask, AIToolType, AIWindowAlias, AIMonitorState, AI_MONITOR_STATE_INFO, WindowFavoriteRecord, WindowOperationKind } from '@shared/types-extended'
+import { WINDOW_OPERATION_CATALOG } from '@shared/window-operations-catalog'
+import { WINDOW_BATCH_LIMITS, type WindowBatchAction, type WindowBatchProgress, type WindowBatchRequest } from '@shared/schemas/r8-runtime'
 import { AIWindowAliasBadge } from './AIWindowAlias'
 import { ProcessCardErrorBoundary } from './ProcessCardErrorBoundary'
 import { useToast } from '../ui/Toast'
 import { LayoutPreview } from './LayoutPreview'
+import { AttachedGraphView } from './attached/AttachedGraphView'
+import { AttachedFlowView } from './attached/AttachedFlowView'
+import { ThumbnailWall } from './window/ThumbnailWall'
+import { LassoSelect } from './window/LassoSelect'
+import { createWindowBatchRequest, runSequentialWindowBatch, summarizeWindowBatchProgress } from './window/windowBatchModel'
+import { BatchProgressToast } from './window/BatchProgressToast'
+import { BatchConfirmDialog } from './window/BatchConfirmDialog'
+import { WindowModuleTour, WINDOW_MODULE_TOUR_STORAGE_KEY } from './window/WindowModuleTour'
+import { redactWindowTitle } from './window/windowTitleRedaction'
+import { MisreportButton } from '../../views/monitor/MisreportButton'
+import { SignalDiagnosticPanel } from '../../views/monitor/SignalDiagnosticPanel'
+import { CardEdgeGraphBadge } from './CardEdgeGraphBadge'
+import { openWindowInGlobalTopology } from '../../utils/globalTopologyNavigation'
+
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { StatCard } from '../ui/StatCard'
 import { ViewModeToggle } from '../ui/ViewModeToggle'
@@ -22,6 +40,11 @@ import {
   CloseIcon,
   EyeIcon,
   TrashIcon,
+  CopyIcon,
+  ExternalLinkIcon,
+  InfoIcon,
+  KillIcon,
+  PencilIcon,
   ChevronIcon,
   CheckIcon,
   CodeIcon,
@@ -33,8 +56,166 @@ import {
   MinimizeIcon,
   MaximizeIcon,
   LayoutIcon,
-  GearIcon
+  DownloadIcon,
+  GearIcon,
+  NetworkIcon
 } from '../icons'
+
+const AI_TOOL_DISPLAY_NAMES: Record<AIToolType, string> = {
+  'codex': 'Codex CLI',
+  'claude-code': 'Claude Code',
+  'gemini-cli': 'Gemini CLI',
+  'cursor': 'Cursor',
+  'opencode': 'OpenCode',
+  'aider': 'Aider',
+  'windsurf': 'Windsurf',
+  'continue-dev': 'Continue',
+  'cline': 'Cline',
+  'other': 'AI Tool',
+}
+
+function getAIToolDisplayName(toolType: AIToolType): string {
+  return AI_TOOL_DISPLAY_NAMES[toolType] ?? 'AI Tool'
+}
+
+function buildWindowNavigationEvent(detail: Record<string, unknown>) {
+  return new CustomEvent('devhub:monitor-navigate', { detail })
+}
+
+function toWindowSelectionGesture(event: Pick<MouseEvent, 'ctrlKey' | 'metaKey' | 'shiftKey'>, toggle = true): WindowSelectionGesture {
+  return {
+    ctrlKey: event.ctrlKey,
+    metaKey: event.metaKey,
+    shiftKey: event.shiftKey,
+    toggle
+  }
+}
+
+function isEditableKeyboardTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  const tagName = target.tagName.toLowerCase()
+  return target.isContentEditable || tagName === 'input' || tagName === 'textarea' || tagName === 'select'
+}
+
+function formatWindowInjectionTarget(win: WindowInfo): string {
+  return `HWND ${win.hwnd} / ${redactWindowTitle(win.title || win.processName)}`
+}
+
+function parseWindowRectInput(input: string): WindowInfo['rect'] | null {
+  const parts = input.split(',').map(part => Number.parseInt(part.trim(), 10))
+  if (parts.length !== 4 || parts.some(part => !Number.isFinite(part))) return null
+  const [x, y, width, height] = parts
+  if (width < 100 || height < 80) return null
+  return { x, y, width, height }
+}
+
+function getWindowOperationIcon(kind: WindowOperationKind): React.ReactNode {
+  const iconClass = kind === 'close' || kind === 'kill-process' ? 'text-error' : 'text-current'
+  switch (kind) {
+    case 'focus':
+      return <EyeIcon size={14} className={iconClass} />
+    case 'minimize':
+      return <MinimizeIcon size={14} className={iconClass} />
+    case 'maximize':
+      return <MaximizeIcon size={14} className={iconClass} />
+    case 'restore':
+      return <RefreshIcon size={14} className={iconClass} />
+    case 'move-resize':
+      return <LayoutIcon size={14} className={iconClass} />
+    case 'toggle-always-on-top':
+      return <GearIcon size={14} className={iconClass} />
+    case 'set-opacity':
+      return <GearIcon size={14} className={iconClass} />
+    case 'screenshot':
+      return <DownloadIcon size={14} className={iconClass} />
+    case 'copy-title':
+      return <CopyIcon size={14} className={iconClass} />
+    case 'jump-process':
+      return <ProcessIcon size={14} className={iconClass} />
+    case 'jump-port':
+      return <GlobeIcon size={14} className={iconClass} />
+    case 'jump-ai-task':
+      return <AIIcon size={14} className={iconClass} />
+    case 'open-working-dir':
+      return <FolderIcon size={14} className={iconClass} />
+    case 'open-project':
+      return <ExternalLinkIcon size={14} className={iconClass} />
+    case 'toggle-favorite':
+      return <InfoIcon size={14} className={iconClass} />
+    case 'set-title':
+      return <PencilIcon size={14} className={iconClass} />
+    case 'send-safe-keys':
+      return <TerminalIcon size={14} className={iconClass} />
+    case 'close':
+      return <CloseIcon size={14} className={iconClass} />
+    case 'kill-process':
+      return <KillIcon size={14} className={iconClass} />
+  }
+}
+
+interface WindowOperationContext {
+  hasPort: boolean
+  hasAITask: boolean
+  hasProject: boolean
+  isFavorite: boolean
+}
+
+interface WindowOperationPanelProps {
+  windowInfo: WindowInfo
+  context: WindowOperationContext
+  compact?: boolean
+  onRun: (kind: WindowOperationKind, windowInfo: WindowInfo) => void
+}
+
+const WindowOperationPanel = memo(function WindowOperationPanel({
+  windowInfo,
+  context,
+  compact = false,
+  onRun
+}: WindowOperationPanelProps) {
+  const canRun = useCallback((kind: WindowOperationKind): boolean => {
+    if (kind === 'jump-port') return context.hasPort
+    if (kind === 'jump-ai-task') return context.hasAITask
+    if (kind === 'open-project') return context.hasProject
+    return true
+  }, [context.hasAITask, context.hasPort, context.hasProject])
+
+  return (
+    <div
+      className={`grid gap-1 ${compact ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-4'}`}
+      onClick={(event) => event.stopPropagation()}
+      data-testid={`window-operation-panel-${windowInfo.hwnd}`}
+    >
+      {WINDOW_OPERATION_CATALOG.map((operation) => {
+        const enabled = canRun(operation.kind)
+        const isFavorite = operation.kind === 'toggle-favorite' && context.isFavorite
+        return (
+          <button
+            key={operation.kind}
+            type="button"
+            disabled={!enabled}
+            title={enabled ? operation.description : `${operation.description}，当前窗口缺少必要关联数据`}
+            data-testid={`window-op-${operation.kind}`}
+            onClick={() => enabled && onRun(operation.kind, windowInfo)}
+            className={`
+              flex items-center gap-2 min-w-0 px-2 py-1.5 text-[11px] font-medium text-left transition-all border-l-2 radius-sm
+              ${operation.danger
+                ? 'bg-error/10 text-error border-error/50 hover:bg-error hover:text-white'
+                : isFavorite
+                  ? 'bg-warning/15 text-warning border-warning/50 hover:bg-warning/25'
+                  : 'bg-surface-800/60 text-text-secondary border-surface-600 hover:bg-surface-700 hover:text-text-primary hover:border-accent'
+              }
+              ${enabled ? '' : 'opacity-45 cursor-not-allowed hover:bg-surface-800/60'}
+            `}
+          >
+            <span className="flex-shrink-0">{getWindowOperationIcon(operation.kind)}</span>
+            <span className="truncate">{isFavorite ? '取消收藏' : operation.label}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+})
 
 // ============================================
 // Process Group data structure for "group by process" view
@@ -54,9 +235,11 @@ interface ProcessGroupCardProps {
   onToggleExpand: () => void
   selectedHwnd: number | null
   selectedWindows: Set<number>
+  getOperationContext: (windowInfo: WindowInfo) => WindowOperationContext
   onSelectWindow: (hwnd: number) => void
   onFocusWindow: (hwnd: number) => void
-  onToggleCheck: (hwnd: number) => void
+  onToggleCheck: (hwnd: number, gesture?: WindowSelectionGesture) => void
+  onRunOperation: (kind: WindowOperationKind, windowInfo: WindowInfo) => void
   index: number
 }
 
@@ -66,9 +249,11 @@ const ProcessGroupCard = memo(function ProcessGroupCard({
   onToggleExpand,
   selectedHwnd,
   selectedWindows,
+  getOperationContext,
   onSelectWindow,
   onFocusWindow,
   onToggleCheck,
+  onRunOperation,
   index
 }: ProcessGroupCardProps) {
   return (
@@ -133,6 +318,7 @@ const ProcessGroupCard = memo(function ProcessGroupCard({
             return (
               <div
                 key={w.hwnd}
+                data-window-selection-hwnd={w.hwnd}
                 onClick={() => onSelectWindow(w.hwnd)}
                 onDoubleClick={() => onFocusWindow(w.hwnd)}
                 className={`
@@ -147,7 +333,7 @@ const ProcessGroupCard = memo(function ProcessGroupCard({
                 {/* Checkbox */}
                 <div onClick={(e) => e.stopPropagation()}>
                   <div
-                    onClick={() => onToggleCheck(w.hwnd)}
+                    onClick={(event) => onToggleCheck(w.hwnd, toWindowSelectionGesture(event))}
                     className={`
                       w-4 h-4 flex items-center justify-center border-2 transition-all cursor-pointer
                       ${isChecked
@@ -174,7 +360,12 @@ const ProcessGroupCard = memo(function ProcessGroupCard({
 
                 {/* Title */}
                 <div className="flex-1 min-w-0">
-                  <TruncatedText text={w.title} className="text-xs text-text-secondary" />
+                  <TruncatedText
+                    text={w.title}
+                    className="text-xs text-text-secondary"
+                    maxChars={40}
+                    enableMarquee
+                  />
                 </div>
 
                 {/* Size */}
@@ -205,6 +396,16 @@ const ProcessGroupCard = memo(function ProcessGroupCard({
                 >
                   <EyeIcon size={14} />
                 </button>
+                {isSelected && (
+                  <div className="basis-full pt-2 pl-14">
+                    <WindowOperationPanel
+                      windowInfo={w}
+                      context={getOperationContext(w)}
+                      compact
+                      onRun={onRunOperation}
+                    />
+                  </div>
+                )}
               </div>
             )
           })}
@@ -241,9 +442,13 @@ interface WindowCardProps {
   window: WindowInfo
   isSelected: boolean
   isChecked: boolean
+  isTopmost: boolean
+  operationContext: WindowOperationContext
   onSelect: () => void
+  onShowGraph: () => void
   onFocus: () => void
-  onToggleCheck: () => void
+  onToggleCheck: (gesture?: WindowSelectionGesture) => void
+  onRunOperation: (kind: WindowOperationKind, windowInfo: WindowInfo) => void
   index: number
 }
 
@@ -251,9 +456,13 @@ const WindowCard = memo(function WindowCard({
   window,
   isSelected,
   isChecked,
+  isTopmost,
+  operationContext,
   onSelect,
+  onShowGraph,
   onFocus,
   onToggleCheck,
+  onRunOperation,
   index
 }: WindowCardProps) {
   const [isHovered, setIsHovered] = useState(false)
@@ -261,6 +470,10 @@ const WindowCard = memo(function WindowCard({
 
   return (
     <div
+      data-testid={`window-card-${window.hwnd}`}
+      data-window-instance-key={`${window.processName}:${window.pid}:${window.hwnd}`}
+      data-window-selection-hwnd={window.hwnd}
+      data-window-topmost={String(isTopmost)}
       onClick={onSelect}
       onDoubleClick={onFocus}
       onMouseEnter={() => setIsHovered(true)}
@@ -272,17 +485,26 @@ const WindowCard = memo(function WindowCard({
           : ''
         }
       `}
-      style={{ animationDelay: `${index * 30}ms` }}
+      style={{ animationDelay: `${index * 30}ms`, minHeight: '88px' }}
     >
       {/* Diagonal decoration */}
       <div className="absolute inset-0 deco-diagonal opacity-5 pointer-events-none radius-sm" />
+      <CardEdgeGraphBadge
+        testId={`window-card-graph-badge-${window.hwnd}`}
+        graphEntry="window-card-attached-topology"
+        scopeKind="window"
+        targetId={window.hwnd}
+        ariaLabel={`查看窗口 ${window.hwnd} 关系图`}
+        onClick={onShowGraph}
+      />
 
       {/* Checkbox */}
       <div
         className="absolute top-3 left-3 z-10"
+        data-testid={`window-card-checkbox-${window.hwnd}`}
         onClick={(e) => {
           e.stopPropagation()
-          onToggleCheck()
+          onToggleCheck(toWindowSelectionGesture(e))
         }}
       >
         <div
@@ -314,16 +536,24 @@ const WindowCard = memo(function WindowCard({
                 window.isMinimized ? 'bg-warning animate-pulse' : 'bg-success'
               } radius-sm`}
             />
-            <TruncatedText text={window.title} className="text-sm font-semibold text-text-primary" />
+            <TruncatedText
+              text={redactWindowTitle(window.title)}
+              className="text-sm font-semibold text-text-primary"
+              maxChars={40}
+              enableMarquee
+              testId="window-title-cell"
+            />
           </div>
 
           <div className="flex items-center gap-3 text-xs text-text-muted">
             <span
+              data-window-field="processName"
               className="font-mono bg-surface-800 px-2 py-0.5 border-l-2 border-surface-600 radius-sm"
             >
               {window.processName}
             </span>
-            <span className="text-text-tertiary font-mono">PID: {window.pid}</span>
+            <span data-window-field="pid" className="text-text-tertiary font-mono">PID: {window.pid}</span>
+            <span data-window-field="hwnd" className="text-text-tertiary font-mono">HWND: {window.hwnd}</span>
           </div>
 
           {/* Size Info */}
@@ -343,6 +573,14 @@ const WindowCard = memo(function WindowCard({
                 系统窗口
               </span>
             )}
+            <span
+              data-testid={`window-card-topmost-${window.hwnd}`}
+              data-window-field="alwaysOnTop"
+              data-window-topmost={String(isTopmost)}
+              className={`status-badge ${isTopmost ? 'bg-warning/20 text-warning border-warning/30' : 'bg-surface-600/40 text-text-muted border-surface-500/30'}`}
+            >
+              {isTopmost ? '置顶' : '未置顶'}
+            </span>
           </div>
         </div>
 
@@ -363,6 +601,16 @@ const WindowCard = memo(function WindowCard({
           </button>
         </div>
       </div>
+
+      {isSelected && (
+        <div className="mt-4 relative z-10">
+          <WindowOperationPanel
+            windowInfo={window}
+            context={operationContext}
+            onRun={onRunOperation}
+          />
+        </div>
+      )}
     </div>
   )
 })
@@ -374,9 +622,12 @@ interface WindowItemProps {
   window: WindowInfo
   isSelected: boolean
   isChecked: boolean
+  isTopmost: boolean
+  operationContext: WindowOperationContext
   onSelect: () => void
   onFocus: () => void
-  onToggleCheck: () => void
+  onToggleCheck: (gesture?: WindowSelectionGesture) => void
+  onRunOperation: (kind: WindowOperationKind, windowInfo: WindowInfo) => void
   index: number
 }
 
@@ -384,15 +635,22 @@ const WindowItem = memo(function WindowItem({
   window,
   isSelected,
   isChecked,
+  isTopmost,
+  operationContext,
   onSelect,
   onFocus,
   onToggleCheck,
+  onRunOperation,
   index
 }: WindowItemProps) {
   const typeInfo = getWindowTypeInfo(window.processName)
 
   return (
     <div
+      data-testid={`window-list-row-${window.hwnd}`}
+      data-window-instance-key={`${window.processName}:${window.pid}:${window.hwnd}`}
+      data-window-selection-hwnd={window.hwnd}
+      data-window-topmost={String(isTopmost)}
       onClick={onSelect}
       onDoubleClick={onFocus}
       className={`
@@ -406,9 +664,9 @@ const WindowItem = memo(function WindowItem({
       style={{ borderRadius: '2px', animationDelay: `${index * 20}ms` }}
     >
       {/* Checkbox */}
-      <div onClick={(e) => e.stopPropagation()}>
+      <div data-testid={`window-list-checkbox-${window.hwnd}`} onClick={(e) => e.stopPropagation()}>
         <div
-          onClick={onToggleCheck}
+          onClick={(event) => onToggleCheck(toWindowSelectionGesture(event))}
           className={`
             w-4 h-4 flex items-center justify-center border-2 transition-all cursor-pointer
             ${isChecked
@@ -436,11 +694,17 @@ const WindowItem = memo(function WindowItem({
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <TruncatedText text={window.title} className="text-sm font-medium text-text-primary" />
+          <TruncatedText
+            text={redactWindowTitle(window.title)}
+            className="text-sm font-medium text-text-primary"
+            maxChars={40}
+            enableMarquee
+          />
         </div>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-xs text-text-muted">{window.processName}</span>
-          <span className="text-xs text-text-tertiary font-mono">PID: {window.pid}</span>
+          <span data-window-field="processName" className="text-xs text-text-muted">{window.processName}</span>
+          <span data-window-field="pid" className="text-xs text-text-tertiary font-mono">PID: {window.pid}</span>
+          <span data-window-field="hwnd" className="text-xs text-text-tertiary font-mono">HWND: {window.hwnd}</span>
         </div>
       </div>
 
@@ -459,6 +723,14 @@ const WindowItem = memo(function WindowItem({
             系统
           </span>
         )}
+        <span
+          data-testid={`window-list-topmost-${window.hwnd}`}
+          data-window-field="alwaysOnTop"
+          data-window-topmost={String(isTopmost)}
+          className={`status-badge text-xs ${isTopmost ? 'bg-warning/20 text-warning border-warning/30' : 'bg-surface-600/40 text-text-muted border-surface-500/30'}`}
+        >
+          {isTopmost ? '置顶' : '未置顶'}
+        </span>
       </div>
 
       {/* Focus Button */}
@@ -472,6 +744,17 @@ const WindowItem = memo(function WindowItem({
       >
         <EyeIcon size={16} />
       </button>
+
+      {isSelected && (
+        <div className="basis-full pt-2">
+          <WindowOperationPanel
+            windowInfo={window}
+            context={operationContext}
+            compact
+            onRun={onRunOperation}
+          />
+        </div>
+      )}
     </div>
   )
 })
@@ -486,6 +769,7 @@ interface WindowGroupCardProps {
   onFocusGroup: () => void
   onMinimizeGroup: () => void
   onCloseGroup: () => void
+  onRename: (newName: string) => unknown
   onRemove: () => void
   index: number
 }
@@ -497,12 +781,19 @@ const WindowGroupCard = memo(function WindowGroupCard({
   onFocusGroup,
   onMinimizeGroup,
   onCloseGroup,
+  onRename,
   onRemove,
   index
 }: WindowGroupCardProps) {
   const [isExpanded, setIsExpanded] = useState(true)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
+  const [isRenaming, setIsRenaming] = useState(false)
+  const [renameDraft, setRenameDraft] = useState(group.name)
+
+  useEffect(() => {
+    if (!isRenaming) setRenameDraft(group.name)
+  }, [group.name, isRenaming])
 
   return (
     <>
@@ -543,8 +834,42 @@ const WindowGroupCard = memo(function WindowGroupCard({
               <FolderIcon size={20} className="text-purple-400" />
             </div>
 
-            <div>
-              <span className="text-sm font-semibold text-text-primary">{group.name}</span>
+            <div className="min-w-0">
+              {isRenaming ? (
+                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    value={renameDraft}
+                    onChange={(e) => setRenameDraft(e.target.value)}
+                    className="w-40 px-2 py-1 bg-surface-800 border border-surface-600 text-sm text-text-primary focus:outline-none focus:border-accent radius-sm"
+                    autoFocus
+                  />
+                  <button
+                    className="btn-icon-sm bg-success/10 text-success hover:bg-success hover:text-white"
+                    title="保存分组名称"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      const nextName = renameDraft.trim()
+                      if (nextName && nextName !== group.name) onRename(nextName)
+                      setIsRenaming(false)
+                    }}
+                  >
+                    <CheckIcon size={14} />
+                  </button>
+                  <button
+                    className="btn-icon-sm bg-surface-700 text-text-muted hover:bg-surface-600"
+                    title="取消重命名"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setRenameDraft(group.name)
+                      setIsRenaming(false)
+                    }}
+                  >
+                    <CloseIcon size={14} />
+                  </button>
+                </div>
+              ) : (
+                <span className="text-sm font-semibold text-text-primary">{group.name}</span>
+              )}
               <div className="flex items-center gap-2 mt-0.5">
                 <span
                   className="text-xs text-text-muted bg-surface-800 px-2 py-0.5 border-l-2 border-purple-500 radius-sm"
@@ -593,6 +918,17 @@ const WindowGroupCard = memo(function WindowGroupCard({
             <button
               onClick={(e) => {
                 e.stopPropagation()
+                setRenameDraft(group.name)
+                setIsRenaming(true)
+              }}
+              className="btn-icon-sm bg-info/10 text-info/70 hover:bg-info hover:text-white"
+              title="重命名分组"
+            >
+              <GearIcon size={16} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
                 setShowDeleteConfirm(true)
               }}
               className="btn-icon-sm bg-error/10 text-error/70 hover:bg-error hover:text-white"
@@ -612,7 +948,12 @@ const WindowGroupCard = memo(function WindowGroupCard({
                 className="flex items-center gap-2 p-2 bg-surface-800/30 hover:bg-surface-800/50 transition-colors border-l-2 border-surface-600 radius-sm"
               >
                 <span className="w-1.5 h-1.5 bg-success radius-sm" />
-                <TruncatedText text={window.title} className="text-xs text-text-secondary flex-1" />
+                <TruncatedText
+                  text={redactWindowTitle(window.title)}
+                  className="text-xs text-text-secondary flex-1"
+                  maxChars={40}
+                  enableMarquee
+                />
                 <span className="text-xs text-text-muted font-mono">
                   {window.processName}
                 </span>
@@ -781,8 +1122,12 @@ interface AIWindowCardProps {
   displayName: string
   monitorState: AIMonitorState
   isSelected: boolean
+  isChecked: boolean
+  operationContext: WindowOperationContext
   onSelect: () => void
+  onShowGraph: () => void
   onFocus: () => void
+  onToggleCheck: (gesture?: WindowSelectionGesture) => void
   onRename: (newName: string) => void
   onMinimize: () => void
   onMaximize: () => void
@@ -790,6 +1135,7 @@ interface AIWindowCardProps {
   onClose: () => void
   onSetTopmost?: (hwnd: number, topmost: boolean) => void
   onSetOpacity?: (hwnd: number, opacity: number) => void
+  onRunOperation: (kind: WindowOperationKind, windowInfo: WindowInfo) => void
   index: number
 }
 
@@ -799,8 +1145,12 @@ const AIWindowCard = memo(function AIWindowCard({
   displayName,
   monitorState,
   isSelected,
+  isChecked,
+  operationContext,
   onSelect,
+  onShowGraph,
   onFocus,
+  onToggleCheck,
   onRename,
   onMinimize,
   onMaximize,
@@ -808,6 +1158,7 @@ const AIWindowCard = memo(function AIWindowCard({
   onClose,
   onSetTopmost,
   onSetOpacity,
+  onRunOperation,
   index
 }: AIWindowCardProps) {
   const [isHovered, setIsHovered] = useState(false)
@@ -825,7 +1176,7 @@ const AIWindowCard = memo(function AIWindowCard({
     red: 'bg-red-500',
   }
   const dotColor = stateColorMap[stateInfo.color] || 'bg-gray-500'
-  const isActive = monitorState === 'thinking' || monitorState === 'coding' || monitorState === 'compiling'
+  const isActive = monitorState === 'initializing' || monitorState === 'thinking' || monitorState === 'receiving-input' || monitorState === 'coding' || monitorState === 'compiling' || monitorState === 'validating'
 
   const { aliases } = useAliasStore()
   const hasAlias = aliases.some(a => a.alias === displayName && !a.autoGenerated)
@@ -833,6 +1184,8 @@ const AIWindowCard = memo(function AIWindowCard({
   const avgCpu = task?.metrics.cpuHistory.length
     ? (task.metrics.cpuHistory.reduce((a, b) => a + b, 0) / task.metrics.cpuHistory.length)
     : 0
+  const feedbackKind = monitorState === 'idle' ? 'false-idle' : 'false-thinking'
+  const feedbackExpectedState = monitorState === 'idle' ? 'running' : 'idle'
 
   const handleTopmostToggle = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
@@ -849,6 +1202,8 @@ const AIWindowCard = memo(function AIWindowCard({
 
   return (
     <div
+      data-testid={`window-card-${win.hwnd}`}
+      data-window-selection-hwnd={win.hwnd}
       onClick={onSelect}
       onDoubleClick={onFocus}
       onMouseEnter={() => setIsHovered(true)}
@@ -864,6 +1219,31 @@ const AIWindowCard = memo(function AIWindowCard({
       style={{ animationDelay: `${index * 30}ms` }}
     >
       <div className="absolute inset-0 deco-diagonal opacity-5 pointer-events-none radius-sm" />
+      <CardEdgeGraphBadge
+        testId={`window-card-graph-badge-${win.hwnd}`}
+        graphEntry="window-card-attached-topology"
+        scopeKind="window"
+        targetId={win.hwnd}
+        ariaLabel={`查看窗口 ${win.hwnd} 关系图`}
+        onClick={onShowGraph}
+      />
+
+      <div
+        className="absolute left-3 top-3 z-10"
+        data-testid={`window-card-checkbox-${win.hwnd}`}
+        onClick={(event) => {
+          event.stopPropagation()
+          onToggleCheck(toWindowSelectionGesture(event))
+        }}
+      >
+        <div
+          className={`flex h-5 w-5 cursor-pointer items-center justify-center border-2 transition-all radius-sm ${
+            isChecked ? 'bg-accent border-accent' : 'border-surface-500 bg-surface-950/80 hover:border-accent'
+          }`}
+        >
+          {isChecked && <CheckIcon size={12} className="text-white" />}
+        </div>
+      </div>
 
       <div className="flex items-start gap-4 relative z-10">
         {/* AI Icon with status indicator */}
@@ -889,7 +1269,7 @@ const AIWindowCard = memo(function AIWindowCard({
               task={task}
               hwnd={win.hwnd}
               workingDir={task?.projectId}
-              windowTitle={win.title}
+              windowTitle={redactWindowTitle(win.title)}
               onRename={onRename}
             />
 
@@ -909,6 +1289,13 @@ const AIWindowCard = memo(function AIWindowCard({
             >
               {stateInfo.label}
             </span>
+            {task && (
+              <MisreportButton
+                instanceId={task.id}
+                kind={feedbackKind}
+                expectedTaskState={feedbackExpectedState}
+              />
+            )}
           </div>
 
           <div className="flex items-center gap-3 text-xs text-text-muted">
@@ -923,7 +1310,12 @@ const AIWindowCard = memo(function AIWindowCard({
 
           {/* Window title */}
           <div className="mt-1">
-            <TruncatedText text={win.title} className="text-xs text-text-tertiary" />
+            <TruncatedText
+              text={redactWindowTitle(win.title)}
+              className="text-xs text-text-tertiary"
+              maxChars={40}
+              enableMarquee
+            />
           </div>
 
           {/* Opacity slider (shown on demand) */}
@@ -1013,6 +1405,17 @@ const AIWindowCard = memo(function AIWindowCard({
           </div>
         </div>
       </div>
+
+      {isSelected && (
+        <div className="mt-4 relative z-10">
+          <WindowOperationPanel
+            windowInfo={win}
+            context={operationContext}
+            onRun={onRunOperation}
+          />
+          {task && <SignalDiagnosticPanel instanceId={task.id} />}
+        </div>
+      )}
     </div>
   )
 })
@@ -1024,22 +1427,53 @@ interface BatchToolbarProps {
   selectedCount: number
   totalCount: number
   onSelectAll: () => void
+  onFocusAll: () => void
   onTile: () => void
   onCascade: () => void
   onStack: () => void
+  onRestorePrevious: () => void
+  onToggleTopmostAll: () => void
+  onScreenshotAll: () => void
   onMinimizeAll: () => void
   onRestoreAll: () => void
   onCloseAll: () => void
   onClearSelection: () => void
 }
 
+interface PendingWindowBatchConfirm {
+  confirmText: string
+  kind: 'close' | 'inject'
+  message: string
+  targetSummary: string
+  title: string
+  variant: 'danger' | 'warning'
+  onCancel?: () => void
+  onConfirm: () => Promise<void> | void
+}
+
+type WindowBatchHandler = (hwnd: number, request: WindowBatchRequest) => Promise<unknown> | unknown
+type WindowBatchPatch = Partial<Pick<WindowBatchRequest, 'args' | 'confirmed' | 'dryRun'>>
+type WindowBatchOptions = { delayMs?: number }
+
+interface WindowBatchRetryContext {
+  action: WindowBatchAction
+  actionLabel: string
+  handler: WindowBatchHandler
+  options: WindowBatchOptions
+  patch: WindowBatchPatch
+}
+
 const BatchToolbar = memo(function BatchToolbar({
   selectedCount,
   totalCount,
   onSelectAll,
+  onFocusAll,
   onTile,
   onCascade,
   onStack,
+  onRestorePrevious,
+  onToggleTopmostAll,
+  onScreenshotAll,
   onMinimizeAll,
   onRestoreAll,
   onCloseAll,
@@ -1055,16 +1489,27 @@ const BatchToolbar = memo(function BatchToolbar({
         已选择 {selectedCount} 个窗口
       </span>
       {selectedCount < totalCount && (
-        <button
-          onClick={onSelectAll}
-          className="text-xs text-accent hover:text-accent/80 transition-colors"
-        >
+      <button
+        onClick={onSelectAll}
+        data-testid="window-batch-select-all"
+        className="text-xs text-accent hover:text-accent/80 transition-colors"
+      >
           全选
         </button>
       )}
       <div className="h-4 w-px bg-surface-600" />
       <button
+        onClick={onFocusAll}
+        data-testid="window-batch-action-focus"
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-accent/10 text-accent hover:bg-accent hover:text-white transition-all radius-sm"
+        title="依次聚焦选中窗口"
+      >
+        <EyeIcon size={12} />
+        批量聚焦
+      </button>
+      <button
         onClick={onTile}
+        data-testid="window-batch-action-tile"
         className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-info/10 text-info hover:bg-info hover:text-white transition-all radius-sm"
         title="平铺选中窗口"
       >
@@ -1073,6 +1518,7 @@ const BatchToolbar = memo(function BatchToolbar({
       </button>
       <button
         onClick={onCascade}
+        data-testid="window-batch-action-cascade"
         className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-info/10 text-info hover:bg-info hover:text-white transition-all radius-sm"
         title="层叠选中窗口"
       >
@@ -1081,6 +1527,7 @@ const BatchToolbar = memo(function BatchToolbar({
       </button>
       <button
         onClick={onStack}
+        data-testid="window-batch-action-stack"
         className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-purple-500/10 text-purple-400 hover:bg-purple-500 hover:text-white transition-all radius-sm"
         title="堆叠选中窗口 (相同位置)"
       >
@@ -1088,7 +1535,35 @@ const BatchToolbar = memo(function BatchToolbar({
         批量堆叠
       </button>
       <button
+        onClick={onRestorePrevious}
+        data-testid="window-batch-action-restore-previous"
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-success/10 text-success hover:bg-success hover:text-white transition-all radius-sm"
+        title="恢复上次布局前位置"
+      >
+        <RefreshIcon size={12} />
+        撤销布局
+      </button>
+      <button
+        onClick={onToggleTopmostAll}
+        data-testid="window-batch-action-topmost"
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-accent/10 text-accent hover:bg-accent hover:text-white transition-all radius-sm"
+        title="切换选中窗口置顶"
+      >
+        <GearIcon size={12} />
+        批量置顶
+      </button>
+      <button
+        onClick={onScreenshotAll}
+        data-testid="window-batch-action-screenshot"
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-info/10 text-info hover:bg-info hover:text-white transition-all radius-sm"
+        title="依次截图选中窗口"
+      >
+        <DownloadIcon size={12} />
+        批量截图
+      </button>
+      <button
         onClick={onMinimizeAll}
+        data-testid="window-batch-action-minimize"
         className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-warning/10 text-warning hover:bg-warning hover:text-white transition-all radius-sm"
         title="最小化选中窗口"
       >
@@ -1097,6 +1572,7 @@ const BatchToolbar = memo(function BatchToolbar({
       </button>
       <button
         onClick={onRestoreAll}
+        data-testid="window-batch-action-restore"
         className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-success/10 text-success hover:bg-success hover:text-white transition-all radius-sm"
         title="恢复选中窗口"
       >
@@ -1105,6 +1581,7 @@ const BatchToolbar = memo(function BatchToolbar({
       </button>
       <button
         onClick={onCloseAll}
+        data-testid="window-batch-action-close"
         className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-error/10 text-error hover:bg-error hover:text-white transition-all radius-sm"
         title="关闭选中窗口"
       >
@@ -1114,6 +1591,7 @@ const BatchToolbar = memo(function BatchToolbar({
       <div className="flex-1" />
       <button
         onClick={onClearSelection}
+        data-testid="window-batch-clear-selection"
         className="text-xs text-text-muted hover:text-text-primary transition-colors"
       >
         清除选择
@@ -1139,28 +1617,40 @@ export function WindowView() {
     createGroup,
     fetchGroups,
     removeGroup,
+    renameGroup,
     minimizeGroup,
     closeGroup,
     saveLayout,
+    saveSnapshot,
     restoreLayout,
     fetchLayouts,
     removeLayout,
+    restorePreviousLayout,
+    screenshotWindow,
+    toggleFavoriteWindow,
+    getFavoriteWindows,
+    openWorkingDir,
     selectWindow,
     selectGroup,
     // Advanced operations
+    moveWindow,
     minimizeWindow,
     maximizeWindow,
     restoreWindow,
     closeWindow,
     setWindowTopmost,
+    listTopmostWindows,
     setWindowOpacity,
+    setWindowTitle,
+    sendKeysToWindow,
     tileWindows,
     cascadeWindows,
     stackWindows
   } = useWindows()
 
   const { activeTasks, fetchActiveTasks } = useAITasks()
-  const { aliases, fetchAliases, saveAlias, renameAlias } = useAliasStore()
+  const { aliases, fetchAliases, renameAndApply } = useAliasStore()
+  const ports = usePortStore((state) => state.ports)
 
   const { showToast } = useToast()
 
@@ -1185,20 +1675,39 @@ export function WindowView() {
   }, [showToast])
 
   const [viewTab, setViewTab] = useState<'windows' | 'groups' | 'layouts'>('windows')
-  const [viewMode, setViewMode] = useState<'cards' | 'list' | 'process'>('cards')
+  const [viewMode, setViewMode] = useState<'cards' | 'list' | 'process' | 'wall'>('cards')
   const [showCreateGroup, setShowCreateGroup] = useState(false)
   const [showSaveLayout, setShowSaveLayout] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
   const [newLayoutName, setNewLayoutName] = useState('')
   const [newLayoutDesc, setNewLayoutDesc] = useState('')
-  const [selectedWindows, setSelectedWindows] = useState<Set<number>>(new Set())
+  const {
+    selectedWindows,
+    selectedHwnds,
+    clearSelection: clearWindowSelection,
+    removeWindows: removeSelectedWindows,
+    selectAll: selectAllWindows,
+    selectRectangle: selectWindowRectangle,
+    selectWindow: selectBatchWindow
+  } = useBatchSelection()
+  const [windowBatchActionLabel, setWindowBatchActionLabel] = useState('批量操作')
+  const [windowBatchConfirm, setWindowBatchConfirm] = useState<PendingWindowBatchConfirm | null>(null)
+  const [windowBatchCancelRequested, setWindowBatchCancelRequested] = useState(false)
+  const [windowBatchProgress, setWindowBatchProgress] = useState<WindowBatchProgress | null>(null)
+  const windowBatchCancelRequestedRef = useRef(false)
+  const windowBatchRetryContextRef = useRef<WindowBatchRetryContext | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [showSystemWindows, setShowSystemWindows] = useState(false)
   const [expandedPids, setExpandedPids] = useState<Set<number>>(new Set())
+  const [favorites, setFavorites] = useState<WindowFavoriteRecord[]>([])
+  const [topmostWindows, setTopmostWindows] = useState<Set<number>>(new Set())
+  const [isWindowTourOpen, setIsWindowTourOpen] = useState(() => window.localStorage.getItem(WINDOW_MODULE_TOUR_STORAGE_KEY) !== 'dismissed')
+  const [windowTourStep, setWindowTourStep] = useState(0)
   // Race condition guard: tracks the latest scan version so stale results trigger a corrective re-scan
   const scanVersionRef = useRef(0)
   // Tracks the latest showSystemWindows value for the corrective re-scan
   const latestShowSystemRef = useRef(false)
+  const windowRelationshipPanelRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     scan(showSystemWindows)
@@ -1206,9 +1715,11 @@ export function WindowView() {
     fetchLayouts()
     fetchActiveTasks()
     fetchAliases()
+    getFavoriteWindows().then(setFavorites).catch(() => setFavorites([]))
+    listTopmostWindows().then(hwnds => setTopmostWindows(new Set(hwnds))).catch(() => setTopmostWindows(new Set()))
     // showSystemWindows intentionally excluded — handleToggleSystemWindows drives re-scan on toggle
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scan, fetchGroups, fetchLayouts, fetchActiveTasks, fetchAliases])
+  }, [scan, fetchGroups, fetchLayouts, fetchActiveTasks, fetchAliases, getFavoriteWindows, listTopmostWindows])
 
   // Periodically refresh AI tasks to keep status in sync
   useEffect(() => {
@@ -1249,7 +1760,7 @@ export function WindowView() {
 
     if (validHwnds.length === 0) {
       showToast('error', '所选窗口已关闭，请重新选择')
-      setSelectedWindows(new Set())
+      clearWindowSelection()
       return
     }
 
@@ -1258,7 +1769,7 @@ export function WindowView() {
       if (result) {
         showToast('success', `分组 "${newGroupName.trim()}" 创建成功 (${validHwnds.length} 个窗口)`)
         setNewGroupName('')
-        setSelectedWindows(new Set())
+        clearWindowSelection()
         setShowCreateGroup(false)
         await fetchGroups()
       } else {
@@ -1267,7 +1778,7 @@ export function WindowView() {
     } catch (err) {
       showToast('error', `分组创建失败: ${err instanceof Error ? err.message : '未知错误'}`)
     }
-  }, [newGroupName, selectedWindows, windows, createGroup, fetchGroups, showToast])
+  }, [newGroupName, selectedWindows, windows, createGroup, fetchGroups, showToast, clearWindowSelection])
 
   const handleSaveLayout = useCallback(async () => {
     if (!newLayoutName.trim()) {
@@ -1276,30 +1787,29 @@ export function WindowView() {
     }
 
     try {
+      const validSelectedHwnds = Array.from(selectedWindows).filter(hwnd => windows.some(windowInfo => windowInfo.hwnd === hwnd))
+      const snapshotHwnds = validSelectedHwnds.length > 0
+        ? validSelectedHwnds
+        : windows.filter(windowInfo => !windowInfo.isSystemWindow).map(windowInfo => windowInfo.hwnd)
+      if (snapshotHwnds.length === 0) {
+        showToast('error', '没有可保存的真实窗口')
+        return
+      }
+
+      const snapshot = await saveSnapshot(newLayoutName.trim(), newLayoutDesc || undefined, snapshotHwnds)
       const result = await saveLayout(newLayoutName.trim(), newLayoutDesc || undefined)
-      if (result) {
+      if (snapshot && result) {
         const windowCount = result.groups.reduce((sum, g) => sum + g.windows.length, 0)
-        showToast('success', `布局 "${newLayoutName.trim()}" 已保存 (${result.groups.length} 个分组, ${windowCount} 个窗口)`)
+        showToast('success', `布局 "${newLayoutName.trim()}" 已保存 (${snapshot.items.length} 个快照窗口, ${windowCount} 个兼容窗口)`)
         setNewLayoutName('')
         setNewLayoutDesc('')
         setShowSaveLayout(false)
       } else {
         showToast('error', '布局保存失败')
-      }
-    } catch (err) {
+      }    } catch (err) {
       showToast('error', `布局保存失败: ${err instanceof Error ? err.message : '未知错误'}`)
     }
-  }, [newLayoutName, newLayoutDesc, saveLayout, showToast])
-
-  const toggleWindowSelection = (hwnd: number) => {
-    const newSet = new Set(selectedWindows)
-    if (newSet.has(hwnd)) {
-      newSet.delete(hwnd)
-    } else {
-      newSet.add(hwnd)
-    }
-    setSelectedWindows(newSet)
-  }
+  }, [newLayoutName, newLayoutDesc, selectedWindows, windows, saveLayout, saveSnapshot, showToast])
 
   // ==================== AI Window Identification ====================
   // Match windows to AI tasks by PID to identify AI tool windows
@@ -1352,10 +1862,35 @@ export function WindowView() {
     return task?.monitorState ?? 'idle'
   }, [activeTasks])
 
+  const favoriteKeySet = useMemo(() => new Set(
+    favorites.map(favorite => `${favorite.processName.toLowerCase()}|${favorite.title.toLowerCase()}|${favorite.className ?? ''}`)
+  ), [favorites])
+
+  const getOperationContext = useCallback((win: WindowInfo): WindowOperationContext => {
+    const matchingTask = activeTasks.find(task => task.pid === win.pid || task.windowHwnd === win.hwnd)
+    const matchingPort = ports.find(port => port.pid === win.pid)
+    const favoriteKey = `${win.processName.toLowerCase()}|${win.title.toLowerCase()}|${win.className ?? ''}`
+    return {
+      hasPort: Boolean(matchingPort),
+      hasAITask: Boolean(matchingTask),
+      hasProject: Boolean(matchingTask?.projectId),
+      isFavorite: favoriteKeySet.has(favoriteKey)
+    }
+  }, [activeTasks, favoriteKeySet, ports])
+
   // Handle AI window rename
-  // Multi-level alias lookup: toolType+workingDir -> titlePrefix -> pid fallback
+  // Multi-level alias lookup: toolType+workingDir -> titlePrefix -> pid fallback.
+  // Persistence and external title mutation are delegated to the main process so
+  // renderer state, electron-store, and Win32 SetWindowText stay transactionally aligned.
   const handleAIWindowRename = useCallback(async (win: WindowInfo, newName: string) => {
+    const trimmedName = newName.trim()
+    if (!trimmedName) {
+      showToast('warning', '别名不能为空')
+      return
+    }
+
     const task = activeTasks.find(t => t.pid === win.pid)
+    const toolType = task?.toolType ?? ('other' as const)
     // Find existing alias with multi-level fallback (same order as getAIWindowDisplayName)
     const existingAlias =
       (task && aliases.find(a =>
@@ -1368,96 +1903,466 @@ export function WindowView() {
       ) ||
       aliases.find(a => a.matchCriteria.pid === win.pid)
 
-    if (existingAlias) {
-      // Use optimistic renameAlias action from store
-      const success = await renameAlias(existingAlias.id, newName)
-      if (success) {
-        showToast('success', `已重命名为 "${newName}"`)
-      } else {
-        showToast('error', '重命名失败')
-      }
-    } else {
-      // Create new alias with robust matchCriteria
-      const newAlias = {
-        id: `alias_${Date.now()}`,
-        alias: newName,
-        matchCriteria: {
-          pid: win.pid,
-          toolType: task?.toolType ?? ('other' as const),
-          titlePrefix: win.title.substring(0, 30),
-          ...(task?.projectId ? { workingDir: task.projectId } : {}),
-        },
-        createdAt: Date.now(),
-        lastMatchedAt: Date.now(),
-        autoGenerated: false,
-      }
-      const result = await saveAlias(newAlias)
-      if (result) {
-        showToast('success', `已命名为 "${newName}"`)
-      } else {
-        showToast('error', '保存失败')
-      }
+    const alias: AIWindowAlias = existingAlias ?? {
+      id: `alias_${Date.now()}`,
+      alias: trimmedName,
+      matchCriteria: {
+        pid: win.pid,
+        toolType,
+        titlePrefix: win.title.substring(0, 30),
+        ...(task?.projectId ? { workingDir: task.projectId } : {}),
+      },
+      createdAt: Date.now(),
+      lastMatchedAt: Date.now(),
+      autoGenerated: false,
     }
-  }, [activeTasks, aliases, saveAlias, renameAlias, showToast])
+
+    const result = await renameAndApply({
+      alias,
+      newName: trimmedName,
+      hwnd: win.hwnd,
+      pid: win.pid,
+      toolType,
+      toolDisplayName: getAIToolDisplayName(toolType),
+      originalTitle: win.title,
+      applyToExternalWindow: true,
+      requestedAt: Date.now(),
+    })
+
+    if (result.success) {
+      showToast('success', result.titleApplied
+        ? `已重命名为 "${trimmedName}"，外部窗口标题已同步`
+        : `已重命名为 "${trimmedName}"`)
+      await fetchAliases()
+      await scan(showSystemWindows)
+    } else {
+      showToast('error', result.error ? `重命名失败: ${result.error}` : '重命名失败')
+    }
+  }, [activeTasks, aliases, fetchAliases, renameAndApply, scan, showSystemWindows, showToast])
 
   // ==================== Batch Operations ====================
   const handleBatchTile = useCallback(async () => {
-    const hwnds = Array.from(selectedWindows)
+    const hwnds = selectedHwnds
     if (hwnds.length === 0) return
     const success = await tileWindows(hwnds)
     if (success) showToast('success', `${hwnds.length} 个窗口已平铺`)
     else showToast('error', '平铺失败')
-  }, [selectedWindows, tileWindows, showToast])
+  }, [selectedHwnds, tileWindows, showToast])
 
   const handleBatchCascade = useCallback(async () => {
-    const hwnds = Array.from(selectedWindows)
+    const hwnds = selectedHwnds
     if (hwnds.length === 0) return
     const success = await cascadeWindows(hwnds)
     if (success) showToast('success', `${hwnds.length} 个窗口已层叠`)
     else showToast('error', '层叠失败')
-  }, [selectedWindows, cascadeWindows, showToast])
+  }, [selectedHwnds, cascadeWindows, showToast])
 
   const handleBatchStack = useCallback(async () => {
-    const hwnds = Array.from(selectedWindows)
+    const hwnds = selectedHwnds
     if (hwnds.length === 0) return
     const success = await stackWindows(hwnds)
     if (success) showToast('success', `${hwnds.length} 个窗口已堆叠`)
     else showToast('error', '堆叠失败')
-  }, [selectedWindows, stackWindows, showToast])
+  }, [selectedHwnds, stackWindows, showToast])
 
+  const handleRestorePreviousLayout = useCallback(async () => {
+    const success = await restorePreviousLayout()
+    if (success) showToast('success', '已恢复布局前位置')
+    else showToast('error', '暂无可恢复的布局位置')
+  }, [restorePreviousLayout, showToast])
   const handleSetWindowTopmost = useCallback(async (hwnd: number, topmost: boolean) => {
-    await setWindowTopmost(hwnd, topmost)
-    showToast('success', topmost ? '窗口已置顶' : '已取消置顶')
+    const ok = await setWindowTopmost(hwnd, topmost)
+    if (ok) {
+      setTopmostWindows(prev => {
+        const updated = new Set(prev)
+        if (topmost) updated.add(hwnd)
+        else updated.delete(hwnd)
+        return updated
+      })
+    }
+    showToast(ok ? 'success' : 'error', ok ? (topmost ? '窗口已置顶' : '已取消置顶') : '置顶切换失败')
   }, [setWindowTopmost, showToast])
 
   const handleSetWindowOpacity = useCallback(async (hwnd: number, opacity: number) => {
     await setWindowOpacity(hwnd, opacity)
   }, [setWindowOpacity])
 
-  const handleBatchMinimize = useCallback(async () => {
-    const hwnds = Array.from(selectedWindows)
-    for (const hwnd of hwnds) {
-      await minimizeWindow(hwnd)
+  const requestWindowBatchConfirmation = useCallback((request: PendingWindowBatchConfirm) => {
+    setWindowBatchConfirm(request)
+  }, [])
+
+  const handleCancelWindowBatchConfirmation = useCallback(() => {
+    setWindowBatchConfirm(current => {
+      current?.onCancel?.()
+      return null
+    })
+  }, [])
+
+  const handleConfirmWindowBatchConfirmation = useCallback(() => {
+    const current = windowBatchConfirm
+    if (!current) return
+    setWindowBatchConfirm(null)
+    void current.onConfirm()
+  }, [windowBatchConfirm])
+
+  const handleWindowOperation = useCallback(async (kind: WindowOperationKind, win: WindowInfo) => {
+    switch (kind) {
+      case 'focus': {
+        const ok = await focusWindow(win.hwnd)
+        showToast(ok ? 'success' : 'error', ok ? '窗口已前置' : '窗口前置失败')
+        return
+      }
+      case 'minimize': {
+        const ok = await minimizeWindow(win.hwnd)
+        showToast(ok ? 'success' : 'error', ok ? '窗口已最小化' : '最小化失败')
+        return
+      }
+      case 'maximize': {
+        const ok = await maximizeWindow(win.hwnd)
+        showToast(ok ? 'success' : 'error', ok ? '窗口已最大化' : '最大化失败')
+        return
+      }
+      case 'restore': {
+        const ok = await restoreWindow(win.hwnd)
+        showToast(ok ? 'success' : 'error', ok ? '窗口已还原' : '还原失败')
+        return
+      }
+      case 'move-resize': {
+        const current = win.rect ?? { x: 0, y: 0, width: 800, height: 600 }
+        const input = window.prompt('输入窗口位置和大小：x,y,width,height', `${current.x},${current.y},${current.width},${current.height}`)?.trim()
+        if (!input) {
+          showToast('warning', '已取消窗口移动')
+          return
+        }
+        const rect = parseWindowRectInput(input)
+        if (!rect) {
+          showToast('error', '窗口移动参数无效，请输入 x,y,width,height，宽度至少 100，高度至少 80')
+          return
+        }
+        const target = formatWindowInjectionTarget(win)
+        const confirmed = window.confirm(`将移动窗口 ${target} 到 x=${rect.x}, y=${rect.y}, width=${rect.width}, height=${rect.height}。`)
+        if (!confirmed) {
+          showToast('warning', `已取消移动窗口 ${target}`)
+          return
+        }
+        const ok = await moveWindow(win.hwnd, rect.x, rect.y, rect.width, rect.height)
+        if (ok) await scan(showSystemWindows)
+        showToast(ok ? 'success' : 'error', ok ? `窗口已移动: ${target}` : `窗口移动失败: ${target}`)
+        return
+      }
+      case 'toggle-always-on-top': {
+        const next = !topmostWindows.has(win.hwnd)
+        const ok = await setWindowTopmost(win.hwnd, next)
+        if (ok) {
+          setTopmostWindows(prev => {
+            const updated = new Set(prev)
+            if (next) updated.add(win.hwnd)
+            else updated.delete(win.hwnd)
+            return updated
+          })
+        }
+        showToast(ok ? 'success' : 'error', ok ? (next ? '窗口已置顶' : '已取消置顶') : '置顶切换失败')
+        return
+      }
+      case 'set-opacity': {
+        const input = window.prompt('输入窗口透明度 30-100', '100')?.trim()
+        if (!input) {
+          showToast('warning', '已取消透明度调整')
+          return
+        }
+        const opacity = Number.parseInt(input, 10)
+        if (!Number.isInteger(opacity) || opacity < 30 || opacity > 100) {
+          showToast('error', '透明度必须是 30-100 的整数')
+          return
+        }
+        const ok = await setWindowOpacity(win.hwnd, opacity)
+        showToast(ok ? 'success' : 'error', ok ? `窗口透明度已设置为 ${opacity}%` : `窗口透明度设置失败: HWND ${win.hwnd}`)
+        return
+      }
+      case 'screenshot': {
+        const result = await screenshotWindow(win.hwnd)
+        showToast(result.success ? 'success' : 'error', result.success ? `窗口截图已保存: ${result.data?.path}` : `窗口截图失败: ${result.error ?? '未知错误'}`)
+        return
+      }
+      case 'copy-title': {
+        try {
+          await navigator.clipboard.writeText(win.title)
+          showToast('success', '窗口标题已复制')
+        } catch (error) {
+          showToast('error', `复制失败: ${error instanceof Error ? error.message : '未知错误'}`)
+        }
+        return
+      }
+      case 'jump-process':
+        window.dispatchEvent(buildWindowNavigationEvent({ tab: 'process', pid: win.pid }))
+        window.location.hash = `monitor/process/pid:${win.pid}`
+        showToast('success', `已定位进程 PID ${win.pid}`)
+        return
+      case 'jump-port': {
+        const port = ports.find(candidate => candidate.pid === win.pid)
+        if (!port) {
+          showToast('warning', '当前窗口未关联端口')
+          return
+        }
+        window.dispatchEvent(buildWindowNavigationEvent({ tab: 'port', port: port.port, pid: win.pid }))
+        window.location.hash = `monitor/port/${port.port}`
+        showToast('success', `已定位端口 ${port.port}`)
+        return
+      }
+      case 'jump-ai-task': {
+        const task = activeTasks.find(candidate => candidate.pid === win.pid || candidate.windowHwnd === win.hwnd)
+        if (!task) {
+          showToast('warning', '当前窗口未关联 AI 任务')
+          return
+        }
+        window.dispatchEvent(buildWindowNavigationEvent({ tab: 'ai-task', taskId: task.id, pid: win.pid }))
+        window.location.hash = `monitor/ai-task/${task.id}`
+        showToast('success', `已定位 AI 任务 ${task.alias ?? getAIToolDisplayName(task.toolType)}`)
+        return
+      }
+      case 'open-working-dir': {
+        const result = await openWorkingDir(win.hwnd)
+        showToast(result.success ? 'success' : 'error', result.success ? `已打开目录: ${result.data?.directory}` : `打开目录失败: ${result.error ?? '未知错误'}`)
+        return
+      }
+      case 'open-project': {
+        const task = activeTasks.find(candidate => candidate.pid === win.pid || candidate.windowHwnd === win.hwnd)
+        if (!task?.projectId) {
+          showToast('warning', '当前窗口未关联项目')
+          return
+        }
+        window.dispatchEvent(buildWindowNavigationEvent({ tab: 'project', projectId: task.projectId, pid: win.pid }))
+        window.location.hash = `project/${encodeURIComponent(task.projectId)}`
+        showToast('success', `已定位项目 ${task.projectId}`)
+        return
+      }
+      case 'toggle-favorite': {
+        const result = await toggleFavoriteWindow(win.hwnd)
+        if (result.success) {
+          const refreshed = await getFavoriteWindows()
+          setFavorites(refreshed)
+        }
+        showToast(result.success ? 'success' : 'error', result.success ? (result.data?.favorite ? '窗口已收藏' : '已取消收藏') : `收藏切换失败: ${result.error ?? '未知错误'}`)
+        return
+      }
+      case 'set-title': {
+        const nextTitle = window.prompt('输入新的窗口标题', win.title)?.trim()
+        if (!nextTitle) return
+        const ok = await setWindowTitle(win.hwnd, nextTitle)
+        if (ok) await scan(showSystemWindows)
+        showToast(ok ? 'success' : 'error', ok ? '窗口标题已更新' : '窗口标题更新失败')
+        return
+      }
+      case 'send-safe-keys': {
+        const keys = window.prompt('输入要发送的安全按键（Ctrl+C、Ctrl+D、Ctrl+Z、Enter、Escape）', 'Escape')?.trim()
+        if (!keys) {
+          showToast('warning', '已取消键盘事件注入')
+          return
+        }
+        const target = formatWindowInjectionTarget(win)
+        requestWindowBatchConfirmation({
+          confirmText: '发送键盘事件',
+          kind: 'inject',
+          message: '将向目标窗口发送安全键盘事件。请确认目标窗口当前可安全接收该按键。',
+          targetSummary: `${target} / ${keys}`,
+          title: '确认键盘注入',
+          variant: 'warning',
+          onCancel: () => showToast('warning', `已取消向窗口 ${target} 发送键盘事件`),
+          onConfirm: async () => {
+            showToast('info', `将向窗口 ${target} 发送键盘事件: ${keys}`)
+            const ok = await sendKeysToWindow(win.hwnd, keys)
+            showToast(ok ? 'success' : 'error', ok ? `键盘事件已发送到窗口 ${target}: ${keys}` : `键盘事件注入失败: 窗口 ${target} / ${keys}`)
+          }
+        })
+        return
+      }
+      case 'close': {
+        const ok = await closeWindow(win.hwnd)
+        showToast(ok ? 'success' : 'error', ok ? '关闭消息已发送' : '窗口关闭失败')
+        return
+      }
+      case 'kill-process': {
+        if (!window.devhub?.systemProcess?.kill) {
+          showToast('error', '进程终止 API 不可用')
+          return
+        }
+        const ok = await window.devhub.systemProcess.kill(win.pid)
+        showToast(ok ? 'success' : 'error', ok ? `已终止进程 PID ${win.pid}` : '终止进程失败')
+        return
+      }
     }
-    showToast('success', `${hwnds.length} 个窗口已最小化`)
-  }, [selectedWindows, minimizeWindow, showToast])
+  }, [activeTasks, closeWindow, focusWindow, getFavoriteWindows, maximizeWindow, minimizeWindow, moveWindow, openWorkingDir, ports, requestWindowBatchConfirmation, restoreWindow, scan, screenshotWindow, sendKeysToWindow, setWindowOpacity, setWindowTitle, setWindowTopmost, showSystemWindows, showToast, toggleFavoriteWindow, topmostWindows])
+
+  const runWindowBatchForHwnds = useCallback(async (
+    hwnds: number[],
+    action: WindowBatchAction,
+    actionLabel: string,
+    handler: WindowBatchHandler,
+    patch: WindowBatchPatch = {},
+    options: WindowBatchOptions = {}
+  ) => {
+    const currentHwnds = hwnds.filter(hwnd => windows.some(windowInfo => windowInfo.hwnd === hwnd))
+    if (currentHwnds.length === 0) {
+      showToast('warning', '没有可操作的选中窗口')
+      return null
+    }
+    const request = createWindowBatchRequest(action, currentHwnds, patch)
+    windowBatchRetryContextRef.current = { action, actionLabel, handler, options, patch }
+    windowBatchCancelRequestedRef.current = false
+    setWindowBatchActionLabel(actionLabel)
+    setWindowBatchCancelRequested(false)
+    const progress = await runSequentialWindowBatch(request, handler, {
+      ...options,
+      isCancelled: () => windowBatchCancelRequestedRef.current,
+      onProgress: nextProgress => {
+        setWindowBatchProgress(nextProgress)
+        if (nextProgress.state !== 'running') {
+          setWindowBatchCancelRequested(false)
+        }
+      }
+    })
+    const toastType = progress.state === 'cancelled'
+      ? 'warning'
+      : progress.failed === 0 ? 'success' : 'warning'
+    showToast(toastType, progress.state === 'cancelled'
+      ? `${actionLabel}已取消：已处理 ${progress.completed}/${progress.total}`
+      : summarizeWindowBatchProgress(progress, actionLabel))
+    return progress
+  }, [showToast, windows])
+
+  const handleCancelWindowBatch = useCallback(() => {
+    windowBatchCancelRequestedRef.current = true
+    setWindowBatchCancelRequested(true)
+  }, [])
+
+  const handleDismissWindowBatchProgress = useCallback(() => {
+    setWindowBatchProgress(current => current?.state === 'running' ? current : null)
+  }, [])
+
+  const handleRetryFailedWindowBatch = useCallback(async () => {
+    const retryContext = windowBatchRetryContextRef.current
+    if (!windowBatchProgress || windowBatchProgress.state === 'running' || !retryContext) {
+      showToast('warning', '没有可重试的失败项')
+      return
+    }
+    const failedHwnds = Array.from(new Set(
+      windowBatchProgress.results
+        .filter(result => result.status === 'failed')
+        .map(result => result.hwnd)
+    ))
+    if (failedHwnds.length === 0) {
+      showToast('warning', '没有可重试的失败项')
+      return
+    }
+    await runWindowBatchForHwnds(
+      failedHwnds,
+      retryContext.action,
+      `${retryContext.actionLabel} 重试失败项`,
+      retryContext.handler,
+      retryContext.patch,
+      retryContext.options
+    )
+  }, [runWindowBatchForHwnds, showToast, windowBatchProgress])
+
+  const runSelectedWindowBatch = useCallback((
+    action: WindowBatchAction,
+    actionLabel: string,
+    handler: WindowBatchHandler,
+    patch: WindowBatchPatch = {},
+    options: WindowBatchOptions = {}
+  ) => runWindowBatchForHwnds(
+    selectedHwnds,
+    action,
+    actionLabel,
+    handler,
+    patch,
+    options
+  ), [runWindowBatchForHwnds, selectedHwnds])
+
+  const handleBatchFocus = useCallback(async () => {
+    await runSelectedWindowBatch(
+      'focus',
+      '批量聚焦',
+      (hwnd) => focusWindow(hwnd),
+      {},
+      { delayMs: WINDOW_BATCH_LIMITS.FOCUS_INTERVAL_MS }
+    )
+  }, [focusWindow, runSelectedWindowBatch])
+
+  const handleBatchToggleTopmost = useCallback(async () => {
+    const currentHwnds = selectedHwnds.filter(hwnd => windows.some(windowInfo => windowInfo.hwnd === hwnd))
+    const shouldPin = currentHwnds.some(hwnd => !topmostWindows.has(hwnd))
+    const progress = await runSelectedWindowBatch(
+      'aot-toggle',
+      shouldPin ? '批量置顶' : '批量取消置顶',
+      (hwnd) => setWindowTopmost(hwnd, shouldPin)
+    )
+    if (!progress) return
+    const okHwnds = progress.results.filter(result => result.status === 'ok').map(result => result.hwnd)
+    setTopmostWindows(prev => {
+      const updated = new Set(prev)
+      for (const hwnd of okHwnds) {
+        if (shouldPin) updated.add(hwnd)
+        else updated.delete(hwnd)
+      }
+      return updated
+    })
+  }, [runSelectedWindowBatch, selectedHwnds, setWindowTopmost, topmostWindows, windows])
+
+  const handleBatchScreenshot = useCallback(async () => {
+    await runSelectedWindowBatch(
+      'screenshot',
+      '批量截图',
+      (hwnd) => screenshotWindow(hwnd)
+    )
+  }, [runSelectedWindowBatch, screenshotWindow])
+
+  const handleBatchMinimize = useCallback(async () => {
+    await runSelectedWindowBatch(
+      'minimize',
+      '批量最小化',
+      (hwnd) => minimizeWindow(hwnd)
+    )
+  }, [minimizeWindow, runSelectedWindowBatch])
 
   const handleBatchRestore = useCallback(async () => {
-    const hwnds = Array.from(selectedWindows)
-    for (const hwnd of hwnds) {
-      await restoreWindow(hwnd)
+    await runSelectedWindowBatch(
+      'restore',
+      '批量恢复',
+      (hwnd) => restoreWindow(hwnd)
+    )
+  }, [restoreWindow, runSelectedWindowBatch])
+
+  const executeBatchClose = useCallback(async (hwnds: number[], confirmed: boolean) => {
+    const progress = await runWindowBatchForHwnds(
+      hwnds,
+      'close',
+      '批量关闭',
+      (hwnd) => closeWindow(hwnd),
+      { confirmed }
+    )
+    if (progress?.failed === 0) {
+      removeSelectedWindows(hwnds)
     }
-    showToast('success', `${hwnds.length} 个窗口已恢复`)
-  }, [selectedWindows, restoreWindow, showToast])
+  }, [closeWindow, runWindowBatchForHwnds, removeSelectedWindows])
 
   const handleBatchClose = useCallback(async () => {
-    const hwnds = Array.from(selectedWindows)
-    for (const hwnd of hwnds) {
-      await closeWindow(hwnd)
+    const currentHwnds = selectedHwnds.filter(hwnd => windows.some(windowInfo => windowInfo.hwnd === hwnd))
+    if (currentHwnds.length > WINDOW_BATCH_LIMITS.CONFIRM_THRESHOLD_CLOSE) {
+      requestWindowBatchConfirmation({
+        confirmText: '关闭选中窗口',
+        kind: 'close',
+        message: `你将关闭 ${currentHwnds.length} 个真实窗口。该操作会向每个目标 HWND 发送关闭消息，未开始的项目仍可通过进度 toast 取消。`,
+        targetSummary: `目标 HWND: ${currentHwnds.join(', ')}`,
+        title: '确认批量关闭',
+        variant: 'danger',
+        onCancel: () => showToast('info', '批量关闭已取消'),
+        onConfirm: () => executeBatchClose(currentHwnds, true)
+      })
+      return
     }
-    setSelectedWindows(new Set())
-    showToast('success', `${hwnds.length} 个窗口已关闭`)
-  }, [selectedWindows, closeWindow, showToast])
+    await executeBatchClose(currentHwnds, false)
+  }, [executeBatchClose, requestWindowBatchConfirmation, selectedHwnds, showToast, windows])
 
   // Filter windows
   const filteredWindows = windows.filter(w =>
@@ -1480,10 +2385,46 @@ export function WindowView() {
     w.processName.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+  const filteredWindowHwnds = filteredWindows.map(windowInfo => windowInfo.hwnd)
+
+  const toggleWindowSelection = useCallback((hwnd: number, gesture: WindowSelectionGesture = { toggle: true }) => {
+    selectBatchWindow(hwnd, filteredWindowHwnds, gesture)
+  }, [filteredWindowHwnds, selectBatchWindow])
+
+  const handleLassoWindowSelection = useCallback((hwnds: number[], gesture: WindowSelectionGesture) => {
+    selectWindowRectangle(hwnds, gesture)
+  }, [selectWindowRectangle])
+
   const handleSelectAll = useCallback(() => {
-    const allHwnds = new Set(filteredWindows.map(w => w.hwnd))
-    setSelectedWindows(allHwnds)
-  }, [filteredWindows])
+    selectAllWindows(filteredWindowHwnds)
+  }, [filteredWindowHwnds, selectAllWindows])
+
+  useEffect(() => {
+    if (viewTab !== 'windows') return undefined
+    const handler = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'a') return
+      if (isEditableKeyboardTarget(event.target)) return
+      event.preventDefault()
+      selectAllWindows(filteredWindowHwnds)
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [filteredWindowHwnds, selectAllWindows, viewTab])
+
+  useEffect(() => {
+    const handler = () => {
+      void runWindowBatchForHwnds(
+        filteredWindows.map(windowInfo => windowInfo.hwnd),
+        'focus',
+        '命令面板批量聚焦',
+        (hwnd) => focusWindow(hwnd),
+        {},
+        { delayMs: WINDOW_BATCH_LIMITS.FOCUS_INTERVAL_MS }
+      )
+    }
+    window.addEventListener('devhub:window-batch-focus-filtered', handler)
+    return () => window.removeEventListener('devhub:window-batch-focus-filtered', handler)
+  }, [filteredWindows, focusWindow, runWindowBatchForHwnds])
 
   // Process groups: group filteredWindows by PID
   const processGroups = useMemo((): ProcessGroupData[] => {
@@ -1516,6 +2457,58 @@ export function WindowView() {
   }, [])
 
   // Statistics
+  const selectedWindow = useMemo(() => windows.find(windowInfo => windowInfo.hwnd === selectedHwnd) ?? null, [selectedHwnd, windows])
+
+  const focusWindowRelationshipPanel = useCallback(() => {
+    windowRelationshipPanelRef.current?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
+    windowRelationshipPanelRef.current?.focus({ preventScroll: true })
+  }, [])
+
+  const openSelectedWindowAttachedTopology = useCallback(() => {
+    if (!selectedWindow) return
+    focusWindowRelationshipPanel()
+  }, [focusWindowRelationshipPanel, selectedWindow])
+
+  const openSelectedWindowGlobalTopology = useCallback(() => {
+    if (!selectedWindow) return
+    openWindowInGlobalTopology(selectedWindow.hwnd)
+  }, [selectedWindow])
+
+  const openWindowAttachedTopology = useCallback((hwnd: number) => {
+    selectWindow(hwnd)
+    window.setTimeout(focusWindowRelationshipPanel, 0)
+  }, [focusWindowRelationshipPanel, selectWindow])
+
+  const windowTourTarget = useMemo(() => selectedWindow ?? filteredWindows[0] ?? windows[0] ?? null, [filteredWindows, selectedWindow, windows])
+
+  const dismissWindowTour = useCallback(() => {
+    window.localStorage.setItem(WINDOW_MODULE_TOUR_STORAGE_KEY, 'dismissed')
+    setIsWindowTourOpen(false)
+  }, [])
+
+  const openWindowTour = useCallback(() => {
+    setWindowTourStep(0)
+    setIsWindowTourOpen(true)
+  }, [])
+
+  const openTourRelationshipView = useCallback(() => {
+    if (!windowTourTarget) return
+    setViewTab('windows')
+    openWindowAttachedTopology(windowTourTarget.hwnd)
+  }, [openWindowAttachedTopology, windowTourTarget])
+
+  const showTourOperationMatrix = useCallback(() => {
+    if (!windowTourTarget) return
+    setViewTab('windows')
+    setViewMode('cards')
+    selectWindow(windowTourTarget.hwnd)
+  }, [selectWindow, windowTourTarget])
+
+  const toggleTourTopmost = useCallback(() => {
+    if (!windowTourTarget) return
+    void handleSetWindowTopmost(windowTourTarget.hwnd, !topmostWindows.has(windowTourTarget.hwnd))
+  }, [handleSetWindowTopmost, topmostWindows, windowTourTarget])
+
   const stats = {
     total: windows.length,
     minimized: windows.filter(w => w.isMinimized).length,
@@ -1570,7 +2563,8 @@ export function WindowView() {
                 modes={[
                   { key: 'cards', icon: <GridIcon size={16} />, label: '卡片视图' },
                   { key: 'list', icon: <ListIcon size={16} />, label: '列表视图' },
-                  { key: 'process', icon: <ProcessIcon size={16} />, label: '按进程分组' }
+                  { key: 'process', icon: <ProcessIcon size={16} />, label: '按进程分组' },
+                  { key: 'wall', icon: <WindowIcon size={16} />, label: '缩略图墙' }
                 ]}
                 current={viewMode}
                 onChange={(mode) => setViewMode(mode as typeof viewMode)}
@@ -1614,6 +2608,50 @@ export function WindowView() {
               >
                 <FolderIcon size={14} />
                 保存布局
+              </button>
+            )}
+
+            {viewTab === 'windows' && selectedWindow && (
+              <button
+                type="button"
+                data-testid="window-attached-topology-button"
+                data-graph-entry="window-header-attached-topology"
+                data-graph-kind="attached"
+                title="查看关系图"
+                onClick={openSelectedWindowAttachedTopology}
+                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-surface-800 text-text-secondary hover:bg-surface-700 hover:text-accent transition-all duration-200 border-l-2 border-surface-600 hover:border-accent radius-sm"
+              >
+                <NetworkIcon size={14} />
+                查看关系图
+              </button>
+            )}
+
+            {viewTab === 'windows' && selectedWindow && (
+              <button
+                type="button"
+                data-testid="window-global-topology-button"
+                data-graph-entry="window-header-global-topology"
+                data-graph-kind="global"
+                title="在全局拓扑中查看"
+                onClick={openSelectedWindowGlobalTopology}
+                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-surface-800 text-text-secondary hover:bg-surface-700 hover:text-accent transition-all duration-200 border-l-2 border-surface-600 hover:border-accent radius-sm"
+              >
+                <GlobeIcon size={14} />
+                全局拓扑
+              </button>
+            )}
+
+            {viewTab === 'windows' && (
+              <button
+                type="button"
+                data-testid="window-module-tour-open-button"
+                onClick={openWindowTour}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-surface-800 text-text-secondary hover:bg-surface-700 hover:text-accent transition-all duration-200 border-l-2 border-surface-600 hover:border-accent radius-sm"
+                aria-label="打开窗口模块导览"
+                title="窗口导览"
+              >
+                <InfoIcon size={14} />
+                导览
               </button>
             )}
 
@@ -1684,6 +2722,22 @@ export function WindowView() {
         </div>
       </div>
 
+      {viewTab === 'windows' && (
+        <WindowModuleTour
+          isOpen={isWindowTourOpen}
+          stepIndex={windowTourStep}
+          windowCount={windows.length}
+          operationCount={WINDOW_OPERATION_CATALOG.length}
+          targetWindow={windowTourTarget}
+          isTargetTopmost={windowTourTarget ? topmostWindows.has(windowTourTarget.hwnd) : false}
+          onStepChange={setWindowTourStep}
+          onDismiss={dismissWindowTour}
+          onOpenRelationshipView={openTourRelationshipView}
+          onShowOperationMatrix={showTourOperationMatrix}
+          onToggleTopmost={toggleTourTopmost}
+        />
+      )}
+
       {/* Statistics (only for windows tab) */}
       {viewTab === 'windows' && (
         <div className="flex-shrink-0 px-5 py-4 border-b border-surface-700/50">
@@ -1722,18 +2776,89 @@ export function WindowView() {
           selectedCount={selectedWindows.size}
           totalCount={filteredWindows.length}
           onSelectAll={handleSelectAll}
+          onFocusAll={handleBatchFocus}
           onTile={handleBatchTile}
           onCascade={handleBatchCascade}
           onStack={handleBatchStack}
+          onRestorePrevious={handleRestorePreviousLayout}
+          onToggleTopmostAll={handleBatchToggleTopmost}
+          onScreenshotAll={handleBatchScreenshot}
           onMinimizeAll={handleBatchMinimize}
           onRestoreAll={handleBatchRestore}
           onCloseAll={handleBatchClose}
-          onClearSelection={() => setSelectedWindows(new Set())}
+          onClearSelection={clearWindowSelection}
         />
       )}
 
+      {viewTab === 'windows' && (
+        <BatchProgressToast
+          actionLabel={windowBatchActionLabel}
+          cancelRequested={windowBatchCancelRequested}
+          progress={windowBatchProgress}
+          onCancel={handleCancelWindowBatch}
+          onDismiss={handleDismissWindowBatchProgress}
+          onRetryFailed={handleRetryFailedWindowBatch}
+        />
+      )}
+
+      {windowBatchConfirm && (
+        <BatchConfirmDialog
+          confirmText={windowBatchConfirm.confirmText}
+          isOpen
+          kind={windowBatchConfirm.kind}
+          message={windowBatchConfirm.message}
+          targetSummary={windowBatchConfirm.targetSummary}
+          title={windowBatchConfirm.title}
+          variant={windowBatchConfirm.variant}
+          onCancel={handleCancelWindowBatchConfirmation}
+          onConfirm={handleConfirmWindowBatchConfirmation}
+        />
+      )}
+
+      {/* Selected Window Relationship */}
+      {viewTab === 'windows' && selectedWindow && (
+        <div
+          ref={windowRelationshipPanelRef}
+          data-testid="window-relationship-panel"
+          data-graph-entry="window-detail-panel"
+          data-graph-kind="attached"
+          tabIndex={-1}
+          className="flex-shrink-0 border-b border-surface-700/50 bg-surface-950 px-5 py-3 outline-none"
+        >
+          <div className="mb-2 flex items-center gap-2">
+            <WindowIcon size={14} className="text-accent" />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-accent" style={{ fontFamily: 'var(--font-display)' }}>
+              关系视图
+            </span>
+            <span className="min-w-0 truncate text-[10px] text-text-muted">
+              {redactWindowTitle(selectedWindow.title || selectedWindow.processName)} - HWND {selectedWindow.hwnd}
+            </span>
+            <button
+              type="button"
+              data-testid="window-detail-global-topology-button"
+              data-graph-entry="window-detail-global-topology"
+              data-graph-kind="global"
+              title="在全局拓扑中查看"
+              onClick={openSelectedWindowGlobalTopology}
+              className="ml-auto flex items-center gap-1 px-2 py-1 text-[10px] font-medium bg-surface-800 text-text-secondary hover:bg-surface-700 hover:text-accent border border-surface-600 transition-colors radius-sm"
+            >
+              <GlobeIcon size={10} />
+              全局拓扑
+            </button>
+          </div>
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <AttachedGraphView scope={{ kind: 'window', targetId: selectedWindow.hwnd, depth: 2 }} minHeight={320} />
+            <AttachedFlowView scope={{ kind: 'window', targetId: selectedWindow.hwnd, depth: 2 }} />
+          </div>
+        </div>
+      )}
+
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-5">
+      <LassoSelect
+        className="flex-1 overflow-y-auto p-5"
+        enabled={viewTab === 'windows'}
+        onSelect={handleLassoWindowSelection}
+      >
         {viewTab === 'windows' && viewMode === 'cards' && (
           <div className="space-y-6">
             {/* AI Windows Pinned Section */}
@@ -1758,15 +2883,20 @@ export function WindowView() {
                         displayName={getAIWindowDisplayName(win)}
                         monitorState={getAIWindowMonitorState(win)}
                         isSelected={selectedHwnd === win.hwnd}
+                        isChecked={selectedWindows.has(win.hwnd)}
+                        operationContext={getOperationContext(win)}
                         onSelect={() => selectWindow(win.hwnd)}
-                        onFocus={() => focusWindow(win.hwnd)}
+                        onShowGraph={() => openWindowAttachedTopology(win.hwnd)}
+                        onFocus={() => { void handleWindowOperation('focus', win) }}
+                        onToggleCheck={(gesture) => toggleWindowSelection(win.hwnd, gesture)}
                         onRename={(name) => handleAIWindowRename(win, name)}
-                        onMinimize={() => minimizeWindow(win.hwnd)}
-                        onMaximize={() => maximizeWindow(win.hwnd)}
-                        onRestore={() => restoreWindow(win.hwnd)}
-                        onClose={() => closeWindow(win.hwnd)}
+                        onMinimize={() => { void handleWindowOperation('minimize', win) }}
+                        onMaximize={() => { void handleWindowOperation('maximize', win) }}
+                        onRestore={() => { void handleWindowOperation('restore', win) }}
+                        onClose={() => { void handleWindowOperation('close', win) }}
                         onSetTopmost={handleSetWindowTopmost}
                         onSetOpacity={handleSetWindowOpacity}
+                        onRunOperation={handleWindowOperation}
                         index={index}
                       />
                     </ProcessCardErrorBoundary>
@@ -1792,13 +2922,17 @@ export function WindowView() {
             <div className="monitor-card-grid" style={{ display: 'grid', gap: 'var(--density-grid-gap, 8px)' }}>
               {filteredRegularWindows.map((window, index) => (
                 <ProcessCardErrorBoundary key={window.hwnd} pid={window.pid} processName={window.processName}>
-                  <WindowCard
-                    window={window}
-                    isSelected={selectedHwnd === window.hwnd}
-                    isChecked={selectedWindows.has(window.hwnd)}
+                    <WindowCard
+                      window={window}
+                      isSelected={selectedHwnd === window.hwnd}
+                      isChecked={selectedWindows.has(window.hwnd)}
+                      isTopmost={topmostWindows.has(window.hwnd)}
+                      operationContext={getOperationContext(window)}
                     onSelect={() => selectWindow(window.hwnd)}
-                    onFocus={() => focusWindow(window.hwnd)}
-                    onToggleCheck={() => toggleWindowSelection(window.hwnd)}
+                    onShowGraph={() => openWindowAttachedTopology(window.hwnd)}
+                    onFocus={() => { void handleWindowOperation('focus', window) }}
+                    onToggleCheck={(gesture) => toggleWindowSelection(window.hwnd, gesture)}
+                    onRunOperation={handleWindowOperation}
                     index={index}
                   />
                 </ProcessCardErrorBoundary>
@@ -1837,15 +2971,20 @@ export function WindowView() {
                         displayName={getAIWindowDisplayName(win)}
                         monitorState={getAIWindowMonitorState(win)}
                         isSelected={selectedHwnd === win.hwnd}
+                        isChecked={selectedWindows.has(win.hwnd)}
+                        operationContext={getOperationContext(win)}
                         onSelect={() => selectWindow(win.hwnd)}
-                        onFocus={() => focusWindow(win.hwnd)}
+                        onShowGraph={() => openWindowAttachedTopology(win.hwnd)}
+                        onFocus={() => { void handleWindowOperation('focus', win) }}
+                        onToggleCheck={(gesture) => toggleWindowSelection(win.hwnd, gesture)}
                         onRename={(name) => handleAIWindowRename(win, name)}
-                        onMinimize={() => minimizeWindow(win.hwnd)}
-                        onMaximize={() => maximizeWindow(win.hwnd)}
-                        onRestore={() => restoreWindow(win.hwnd)}
-                        onClose={() => closeWindow(win.hwnd)}
+                        onMinimize={() => { void handleWindowOperation('minimize', win) }}
+                        onMaximize={() => { void handleWindowOperation('maximize', win) }}
+                        onRestore={() => { void handleWindowOperation('restore', win) }}
+                        onClose={() => { void handleWindowOperation('close', win) }}
                         onSetTopmost={handleSetWindowTopmost}
                         onSetOpacity={handleSetWindowOpacity}
+                        onRunOperation={handleWindowOperation}
                         index={index}
                       />
                     </ProcessCardErrorBoundary>
@@ -1868,13 +3007,16 @@ export function WindowView() {
             <div className="space-y-1">
               {filteredRegularWindows.map((window, index) => (
                 <ProcessCardErrorBoundary key={window.hwnd} pid={window.pid} processName={window.processName}>
-                  <WindowItem
-                    window={window}
-                    isSelected={selectedHwnd === window.hwnd}
-                    isChecked={selectedWindows.has(window.hwnd)}
+                    <WindowItem
+                      window={window}
+                      isSelected={selectedHwnd === window.hwnd}
+                      isChecked={selectedWindows.has(window.hwnd)}
+                      isTopmost={topmostWindows.has(window.hwnd)}
+                      operationContext={getOperationContext(window)}
                     onSelect={() => selectWindow(window.hwnd)}
-                    onFocus={() => focusWindow(window.hwnd)}
-                    onToggleCheck={() => toggleWindowSelection(window.hwnd)}
+                    onFocus={() => { void handleWindowOperation('focus', window) }}
+                    onToggleCheck={(gesture) => toggleWindowSelection(window.hwnd, gesture)}
+                    onRunOperation={handleWindowOperation}
                     index={index}
                   />
                 </ProcessCardErrorBoundary>
@@ -1900,9 +3042,11 @@ export function WindowView() {
                 onToggleExpand={() => togglePidExpanded(group.pid)}
                 selectedHwnd={selectedHwnd}
                 selectedWindows={selectedWindows}
+                getOperationContext={getOperationContext}
                 onSelectWindow={(hwnd) => selectWindow(hwnd)}
                 onFocusWindow={(hwnd) => focusWindow(hwnd)}
-                onToggleCheck={(hwnd) => toggleWindowSelection(hwnd)}
+                onToggleCheck={(hwnd, gesture) => toggleWindowSelection(hwnd, gesture)}
+                onRunOperation={handleWindowOperation}
                 index={index}
               />
             ))}
@@ -1914,6 +3058,18 @@ export function WindowView() {
               />
             )}
           </div>
+        )}
+
+        {viewTab === 'windows' && viewMode === 'wall' && (
+          <ThumbnailWall
+            windows={filteredWindows}
+            selectedHwnd={selectedHwnd}
+            selectedWindows={selectedWindows}
+            getDisplayName={getAIWindowDisplayName}
+            onSelectWindow={(hwnd) => selectWindow(hwnd)}
+            onToggleWindowSelection={(hwnd, gesture) => toggleWindowSelection(hwnd, gesture)}
+            onRunOperation={handleWindowOperation}
+          />
         )}
 
         {viewTab === 'groups' && (
@@ -1938,6 +3094,11 @@ export function WindowView() {
                   () => closeGroup(group.id),
                   `分组 "${group.name}" 窗口已关闭`,
                   '关闭分组窗口失败'
+                )}
+                onRename={(newName) => withFeedback(
+                  () => renameGroup(group.id, newName),
+                  `分组已重命名为 "${newName}"`,
+                  '重命名分组失败'
                 )}
                 onRemove={() => withFeedback(
                   () => removeGroup(group.id),
@@ -1985,7 +3146,7 @@ export function WindowView() {
             )}
           </div>
         )}
-      </div>
+      </LassoSelect>
 
       {/* Create Group Dialog */}
       {showCreateGroup && (

@@ -24,6 +24,7 @@ export function useToast() {
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
   const timeoutIds = useRef<Set<ReturnType<typeof setTimeout>>>(new Set())
+  const nextToastSequence = useRef(0)
 
   useEffect(() => {
     const ids = timeoutIds.current
@@ -34,7 +35,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const showToast = useCallback((type: Toast['type'], message: string) => {
-    const id = Date.now().toString()
+    nextToastSequence.current += 1
+    const id = `${Date.now()}-${nextToastSequence.current}`
     setToasts(prev => [...prev, { id, type, message }])
 
     const timeoutId = setTimeout(() => {

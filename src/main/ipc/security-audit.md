@@ -6,14 +6,14 @@
 
 | Handler | 文件位置 | 风险评估 | 发现问题 |
 |---------|---------|---------|---------|
-| `projects:add` | ipc/index.ts:33 | 🟢 低 | 路径验证和 package.json 解析已实现 |
-| `process:start` | ipc/index.ts:94 | 🟢 低 | 从 store 获取项目，脚本验证在 ProcessManager 中 |
-| `shell:open-path` | ipc/index.ts:218 | 🔴 高 | **直接打开任意路径，无验证** |
-| `dialog:open-directory` | ipc/index.ts:194 | 🟢 低 | 使用系统对话框，安全 |
-| `projects:update` | ipc/index.ts:77 | 🟢 低 | 使用白名单过滤允许更新的字段 |
-| `settings:update` | ipc/index.ts:143 | 🟡 中 | 无验证直接更新设置 |
-| `projects:scan` | ipc/index.ts:224 | 🟡 中 | scanPath 参数未验证 |
-| `projects:scan-directory` | ipc/index.ts:232 | 🟡 中 | dirPath 参数未验证 |
+| `projects:add` | ipc/index.ts:33 | 低 | 路径验证和 package.json 解析已实现 |
+| `process:start` | ipc/index.ts:94 | 低 | 从 store 获取项目，脚本验证在 ProcessManager 中 |
+| `shell:open-path` | ipc/index.ts:218 | 高 | **直接打开任意路径，无验证** |
+| `dialog:open-directory` | ipc/index.ts:194 | 低 | 使用系统对话框，安全 |
+| `projects:update` | ipc/index.ts:77 | 低 | 使用白名单过滤允许更新的字段 |
+| `settings:update` | ipc/index.ts:143 | 中 | 无验证直接更新设置 |
+| `projects:scan` | ipc/index.ts:224 | 中 | scanPath 参数未验证 |
+| `projects:scan-directory` | ipc/index.ts:232 | 中 | dirPath 参数未验证 |
 
 ### 高风险发现
 
@@ -68,19 +68,19 @@ ipcMain.handle(IPC_CHANNELS.SETTINGS_UPDATE, (_, updates) => {
 
 #### 1. projects:add 路径验证
 **位置:** `src/main/ipc/index.ts:33-66`
-✅ 使用 `validatePath()` 验证路径安全性
-✅ 使用 `parsePackageJson()` 验证项目有效性
-✅ 检查重复项目
+- 使用 `validatePath()` 验证路径安全性
+- 使用 `parsePackageJson()` 验证项目有效性
+- 检查重复项目
 
 #### 2. projects:update 字段白名单
 **位置:** `src/main/ipc/index.ts:77-90`
-✅ 只允许更新 name, tags, group, defaultScript
-✅ 防止修改 path 等敏感字段
+- 只允许更新 name, tags, group, defaultScript
+- 防止修改 path 等敏感字段
 
 #### 3. process:start 项目验证
 **位置:** `src/main/ipc/index.ts:94-109`
-✅ 从 store 获取项目，不接受外部路径
-✅ 脚本验证在 ProcessManager 中实现
+- 从 store 获取项目，不接受外部路径
+- 脚本验证在 ProcessManager 中实现
 
 ### 建议修复优先级
 

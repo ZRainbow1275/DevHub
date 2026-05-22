@@ -1,0 +1,37 @@
+/* ========================================
+   DevHub Responsive Breakpoint System
+   Container-first reflow tokens for P8.1.
+   ======================================== */
+
+:root {
+  --bp-container-xs: 320px;
+  --bp-container-sm: 480px;
+  --bp-container-md: 640px;
+  --bp-container-lg: 880px;
+  --bp-container-xl: 1200px;
+  --bp-viewport-sm: 640px;
+  --bp-viewport-md: 768px;
+  --bp-viewport-lg: 1024px;
+  --bp-viewport-xl: 1280px;
+  --responsive-sidebar-collapsed-width: 56px;
+}
+
+.responsive-container {
+  container-type: inline-size;
+  container-name: devhub-panel;
+}
+
+@container devhub-panel (width < 480px) {
+  .col-optional,
+  .monitor-hide-xs {
+    display: none;
+  }
+}
+
+@container devhub-panel (width < 640px) {
+  .table-row,
+  .responsive-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

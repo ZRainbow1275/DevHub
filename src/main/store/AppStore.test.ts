@@ -1,5 +1,11 @@
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
+import Store from 'electron-store'
 import { describe, it, expect, beforeEach } from 'vitest'
-import type { Project, CodingTool, AppSettings } from '@shared/types'
+import { AppStore } from './AppStore'
+import type { AppConfig, AppSettings, Project, CodingTool } from '@shared/types'
+import { DEFAULT_PORT_POPOUT_SYNC_POLICY, DEFAULT_SETTINGS, DEFAULT_TOOLS } from '@shared/types'
 
 // 由于 AppStore 依赖于 electron-store
 // 在 jsdom 测试环境中难以完全 mock
@@ -149,97 +155,171 @@ describe('AppStore Logic Tests', () => {
   })
 
   describe('Settings Management', () => {
-    const TEST_SETTINGS: AppSettings = {
-      appearance: {
-        theme: 'constructivism',
-        fontSize: 'medium',
-        sidebarPosition: 'left',
-        compactMode: false,
-        enableAnimations: true,
-        informationDensity: 'standard',
-      },
-      scan: {
-        scanDrives: ['C', 'D'],
-        allowedPaths: [],
-        excludePaths: [],
-        checkInterval: 3000,
-        maxScanDepth: 5,
-        fileTypeFilters: [],
-      },
-      process: {
-        enabled: true,
-        scanInterval: 5000,
-        autoCleanZombies: false,
-        zombieThresholdMinutes: 30,
-        cpuWarningThreshold: 80,
-        memoryWarningThresholdMB: 1024,
-        whitelist: [],
-        blacklist: [],
-      },
-      notification: {
-        enabled: true,
-        typeToggles: { 'task-complete': true, 'port-conflict': true, 'zombie-process': true, 'high-resource': true, 'project-error': true },
-        sound: true,
-        persistent: false,
-        quietHoursEnabled: false,
-        quietHoursStart: '22:00',
-        quietHoursEnd: '08:00',
-      },
-      window: {
-        enabled: true,
-        autoGroupStrategy: 'by-project',
-        saveLayoutOnExit: false,
-        snapToEdges: true,
-      },
-      advanced: {
-        autoStartOnBoot: false,
-        minimizeToTray: false,
-        dataStoragePath: '',
-        logLevel: 'info',
-        developerMode: false,
-      },
-      firstLaunchDone: false,
+    function createStore(cwd?: string) {
+      return new Store<AppConfig>({
+        cwd: cwd ?? fs.mkdtempSync(path.join(os.tmpdir(), 'devhub-app-store-')),
+        name: 'app-store-test',
+        defaults: {
+          projects: [],
+          tools: DEFAULT_TOOLS,
+          tags: [],
+          groups: [],
+          settings: DEFAULT_SETTINGS,
+        },
+      })
     }
 
-    it('应该返回默认设置', () => {
-      const settings = { ...TEST_SETTINGS }
+    it('应该返回包含 port popout 默认值的真实默认设置', () => {
+      const appStore = new AppStore(createStore())
+      const settings = appStore.getSettings()
 
       expect(settings.notification.enabled).toBe(true)
       expect(settings.appearance.theme).toBe('constructivism')
-      expect(settings.scan.checkInterval).toBe(3000)
+      expect(settings.window.portPopout).toEqual(DEFAULT_SETTINGS.window.portPopout)
     })
 
-    it('应该正确更新设置', () => {
-      const settings = {
-        ...TEST_SETTINGS,
-        appearance: { ...TEST_SETTINGS.appearance, theme: 'modern-light' as const },
-        notification: { ...TEST_SETTINGS.notification, enabled: false },
-      }
+    it('应该深度合并部分 port popout 设置而不丢失其他触发字段', () => {
+      const appStore = new AppStore(createStore())
+
+      appStore.updateSettings({
+        window: {
+          ...DEFAULT_SETTINGS.window,
+          portPopout: {
+            ...DEFAULT_SETTINGS.window.portPopout,
+            triggerEnabled: {
+              ...DEFAULT_SETTINGS.window.portPopout.triggerEnabled,
+              hover: false,
+            },
+            hoverDelayMs: 1500,
+          },
+        },
+      })
+
+      expect(appStore.getSettings().window.portPopout).toEqual({
+        triggerEnabled: {
+          hover: false,
+          click: true,
+          drag: true,
+          contextMenu: true,
+        },
+        hoverDelayMs: 1500,
+        dragThresholdPx: 8,
+        syncPolicyDefault: DEFAULT_PORT_POPOUT_SYNC_POLICY,
+      })
+    })
+
+    it('应该把 port popout 设置真实持久化到 electron-store 并在新实例中恢复', () => {
+      const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'devhub-app-store-persist-'))
+      const first = new AppStore(createStore(cwd))
+
+      first.updateSettings({
+        window: {
+          ...DEFAULT_SETTINGS.window,
+          portPopout: {
+            ...DEFAULT_SETTINGS.window.portPopout,
+            triggerEnabled: {
+              ...DEFAULT_SETTINGS.window.portPopout.triggerEnabled,
+              click: false,
+              contextMenu: false,
+            },
+            hoverDelayMs: 2000,
+            dragThresholdPx: 12,
+            syncPolicyDefault: {
+              ...DEFAULT_SETTINGS.window.portPopout.syncPolicyDefault,
+              direction: 'isolated',
+            },
+          },
+        },
+      })
+
+      const restored = new AppStore(createStore(cwd))
+      expect(restored.getSettings().window.portPopout).toEqual({
+        triggerEnabled: {
+          hover: true,
+          click: false,
+          drag: true,
+          contextMenu: false,
+        },
+        hoverDelayMs: 2000,
+        dragThresholdPx: 12,
+        syncPolicyDefault: {
+          ...DEFAULT_PORT_POPOUT_SYNC_POLICY,
+          direction: 'isolated',
+        },
+      })
+    })
+
+    it('应该迁移 legacy flat settings 并保留新的 port popout 默认值', () => {
+      const store = createStore()
+      store.set('settings', {
+        theme: 'modern-light',
+        checkInterval: 5000,
+        notificationEnabled: false,
+        firstLaunchDone: true,
+      } as never)
+
+      const appStore = new AppStore(store)
+      const settings = appStore.getSettings()
 
       expect(settings.appearance.theme).toBe('modern-light')
+      expect(settings.scan.checkInterval).toBe(5000)
       expect(settings.notification.enabled).toBe(false)
+      expect(settings.firstLaunchDone).toBe(true)
+      expect(settings.window.portPopout).toEqual(DEFAULT_SETTINGS.window.portPopout)
     })
 
-    it('应该正确管理允许路径', () => {
-      const settings = {
-        ...TEST_SETTINGS,
-        scan: { ...TEST_SETTINGS.scan, allowedPaths: [...TEST_SETTINGS.scan.allowedPaths] },
-      }
+    it('应该通过真实设置对象管理允许路径', () => {
+      const appStore = new AppStore(createStore())
 
-      // 添加路径
-      if (!settings.scan.allowedPaths.includes('D:/NewPath')) {
-        settings.scan.allowedPaths.push('D:/NewPath')
-      }
-      expect(settings.scan.allowedPaths).toContain('D:/NewPath')
+      appStore.addAllowedPath('D:/NewPath')
+      expect(appStore.getSettings().scan.allowedPaths).toContain('D:/NewPath')
 
-      // 移除路径
-      settings.scan.allowedPaths = settings.scan.allowedPaths.filter(p => p !== 'D:/NewPath')
-      expect(settings.scan.allowedPaths).not.toContain('D:/NewPath')
+      appStore.removeAllowedPath('D:/NewPath')
+      expect(appStore.getSettings().scan.allowedPaths).not.toContain('D:/NewPath')
+    })
+
+    it('encrypts imported sensitive settings fields at rest with Electron safeStorage envelopes', () => {
+      const store = createStore()
+      const appStore = new AppStore(store)
+      const sensitiveSettings = {
+        advanced: {
+          ...DEFAULT_SETTINGS.advanced,
+          apiKey: 'sk-imported-secret-123456',
+          nested: {
+            token: 'tok-imported-secret-123456'
+          }
+        }
+      } as unknown as Partial<AppSettings>
+
+      appStore.updateSettings(sensitiveSettings)
+
+      const rawSettings = store.get('settings') as unknown as Record<string, unknown>
+      const rawText = JSON.stringify(rawSettings)
+      const advanced = rawSettings.advanced as Record<string, unknown>
+      const encryptedApiKey = advanced.apiKey as Record<string, unknown>
+      const nested = advanced.nested as Record<string, unknown>
+      const encryptedToken = nested.token as Record<string, unknown>
+
+      expect(rawText).not.toContain('sk-imported-secret-123456')
+      expect(rawText).not.toContain('tok-imported-secret-123456')
+      expect(encryptedApiKey).toMatchObject({
+        __devhubEncrypted: true,
+        algorithm: 'electron.safeStorage',
+        encoding: 'base64',
+        keyHint: 'apiKey'
+      })
+      expect(encryptedToken).toMatchObject({
+        __devhubEncrypted: true,
+        algorithm: 'electron.safeStorage',
+        encoding: 'base64',
+        keyHint: 'token'
+      })
+      expect(JSON.stringify(appStore.getSettings())).not.toContain('sk-imported-secret-123456')
     })
   })
 
   describe('Tools Management', () => {
-    const DEFAULT_TOOLS: CodingTool[] = [
+    const TOOL_FIXTURES: CodingTool[] = [
       {
         id: 'codex',
         name: 'codex',
@@ -251,13 +331,13 @@ describe('AppStore Logic Tests', () => {
     ]
 
     it('应该返回默认工具列表', () => {
-      const tools = [...DEFAULT_TOOLS]
+      const tools = [...TOOL_FIXTURES]
       expect(tools.length).toBeGreaterThan(0)
       expect(tools[0].id).toBe('codex')
     })
 
     it('应该正确更新工具状态', () => {
-      const tools = [...DEFAULT_TOOLS]
+      const tools = [...TOOL_FIXTURES]
       const index = tools.findIndex(t => t.id === 'codex')
 
       if (index !== -1) {

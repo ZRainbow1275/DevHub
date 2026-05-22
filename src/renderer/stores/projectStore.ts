@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { Project, LogEntry } from '@shared/types'
+import { redactLogEntry } from '@shared/utils/logRedactor'
 
 interface ProjectState {
   projects: Project[]
@@ -70,11 +71,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set((state) => {
       const logs = new Map(state.logs)
       const existingLogs = logs.get(entry.projectId) || []
+      const safeEntry = redactLogEntry(entry)
 
       // 创建新数组引用以保证不可变更新
       const newLogs = existingLogs.length >= MAX_LOGS_PER_PROJECT
-        ? [...existingLogs.slice(1), entry]
-        : [...existingLogs, entry]
+        ? [...existingLogs.slice(1), safeEntry]
+        : [...existingLogs, safeEntry]
       logs.set(entry.projectId, newLogs)
 
       return { logs }

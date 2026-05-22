@@ -1,11 +1,13 @@
 import { memo, useState, useEffect } from 'react'
-import { Project } from '@shared/types'
+import { Project, ProjectOpenTarget } from '@shared/types'
+import type { ThemeDecorationConfig } from '@shared/types'
 import type { GitInfo } from '@shared/types-extended'
 import { ScriptSelector } from '../ui/ScriptSelector'
 import { ContextMenu } from '../ui/ContextMenu'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
+import { ThemeDecoration } from '../ui/ThemeDecoration'
 import { ProjectTypeBadge } from './ProjectTypeBadge'
-import { PlayIcon, StopIcon, FolderIcon, CopyIcon, TagIcon, TrashIcon, GitBranchIcon, EyeIcon } from '../icons'
+import { PlayIcon, StopIcon, FolderIcon, CopyIcon, TagIcon, TrashIcon, GitBranchIcon, EyeIcon, CodeIcon, ExternalLinkIcon, TerminalIcon } from '../icons'
 
 const isElectron = typeof window !== 'undefined' && window.devhub !== undefined
 
@@ -17,9 +19,11 @@ interface ProjectCardProps {
   onStop: () => void
   onRemove: () => void
   onOpenFolder: () => void
+  onOpenIn: (target: ProjectOpenTarget) => void
   onCopyPath: () => void
   onManageTags: () => void
   onShowDetail?: () => void
+  decorationConfig?: ThemeDecorationConfig
 }
 
 export const ProjectCard = memo(function ProjectCard({
@@ -30,13 +34,16 @@ export const ProjectCard = memo(function ProjectCard({
   onStop,
   onRemove,
   onOpenFolder,
+  onOpenIn,
   onCopyPath,
   onManageTags,
-  onShowDetail
+  onShowDetail,
+  decorationConfig
 }: ProjectCardProps) {
   const isRunning = project.status === 'running'
   const isError = project.status === 'error'
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null)
+  const [openMenuPos, setOpenMenuPos] = useState<{ x: number; y: number } | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [gitInfo, setGitInfo] = useState<GitInfo | null>(null)
 
@@ -52,7 +59,7 @@ export const ProjectCard = memo(function ProjectCard({
     }
 
     fetchGitInfo()
-    const interval = setInterval(fetchGitInfo, 15000)
+    const interval = setInterval(fetchGitInfo, 120000)
     return () => {
       active = false
       clearInterval(interval)
@@ -61,7 +68,23 @@ export const ProjectCard = memo(function ProjectCard({
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault()
+    setOpenMenuPos(null)
     setContextMenuPos({ x: e.clientX, y: e.clientY })
+  }
+
+  const handleOpenMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation()
+    const rect = e.currentTarget.getBoundingClientRect()
+
+    setContextMenuPos(null)
+    setOpenMenuPos((current) =>
+      current
+        ? null
+        : {
+            x: Math.max(8, rect.left),
+            y: rect.bottom + 6
+          }
+    )
   }
 
   const handleToggle = (e: React.MouseEvent) => {
@@ -79,6 +102,34 @@ export const ProjectCard = memo(function ProjectCard({
     onStart(script)
   }
 
+  const projectOpenMenuItems = [
+    {
+      label: '在 VS Code 打开',
+      icon: <CodeIcon size={16} />,
+      onClick: () => onOpenIn('vscode' satisfies ProjectOpenTarget)
+    },
+    {
+      label: '在 Cursor 打开',
+      icon: <CodeIcon size={16} />,
+      onClick: () => onOpenIn('cursor' satisfies ProjectOpenTarget)
+    },
+    {
+      label: '在资源管理器打开',
+      icon: <FolderIcon size={16} />,
+      onClick: onOpenFolder
+    },
+    {
+      label: '在终端打开',
+      icon: <TerminalIcon size={16} />,
+      onClick: () => onOpenIn('terminal' satisfies ProjectOpenTarget)
+    },
+    {
+      label: '复制路径',
+      icon: <CopyIcon size={16} />,
+      onClick: onCopyPath
+    }
+  ]
+
   const contextMenuItems = [
     {
       label: isRunning ? '停止' : '启动',
@@ -90,16 +141,8 @@ export const ProjectCard = memo(function ProjectCard({
       icon: <EyeIcon size={16} />,
       onClick: onShowDetail
     }] : []),
-    {
-      label: '打开文件夹',
-      icon: <FolderIcon size={16} />,
-      onClick: onOpenFolder
-    },
-    {
-      label: '复制路径',
-      icon: <CopyIcon size={16} />,
-      onClick: onCopyPath
-    },
+    { label: '', onClick: () => {}, divider: true },
+    ...projectOpenMenuItems,
     {
       label: '管理标签',
       icon: <TagIcon size={16} />,
@@ -124,6 +167,7 @@ export const ProjectCard = memo(function ProjectCard({
     <>
       <div
         role="button"
+        aria-label={`${project.name} 项目卡片${isRunning ? '，运行中' : isError ? '，异常' : '，已停止'}`}
         tabIndex={0}
         onClick={onSelect}
         onKeyDown={(e) => {
@@ -134,20 +178,23 @@ export const ProjectCard = memo(function ProjectCard({
         }}
         onContextMenu={handleContextMenu}
         className={`
-          monitor-card cursor-pointer
+          monitor-card project-card cursor-pointer
           ${isSelected ? 'monitor-card-selected' : ''}
           ${isRunning ? 'card-running' : ''}
           ${isError ? 'card-error' : ''}
         `}
-        style={{ minWidth: '240px' }}
+        style={{ minWidth: 'var(--project-card-min-width, 240px)' }}
+        data-testid="project-card"
+        data-project-status={project.status}
       >
-        <div className="flex items-start justify-between gap-4">
+        <ThemeDecoration config={decorationConfig} position="card-background" />
+        <div className="project-card-layout relative z-10 flex items-start justify-between gap-4">
           {/* Left: Project Info */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3">
+          <div className="project-card-main flex-1 min-w-0">
+            <div className="project-card-title-row flex items-center gap-3">
               {/* Status indicator */}
               <span
-                className={`w-2.5 h-2.5 flex-shrink-0 ${
+                className={`project-card-status-dot w-2.5 h-2.5 flex-shrink-0 ${
                   isRunning
                     ? 'bg-success status-dot-running'
                     : isError
@@ -156,7 +203,7 @@ export const ProjectCard = memo(function ProjectCard({
                 } radius-sm`}
               />
               <h3
-                className="text-sm font-semibold text-text-primary truncate"
+                className="project-card-title text-sm font-semibold text-text-primary truncate"
                 style={{ minWidth: '9rem', maxWidth: '100%' }}
                 title={project.name}
               >
@@ -171,13 +218,13 @@ export const ProjectCard = memo(function ProjectCard({
             </div>
 
             {/* Path with tooltip */}
-            <p className="text-xs text-text-muted mt-1.5 truncate font-mono" title={project.path}>
+            <p className="project-card-path text-xs text-text-muted mt-1.5 truncate font-mono" title={project.path}>
               {project.path}
             </p>
 
             {/* Git branch + Port info row */}
             {(gitInfo || project.port) && (
-              <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+              <div className="project-card-meta-row flex items-center gap-3 mt-1.5 flex-wrap">
                 {gitInfo && (
                   <span className="flex items-center gap-1 text-[11px] text-text-secondary">
                     <GitBranchIcon size={12} className="text-accent flex-shrink-0" />
@@ -197,7 +244,7 @@ export const ProjectCard = memo(function ProjectCard({
 
             {/* Tags */}
             {project.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
+              <div className="project-card-tags flex flex-wrap gap-1.5 mt-2" title={project.tags.join(', ')}>
                 {project.tags.map((tag) => (
                   <span
                     key={tag}
@@ -211,7 +258,7 @@ export const ProjectCard = memo(function ProjectCard({
 
             {/* Quick action buttons for common scripts */}
             {!isRunning && quickScripts.length > 1 && (
-              <div className="flex items-center gap-1.5 mt-2">
+              <div className="project-card-quick-actions flex items-center gap-1.5 mt-2">
                 {quickScripts.map(script => (
                   <button
                     key={script}
@@ -227,7 +274,19 @@ export const ProjectCard = memo(function ProjectCard({
           </div>
 
           {/* Right: Actions */}
-          <div className="flex items-center gap-2 action-group flex-shrink-0">
+          <div className="project-card-actions flex items-center gap-2 action-group flex-shrink-0">
+            <button
+              onClick={handleOpenMenu}
+              className="px-3 py-1.5 text-xs font-medium bg-surface-800 text-text-secondary hover:bg-surface-700 hover:text-text-primary transition-colors border-l-2 border-accent/60 radius-sm"
+              title="打开项目"
+              data-testid="project-open-button"
+            >
+              <span className="project-card-open-label inline-flex items-center gap-1.5">
+                <ExternalLinkIcon size={14} />
+                打开
+              </span>
+            </button>
+
             {/* Detail button */}
             {onShowDetail && (
               <button
@@ -267,6 +326,12 @@ export const ProjectCard = memo(function ProjectCard({
         items={contextMenuItems}
         position={contextMenuPos}
         onClose={() => setContextMenuPos(null)}
+      />
+
+      <ContextMenu
+        items={projectOpenMenuItems}
+        position={openMenuPos}
+        onClose={() => setOpenMenuPos(null)}
       />
 
       {/* Delete Confirmation */}

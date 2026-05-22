@@ -1,16 +1,24 @@
 import { useEffect, useState, useCallback, memo, useMemo } from 'react'
-import { TimelineEntry, AITaskState } from '@shared/types-extended'
+import { TimelineEntry, AITaskState, AIMonitorState } from '@shared/types-extended'
 import { formatDuration } from '../../utils/formatDuration'
 
 const isElectron = typeof window !== 'undefined' && window.devhub !== undefined
 
-const STATUS_CONFIG: Record<AITaskState, { label: string; color: string; bgColor: string }> = {
+type TimelineDisplayState = AITaskState | AIMonitorState
+
+const STATUS_CONFIG: Record<TimelineDisplayState, { label: string; color: string; bgColor: string }> = {
+  initializing: { label: '初始化', color: '#38bdf8', bgColor: 'bg-sky-500/20' },
   idle:      { label: '空闲',     color: '#6b7280', bgColor: 'bg-gray-500/20' },
   thinking:  { label: '思考中',   color: '#3b82f6', bgColor: 'bg-blue-500/20' },
+  'receiving-input': { label: '接收输入', color: '#60a5fa', bgColor: 'bg-blue-500/20' },
   coding:    { label: '编码中',   color: '#22c55e', bgColor: 'bg-green-500/20' },
   compiling: { label: '编译中',   color: '#f97316', bgColor: 'bg-orange-500/20' },
   running:   { label: '运行中',   color: '#10b981', bgColor: 'bg-emerald-500/20' },
   waiting:   { label: '等待输入', color: '#eab308', bgColor: 'bg-yellow-500/20' },
+  validating: { label: '确认中',   color: '#38bdf8', bgColor: 'bg-sky-500/20' },
+  'waiting-input': { label: '等待输入', color: '#eab308', bgColor: 'bg-yellow-500/20' },
+  'awaiting-human': { label: '等待人工', color: '#facc15', bgColor: 'bg-yellow-500/20' },
+  stuck: { label: '疑似卡死', color: '#f97316', bgColor: 'bg-orange-500/20' },
   completed: { label: '已完成',   color: '#06b6d4', bgColor: 'bg-cyan-500/20' },
   error:     { label: '错误',     color: '#ef4444', bgColor: 'bg-red-500/20' },
 }
@@ -91,9 +99,14 @@ const PhaseBar = memo(function PhaseBar({ timeline }: PhaseBarProps) {
   if (totalDuration <= 0) return null
 
   return (
-    <div className="flex h-2 w-full overflow-hidden radius-sm gap-px">
+    <div
+      className="flex h-2 w-full overflow-hidden radius-sm gap-px"
+      data-testid="ai-progress-gantt-phasebar"
+      data-phase-count={timeline.length}
+    >
       {timeline.map((entry, i) => {
-        const config = STATUS_CONFIG[entry.status] ?? STATUS_CONFIG.running
+        const displayState = entry.monitorState ?? entry.status
+        const config = STATUS_CONFIG[displayState] ?? STATUS_CONFIG.running
         const widthPct = (Math.max(entry.duration, 0.1) / totalDuration) * 100
         return (
           <div
@@ -121,7 +134,8 @@ interface TimelineItemProps {
 }
 
 const TimelineItem = memo(function TimelineItem({ entry, isLast }: TimelineItemProps) {
-  const config = STATUS_CONFIG[entry.status] ?? STATUS_CONFIG.running
+  const displayState = entry.monitorState ?? entry.status
+  const config = STATUS_CONFIG[displayState] ?? STATUS_CONFIG.running
   const time = new Date(entry.timestamp)
   const timeStr = time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   const durationStr = entry.duration > 0 ? formatDuration(entry.duration * 1000) : (isLast ? '进行中' : '<1s')
@@ -229,7 +243,7 @@ export const AIProgressTimeline = memo(function AIProgressTimeline({
   ), [timeline])
 
   const currentPhase = timeline[timeline.length - 1]
-  const currentConfig = currentPhase ? (STATUS_CONFIG[currentPhase.status] ?? STATUS_CONFIG.running) : null
+  const currentConfig = currentPhase ? (STATUS_CONFIG[currentPhase.monitorState ?? currentPhase.status] ?? STATUS_CONFIG.running) : null
 
   if (isLoading) {
     return (
@@ -248,7 +262,11 @@ export const AIProgressTimeline = memo(function AIProgressTimeline({
   }
 
   return (
-    <div className="p-4 bg-surface-800/50 border border-surface-700 radius-sm">
+    <div
+      className="p-4 bg-surface-800/50 border border-surface-700 radius-sm"
+      data-testid="ai-progress-timeline"
+      data-timeline-states={timeline.map((entry) => entry.monitorState ?? entry.status).join(',')}
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <h4
@@ -271,7 +289,7 @@ export const AIProgressTimeline = memo(function AIProgressTimeline({
         {/* Phase legend */}
         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
           {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
-            const hasPhase = timeline.some(e => e.status === key)
+            const hasPhase = timeline.some(e => (e.monitorState ?? e.status) === key)
             if (!hasPhase) return null
             return (
               <div key={key} className="flex items-center gap-1">

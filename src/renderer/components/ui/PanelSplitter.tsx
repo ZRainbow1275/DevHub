@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState, useEffect, type ReactNode } from 'react'
+import { useCallback, useRef, useState, useEffect, useMemo, type ReactNode } from 'react'
+import { useContainerSize } from '../../hooks/useContainerSize'
 
 /**
  * PanelSplitter -- a lightweight, dependency-free resizable panel
@@ -10,6 +11,51 @@ import { useCallback, useRef, useState, useEffect, type ReactNode } from 'react'
  * - defaultSizes are percentages (must sum to 100).
  * - Persists sizes to localStorage when storageKey is provided.
  */
+
+function arePanelSizesEquivalent(left: number[], right: number[]): boolean {
+  return left.length === right.length && left.every((value, index) => Math.abs(value - right[index]) < 0.1)
+}
+
+function clampPanelPixels(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max)
+}
+
+function normalizeTwoPaneSizes(
+  candidate: number[],
+  totalSize: number,
+  paneCount: number,
+  minSizes: number[],
+  maxSizes?: number[]
+): number[] {
+  if (paneCount !== 2 || candidate.length !== 2 || totalSize <= 0) {
+    return candidate
+  }
+
+  const availableSize = totalSize - 4
+  if (availableSize <= 0) {
+    return candidate
+  }
+
+  const minLeft = minSizes[0] ?? 0
+  const minRight = minSizes[1] ?? 0
+  if (minLeft + minRight > availableSize) {
+    return candidate
+  }
+
+  const maxLeft = maxSizes?.[0] ?? Number.POSITIVE_INFINITY
+  const maxRight = maxSizes?.[1] ?? Number.POSITIVE_INFINITY
+  let rightPx = (candidate[1] / 100) * availableSize
+  rightPx = clampPanelPixels(rightPx, minRight, Math.min(maxRight, availableSize - minLeft))
+
+  let leftPx = availableSize - rightPx
+  leftPx = clampPanelPixels(leftPx, minLeft, Math.min(maxLeft, availableSize - minRight))
+  rightPx = availableSize - leftPx
+
+  return [
+    (leftPx / availableSize) * 100,
+    (rightPx / availableSize) * 100
+  ]
+}
 
 interface PanelSplitterProps {
   /** Split direction. 'horizontal' = side-by-side, 'vertical' = stacked. */
@@ -26,6 +72,8 @@ interface PanelSplitterProps {
   onResize?: (sizes: number[]) => void
   /** Minimum panel width in pixels. Defaults to 300. */
   minPanelWidth?: number
+  /** Stack horizontal panes vertically when the splitter container is narrower than this width. */
+  stackBelow?: number
   children: ReactNode[]
 }
 
@@ -37,11 +85,18 @@ export function PanelSplitter({
   storageKey,
   onResize,
   minPanelWidth = 300,
+  stackBelow,
   children,
 }: PanelSplitterProps) {
   // Enforce minimum panel width: if no minSizes provided, use minPanelWidth for all panes
-  const effectiveMinSizes = minSizes ?? children.map(() => minPanelWidth)
+  const effectiveMinSizes = useMemo(
+    () => minSizes ?? Array.from({ length: children.length }, () => minPanelWidth),
+    [children.length, minPanelWidth, minSizes]
+  )
   const containerRef = useRef<HTMLDivElement>(null)
+  const containerSize = useContainerSize(containerRef)
+  const isStacked = direction === 'horizontal' && stackBelow !== undefined && containerSize.width > 0 && containerSize.width < stackBelow
+  const effectiveDirection = isStacked ? 'vertical' : direction
   const [sizes, setSizes] = useState<number[]>(() => {
     if (storageKey) {
       const stored = localStorage.getItem(storageKey)
@@ -60,6 +115,30 @@ export function PanelSplitter({
   })
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
 
+  useEffect(() => {
+    if (isStacked) return
+
+    const totalSize = effectiveDirection === 'horizontal' ? containerSize.width : containerSize.height
+    if (totalSize <= 0) return
+
+    setSizes((currentSizes) => {
+      const normalizedSizes = normalizeTwoPaneSizes(
+        currentSizes,
+        totalSize,
+        children.length,
+        effectiveMinSizes,
+        maxSizes
+      )
+
+      if (arePanelSizesEquivalent(currentSizes, normalizedSizes)) {
+        return currentSizes
+      }
+
+      onResize?.(normalizedSizes)
+      return normalizedSizes
+    })
+  }, [children.length, containerSize.height, containerSize.width, effectiveDirection, effectiveMinSizes, isStacked, maxSizes, onResize])
+
   // Persist to localStorage
   useEffect(() => {
     if (storageKey) {
@@ -75,7 +154,7 @@ export function PanelSplitter({
 
       setDraggingIndex(index)
 
-      const isHorizontal = direction === 'horizontal'
+      const isHorizontal = effectiveDirection === 'horizontal'
       const containerRect = container.getBoundingClientRect()
       const totalSize = isHorizontal ? containerRect.width : containerRect.height
       const startPos = isHorizontal ? startEvent.clientX : startEvent.clientY
@@ -151,7 +230,7 @@ export function PanelSplitter({
       document.addEventListener('pointermove', onPointerMove)
       document.addEventListener('pointerup', onPointerUp)
     },
-    [direction, sizes, effectiveMinSizes, maxSizes, onResize, children.length],
+    [effectiveDirection, sizes, effectiveMinSizes, maxSizes, onResize, children.length],
   )
 
   // Double-click splitter to reset to default sizes
@@ -166,12 +245,16 @@ export function PanelSplitter({
     [defaultSizes, onResize, storageKey],
   )
 
-  const isHorizontal = direction === 'horizontal'
+  const isHorizontal = effectiveDirection === 'horizontal'
 
   return (
     <div
       ref={containerRef}
-      className={`flex ${isHorizontal ? 'flex-row' : 'flex-col'} h-full w-full`}
+      className={`panel-splitter-root flex ${isHorizontal ? 'flex-row' : 'flex-col'} h-full w-full`}
+      data-testid="panel-splitter-root"
+      data-splitter-storage-key={storageKey}
+      data-panel-mode={isStacked ? 'stacked' : 'split'}
+      data-panel-breakpoint={containerSize.breakpoint}
       style={{
         // Prevent text selection while dragging
         userSelect: draggingIndex !== null ? 'none' : undefined,
@@ -181,8 +264,15 @@ export function PanelSplitter({
         <PanelPane key={i}>
           {/* Pane content */}
           <div
-            className="h-full w-full overflow-hidden"
-            style={{ flexBasis: `${sizes[i]}%`, flexGrow: 0, flexShrink: 0 }}
+            className="h-full w-full overflow-hidden panel-splitter-pane"
+            style={isStacked
+              ? {
+                  flexBasis: i === 0 ? 'min(42%, 320px)' : 'auto',
+                  flexGrow: i === children.length - 1 ? 1 : 0,
+                  flexShrink: i === 0 ? 0 : 1,
+                  minHeight: 0
+                }
+              : { flexBasis: `${sizes[i]}%`, flexGrow: 0, flexShrink: 0 }}
           >
             {child}
           </div>
@@ -193,9 +283,18 @@ export function PanelSplitter({
               className={`panel-splitter panel-splitter--${isHorizontal ? 'horizontal' : 'vertical'} ${
                 draggingIndex === i ? 'panel-splitter--dragging' : ''
               }`}
+              data-testid={`panel-splitter-handle-${i}`}
+              role="separator"
+              aria-label={`调整面板分隔条 ${i + 1}`}
+              aria-orientation={isHorizontal ? 'vertical' : 'horizontal'}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(sizes[i] ?? 0)}
+              aria-valuetext={`面板 ${i + 1} 占比 ${Math.round(sizes[i] ?? 0)}%`}
+              tabIndex={0}
               onPointerDown={(e) => handleDragStart(i, e)}
               onDoubleClick={handleDoubleClick}
-              title="Double-click to reset"
+              title="双击重置面板比例"
             />
           )}
         </PanelPane>

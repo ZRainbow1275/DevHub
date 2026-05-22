@@ -1,6 +1,14 @@
 import { useEffect, memo, useState, useMemo, useCallback } from 'react'
 import { usePorts } from '../../hooks/usePorts'
-import { PortInfo, COMMON_DEV_PORTS } from '@shared/types-extended'
+import {
+  PortInfo,
+  COMMON_DEV_PORTS,
+  PORT_POPOUT_FILTER_VALUES,
+  PORT_POPOUT_VIEW_MODE_VALUES,
+  type PortPopoutFilter,
+  type PortPopoutViewMode
+} from '@shared/types-extended'
+import { APP_SETTINGS_CHANGE_EVENT, DEFAULT_SETTINGS, type AppSettings } from '@shared/types'
 import { ProcessCardErrorBoundary } from './ProcessCardErrorBoundary'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { StatCard } from '../ui/StatCard'
@@ -16,14 +24,68 @@ import {
   GridIcon,
   ListIcon,
   AlertIcon,
-  NetworkIcon
+  NetworkIcon,
+  WindowIcon,
+  InfoIcon
 } from '../icons'
 import { PortRelationshipGraph } from './PortRelationshipGraph'
 import { PortFocusPanel } from './PortFocusPanel'
+import { PanelSplitter } from '../ui/PanelSplitter'
 import { getPortLabel } from '../../utils/portLabels'
 import { TruncatedText } from '../ui/TruncatedText'
+import { PortPopoutHost } from '../popout/PortPopoutHost'
+import { PopoutTriggerLayer } from '../popout/PopoutTriggerLayer'
+import { usePopoutManager } from '../../hooks/usePopoutManager'
+import { type PortPopoutPosition, type PortPopoutTrigger } from '../popout/port-popout-model'
+import {
+  clearPendingPortPopoutRequest,
+  isPortPopoutRequestDetail,
+  peekPendingPortPopoutRequest,
+  PORT_POPOUT_REQUEST_EVENT
+} from '../popout/port-popout-events'
+import type { BlocklistEntry, SecurityTierClassification } from '@shared/port-security'
+import { classifyPortSecurity, isPortBlocklisted } from '@shared/port-security'
+import { useBlocklist } from '../../hooks/useBlocklist'
+import { usePopoutSync } from '../../hooks/usePopoutSync'
+import { usePortStore } from '../../stores/portStore'
+import { PublicPortBanner } from './port/PublicPortBanner'
+import { SecurityTierBadge } from './port/SecurityTierBadge'
+import { PortModuleTour, PORT_MODULE_TOUR_STORAGE_KEY, type PortModuleTourSecuritySummary } from './port/PortModuleTour'
+import { CardEdgeGraphBadge } from './CardEdgeGraphBadge'
 
 // ============ Conflict detection helper ============
+
+type PortPopoutSettings = AppSettings['window']['portPopout']
+type PortViewMode = PortPopoutViewMode
+type PortFilterMode = PortPopoutFilter
+
+const PORT_VIEW_MODE_STORAGE_KEY = 'devhub:port-view-mode'
+const PORT_VIEW_MODES: readonly PortViewMode[] = PORT_POPOUT_VIEW_MODE_VALUES
+const PORT_FILTER_MODES: readonly PortFilterMode[] = PORT_POPOUT_FILTER_VALUES
+
+function normalizePortViewMode(value: string | null | undefined): PortViewMode {
+  return PORT_VIEW_MODES.includes(value as PortViewMode) ? value as PortViewMode : 'cards'
+}
+
+function normalizePortFilterMode(value: string | null | undefined): PortFilterMode {
+  return PORT_FILTER_MODES.includes(value as PortFilterMode) ? value as PortFilterMode : 'all'
+}
+
+function mergePortPopoutSettings(settings: AppSettings | null | undefined): PortPopoutSettings {
+  const defaults = DEFAULT_SETTINGS.window.portPopout
+  return {
+    ...defaults,
+    ...settings?.window?.portPopout,
+    triggerEnabled: {
+      ...defaults.triggerEnabled,
+      ...settings?.window?.portPopout?.triggerEnabled,
+    },
+    syncPolicyDefault: {
+      ...defaults.syncPolicyDefault,
+      ...settings?.window?.portPopout?.syncPolicyDefault,
+    },
+  }
+}
 
 /** Find ports where multiple distinct PIDs are LISTENING on the same port number. */
 function getConflictingPorts(ports: PortInfo[]): Set<number> {
@@ -51,14 +113,27 @@ interface PortCardProps {
   isCommon: boolean
   isSelected: boolean
   hasConflict: boolean
+  isPopoutOpen: boolean
+  popoutSettings: PortPopoutSettings
+  blocklistEntries: readonly BlocklistEntry[]
   onSelect: () => void
+  onViewInGraph: () => void
   onRelease: () => void
+  onOpenPopout: (trigger: PortPopoutTrigger, anchor?: PortPopoutPosition) => void
 }
 
-const PortCard = memo(function PortCard({ port, index, isCommon, isSelected, hasConflict, onSelect, onRelease }: PortCardProps) {
+function classifyPortForView(port: PortInfo, blocklistEntries: readonly BlocklistEntry[]): SecurityTierClassification {
+  return classifyPortSecurity({
+    port: port.port,
+    address: port.localAddress,
+    blocklisted: isPortBlocklisted(port.port, port.localAddress, blocklistEntries)
+  })
+}
+
+const PortCard = memo(function PortCard({ port, index, isCommon, isSelected, hasConflict, isPopoutOpen, popoutSettings, blocklistEntries, onSelect, onViewInGraph, onRelease, onOpenPopout }: PortCardProps) {
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
-  const [isHovered, setIsHovered] = useState(false)
   const portLabel = getPortLabel(port.port)
+  const securityTier = classifyPortForView(port, blocklistEntries)
 
   const stateConfig = {
     LISTENING: { color: 'bg-success', text: '监听中', textColor: 'text-success', borderColor: 'border-success' },
@@ -69,37 +144,55 @@ const PortCard = memo(function PortCard({ port, index, isCommon, isSelected, has
 
   return (
     <>
-      <div
-        onClick={onSelect}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        className={`
-          monitor-card group cursor-pointer relative overflow-hidden animate-card-stagger
-          ${isSelected ? 'monitor-card-selected' : ''}
-          ${port.state === 'LISTENING' ? 'card-running' : ''}
-        `}
-        style={{ animationDelay: `${index * 50}ms` }}
+      <PopoutTriggerLayer
+        port={port}
+        index={index}
+        isSelected={isSelected}
+        isPopoutOpen={isPopoutOpen}
+        popoutSettings={popoutSettings}
+        onSelect={onSelect}
+        onOpenPopout={onOpenPopout}
       >
-        {/* Diagonal decoration */}
-        <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none" />
+        {({
+          isHovered,
+          showAdvancedMenu,
+          openAdvancedMenuPopout,
+          closeAdvancedMenu,
+          clearHoverTimer,
+          longPressThresholdMs
+        }) => (
+          <>
+            {/* Diagonal decoration */}
+            <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none" />
+            <CardEdgeGraphBadge
+              testId={`port-card-graph-badge-${port.port}-${port.pid}`}
+              graphEntry="port-card-attached-topology"
+              scopeKind="port"
+              targetId={port.port}
+              ariaLabel={`查看端口 ${port.port} 关系图`}
+              onClick={() => {
+                clearHoverTimer()
+                onViewInGraph()
+              }}
+            />
 
         {/* Status indicator */}
         {port.state === 'LISTENING' && (
-          <div className="absolute top-3 right-3">
+          <div className="absolute top-3 right-12">
             <span className="status-dot status-dot-running" />
           </div>
         )}
 
         <div className="relative z-10">
           {/* Port Number */}
-          <div className="flex items-start justify-between mb-4">
+          <div data-r8a-field-row="port-header" className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className={`min-w-[4.5rem] h-14 px-2 bg-surface-700 flex items-center justify-center border-l-3 ${hasConflict ? 'border-error' : stateConfig.borderColor} radius-sm`}>
-                <span className="text-2xl font-bold text-accent font-mono whitespace-nowrap">:{port.port}</span>
+                <span data-port-field="port" className="text-2xl font-bold text-accent font-mono whitespace-nowrap">:{port.port}</span>
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className={`status-badge ${port.state === 'LISTENING' ? 'status-badge-running' : ''}`}>
+                  <span data-port-field="state" className={`status-badge ${port.state === 'LISTENING' ? 'status-badge-running' : ''}`}>
                     <span className={`w-1.5 h-1.5 ${stateConfig.color} radius-sm`} />
                     {stateConfig.text}
                   </span>
@@ -113,9 +206,12 @@ const PortCard = memo(function PortCard({ port, index, isCommon, isSelected, has
                       冲突
                     </span>
                   )}
+                  <span data-port-field="securityTier">
+                    <SecurityTierBadge tier={securityTier} />
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-text-muted font-mono uppercase">{port.protocol}</span>
+                  <span data-port-field="protocol" className="text-xs text-text-muted font-mono uppercase">{port.protocol}</span>
                   {portLabel && <span className="text-[9px] text-text-muted">{portLabel}</span>}
                 </div>
               </div>
@@ -123,20 +219,20 @@ const PortCard = memo(function PortCard({ port, index, isCommon, isSelected, has
           </div>
 
           {/* Process Info */}
-          <div className="bg-surface-900 p-3 mb-4 border-l-2 border-surface-600 radius-sm">
+          <div data-r8a-field-row="process" className="bg-surface-900 p-3 mb-4 border-l-2 border-surface-600 radius-sm">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-surface-700 flex items-center justify-center radius-sm">
                 <ProcessIcon size={16} className="text-text-muted" />
               </div>
               <div className="flex-1 min-w-0">
                 <TruncatedText text={port.processName} className="text-sm font-bold text-text-primary" />
-                <span className="text-xs text-text-muted font-mono">PID: {port.pid}</span>
+                <span data-port-field="pid" className="text-xs text-text-muted font-mono">PID: {port.pid}</span>
               </div>
             </div>
           </div>
 
           {/* Address */}
-          <div className="mb-4">
+          <div data-r8a-field-row="local-address" className="mb-4">
             <div className="text-[10px] text-text-tertiary uppercase tracking-wider mb-1">本地地址</div>
             <div className="bg-surface-800 px-2 py-1 border-l-2 border-surface-600 radius-sm">
               <TruncatedText text={port.localAddress} className="text-xs text-text-secondary font-mono" />
@@ -145,11 +241,61 @@ const PortCard = memo(function PortCard({ port, index, isCommon, isSelected, has
 
           {/* Foreign Address - show for ESTABLISHED connections */}
           {port.foreignAddress && port.foreignAddress !== '*:*' && port.foreignAddress !== '0.0.0.0:0' && (
-            <div className="mb-4">
+            <div data-r8a-field-row="foreign-address" className="mb-4">
               <div className="text-[10px] text-text-tertiary uppercase tracking-wider mb-1">远程地址</div>
               <div className="bg-surface-800 px-2 py-1 border-l-2 border-warning/40 radius-sm">
                 <TruncatedText text={port.foreignAddress} className="text-xs text-warning/80 font-mono" />
               </div>
+            </div>
+          )}
+
+          {showAdvancedMenu && (
+            <div
+              data-testid={`port-advanced-menu-${port.port}-${port.pid}`}
+              data-long-press-threshold-ms={longPressThresholdMs}
+              role="menu"
+              aria-label={`端口 ${port.port} 高级操作`}
+              className="absolute right-3 bottom-14 z-20 min-w-[11rem] bg-surface-950 border border-surface-600 shadow-xl p-2 space-y-1 radius-sm"
+              onClick={(event) => event.stopPropagation()}
+              onPointerDown={(event) => event.stopPropagation()}
+            >
+              <button
+                type="button"
+                role="menuitem"
+                data-testid={`port-advanced-menu-graph-${port.port}-${port.pid}`}
+                className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-text-secondary hover:text-accent hover:bg-surface-800 transition-colors radius-sm"
+                onClick={() => {
+                  closeAdvancedMenu()
+                  clearHoverTimer()
+                  onViewInGraph()
+                }}
+              >
+                <NetworkIcon size={12} />
+                关系图
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                data-testid={`port-advanced-menu-popout-${port.port}-${port.pid}`}
+                className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-text-secondary hover:text-accent hover:bg-surface-800 transition-colors radius-sm"
+                onClick={openAdvancedMenuPopout}
+              >
+                <WindowIcon size={12} />
+                摘出浮窗
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                data-testid={`port-advanced-menu-release-${port.port}-${port.pid}`}
+                className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-error/80 hover:text-error hover:bg-error/10 transition-colors radius-sm"
+                onClick={() => {
+                  closeAdvancedMenu()
+                  setShowReleaseConfirm(true)
+                }}
+              >
+                <CloseIcon size={12} />
+                释放端口
+              </button>
             </div>
           )}
 
@@ -159,6 +305,21 @@ const PortCard = memo(function PortCard({ port, index, isCommon, isSelected, has
             transition-all duration-300
             ${isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}
           `}>
+            <button
+              data-testid={`port-popout-click-${port.port}-${port.pid}`}
+              disabled={!popoutSettings.triggerEnabled.click}
+              onClick={(e) => {
+                e.stopPropagation()
+                if (!popoutSettings.triggerEnabled.click) return
+                clearHoverTimer()
+                onOpenPopout('click', { x: e.clientX, y: e.clientY })
+              }}
+              className="btn-secondary disabled:cursor-not-allowed disabled:opacity-40 flex items-center gap-1.5 text-xs px-3 py-1.5"
+              title="Open floating port card"
+            >
+              <WindowIcon size={14} />
+              Popout
+            </button>
             <button
               onClick={(e) => {
                 e.stopPropagation()
@@ -171,7 +332,9 @@ const PortCard = memo(function PortCard({ port, index, isCommon, isSelected, has
             </button>
           </div>
         </div>
-      </div>
+          </>
+        )}
+      </PopoutTriggerLayer>
 
       <ConfirmDialog
         isOpen={showReleaseConfirm}
@@ -196,13 +359,15 @@ interface PortItemProps {
   isSelected: boolean
   isCommon: boolean
   hasConflict: boolean
+  blocklistEntries: readonly BlocklistEntry[]
   onSelect: () => void
   onRelease: () => void
 }
 
-const PortItem = memo(function PortItem({ port, index, isSelected, isCommon, hasConflict, onSelect, onRelease }: PortItemProps) {
+const PortItem = memo(function PortItem({ port, index, isSelected, isCommon, hasConflict, blocklistEntries, onSelect, onRelease }: PortItemProps) {
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
   const portLabel = getPortLabel(port.port)
+  const securityTier = classifyPortForView(port, blocklistEntries)
 
   const stateConfig = {
     LISTENING: { color: 'bg-success', text: '监听中', textColor: 'text-success' },
@@ -214,6 +379,9 @@ const PortItem = memo(function PortItem({ port, index, isSelected, isCommon, has
   return (
     <>
       <div
+        data-testid={`port-list-item-${port.port}-${port.pid}`}
+        data-port-number={port.port}
+        data-port-pid={port.pid}
         onClick={onSelect}
         className={`
           animate-card-stagger group p-4 cursor-pointer transition-all duration-200
@@ -256,6 +424,7 @@ const PortItem = memo(function PortItem({ port, index, isSelected, isCommon, has
                     冲突
                   </span>
                 )}
+                <SecurityTierBadge tier={securityTier} />
               </div>
               <div className="flex items-center gap-2">
                 <p className="text-xs text-text-tertiary font-mono">{port.localAddress}</p>
@@ -321,7 +490,7 @@ const QuickPortIndicator = memo(function QuickPortIndicator({ portNum, portInfo,
       onClick={onSelect}
       disabled={!isInUse}
       className={`
-        relative px-3 py-2 font-mono text-sm font-bold transition-all duration-200
+        relative shrink-0 px-3 py-2 font-mono text-sm font-bold transition-all duration-200
         ${isInUse
           ? 'bg-error/10 text-error border-l-2 border-error hover:bg-error/20 cursor-pointer'
           : 'bg-success/5 text-success/60 border-l-2 border-success/30 cursor-default'
@@ -353,10 +522,116 @@ export function PortView() {
     cancelPortQuery
   } = usePorts()
 
-  const [viewMode, setViewMode] = useState<'cards' | 'list' | 'relationship'>('cards')
-  const [filter, setFilter] = useState<'all' | 'common' | 'listening'>('all')
+  const [viewMode, setViewModeState] = useState<PortViewMode>(() => normalizePortViewMode(window.localStorage.getItem(PORT_VIEW_MODE_STORAGE_KEY)))
+  const [filter, setFilter] = useState<PortFilterMode>('all')
   const [searchPort, setSearchPort] = useState('')
   const [focusedPort, setFocusedPort] = useState<PortInfo | null>(null)
+  const [popoutSettings, setPopoutSettings] = useState<PortPopoutSettings>(() => mergePortPopoutSettings(undefined))
+  const [isPortTourOpen, setIsPortTourOpen] = useState(() => window.localStorage.getItem(PORT_MODULE_TOUR_STORAGE_KEY) !== 'dismissed')
+  const [portTourStep, setPortTourStep] = useState(0)
+  const setPortStorePopoutSettings = usePortStore(state => state.setPopoutSettings)
+  const portPopoutManager = usePopoutManager(ports, popoutSettings.syncPolicyDefault)
+  const { entries: blocklistEntries } = useBlocklist(true)
+
+  const setViewMode = useCallback((mode: PortViewMode) => {
+    setViewModeState(mode)
+    window.localStorage.setItem(PORT_VIEW_MODE_STORAGE_KEY, mode)
+  }, [])
+
+  const handlePopoutSyncStateChange = useCallback((next: {
+    selectedPort: number | null
+    filter: PortFilterMode
+    searchPort: string
+    viewMode: PortViewMode
+  }) => {
+    if (next.selectedPort !== selectedPort) {
+      selectPort(next.selectedPort)
+    }
+
+    const nextFilter = normalizePortFilterMode(next.filter)
+    if (nextFilter !== filter) setFilter(nextFilter)
+
+    if (next.searchPort !== searchPort) setSearchPort(next.searchPort)
+
+    const nextViewMode = normalizePortViewMode(next.viewMode)
+    if (nextViewMode !== viewMode) setViewMode(nextViewMode)
+  }, [filter, searchPort, selectPort, selectedPort, setViewMode, viewMode])
+
+  usePopoutSync({
+    state: {
+      selectedPort,
+      filter,
+      searchPort,
+      viewMode
+    },
+    policy: popoutSettings.syncPolicyDefault,
+    onStateChange: handlePopoutSyncStateChange,
+  })
+
+  const applyPopoutSettings = useCallback((settings: AppSettings | null | undefined) => {
+    const merged = mergePortPopoutSettings(settings)
+    setPopoutSettings(merged)
+    setPortStorePopoutSettings(merged)
+  }, [setPortStorePopoutSettings])
+
+  const tryOpenRequestedPopout = useCallback((detail: { port: number; trigger: PortPopoutTrigger; anchor?: PortPopoutPosition }) => {
+    const targetPort = ports.find(port => port.port === detail.port)
+    if (!targetPort) return false
+    portPopoutManager.open(targetPort, detail.trigger, detail.anchor)
+    return true
+  }, [portPopoutManager, ports])
+
+  useEffect(() => {
+    const handlePopoutRequest = (event: Event) => {
+      const detail = (event as CustomEvent<unknown>).detail
+      if (!isPortPopoutRequestDetail(detail)) return
+      if (tryOpenRequestedPopout(detail) || ports.length > 0) {
+        clearPendingPortPopoutRequest()
+      }
+    }
+
+    const pendingRequest = peekPendingPortPopoutRequest()
+    if (pendingRequest && (tryOpenRequestedPopout(pendingRequest) || ports.length > 0)) {
+      clearPendingPortPopoutRequest()
+    }
+
+    window.addEventListener(PORT_POPOUT_REQUEST_EVENT, handlePopoutRequest)
+    return () => window.removeEventListener(PORT_POPOUT_REQUEST_EVENT, handlePopoutRequest)
+  }, [ports.length, tryOpenRequestedPopout])
+
+  useEffect(() => {
+    let cancelled = false
+    const loadSettings = window.devhub?.settings?.get?.()
+    const handleSettingsChange = (event: Event) => {
+      const detail = (event as CustomEvent<AppSettings | null | undefined>).detail
+      applyPopoutSettings(detail)
+    }
+    window.addEventListener(APP_SETTINGS_CHANGE_EVENT, handleSettingsChange)
+    if (!loadSettings) {
+      applyPopoutSettings(undefined)
+      return () => {
+        cancelled = true
+        window.removeEventListener(APP_SETTINGS_CHANGE_EVENT, handleSettingsChange)
+      }
+    }
+
+    void loadSettings
+      .then((settings) => {
+        if (!cancelled) {
+          applyPopoutSettings(settings)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          applyPopoutSettings(undefined)
+        }
+      })
+
+    return () => {
+      cancelled = true
+      window.removeEventListener(APP_SETTINGS_CHANGE_EVENT, handleSettingsChange)
+    }
+  }, [applyPopoutSettings])
 
   // Handle graph node click -> open focus panel for port nodes
   const handleGraphNodeClick = useCallback((nodeData: { type: string; port?: number; pid?: number; hwnd?: number }) => {
@@ -390,6 +665,10 @@ export function PortView() {
         return COMMON_DEV_PORTS.includes(port.port as typeof COMMON_DEV_PORTS[number])
       case 'listening':
         return port.state === 'LISTENING'
+      case 'exposed': {
+        const tier = classifyPortForView(port, blocklistEntries).tier
+        return tier === 'WAN-Capable' || tier === 'Suspicious'
+      }
       default:
         return true
     }
@@ -399,14 +678,155 @@ export function PortView() {
 
   const conflictingPortNumbers = useMemo(() => getConflictingPorts(ports), [ports])
 
+  const portSecuritySummary = useMemo<PortModuleTourSecuritySummary>(() => {
+    const summary: PortModuleTourSecuritySummary = {
+      total: ports.length,
+      local: 0,
+      lan: 0,
+      wanCapable: 0,
+      suspicious: 0,
+    }
+
+    for (const port of ports) {
+      const tier = classifyPortForView(port, blocklistEntries).tier
+      if (tier === 'Local') summary.local += 1
+      if (tier === 'LAN') summary.lan += 1
+      if (tier === 'WAN-Capable') summary.wanCapable += 1
+      if (tier === 'Suspicious') summary.suspicious += 1
+    }
+
+    return summary
+  }, [blocklistEntries, ports])
+
   const portsByState = useMemo(() => ({
     listening: ports.filter(p => p.state === 'LISTENING').length,
     established: ports.filter(p => p.state === 'ESTABLISHED').length,
     other: ports.filter(p => !['LISTENING', 'ESTABLISHED'].includes(p.state)).length
   }), [ports])
 
+  const tourTargetPort = useMemo(() => {
+    const selected = selectedPort === null ? undefined : ports.find(port => port.port === selectedPort)
+    return selected ?? focusedPort ?? filteredPorts[0] ?? ports[0] ?? null
+  }, [filteredPorts, focusedPort, ports, selectedPort])
+
+  const dismissPortTour = useCallback(() => {
+    window.localStorage.setItem(PORT_MODULE_TOUR_STORAGE_KEY, 'dismissed')
+    setIsPortTourOpen(false)
+  }, [])
+
+  const openPortTour = useCallback(() => {
+    setPortTourStep(0)
+    setIsPortTourOpen(true)
+  }, [])
+
+  const openTourPopout = useCallback(() => {
+    if (!tourTargetPort) return
+    selectPort(tourTargetPort.port)
+    setFocusedPort(tourTargetPort)
+    portPopoutManager.open(tourTargetPort, 'api')
+  }, [portPopoutManager, selectPort, tourTargetPort])
+
+  const reviewTourSecurity = useCallback(() => {
+    setFilter('all')
+    setSearchPort('')
+    if (viewMode === 'relationship') {
+      setViewMode('cards')
+    }
+  }, [setViewMode, viewMode])
+
+  const openTourRelationshipGraph = useCallback(() => {
+    if (tourTargetPort) {
+      selectPort(tourTargetPort.port)
+      setFocusedPort(tourTargetPort)
+    }
+    setViewMode('relationship')
+  }, [selectPort, setViewMode, tourTargetPort])
+
+  const renderPortCollection = () => (
+    <>
+      {viewMode === 'cards' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredPorts.map((port, index) => (
+            <ProcessCardErrorBoundary key={`${port.port}-${port.pid}`} pid={port.pid} processName={port.processName}>
+              <PortCard
+                port={port}
+                index={index}
+                isCommon={COMMON_DEV_PORTS.includes(port.port as typeof COMMON_DEV_PORTS[number])}
+                isSelected={selectedPort === port.port}
+                hasConflict={conflictingPortNumbers.has(port.port)}
+                isPopoutOpen={portPopoutManager.isOpen(port)}
+                popoutSettings={popoutSettings}
+                blocklistEntries={blocklistEntries}
+                onSelect={() => {
+                  selectPort(port.port)
+                  setFocusedPort(port)
+                }}
+                onViewInGraph={() => {
+                  selectPort(port.port)
+                  setFocusedPort(port)
+                  setViewMode('relationship')
+                }}
+                onRelease={() => releasePort(port.port)}
+                onOpenPopout={(trigger, anchor) => portPopoutManager.open(port, trigger, anchor)}
+              />
+            </ProcessCardErrorBoundary>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filteredPorts.map((port, index) => (
+            <ProcessCardErrorBoundary key={`${port.port}-${port.pid}`} pid={port.pid} processName={port.processName}>
+              <PortItem
+                port={port}
+                index={index}
+                isSelected={selectedPort === port.port}
+                isCommon={COMMON_DEV_PORTS.includes(port.port as typeof COMMON_DEV_PORTS[number])}
+                hasConflict={conflictingPortNumbers.has(port.port)}
+                blocklistEntries={blocklistEntries}
+                onSelect={() => {
+                  selectPort(port.port)
+                  setFocusedPort(port)
+                }}
+                onRelease={() => releasePort(port.port)}
+              />
+            </ProcessCardErrorBoundary>
+          ))}
+        </div>
+      )}
+
+      {isScanning && filteredPorts.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
+          <LoadingSpinner size="md" className="mb-4" />
+          <p className="text-text-secondary">正在扫描端口...</p>
+        </div>
+      )}
+
+      {filteredPorts.length === 0 && !isScanning && (
+        <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
+          <div className="w-20 h-20 bg-surface-800 flex items-center justify-center mb-6 border-l-3 border-accent radius-md">
+            <PortIcon size={40} className="text-text-muted" />
+          </div>
+          <h3
+            className="text-lg font-bold text-text-primary mb-2 uppercase tracking-wider"
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
+            {searchPort ? '未找到匹配的端口' : '没有检测到使用中的端口'}
+          </h3>
+          <p className="text-text-muted">
+            {searchPort ? '尝试其他搜索关键词' : '启动开发服务器后将在此显示'}
+          </p>
+        </div>
+      )}
+    </>
+  )
+
   return (
-    <div className="h-full flex flex-col bg-surface-950">
+    <div
+      data-testid="port-view-root"
+      data-port-view-mode={viewMode}
+      data-port-view-modes={PORT_VIEW_MODES.join(',')}
+      className="h-full flex flex-col bg-surface-950"
+    >
       {/* Header */}
       <div className="flex-shrink-0 px-5 py-4 border-b-2 border-surface-700 bg-surface-900 relative">
         {/* Diagonal decoration */}
@@ -450,6 +870,7 @@ export function PortView() {
                 { key: 'all', label: '全部' },
                 { key: 'common', label: '常用' },
                 { key: 'listening', label: '监听' }
+                , { key: 'exposed', label: '风险' }
               ].map(({ key, label }) => (
                 <button
                   key={key}
@@ -475,8 +896,19 @@ export function PortView() {
                 { key: 'relationship', icon: <NetworkIcon size={16} />, label: '关系图' }
               ]}
               current={viewMode}
-              onChange={(mode) => setViewMode(mode as typeof viewMode)}
+              onChange={(mode) => setViewMode(normalizePortViewMode(mode))}
             />
+
+            <button
+              data-testid="port-module-tour-open-button"
+              onClick={openPortTour}
+              className="btn-secondary flex items-center gap-1.5 text-xs px-3 py-1.5"
+              aria-label="打开端口模块导览"
+              title="端口导览"
+            >
+              <InfoIcon size={14} />
+              导览
+            </button>
 
             <button
               onClick={scan}
@@ -493,8 +925,30 @@ export function PortView() {
         </div>
       </div>
 
+      <PublicPortBanner
+        ports={ports}
+        blocklistEntries={blocklistEntries}
+        onReview={() => {
+          setFilter('exposed')
+          setSearchPort('')
+        }}
+      />
+
+      <PortModuleTour
+        isOpen={isPortTourOpen}
+        stepIndex={portTourStep}
+        portCount={ports.length}
+        targetPort={tourTargetPort}
+        securitySummary={portSecuritySummary}
+        onStepChange={setPortTourStep}
+        onDismiss={dismissPortTour}
+        onOpenPopout={openTourPopout}
+        onReviewSecurity={reviewTourSecurity}
+        onOpenRelationshipGraph={openTourRelationshipGraph}
+      />
+
       {/* Hero Stats */}
-      <div className="flex-shrink-0 px-5 py-4 stat-grid border-b border-surface-700/50 bg-surface-900/50">
+      <div className="flex-shrink-0 px-5 py-2 stat-grid port-stat-grid border-b border-surface-700/50 bg-surface-900/50">
         <StatCard
           icon={<PortIcon size={20} className="text-accent" />}
           label="活跃端口"
@@ -522,10 +976,10 @@ export function PortView() {
       </div>
 
       {/* Quick Port View */}
-      <div className="flex-shrink-0 px-5 py-3 border-b border-surface-700/30 bg-surface-900/30">
+      <div className="flex-shrink-0 px-5 py-2 border-b border-surface-700/30 bg-surface-900/30">
         <div className="flex items-center gap-3">
-          <span className="text-xs text-text-muted font-medium uppercase tracking-wider">常用端口:</span>
-          <div className="flex items-center gap-2 flex-wrap">
+          <span className="shrink-0 text-xs text-text-muted font-medium uppercase tracking-wider">常用端口:</span>
+          <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-2 overflow-x-auto pb-1 pr-1">
             {COMMON_DEV_PORTS.map((portNum) => {
               const portInfo = ports.find(p => p.port === portNum)
               return (
@@ -543,7 +997,7 @@ export function PortView() {
 
       {/* Content */}
       {viewMode === 'relationship' ? (
-        <div className="flex-1 overflow-hidden flex">
+        <div className="flex-1 min-h-0 overflow-hidden flex">
           <div className="flex-1">
             <PortRelationshipGraph
               focusPort={selectedPort}
@@ -551,113 +1005,94 @@ export function PortView() {
             />
           </div>
           {focusedPort && (
-            <PortFocusPanel
-              port={focusedPort}
-              onClose={closeFocusPanel}
-              getPortFocusData={getPortFocusData}
-              getPortDetailIncremental={getPortDetailIncremental}
-              cancelPortQuery={cancelPortQuery}
-              allPorts={ports}
-              onFocusProcess={(pid) => {
-                // Navigate to process view (placeholder — could emit event)
-                // TODO: Navigate to process view when cross-tab navigation is implemented
-void pid
-              }}
-              onViewInGraph={(port) => {
-                selectPort(port)
-              }}
-            />
+            <div className="w-[420px] min-w-[360px] max-w-[560px] h-full">
+              <PortFocusPanel
+                port={focusedPort}
+                onClose={closeFocusPanel}
+                getPortFocusData={getPortFocusData}
+                getPortDetailIncremental={getPortDetailIncremental}
+                cancelPortQuery={cancelPortQuery}
+                allPorts={ports}
+                lastScanTime={lastScanTime}
+                blocklistEntries={blocklistEntries}
+                onFocusProcess={(pid) => {
+                  // Navigate to process view (placeholder — could emit event)
+                  // TODO: Navigate to process view when cross-tab navigation is implemented
+                  void pid
+                }}
+                onViewInGraph={(port) => {
+                  selectPort(port)
+                }}
+              />
+            </div>
           )}
         </div>
       ) : (
-        <div className="flex-1 flex">
-          <div className="flex-1 overflow-y-auto p-5">
-            {viewMode === 'cards' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredPorts.map((port, index) => (
-                  <ProcessCardErrorBoundary key={`${port.port}-${port.pid}`} pid={port.pid} processName={port.processName}>
-                    <PortCard
-                      port={port}
-                      index={index}
-                      isCommon={COMMON_DEV_PORTS.includes(port.port as typeof COMMON_DEV_PORTS[number])}
-                      isSelected={selectedPort === port.port}
-                      hasConflict={conflictingPortNumbers.has(port.port)}
-                      onSelect={() => {
-                        selectPort(port.port)
-                        setFocusedPort(port)
-                      }}
-                      onRelease={() => releasePort(port.port)}
-                    />
-                  </ProcessCardErrorBoundary>
-                ))}
+        <div className="flex-1 min-h-0 overflow-hidden">
+          {focusedPort ? (
+            <PanelSplitter
+              direction="horizontal"
+              defaultSizes={[70, 30]}
+              minSizes={[640, 360]}
+              maxSizes={[9999, 560]}
+              storageKey="devhub:port-view-split"
+              stackBelow={1004}
+            >
+              <div
+                data-testid="port-list-scroll"
+                role="region"
+                aria-label="端口列表滚动区域"
+                tabIndex={0}
+                className="h-full min-h-0 overflow-y-scroll p-5 pr-3 outline-none"
+                style={{ scrollbarGutter: 'stable both-edges' }}
+              >
+                {renderPortCollection()}
               </div>
-            ) : (
-              <div className="space-y-2">
-                {filteredPorts.map((port, index) => (
-                  <ProcessCardErrorBoundary key={`${port.port}-${port.pid}`} pid={port.pid} processName={port.processName}>
-                    <PortItem
-                      port={port}
-                      index={index}
-                      isSelected={selectedPort === port.port}
-                      isCommon={COMMON_DEV_PORTS.includes(port.port as typeof COMMON_DEV_PORTS[number])}
-                      hasConflict={conflictingPortNumbers.has(port.port)}
-                      onSelect={() => {
-                        selectPort(port.port)
-                        setFocusedPort(port)
-                      }}
-                      onRelease={() => releasePort(port.port)}
-                    />
-                  </ProcessCardErrorBoundary>
-                ))}
+              <div className="h-full min-h-0">
+                <PortFocusPanel
+                  port={focusedPort}
+                  onClose={closeFocusPanel}
+                  getPortFocusData={getPortFocusData}
+                  getPortDetailIncremental={getPortDetailIncremental}
+                  cancelPortQuery={cancelPortQuery}
+                  allPorts={ports}
+                  lastScanTime={lastScanTime}
+                  blocklistEntries={blocklistEntries}
+                  onFocusProcess={(pid) => {
+                    // TODO: Navigate to process view when cross-tab navigation is implemented
+                    void pid
+                  }}
+                  onViewInGraph={(port) => {
+                    setViewMode('relationship')
+                    selectPort(port)
+                  }}
+                />
               </div>
-            )}
-
-            {isScanning && filteredPorts.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
-                <LoadingSpinner size="md" className="mb-4" />
-                <p className="text-text-secondary">正在扫描端口...</p>
-              </div>
-            )}
-
-            {filteredPorts.length === 0 && !isScanning && (
-              <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
-                <div className="w-20 h-20 bg-surface-800 flex items-center justify-center mb-6 border-l-3 border-accent radius-md">
-                  <PortIcon size={40} className="text-text-muted" />
-                </div>
-                <h3
-                  className="text-lg font-bold text-text-primary mb-2 uppercase tracking-wider"
-                  style={{ fontFamily: 'var(--font-display)' }}
-                >
-                  {searchPort ? '未找到匹配的端口' : '没有检测到使用中的端口'}
-                </h3>
-                <p className="text-text-muted">
-                  {searchPort ? '尝试其他搜索关键词' : '启动开发服务器后将在此显示'}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Focus Panel for card/list modes */}
-          {focusedPort && (
-            <PortFocusPanel
-              port={focusedPort}
-              onClose={closeFocusPanel}
-              getPortFocusData={getPortFocusData}
-              getPortDetailIncremental={getPortDetailIncremental}
-              cancelPortQuery={cancelPortQuery}
-              allPorts={ports}
-              onFocusProcess={(pid) => {
-                // TODO: Navigate to process view when cross-tab navigation is implemented
-void pid
-              }}
-              onViewInGraph={(port) => {
-                setViewMode('relationship')
-                selectPort(port)
-              }}
-            />
+            </PanelSplitter>
+          ) : (
+            <div
+              data-testid="port-list-scroll"
+              role="region"
+              aria-label="端口列表滚动区域"
+              tabIndex={0}
+              className="h-full min-h-0 overflow-y-scroll p-5 pr-3 outline-none"
+              style={{ scrollbarGutter: 'stable both-edges' }}
+            >
+              {renderPortCollection()}
+            </div>
           )}
         </div>
       )}
+      <PortPopoutHost
+        popouts={portPopoutManager.popouts}
+        onClose={portPopoutManager.close}
+        onMinimize={portPopoutManager.minimize}
+        onThemeIsolate={portPopoutManager.isolateTheme}
+        onPin={portPopoutManager.pin}
+        onMove={portPopoutManager.move}
+        onResize={portPopoutManager.resize}
+        onPromote={portPopoutManager.promote}
+      />
     </div>
   )
 }

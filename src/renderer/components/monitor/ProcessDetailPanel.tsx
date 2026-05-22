@@ -21,6 +21,10 @@ import {
 import { useToast } from '../ui/Toast'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
+import { AttachedGraphView } from './attached/AttachedGraphView'
+import { AttachedFlowView } from './attached/AttachedFlowView'
+import { PROCESS_VM_FIELD_LIST } from './process-vm-contract'
+import { openProcessInGlobalTopology } from '../../utils/globalTopologyNavigation'
 
 // ============ Utility Functions ============
 
@@ -151,7 +155,7 @@ interface TabState<T> {
 }
 
 /** Active tab for multi-tab design */
-type DetailTab = 'info' | 'resources' | 'network' | 'env' | 'modules' | 'relations'
+type DetailTab = 'info' | 'resources' | 'network' | 'env' | 'modules' | 'relations' | 'relation-view'
 
 export const ProcessDetailPanel = memo(function ProcessDetailPanel({
   pid,
@@ -256,6 +260,14 @@ export const ProcessDetailPanel = memo(function ProcessDetailPanel({
     }
   }, [relationship, basicProcessInfo, showToast])
 
+  const openInGlobalTopology = useCallback(() => {
+    openProcessInGlobalTopology(pid)
+  }, [pid])
+
+  const openAttachedTopology = useCallback(() => {
+    setActiveTab('relation-view')
+  }, [])
+
   const handleKill = useCallback(async () => {
     setShowKillConfirm(false)
     const success = await onKillProcess(pid)
@@ -284,7 +296,12 @@ export const ProcessDetailPanel = memo(function ProcessDetailPanel({
 
   if (isLoading) {
     return (
-      <div className="relative bg-surface-800 border-2 border-surface-600 border-l-3 border-l-accent overflow-hidden animate-fade-in radius-md">
+      <div
+        data-vm-surface="detail-panel"
+        data-vm-pid={pid}
+        data-vm-fields={PROCESS_VM_FIELD_LIST}
+        className="relative bg-surface-800 border-2 border-surface-600 border-l-3 border-l-accent overflow-hidden animate-fade-in radius-md"
+      >
         <div className="flex items-center justify-center py-12">
           <LoadingSpinner size="sm" className="mr-2" />
           <span className="text-text-muted text-sm">加载进程详情...</span>
@@ -346,7 +363,12 @@ export const ProcessDetailPanel = memo(function ProcessDetailPanel({
 
   return (
     <>
-      <div className="relative bg-surface-800 border-2 border-surface-600 border-l-3 border-l-accent overflow-hidden animate-fade-in radius-md">
+      <div
+        data-vm-surface="detail-panel"
+        data-vm-pid={self.pid}
+        data-vm-fields={PROCESS_VM_FIELD_LIST}
+        className="relative bg-surface-800 border-2 border-surface-600 border-l-3 border-l-accent overflow-hidden animate-fade-in radius-md"
+      >
         {/* Diagonal decoration */}
         <div className="absolute inset-0 deco-diagonal opacity-5 pointer-events-none" />
 
@@ -354,10 +376,10 @@ export const ProcessDetailPanel = memo(function ProcessDetailPanel({
         <div className="flex items-center justify-between px-4 py-3 border-b border-surface-700 relative z-10">
           <div className="flex items-center gap-3">
             <ProcessIcon size={16} className="text-accent" />
-            <h4 className="text-sm font-bold text-text-primary uppercase tracking-wider" style={{ fontFamily: 'var(--font-display)' }}>
+            <h4 data-vm-field="name" data-vm-status="ok" data-vm-source="ProcessDetail" className="text-sm font-bold text-text-primary uppercase tracking-wider" style={{ fontFamily: 'var(--font-display)' }}>
               {self.name}
             </h4>
-            <span className="text-xs text-text-muted font-mono bg-surface-700 px-2 py-0.5 radius-sm">
+            <span data-vm-field="pid" data-vm-status="ok" data-vm-source="ProcessDetail" className="text-xs text-text-muted font-mono bg-surface-700 px-2 py-0.5 radius-sm">
               PID: {formatPID(self.pid)}
             </span>
             {self.parentName && (
@@ -365,6 +387,30 @@ export const ProcessDetailPanel = memo(function ProcessDetailPanel({
                 &larr; {self.parentName} ({self.ppid})
               </span>
             )}
+            <button
+              type="button"
+              data-testid="process-attached-topology-button"
+              data-graph-entry="process-detail-attached-topology"
+              data-graph-kind="attached"
+              title="看图：查看进程关系视图"
+              onClick={openAttachedTopology}
+              className="btn-secondary flex items-center gap-1.5 text-xs px-3 py-1.5"
+            >
+              <TreeIcon size={12} />
+              看图
+            </button>
+            <button
+              type="button"
+              data-testid="process-global-topology-button"
+              data-graph-entry="process-detail-global-topology"
+              data-graph-kind="global"
+              title="打开全局拓扑"
+              onClick={openInGlobalTopology}
+              className="btn-secondary flex items-center gap-1.5 text-xs px-3 py-1.5"
+            >
+              <NetworkIcon size={12} />
+              全局拓扑
+            </button>
           </div>
           <button onClick={onClose} className="btn-icon-sm text-text-muted hover:text-text-primary">
             <CloseIcon size={14} />
@@ -394,9 +440,12 @@ export const ProcessDetailPanel = memo(function ProcessDetailPanel({
             { key: 'env' as DetailTab, label: '环境' },
             { key: 'modules' as DetailTab, label: '模块' },
             { key: 'relations' as DetailTab, label: '关联' },
+            { key: 'relation-view' as DetailTab, label: '关系视图' },
           ]).map(tab => (
             <button
               key={tab.key}
+              data-graph-entry={tab.key === 'relation-view' ? 'process-detail-tab' : undefined}
+              data-graph-kind={tab.key === 'relation-view' ? 'attached' : undefined}
               onClick={() => setActiveTab(tab.key)}
               className={`px-3 py-1.5 text-[10px] uppercase tracking-wider font-bold border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.key
@@ -415,11 +464,11 @@ export const ProcessDetailPanel = memo(function ProcessDetailPanel({
           {expandedSection === 'info' && (
             <div className="space-y-2 animate-fade-in">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                <DetailField label="PID" value={formatPID(self.pid)} mono />
+                <span data-vm-field="pid" data-vm-status="ok" data-vm-source="ProcessDetail"><DetailField label="PID" value={formatPID(self.pid)} mono /></span>
                 <DetailField label="PPID" value={self.ppid > 0 ? formatPID(self.ppid) : '-'} mono />
-                <DetailField label="状态" value={STATUS_LABELS[self.status] || self.status} />
-                <DetailField label="类型" value={TYPE_LABELS[self.type] || self.type} />
-                <DetailField label="启动时间" value={formatStartTime(self.startTime)} />
+                <span data-vm-field="status" data-vm-status="ok" data-vm-source="ProcessDetail"><DetailField label="状态" value={STATUS_LABELS[self.status] || self.status} /></span>
+                <span data-vm-field="type" data-vm-status="ok" data-vm-source="ProcessDetail"><DetailField label="类型" value={TYPE_LABELS[self.type] || self.type} /></span>
+                <span data-vm-field="startTime" data-vm-status="ok" data-vm-source="ProcessDetail"><DetailField label="启动时间" value={formatStartTime(self.startTime)} /></span>
                 {self.userName && <DetailField label="用户" value={self.userName} />}
                 {self.priority !== undefined && (
                   <DetailField label="优先级" value={PRIORITY_LABELS[self.priority] || `${self.priority}`} />
@@ -430,7 +479,7 @@ export const ProcessDetailPanel = memo(function ProcessDetailPanel({
 
               {/* Command Line */}
               {self.commandLine && (
-                <div className="bg-surface-900 px-3 py-2 border-l-2 border-surface-600 radius-sm">
+                <div data-vm-field="command" data-vm-status="ok" data-vm-source="ProcessDetail" className="bg-surface-900 px-3 py-2 border-l-2 border-surface-600 radius-sm">
                   <span className="text-[10px] text-text-muted uppercase tracking-wider block mb-1">完整命令</span>
                   <p className="text-xs text-text-secondary font-mono break-all">$ {self.commandLine}</p>
                 </div>
@@ -451,7 +500,7 @@ export const ProcessDetailPanel = memo(function ProcessDetailPanel({
           {expandedSection === 'resources' && (
             <div className="space-y-2 animate-fade-in">
               {/* CPU */}
-              <div className="bg-surface-900 px-3 py-2 border-l-2 border-surface-600 radius-sm">
+              <div data-vm-field="cpu" data-vm-status="ok" data-vm-source="ProcessDetail" className="bg-surface-900 px-3 py-2 border-l-2 border-surface-600 radius-sm">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[10px] text-text-muted uppercase tracking-wider">CPU 使用率</span>
                   <div className="flex items-center gap-2">
@@ -476,7 +525,7 @@ export const ProcessDetailPanel = memo(function ProcessDetailPanel({
               </div>
 
               {/* Memory */}
-              <div className="bg-surface-900 px-3 py-2 border-l-2 border-surface-600 radius-sm">
+              <div data-vm-field="memory" data-vm-status="ok" data-vm-source="ProcessDetail" className="bg-surface-900 px-3 py-2 border-l-2 border-surface-600 radius-sm">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[10px] text-text-muted uppercase tracking-wider">内存使用</span>
                   <div className="flex items-center gap-2">
@@ -683,7 +732,7 @@ export const ProcessDetailPanel = memo(function ProcessDetailPanel({
 
               {/* Ports */}
               {(self.ports?.length ?? 0) > 0 && (
-                <div>
+                <div data-vm-field="port" data-vm-status="ok" data-vm-source="ProcessDetail">
                   <div className="flex items-center gap-1 mb-1">
                     <PortIcon size={12} className="text-gold" />
                     <span className="text-[10px] text-text-muted uppercase tracking-wider">绑定端口 ({self.ports.length})</span>
@@ -764,6 +813,14 @@ export const ProcessDetailPanel = memo(function ProcessDetailPanel({
             </div>
           )}
 
+          {/* Attached Relationship Graph */}
+          {expandedSection === 'relation-view' && (
+            <div className="space-y-3 animate-fade-in">
+              <AttachedGraphView scope={{ kind: 'process', targetId: pid, depth: 2 }} minHeight={360} />
+              <AttachedFlowView scope={{ kind: 'process', targetId: pid, depth: 2 }} />
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="flex items-center gap-2 pt-2 border-t border-surface-700">
             <button
@@ -800,6 +857,8 @@ export const ProcessDetailPanel = memo(function ProcessDetailPanel({
             </button>
             {onNavigateToNeuralGraph && (
               <button
+                data-graph-entry="process-detail-action"
+                data-graph-kind="neural"
                 onClick={() => onNavigateToNeuralGraph(pid)}
                 className="btn-secondary flex items-center gap-1.5 text-xs px-3 py-1.5"
               >
@@ -807,6 +866,16 @@ export const ProcessDetailPanel = memo(function ProcessDetailPanel({
                 关系图
               </button>
             )}
+            <button
+              data-testid="process-global-topology-action-button"
+              data-graph-entry="process-detail-global-topology-action"
+              data-graph-kind="global"
+              onClick={openInGlobalTopology}
+              className="btn-secondary flex items-center gap-1.5 text-xs px-3 py-1.5"
+            >
+              <NetworkIcon size={12} />
+              View in global topology
+            </button>
           </div>
         </div>
       </div>

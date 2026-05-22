@@ -5,6 +5,7 @@ import {
   ProcessGroup,
   ProcessRelationship,
   ProcessDeepDetail,
+  AccessReport,
   NetworkConnectionInfo,
   LoadedModuleInfo,
   PortInfo,
@@ -14,11 +15,29 @@ import {
   WindowInfo,
   WindowGroup,
   WindowLayout,
+  WindowLayoutSnapshot,
+  ApplyLayoutIntent,
+  ApplyLayoutResult,
+  TilePreset,
+  MonitorInfo,
+  WindowFavoriteRecord,
+  WindowFavoriteToggleResult,
+  WindowOpenDirectoryResult,
+  WindowScreenshotResult,
   AITask,
   AITaskHistory,
   AIToolType,
   AIWindowAlias,
+  AIRenameAndApplyRequest,
+  AIRenameAndApplyResult,
   AIToolDetectionConfig,
+  CalibrationResult,
+  CalibrationSample,
+  ConfidenceReport,
+  StateTransition,
+  ToolProfile,
+  AICompletionOracleEvent,
+  AICompletionOracleRecord,
   ProgressEstimate,
   TimelineEntry,
   TaskRecord,
@@ -29,14 +48,207 @@ import {
   TaskRecordStatus,
   ServiceResult,
   ScannerCacheSnapshot,
+  ScannerAckRequest,
+  ScannerChannelSeqMap,
   ScannerDiff,
+  ScannerResyncResponse,
+  ScannerSnapshotPushPayload,
+  IPCEnvelope,
   SystemSummary,
   ScannerStatus
 } from '@shared/types-extended'
+import type { ScopedFlow, ScopedTopologyGraph, TopologyScope } from '@shared/topology/scope'
+import type {
+  ProcessBatchCancelResponse,
+  ProcessBatchProgress,
+  ProcessBatchRequest,
+  ProcessBatchStartResponse,
+  ProcessBatchUndoResponse,
+  ThumbnailBatchRequest,
+  ThumbnailBatchResponse,
+  ThumbnailGroupsResponse,
+  ThumbnailRefreshRequest,
+  ThumbnailViewportConfigResponse,
+  ThumbnailWallViewport,
+  ThumbnailWindowAliasRequest,
+  ThumbnailWindowAliasResponse,
+  MoveWindowToDesktopRequest,
+  MoveWindowToDesktopResponse,
+  MoveWindowToMonitorRequest,
+  MoveWindowToMonitorResponse,
+  R8MonitorsResponse,
+  VirtualDesktopListResponse,
+  WindowVdWatchPayload,
+  WindowLayoutApplyRequest,
+  WindowLayoutApplyResponse,
+  WindowLayoutListResponse,
+  WindowLayoutSaveRequest,
+  WindowLayoutSaveResponse,
+  WindowBatchCancelResponse,
+  WindowBatchProgress,
+  WindowBatchRequest,
+  WindowBatchStartResponse,
+  WindowBatchUndoResponse,
+  WindowVdInfoRequest,
+  WindowVdInfoResponse
+} from '@shared/schemas/r8-runtime'
+
+function isIPCEnvelope<T>(payload: unknown): payload is IPCEnvelope<T> {
+  if (!payload || typeof payload !== 'object') {
+    return false
+  }
+
+  const candidate = payload as Partial<IPCEnvelope<T>>
+  return typeof candidate.channel === 'string'
+    && typeof candidate.seq === 'number'
+    && typeof candidate.timestamp === 'number'
+    && typeof candidate.batch === 'boolean'
+    && typeof candidate.partial === 'boolean'
+    && 'payload' in candidate
+}
+
+function isScannerSnapshotPushPayload(payload: unknown): payload is ScannerSnapshotPushPayload {
+  if (!payload || typeof payload !== 'object') {
+    return false
+  }
+
+  const candidate = payload as Partial<ScannerSnapshotPushPayload>
+  return 'snapshot' in candidate
+}
+
+const SCANNER_ACK_FLUSH_MS = 8_000
+const scannerChannelSeqs = new Map<string, number>()
+const scannerResyncInFlight = new Map<string, Promise<void>>()
+const pendingScannerAcks = new Map<string, ScannerAckRequest>()
+let scannerAckTimer: ReturnType<typeof setTimeout> | null = null
+
+interface NormalizedScannerDiffResult<T> {
+  ackSeq: number | null
+  diffs: ScannerDiff<T>[]
+}
+
+function applyScannerChannelSeqs(channelSeqs?: ScannerChannelSeqMap): void {
+  if (!channelSeqs) {
+    return
+  }
+
+  for (const [channel, seq] of Object.entries(channelSeqs)) {
+    if (typeof seq === 'number') {
+      scannerChannelSeqs.set(channel, seq)
+    }
+  }
+}
+
+function flushScannerAcks(): void {
+  const requests = Array.from(pendingScannerAcks.values())
+  pendingScannerAcks.clear()
+  scannerAckTimer = null
+
+  if (requests.length === 0) {
+    return
+  }
+
+  void ipcRenderer.invoke('ipc:ack-seq', requests.length === 1 ? requests[0] : requests).catch(() => {
+    // ACK telemetry is best-effort and must never block renderer updates.
+  })
+}
+
+function emitScannerAck(request: ScannerAckRequest): void {
+  const existing = pendingScannerAcks.get(request.channel)
+  if (!existing || request.seq >= existing.seq) {
+    pendingScannerAcks.set(request.channel, request)
+  }
+
+  if (scannerAckTimer === null) {
+    scannerAckTimer = setTimeout(flushScannerAcks, SCANNER_ACK_FLUSH_MS)
+  }
+}
+
+function ackScannerSnapshotBaselines(channelSeqs?: ScannerChannelSeqMap): void {
+  if (!channelSeqs) {
+    return
+  }
+
+  for (const [channel, seq] of Object.entries(channelSeqs)) {
+    if (typeof seq === 'number') {
+      emitScannerAck({ channel, seq, source: 'snapshot' })
+    }
+  }
+}
+
+async function requestScannerResync(channel: string): Promise<void> {
+  const existing = scannerResyncInFlight.get(channel)
+  if (existing) {
+    await existing
+    return
+  }
+
+  const request = ipcRenderer
+    .invoke('ipc:request-resync', channel)
+    .then((response: ScannerResyncResponse) => {
+      if (!response.accepted) {
+        throw new Error(`SCANNER_RESYNC_REJECTED:${channel}`)
+      }
+    })
+    .finally(() => {
+      scannerResyncInFlight.delete(channel)
+    })
+
+  scannerResyncInFlight.set(channel, request)
+  await request
+}
+
+function normalizeScannerDiffPayload<T>(
+  channel: string,
+  payload: ScannerDiff<T> | IPCEnvelope<ScannerDiff<T> | ScannerDiff<T>[]>
+): NormalizedScannerDiffResult<T> {
+  if (!isIPCEnvelope<ScannerDiff<T> | ScannerDiff<T>[]>(payload)) {
+    return {
+      ackSeq: null,
+      diffs: [payload]
+    }
+  }
+
+  if (scannerResyncInFlight.has(channel)) {
+    return {
+      ackSeq: null,
+      diffs: []
+    }
+  }
+
+  const lastSeq = scannerChannelSeqs.get(channel)
+  if (typeof lastSeq === 'number') {
+    const expectedSeq = lastSeq + 1
+
+    if (payload.seq > expectedSeq) {
+      void requestScannerResync(channel)
+      return {
+        ackSeq: null,
+        diffs: []
+      }
+    }
+
+    if (payload.seq < expectedSeq) {
+      return {
+        ackSeq: null,
+        diffs: []
+      }
+    }
+  }
+
+  scannerChannelSeqs.set(channel, payload.seq)
+  return {
+    ackSeq: payload.seq,
+    diffs: Array.isArray(payload.payload) ? payload.payload : [payload.payload]
+  }
+}
 
 export const systemProcessApi = {
   scan: (): Promise<ServiceResult<ProcessInfo[]>> =>
     ipcRenderer.invoke(IPC_CHANNELS_EXT.PROCESS_SCAN),
+
+  getBasicInfo: (pid: number): Promise<ProcessInfo | null> =>
+    ipcRenderer.invoke('process:get-basic-info', pid),
 
   kill: (pid: number): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS_EXT.PROCESS_KILL, pid),
@@ -56,8 +268,47 @@ export const systemProcessApi = {
   getProcessHistory: (pid: number): Promise<{ cpuHistory: number[]; memoryHistory: number[] }> =>
     ipcRenderer.invoke('process:get-history', pid),
 
+  listProcessTags: () =>
+    ipcRenderer.invoke('process:tags-list'),
+
+  setProcessTag: (input: { exe: string; cwd?: string; tag: string; color?: string; pinned?: boolean }) =>
+    ipcRenderer.invoke('process:tags-set', input),
+
+  removeProcessTag: (input: { exe: string; cwd?: string }) =>
+    ipcRenderer.invoke('process:tags-remove', input),
+
+  exportProcessTags: () =>
+    ipcRenderer.invoke('process:tags-export'),
+
+  importProcessTags: (json: string) =>
+    ipcRenderer.invoke('process:tags-import', { json }),
+
+  getProcessHistory24h: (input: { exe: string; cwd?: string }) =>
+    ipcRenderer.invoke('process:history-24h', input),
+
+  getProcessHistoryBatch: (keys: string[]) =>
+    ipcRenderer.invoke('process:history-batch', { keys }),
+
+  batchOp: (request: ProcessBatchRequest): Promise<ProcessBatchStartResponse> =>
+    ipcRenderer.invoke('process:batch-op', request),
+
+  batchCancel: (jobId: string, confirmedBy?: string): Promise<ProcessBatchCancelResponse> =>
+    ipcRenderer.invoke('process:batch-cancel', { jobId, confirmedBy }),
+
+  batchUndo: (jobId: string, confirmedBy?: string): Promise<ProcessBatchUndoResponse> =>
+    ipcRenderer.invoke('process:batch-undo', { jobId, confirmedBy }),
+
+  onBatchProgress: (callback: (progress: ProcessBatchProgress) => void) => {
+    const handler = (_: unknown, progress: ProcessBatchProgress) => callback(progress)
+    ipcRenderer.on('process:batch-progress', handler)
+    return () => ipcRenderer.removeListener('process:batch-progress', handler)
+  },
+
   getDeepDetail: (pid: number): Promise<ProcessDeepDetail | null> =>
     ipcRenderer.invoke(IPC_CHANNELS_EXT.PROCESS_GET_DEEP_DETAIL, pid),
+
+  probeAccess: (pid: number): Promise<AccessReport> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.PROCESS_PROBE_ACCESS, pid),
 
   getConnections: (pid: number): Promise<NetworkConnectionInfo[]> =>
     ipcRenderer.invoke(IPC_CHANNELS_EXT.PROCESS_GET_CONNECTIONS, pid),
@@ -76,6 +327,9 @@ export const systemProcessApi = {
 
   getModules: (pid: number): Promise<{ modules: LoadedModuleInfo[]; requiresElevation: boolean }> =>
     ipcRenderer.invoke(IPC_CHANNELS_EXT.PROCESS_GET_MODULES, pid),
+
+  relaunchAsAdmin: (): Promise<{ ok: boolean; reason?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.APP_RELAUNCH_AS_ADMIN),
 
   onUpdated: (callback: (processes: ProcessInfo[]) => void) => {
     const handler = (_: unknown, processes: ProcessInfo[]) => callback(processes)
@@ -131,6 +385,17 @@ export const portApi = {
   }
 }
 
+export const topologyApi = {
+  buildScopedGraph: (scope: TopologyScope): Promise<ScopedTopologyGraph> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.TOPOLOGY_BUILD_SCOPED_GRAPH, scope),
+
+  buildScopedFlow: (scope: TopologyScope): Promise<ScopedFlow> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.FLOW_BUILD_SCOPED_FLOW, scope),
+
+  warmScope: (scope: TopologyScope): Promise<{ ok: boolean; nodeCount: number; edgeCount: number; source: ScopedTopologyGraph['source'] }> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.TOPOLOGY_WARM_SCOPE, scope),
+}
+
 export const windowApi = {
   scan: (includeSystemWindows?: boolean): Promise<ServiceResult<WindowInfo[]>> =>
     ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_SCAN, includeSystemWindows ?? false),
@@ -162,6 +427,9 @@ export const windowApi = {
   removeGroup: (groupId: string): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_REMOVE_GROUP, groupId),
 
+  renameGroup: (groupId: string, newName: string): Promise<ServiceResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_RENAME_GROUP, groupId, newName),
+
   minimizeGroup: (groupId: string): Promise<ServiceResult> =>
     ipcRenderer.invoke('window:minimize-group', groupId),
 
@@ -180,6 +448,65 @@ export const windowApi = {
   removeLayout: (layoutId: string): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_REMOVE_LAYOUT, layoutId),
 
+  applyLayout: (intent: ApplyLayoutIntent): Promise<ApplyLayoutResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_APPLY_LAYOUT, intent),
+
+  saveSnapshot: (name: string, description: string | undefined, hwnds: number[], monitorId?: number): Promise<ServiceResult<WindowLayoutSnapshot>> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_SAVE_SNAPSHOT, { name, description, hwnds, monitorId }),
+
+  updateSnapshot: (id: string, patch: { name?: string; description?: string }): Promise<ServiceResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_UPDATE_SNAPSHOT, { id, ...patch }),
+
+  deleteSnapshot: (id: string): Promise<ServiceResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_DELETE_SNAPSHOT, id),
+
+  restoreSnapshot: (id: string): Promise<ApplyLayoutResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_RESTORE_SNAPSHOT, id),
+
+  listSnapshots: (): Promise<WindowLayoutSnapshot[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_LIST_SNAPSHOTS),
+
+  previewLayout: (preset: TilePreset, count: number, monitorId?: number): Promise<WindowInfo['rect'][]> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_PREVIEW_LAYOUT, { preset, count, monitorId }),
+
+  restorePrevious: (restorePointId?: string): Promise<ApplyLayoutResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_RESTORE_PREVIOUS, restorePointId),
+
+  getMonitorInfo: (): Promise<MonitorInfo[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_GET_MONITOR_INFO),
+
+  getR8Monitors: (): Promise<R8MonitorsResponse> =>
+    ipcRenderer.invoke('window:monitors'),
+
+  listVirtualDesktops: (): Promise<VirtualDesktopListResponse> =>
+    ipcRenderer.invoke('window:vd-list'),
+
+  getWindowVdInfo: (request: WindowVdInfoRequest): Promise<WindowVdInfoResponse> =>
+    ipcRenderer.invoke('window:vd-info', request),
+
+  onVdWatch: (callback: (payload: WindowVdWatchPayload) => void) => {
+    const handler = (_: unknown, payload: WindowVdWatchPayload) => callback(payload)
+    ipcRenderer.on('window:vd-watch', handler)
+    return () => ipcRenderer.removeListener('window:vd-watch', handler)
+  },
+
+  moveToDesktop: (request: MoveWindowToDesktopRequest): Promise<MoveWindowToDesktopResponse> =>
+    ipcRenderer.invoke('window:move-to-desktop', request),
+
+  moveToMonitor: (request: MoveWindowToMonitorRequest): Promise<MoveWindowToMonitorResponse> =>
+    ipcRenderer.invoke('window:move-to-monitor', request),
+
+  saveR8LayoutPreset: (request: WindowLayoutSaveRequest): Promise<WindowLayoutSaveResponse> =>
+    ipcRenderer.invoke('window:layout-save', request),
+
+  listR8LayoutPresets: (): Promise<WindowLayoutListResponse> =>
+    ipcRenderer.invoke('window:layout-list'),
+
+  applyR8LayoutPreset: (request: WindowLayoutApplyRequest): Promise<WindowLayoutApplyResponse> =>
+    ipcRenderer.invoke('window:layout-apply', request),
+
+  tileGroup: (groupId: string, preset: TilePreset = 'tile-auto'): Promise<ApplyLayoutResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_TILE_GROUP, { groupId, preset }),
   // New window operations
   restore: (hwnd: number): Promise<ServiceResult> =>
     ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_RESTORE, hwnd),
@@ -187,8 +514,20 @@ export const windowApi = {
   setTopmost: (hwnd: number, topmost: boolean): Promise<ServiceResult> =>
     ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_SET_TOPMOST, hwnd, topmost),
 
+  setAlwaysOnTop: (hwnd: number, topmost: boolean): Promise<ServiceResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_ALWAYS_ON_TOP, hwnd, topmost),
+
+  getTopmost: (hwnd: number): Promise<ServiceResult<{ hwnd: number; topmost: boolean }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_GET_TOPMOST, hwnd),
+
+  listTopmost: (): Promise<ServiceResult<{ hwnds: number[] }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_LIST_TOPMOST),
+
   setOpacity: (hwnd: number, opacity: number): Promise<ServiceResult> =>
     ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_SET_OPACITY, hwnd, opacity),
+
+  setTitle: (hwnd: number, title: string): Promise<ServiceResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_SET_TITLE, hwnd, title),
 
   sendKeys: (hwnd: number, keys: string): Promise<ServiceResult> =>
     ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_SEND_KEYS, hwnd, keys),
@@ -213,6 +552,48 @@ export const windowApi = {
 
   restoreGroup: (groupId: string): Promise<ServiceResult> =>
     ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_RESTORE_GROUP, groupId),
+
+  screenshot: (hwnd: number): Promise<ServiceResult<WindowScreenshotResult>> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_SCREENSHOT, hwnd),
+
+  toggleFavorite: (hwnd: number): Promise<ServiceResult<WindowFavoriteToggleResult>> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_TOGGLE_FAVORITE, hwnd),
+
+  getFavorites: (): Promise<WindowFavoriteRecord[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_GET_FAVORITES),
+
+  openWorkingDir: (hwnd: number): Promise<ServiceResult<WindowOpenDirectoryResult>> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.WINDOW_OPEN_WORKING_DIR, hwnd),
+
+  getThumbnailsBatch: (request: ThumbnailBatchRequest): Promise<ThumbnailBatchResponse> =>
+    ipcRenderer.invoke('window:thumbnails-batch', request),
+
+  refreshThumbnail: (request: ThumbnailRefreshRequest): Promise<ServiceResult> =>
+    ipcRenderer.invoke('window:thumbnail-refresh', request),
+
+  getThumbnailGroups: (): Promise<ThumbnailGroupsResponse> =>
+    ipcRenderer.invoke('window:groups'),
+
+  setThumbnailAlias: (request: ThumbnailWindowAliasRequest): Promise<ThumbnailWindowAliasResponse> =>
+    ipcRenderer.invoke('window:set-alias', request),
+
+  saveThumbnailViewport: (viewport: ThumbnailWallViewport): Promise<ThumbnailViewportConfigResponse> =>
+    ipcRenderer.invoke('window:viewport-config', viewport),
+
+  batchOp: (request: WindowBatchRequest): Promise<WindowBatchStartResponse> =>
+    ipcRenderer.invoke('window:batch-op', request),
+
+  batchCancel: (jobId: string, confirmedBy?: string): Promise<WindowBatchCancelResponse> =>
+    ipcRenderer.invoke('window:batch-cancel', { jobId, confirmedBy }),
+
+  batchUndo: (jobId: string, confirmedBy?: string): Promise<WindowBatchUndoResponse> =>
+    ipcRenderer.invoke('window:batch-undo', { jobId, confirmedBy }),
+
+  onBatchProgress: (callback: (progress: WindowBatchProgress) => void) => {
+    const handler = (_: unknown, progress: WindowBatchProgress) => callback(progress)
+    ipcRenderer.on('window:batch-progress', handler)
+    return () => ipcRenderer.removeListener('window:batch-progress', handler)
+  },
 
   onUpdated: (callback: (windows: WindowInfo[]) => void) => {
     const handler = (_: unknown, windows: WindowInfo[]) => callback(windows)
@@ -260,6 +641,24 @@ export const aiTaskApi = {
 
   getDetectionConfig: (toolType: AIToolType): Promise<AIToolDetectionConfig | null> =>
     ipcRenderer.invoke(IPC_CHANNELS_EXT.AI_TASK_GET_DETECTION_CONFIG, toolType),
+
+  getConfidenceReport: (taskKey: string): Promise<ConfidenceReport | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.AI_TASK_GET_CONFIDENCE_REPORT, taskKey),
+
+  recordCompletionOracle: (event: AICompletionOracleEvent): Promise<AICompletionOracleRecord | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.AI_TASK_RECORD_COMPLETION_ORACLE, event),
+
+  getStateHistory: (taskKey: string, limit?: number): Promise<StateTransition[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.AI_TASK_GET_STATE_HISTORY, taskKey, limit),
+
+  getProfile: (toolType: AIToolType): Promise<ToolProfile | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.AI_TASK_GET_PROFILE, toolType),
+
+  setProfile: (toolType: AIToolType, profile: Partial<ToolProfile>): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.AI_TASK_SET_PROFILE, toolType, profile),
+
+  calibrate: (toolType: AIToolType, sample: CalibrationSample): Promise<CalibrationResult | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.AI_TASK_CALIBRATE, toolType, sample),
 
   onStarted: (callback: (task: AITask) => void) => {
     const handler = (_: unknown, task: AITask) => callback(task)
@@ -310,7 +709,10 @@ export const aiAliasApi = {
     ipcRenderer.invoke(IPC_CHANNELS_EXT.AI_ALIAS_REMOVE, aliasId),
 
   rename: (aliasId: string, newName: string): Promise<boolean> =>
-    ipcRenderer.invoke('ai-alias:rename', aliasId, newName),
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.AI_ALIAS_RENAME, aliasId, newName),
+
+  renameAndApply: (request: AIRenameAndApplyRequest): Promise<AIRenameAndApplyResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS_EXT.AI_ALIAS_RENAME_AND_APPLY, request),
 }
 
 export const notificationApi = {
@@ -403,25 +805,69 @@ export const scannerApi = {
     ipcRenderer.invoke('scanner:status'),
 
   onProcessesDiff: (callback: (diff: ScannerDiff<ProcessInfo>) => void) => {
-    const handler = (_: unknown, diff: ScannerDiff<ProcessInfo>) => callback(diff)
+    const handler = (
+      _: unknown,
+      payload: ScannerDiff<ProcessInfo> | IPCEnvelope<ScannerDiff<ProcessInfo> | ScannerDiff<ProcessInfo>[]>
+    ) => {
+      const normalized = normalizeScannerDiffPayload('scanner:processes:diff', payload)
+      for (const diff of normalized.diffs) {
+        callback(diff)
+      }
+      if (normalized.ackSeq !== null) {
+        emitScannerAck({ channel: 'scanner:processes:diff', seq: normalized.ackSeq, source: 'diff' })
+      }
+    }
     ipcRenderer.on('scanner:processes:diff', handler)
     return () => ipcRenderer.removeListener('scanner:processes:diff', handler)
   },
 
   onPortsDiff: (callback: (diff: ScannerDiff<PortInfo>) => void) => {
-    const handler = (_: unknown, diff: ScannerDiff<PortInfo>) => callback(diff)
+    const handler = (
+      _: unknown,
+      payload: ScannerDiff<PortInfo> | IPCEnvelope<ScannerDiff<PortInfo> | ScannerDiff<PortInfo>[]>
+    ) => {
+      const normalized = normalizeScannerDiffPayload('scanner:ports:diff', payload)
+      for (const diff of normalized.diffs) {
+        callback(diff)
+      }
+      if (normalized.ackSeq !== null) {
+        emitScannerAck({ channel: 'scanner:ports:diff', seq: normalized.ackSeq, source: 'diff' })
+      }
+    }
     ipcRenderer.on('scanner:ports:diff', handler)
     return () => ipcRenderer.removeListener('scanner:ports:diff', handler)
   },
 
   onWindowsDiff: (callback: (diff: ScannerDiff<WindowInfo>) => void) => {
-    const handler = (_: unknown, diff: ScannerDiff<WindowInfo>) => callback(diff)
+    const handler = (
+      _: unknown,
+      payload: ScannerDiff<WindowInfo> | IPCEnvelope<ScannerDiff<WindowInfo> | ScannerDiff<WindowInfo>[]>
+    ) => {
+      const normalized = normalizeScannerDiffPayload('scanner:windows:diff', payload)
+      for (const diff of normalized.diffs) {
+        callback(diff)
+      }
+      if (normalized.ackSeq !== null) {
+        emitScannerAck({ channel: 'scanner:windows:diff', seq: normalized.ackSeq, source: 'diff' })
+      }
+    }
     ipcRenderer.on('scanner:windows:diff', handler)
     return () => ipcRenderer.removeListener('scanner:windows:diff', handler)
   },
 
   onAiTasksDiff: (callback: (diff: ScannerDiff<AITask>) => void) => {
-    const handler = (_: unknown, diff: ScannerDiff<AITask>) => callback(diff)
+    const handler = (
+      _: unknown,
+      payload: ScannerDiff<AITask> | IPCEnvelope<ScannerDiff<AITask> | ScannerDiff<AITask>[]>
+    ) => {
+      const normalized = normalizeScannerDiffPayload('scanner:aiTasks:diff', payload)
+      for (const diff of normalized.diffs) {
+        callback(diff)
+      }
+      if (normalized.ackSeq !== null) {
+        emitScannerAck({ channel: 'scanner:aiTasks:diff', seq: normalized.ackSeq, source: 'diff' })
+      }
+    }
     ipcRenderer.on('scanner:aiTasks:diff', handler)
     return () => ipcRenderer.removeListener('scanner:aiTasks:diff', handler)
   },
@@ -433,13 +879,28 @@ export const scannerApi = {
   },
 
   onSnapshotPush: (callback: (snapshot: ScannerCacheSnapshot) => void) => {
-    const handler = (_: unknown, snapshot: ScannerCacheSnapshot) => callback(snapshot)
+    const handler = (
+      _: unknown,
+      payload: ScannerCacheSnapshot | ScannerSnapshotPushPayload
+    ) => {
+      if (isScannerSnapshotPushPayload(payload)) {
+        applyScannerChannelSeqs(payload.channelSeqs)
+        callback(payload.snapshot)
+        ackScannerSnapshotBaselines(payload.channelSeqs)
+        return
+      }
+
+      callback(payload)
+    }
     ipcRenderer.on('scanner:snapshot:push', handler)
     return () => ipcRenderer.removeListener('scanner:snapshot:push', handler)
   },
 
   retryScanner: (type: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('scanner:retry', type),
+
+  requestResync: (channel: string): Promise<ScannerResyncResponse> =>
+    ipcRenderer.invoke('ipc:request-resync', channel),
 
   onScannerFailed: (callback: (data: { type: string; retries: number }) => void) => {
     const handler = (_: unknown, data: { type: string; retries: number }) => callback(data)

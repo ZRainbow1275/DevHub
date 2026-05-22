@@ -16,9 +16,11 @@ import {
   SearchIcon,
   ClockIcon,
   TagIcon,
-  CodeIcon
+  CodeIcon,
+  NetworkIcon
 } from '../icons'
 import { ProjectTypeBadge } from './ProjectTypeBadge'
+import { openProjectInGlobalTopology } from '../../utils/globalTopologyNavigation'
 
 const isElectron = typeof window !== 'undefined' && window.devhub !== undefined
 
@@ -60,10 +62,10 @@ export const ProjectDetailPanel = memo(function ProjectDetailPanel({
   const [loadingDeps, setLoadingDeps] = useState(false)
 
   // Fetch git info
-  const fetchGitInfo = useCallback(() => {
+  const fetchGitInfo = useCallback((force = false) => {
     if (!isElectron) return
     setLoadingGit(true)
-    window.devhub.projects.getGitInfo(project.path)
+    window.devhub.projects.getGitInfo(project.path, { force })
       .then(setGitInfo)
       .catch(() => setGitInfo(null))
       .finally(() => setLoadingGit(false))
@@ -86,9 +88,13 @@ export const ProjectDetailPanel = memo(function ProjectDetailPanel({
 
   // Refresh git info periodically
   useEffect(() => {
-    const interval = setInterval(fetchGitInfo, 15000)
+    const interval = setInterval(fetchGitInfo, 120000)
     return () => clearInterval(interval)
   }, [fetchGitInfo])
+
+  const openInGlobalTopology = useCallback(() => {
+    openProjectInGlobalTopology(project.id)
+  }, [project.id])
 
   const isRunning = project.status === 'running'
 
@@ -109,13 +115,27 @@ export const ProjectDetailPanel = memo(function ProjectDetailPanel({
           </h2>
           <ProjectTypeBadge type={project.projectType} size="sm" />
         </div>
-        <button
-          onClick={onClose}
-          className="btn-icon text-text-muted hover:text-text-primary relative z-10"
-          title="关闭"
-        >
-          <CloseIcon size={18} />
-        </button>
+        <div className="flex items-center gap-2 relative z-10">
+          <button
+            type="button"
+            data-testid="project-global-topology-button"
+            data-graph-entry="project-detail-global-topology"
+            data-graph-kind="global"
+            onClick={openInGlobalTopology}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-surface-800 text-text-secondary hover:bg-surface-700 hover:text-accent transition-colors border-l-2 border-surface-600 hover:border-accent radius-sm"
+            title="在全局拓扑中查看"
+          >
+            <NetworkIcon size={12} />
+            全局拓扑
+          </button>
+          <button
+            onClick={onClose}
+            className="btn-icon text-text-muted hover:text-text-primary"
+            title="关闭"
+          >
+            <CloseIcon size={18} />
+          </button>
+        </div>
       </div>
 
       {/* Tab Navigation */}
@@ -154,7 +174,7 @@ export const ProjectDetailPanel = memo(function ProjectDetailPanel({
           <LogsTab project={project} />
         )}
         {activeTab === 'git' && (
-          <GitTab gitInfo={gitInfo} loading={loadingGit} onRefresh={fetchGitInfo} />
+          <GitTab gitInfo={gitInfo} loading={loadingGit} onRefresh={() => fetchGitInfo(true)} />
         )}
         {activeTab === 'config' && (
           <ConfigTab project={project} />

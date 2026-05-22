@@ -127,7 +127,7 @@ export function LogPanel({ projectId, projectName }: LogPanelProps) {
         {/* Terminal cursor */}
         {logs.length > 0 && (
           <div className="flex items-center gap-1 mt-2 px-5">
-            <span className="text-success font-bold">❯</span>
+            <span className="text-success font-bold">&gt;</span>
             <span className="inline-block w-2 h-4 bg-accent animate-pulse radius-sm" />
           </div>
         )}

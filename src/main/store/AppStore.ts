@@ -1,4 +1,5 @@
 import Store from 'electron-store'
+import { safeStorage } from 'electron'
 import { v4 as uuidv4 } from 'uuid'
 import {
   Project,
@@ -21,6 +22,88 @@ import { guardProtoPollution } from '../utils/validation'
  */
 function isSettingsObject(v: unknown): v is Record<string, unknown> {
   return !!v && typeof v === 'object' && !Array.isArray(v)
+}
+
+const SENSITIVE_SETTINGS_KEY_PATTERN = /(?:api[-_]?key|token|secret|password|credential|authorization|smtp[-_]?password)/i
+
+interface EncryptedSettingsLeaf {
+  __devhubEncrypted: true
+  version: 1
+  algorithm: 'electron.safeStorage'
+  encoding: 'base64'
+  value: string
+  keyHint: string
+}
+
+interface ProtectedSettingsResult {
+  value: unknown
+  changed: boolean
+}
+
+type SafeStorageBridge = Pick<typeof safeStorage, 'decryptString' | 'encryptString' | 'isEncryptionAvailable'>
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+function isEncryptedSettingsLeaf(value: unknown): value is EncryptedSettingsLeaf {
+  if (!isPlainRecord(value)) return false
+  return value.__devhubEncrypted === true
+    && value.version === 1
+    && value.algorithm === 'electron.safeStorage'
+    && value.encoding === 'base64'
+    && typeof value.value === 'string'
+    && typeof value.keyHint === 'string'
+}
+
+function encryptionBridge(): SafeStorageBridge | null {
+  const bridge = safeStorage as SafeStorageBridge | undefined
+  if (!bridge?.isEncryptionAvailable()) return null
+  return bridge
+}
+
+function encryptSettingsLeaf(key: string, plaintext: string): EncryptedSettingsLeaf {
+  const bridge = encryptionBridge()
+  if (!bridge) throw new Error('E_SETTINGS_SECRET_ENCRYPTION_UNAVAILABLE')
+  return {
+    __devhubEncrypted: true,
+    version: 1,
+    algorithm: 'electron.safeStorage',
+    encoding: 'base64',
+    value: bridge.encryptString(plaintext).toString('base64'),
+    keyHint: key
+  }
+}
+
+function protectSensitiveSettingsValue(value: unknown, key = ''): ProtectedSettingsResult {
+  if (isEncryptedSettingsLeaf(value)) return { value, changed: false }
+
+  if (typeof value === 'string' && value.length > 0 && SENSITIVE_SETTINGS_KEY_PATTERN.test(key)) {
+    return { value: encryptSettingsLeaf(key, value), changed: true }
+  }
+
+  if (Array.isArray(value)) {
+    let changed = false
+    const protectedItems = value.map((item) => {
+      const result = protectSensitiveSettingsValue(item)
+      changed ||= result.changed
+      return result.value
+    })
+    return { value: changed ? protectedItems : value, changed }
+  }
+
+  if (isPlainRecord(value)) {
+    let changed = false
+    const protectedRecord: Record<string, unknown> = {}
+    for (const [childKey, childValue] of Object.entries(value)) {
+      const result = protectSensitiveSettingsValue(childValue, childKey)
+      changed ||= result.changed
+      protectedRecord[childKey] = result.value
+    }
+    return { value: changed ? protectedRecord : value, changed }
+  }
+
+  return { value, changed: false }
 }
 
 /**
@@ -63,8 +146,8 @@ export class AppStore {
   private store: Store<AppConfig>
   private _cache: { projects?: Project[]; settings?: AppSettings } = {}
 
-  constructor() {
-    this.store = new Store<AppConfig>({
+  constructor(store?: Store<AppConfig>) {
+    this.store = store ?? new Store<AppConfig>({
       name: 'devhub-config',
       schema
     })
@@ -226,10 +309,14 @@ export class AppStore {
     const raw: Record<string, unknown> = isSettingsObject(rawValue)
       ? rawValue
       : (DEFAULT_SETTINGS as unknown as Record<string, unknown>)
+    const protectedRaw = protectSensitiveSettingsValue(raw)
+    const settingsSource = isSettingsObject(protectedRaw.value)
+      ? protectedRaw.value
+      : (DEFAULT_SETTINGS as unknown as Record<string, unknown>)
     // Migrate from legacy flat format if necessary
-    const migrated = migrateSettings(raw)
+    const migrated = migrateSettings(settingsSource)
     // Persist migrated settings if migration occurred (old flat format detected)
-    if (typeof raw.theme === 'string' && raw.appearance === undefined) {
+    if (protectedRaw.changed || (typeof raw.theme === 'string' && raw.appearance === undefined)) {
       this.store.set('settings', migrated)
     }
     this._cache.settings = migrated
@@ -239,7 +326,9 @@ export class AppStore {
   updateSettings(updates: Partial<AppSettings>): void {
     const settings = this.getSettings()
     const merged = deepMergeSettings(settings, updates)
-    this.store.set('settings', merged)
+    const protectedMerged = protectSensitiveSettingsValue(merged)
+    const value = isSettingsObject(protectedMerged.value) ? protectedMerged.value : merged
+    this.store.set('settings', value as unknown as AppSettings)
     this.invalidateCache('settings')
   }
 

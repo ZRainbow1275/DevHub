@@ -1,0 +1,8 @@
+# devhub-csv-version=1.0; runner=devhub; concurrentMax=6
+taskId,taskName,priority,status,tool,skill,inputFile,inputArgs,outputDir,outputFormat,tags,dependsOn,timeoutMs,retries,concurrencyKey,createdAt,scheduledAt,note
+parallel-1,Parallel 1,P1,pending,codex,code-review,src/p1.ts,"{""prompt"":""parallel 1""}",out/parallel,md,"parallel,fixture",,60000,1,frontend,2026-05-03T09:00:00Z,now,fixture parallel
+parallel-2,Parallel 2,P1,pending,codex,code-review,src/p2.ts,"{""prompt"":""parallel 2""}",out/parallel,md,"parallel,fixture",,60000,1,frontend,2026-05-03T09:01:00Z,now,fixture parallel
+parallel-3,Parallel 3,P1,pending,claude,lint-fix,src/p3.ts,"{""prompt"":""parallel 3""}",out/parallel,md,"parallel,fixture",,60000,1,frontend,2026-05-03T09:02:00Z,now,fixture parallel
+parallel-4,Parallel 4,P1,pending,gemini,code-review,src/p4.ts,"{""prompt"":""parallel 4""}",out/parallel,md,"parallel,fixture",,60000,1,frontend,2026-05-03T09:03:00Z,now,fixture parallel
+parallel-5,Parallel 5,P1,pending,cursor,lint-fix,src/p5.ts,"{""prompt"":""parallel 5""}",out/parallel,md,"parallel,fixture",,60000,1,frontend,2026-05-03T09:04:00Z,now,fixture parallel
+parallel-6,Parallel 6,P1,pending,copilot,code-review,src/p6.ts,"{""prompt"":""parallel 6""}",out/parallel,md,"parallel,fixture",,60000,1,frontend,2026-05-03T09:05:00Z,now,fixture parallel

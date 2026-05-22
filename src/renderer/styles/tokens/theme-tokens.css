@@ -319,7 +319,7 @@
   --space-card-padding: 14px 18px;
   --space-section-gap: 12px;
   --space-content-gap: 8px;
-  --spacing-base: 8px;
+  --spacing-base: 9px;
   --density-factor: 1.0;
   --container-padding: 16px;
   --card-gap: 12px;
@@ -428,7 +428,7 @@
   --space-card-padding: 24px 28px;
   --space-section-gap: 28px;
   --space-content-gap: 16px;
-  --spacing-base: 8px;
+  --spacing-base: 10px;
   --density-factor: 1.25;
   --container-padding: 28px;
   --card-gap: 20px;
@@ -474,14 +474,14 @@
   --elevation-2: 0 1px 3px rgba(0, 0, 0, 0.04);
 
   /* ===== LAYER 5: MOTION ===== */
-  --motion-duration-fast: 80ms;
-  --motion-duration-normal: 150ms;
-  --motion-duration-slow: 200ms;
+  --motion-duration-fast: 70ms;
+  --motion-duration-normal: 120ms;
+  --motion-duration-slow: 180ms;
   --motion-easing: ease;
   --motion-hover: none;
   --transition-default: none;
   --transition-fast: none;
-  --animation-card-enter: card-enter-swiss 150ms ease;
+  --animation-card-enter: card-enter-swiss 120ms ease;
 
   /* ===== LAYER 6: COMPONENTS ===== */
   --component-btn-padding: 12px 24px;
@@ -531,7 +531,7 @@
   --space-card-padding: 16px 20px;
   --space-section-gap: 16px;
   --space-content-gap: 8px;
-  --spacing-base: 6px;
+  --spacing-base: 7px;
   --density-factor: 1.0;
   --container-padding: 16px;
   --card-gap: 12px;
@@ -544,13 +544,13 @@
   --grid-cols-xl: 4;
 
   /* Geometry / Radius */
-  --radius-sm: 4px;
-  --radius-md: 6px;
+  --radius-sm: 3px;
+  --radius-md: 5px;
   --radius-lg: 8px;
   --radius-xl: 12px;
-  --radius-card: 8px;
+  --radius-card: 10px;
   --radius-button: 6px;
-  --radius-input: 6px;
+  --radius-input: 5px;
   --radius-badge: 4px;
 
   /* ===== LAYER 4: EFFECTS ===== */
@@ -576,13 +576,13 @@
 
   /* ===== LAYER 5: MOTION ===== */
   --motion-duration-fast: 100ms;
-  --motion-duration-normal: 200ms;
-  --motion-duration-slow: 350ms;
+  --motion-duration-normal: 220ms;
+  --motion-duration-slow: 380ms;
   --motion-easing: cubic-bezier(0.2, 0, 0, 1);
   --motion-hover: scale(1.02);
-  --transition-default: all 0.25s cubic-bezier(0.2, 0, 0, 1);
-  --transition-fast: all 0.15s cubic-bezier(0.2, 0, 0, 1);
-  --animation-card-enter: card-enter-modern 200ms cubic-bezier(0.2, 0, 0, 1);
+  --transition-default: all 0.28s cubic-bezier(0.2, 0, 0, 1);
+  --transition-fast: all 0.18s cubic-bezier(0.2, 0, 0, 1);
+  --animation-card-enter: card-enter-modern 220ms cubic-bezier(0.2, 0, 0, 1);
 
   /* ===== LAYER 6: COMPONENTS ===== */
   --component-btn-padding: 8px 16px;
@@ -620,7 +620,7 @@
   --typo-heading-transform: none;
   --typo-heading-spacing: -0.01em;
   --typo-heading-weight: 600;
-  --typo-heading-family: 'Inter Variable', system-ui, sans-serif;
+  --typo-heading-family: system-ui, 'Inter Variable', sans-serif;
   --typo-body-family: 'Inter Variable', system-ui, sans-serif;
   --typo-body-spacing: 0;
   --typo-body-weight: 400;
@@ -632,7 +632,7 @@
   --space-card-padding: 16px 20px;
   --space-section-gap: 16px;
   --space-content-gap: 8px;
-  --spacing-base: 6px;
+  --spacing-base: 5px;
   --density-factor: 1.0;
   --container-padding: 16px;
   --card-gap: 12px;
@@ -645,17 +645,17 @@
   --grid-cols-xl: 4;
 
   /* Geometry / Radius */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
-  --radius-card: 8px;
-  --radius-button: 6px;
-  --radius-input: 6px;
-  --radius-badge: 4px;
+  --radius-sm: 5px;
+  --radius-md: 7px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-card: 14px;
+  --radius-button: 9px;
+  --radius-input: 8px;
+  --radius-badge: 999px;
 
   /* ===== LAYER 4: EFFECTS ===== */
-  --border-card: 1px solid rgba(0,0,0,0.08);
+  --border-card: 1px solid rgba(79,70,229,0.14);
   --border-card-accent: none;
   --border-section: none;
   --border-width: 1px;
@@ -667,8 +667,8 @@
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
   --shadow-md: 0 2px 4px rgba(0,0,0,0.06);
   --shadow-lg: 0 6px 12px rgba(0,0,0,0.08);
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
-  --shadow-card-hover: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+  --shadow-card: 0 2px 8px rgba(79,70,229,0.08), 0 1px 2px rgba(17,24,39,0.04);
+  --shadow-card-hover: 0 6px 14px rgba(79,70,229,0.12), 0 2px 4px rgba(17,24,39,0.06);
   --shadow-button: 0 1px 2px rgba(0,0,0,0.06);
   --shadow-elevated: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
   --elevation-type: shadow;
@@ -677,13 +677,13 @@
 
   /* ===== LAYER 5: MOTION ===== */
   --motion-duration-fast: 100ms;
-  --motion-duration-normal: 200ms;
-  --motion-duration-slow: 350ms;
+  --motion-duration-normal: 180ms;
+  --motion-duration-slow: 320ms;
   --motion-easing: cubic-bezier(0.2, 0, 0, 1);
   --motion-hover: scale(1.02);
-  --transition-default: all 0.25s cubic-bezier(0.2, 0, 0, 1);
-  --transition-fast: all 0.15s cubic-bezier(0.2, 0, 0, 1);
-  --animation-card-enter: card-enter-modern 200ms cubic-bezier(0.2, 0, 0, 1);
+  --transition-default: all 0.22s cubic-bezier(0.2, 0, 0, 1);
+  --transition-fast: all 0.12s cubic-bezier(0.2, 0, 0, 1);
+  --animation-card-enter: card-enter-modern 180ms cubic-bezier(0.2, 0, 0, 1);
 
   /* ===== LAYER 6: COMPONENTS ===== */
   --component-btn-padding: 8px 16px;
@@ -731,12 +731,26 @@
   --density-factor: 0.8;
   --density-font-scale: 0.875;
   --density-line-height: 1.25;
+  --project-list-row-height: 64px;
+  --project-card-min-height: 56px;
+  --project-card-min-width: 220px;
 }
 
 [data-density="standard"] {
-  /* Uses theme defaults -- no overrides needed */
+  --density-card-min-height: 72px;
+  --density-list-row-height: 40px;
+  --density-grid-gap: 12px;
+  --space-card-padding: 16px 20px;
+  --space-section-gap: 12px;
+  --space-content-gap: 8px;
+  --container-padding: 16px;
+  --card-gap: 12px;
+  --density-factor: 1;
   --density-font-scale: 1;
   --density-line-height: 1.5;
+  --project-list-row-height: 120px;
+  --project-card-min-height: 80px;
+  --project-card-min-width: 240px;
 }
 
 [data-density="comfortable"] {
@@ -751,6 +765,9 @@
   --density-factor: 1.2;
   --density-font-scale: 1;
   --density-line-height: 1.75;
+  --project-list-row-height: 144px;
+  --project-card-min-height: 116px;
+  --project-card-min-width: 260px;
 }
 
 /* ==============================================================================
@@ -804,4 +821,292 @@
   --responsive-font-scale: 1;
   --responsive-gap: 20px;
   --responsive-padding: 24px;
+}
+
+/* ==============================================================================
+   P8 Theme-Axis Overrides
+   Palette remains data-theme-compatible while density, radius and motion become
+   orthogonal axes driven by ThemeState.
+   ============================================================================== */
+
+:root {
+  --radius-default: var(--radius-md, 2px);
+  --button-height: 36px;
+  --row-height: var(--density-list-row-height, 34px);
+  --motion-scale: 1;
+  --duration-theme: 250ms;
+  --chart-series-1: var(--accent);
+  --chart-series-2: var(--info);
+  --chart-series-3: var(--success);
+  --chart-axis-color: var(--surface-500);
+  --chart-grid-color: var(--surface-700);
+  --chart-text-color: var(--text-primary);
+  --chart-warning: var(--warning);
+  --topology-node-bg: #111827;
+  --topology-node-process: #c9a227;
+  --topology-node-port: #22c55e;
+  --topology-node-window: #38bdf8;
+  --topology-node-project: #f59e0b;
+  --topology-node-ai: #a78bfa;
+  --topology-node-focus-bg: #c9a227;
+  --topology-node-focus-text: #050505;
+  --topology-node-label: #f8fafc;
+  --topology-edge-default: #64748b;
+  --topology-edge-network: #22c55e;
+  --topology-edge-neural: #c9a227;
+  --topology-edge-flow: #38bdf8;
+  --topology-edge-danger: #ef4444;
+}
+
+[data-palette="constructivism"] {
+  --theme-decoration-mode: diagonal-stripes;
+  --theme-shadow-language: hard;
+  --chart-series-1: #d64545;
+  --chart-series-2: #c9a227;
+  --chart-series-3: #6b7280;
+  --chart-axis-color: #a3a3a3;
+  --chart-grid-color: rgba(214, 69, 69, 0.2);
+  --chart-text-color: #f8fafc;
+  --topology-node-process: #d64545;
+  --topology-node-port: #22c55e;
+  --topology-node-window: #38bdf8;
+  --topology-node-project: #c9a227;
+  --topology-node-ai: #a78bfa;
+  --topology-node-label: #f8fafc;
+  --topology-edge-default: #8b949e;
+  --topology-edge-network: #22c55e;
+  --topology-edge-neural: #c9a227;
+  --topology-edge-flow: #38bdf8;
+}
+
+[data-palette="modern-light"] {
+  --theme-decoration-mode: none;
+  --theme-shadow-language: soft;
+  --chart-series-1: #2563eb;
+  --chart-series-2: #0f766e;
+  --chart-series-3: #7c3aed;
+  --chart-axis-color: #64748b;
+  --chart-grid-color: #dbe3ef;
+  --chart-text-color: #0f172a;
+  --topology-node-process: #2563eb;
+  --topology-node-port: #0f766e;
+  --topology-node-window: #0284c7;
+  --topology-node-project: #ca8a04;
+  --topology-node-ai: #7c3aed;
+  --topology-node-label: #0f172a;
+  --topology-edge-default: #64748b;
+  --topology-edge-network: #0f766e;
+  --topology-edge-neural: #7c3aed;
+  --topology-edge-flow: #0284c7;
+}
+
+[data-palette="warm-light"] {
+  --chart-series-1: #b45309;
+  --chart-series-2: #be123c;
+  --chart-series-3: #047857;
+  --chart-axis-color: #8a6f52;
+  --chart-grid-color: rgba(180, 83, 9, 0.18);
+  --chart-text-color: #3b2f24;
+  --topology-node-process: #b45309;
+  --topology-node-port: #047857;
+  --topology-node-window: #0369a1;
+  --topology-node-project: #92400e;
+  --topology-node-ai: #9f1239;
+  --topology-node-label: #3b2f24;
+  --topology-edge-default: #8a6f52;
+  --topology-edge-network: #047857;
+  --topology-edge-neural: #be123c;
+  --topology-edge-flow: #0369a1;
+}
+
+[data-palette="cyberpunk"] {
+  --chart-series-1: #00ffff;
+  --chart-series-2: #ff2bd6;
+  --chart-series-3: #facc15;
+  --chart-axis-color: #67e8f9;
+  --chart-grid-color: rgba(0, 255, 255, 0.22);
+  --chart-text-color: #ffffff;
+  --topology-node-process: #00ffff;
+  --topology-node-port: #39ff14;
+  --topology-node-window: #38bdf8;
+  --topology-node-project: #facc15;
+  --topology-node-ai: #ff2bd6;
+  --topology-node-label: #ffffff;
+  --topology-edge-default: #67e8f9;
+  --topology-edge-network: #39ff14;
+  --topology-edge-neural: #ff2bd6;
+  --topology-edge-flow: #38bdf8;
+}
+
+[data-palette="swiss"] {
+  --chart-series-1: #111111;
+  --chart-series-2: #e11d48;
+  --chart-series-3: #2563eb;
+  --chart-axis-color: #4b5563;
+  --chart-grid-color: #d1d5db;
+  --chart-text-color: #111111;
+  --topology-node-process: #111111;
+  --topology-node-port: #047857;
+  --topology-node-window: #1d4ed8;
+  --topology-node-project: #b45309;
+  --topology-node-ai: #7c3aed;
+  --topology-node-label: #111111;
+  --topology-edge-default: #4b5563;
+  --topology-edge-network: #047857;
+  --topology-edge-neural: #7c3aed;
+  --topology-edge-flow: #1d4ed8;
+}
+
+[data-palette="dark"] {
+  --chart-series-1: #60a5fa;
+  --chart-series-2: #34d399;
+  --chart-series-3: #fbbf24;
+  --chart-axis-color: #94a3b8;
+  --chart-grid-color: rgba(148, 163, 184, 0.18);
+  --chart-text-color: #f8fafc;
+  --topology-node-process: #60a5fa;
+  --topology-node-port: #34d399;
+  --topology-node-window: #38bdf8;
+  --topology-node-project: #fbbf24;
+  --topology-node-ai: #c084fc;
+  --topology-node-label: #f8fafc;
+  --topology-edge-default: #94a3b8;
+  --topology-edge-network: #34d399;
+  --topology-edge-neural: #c084fc;
+  --topology-edge-flow: #38bdf8;
+}
+
+[data-palette="light"] {
+  --chart-series-1: #1d4ed8;
+  --chart-series-2: #15803d;
+  --chart-series-3: #a16207;
+  --chart-axis-color: #64748b;
+  --chart-grid-color: #e2e8f0;
+  --chart-text-color: #0f172a;
+  --topology-node-process: #1d4ed8;
+  --topology-node-port: #15803d;
+  --topology-node-window: #0369a1;
+  --topology-node-project: #a16207;
+  --topology-node-ai: #6d28d9;
+  --topology-node-label: #0f172a;
+  --topology-edge-default: #64748b;
+  --topology-edge-network: #15803d;
+  --topology-edge-neural: #6d28d9;
+  --topology-edge-flow: #0369a1;
+}
+
+[data-holiday-theme="spring-festival"] {
+  --chart-series-1: var(--holiday-accent);
+  --chart-series-2: var(--holiday-secondary);
+  --topology-node-project: var(--holiday-secondary);
+}
+
+[data-holiday-theme="christmas"] {
+  --chart-series-1: var(--holiday-accent);
+  --chart-series-2: var(--holiday-secondary);
+  --topology-node-port: var(--holiday-accent);
+}
+
+[data-holiday-theme="halloween"] {
+  --chart-series-1: var(--holiday-accent);
+  --chart-series-2: var(--holiday-secondary);
+  --topology-node-ai: var(--holiday-secondary);
+}
+
+[data-radius-family="sharp"] {
+  --radius-sm: 0px;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
+  --radius-card: 2px;
+  --radius-button: 2px;
+  --radius-input: 2px;
+  --radius-badge: 0px;
+  --radius-default: 2px;
+}
+
+[data-radius-family="soft"] {
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-card: 12px;
+  --radius-button: 8px;
+  --radius-input: 8px;
+  --radius-badge: 999px;
+  --radius-default: 8px;
+}
+
+[data-radius-family="round"] {
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-card: 20px;
+  --radius-button: 999px;
+  --radius-input: 14px;
+  --radius-badge: 999px;
+  --radius-default: 16px;
+}
+
+html[data-motion-level="reduced"] {
+  --motion-scale: 0;
+  --motion-duration-fast: 0ms;
+  --motion-duration-normal: 0ms;
+  --motion-duration-slow: 0ms;
+  --transition-default: none;
+  --transition-fast: none;
+  --animation-card-enter: none;
+  --duration-theme: 0ms;
+}
+
+html[data-motion-level="balanced"] {
+  --motion-scale: 1;
+  --motion-duration-fast: 100ms;
+  --motion-duration-normal: 200ms;
+  --motion-duration-slow: 350ms;
+  --transition-default: all 0.25s cubic-bezier(0.2, 0, 0, 1);
+  --transition-fast: all 0.15s cubic-bezier(0.2, 0, 0, 1);
+  --animation-card-enter: card-enter-modern 200ms cubic-bezier(0.2, 0, 0, 1);
+  --duration-theme: 250ms;
+}
+
+html[data-motion-level="expressive"] {
+  --motion-scale: 1.35;
+  --motion-duration-fast: 140ms;
+  --motion-duration-normal: 240ms;
+  --motion-duration-slow: 520ms;
+  --transition-default: all 0.32s cubic-bezier(0.2, 0, 0, 1);
+  --transition-fast: all 0.18s cubic-bezier(0.2, 0, 0, 1);
+  --animation-card-enter: card-enter-modern 240ms cubic-bezier(0.2, 0, 0, 1);
+  --duration-theme: 320ms;
+}
+
+[data-density="compact"],
+[data-responsive-density="compact"] {
+  --button-height: 30px;
+  --row-height: 32px;
+}
+
+[data-density="standard"] {
+  --button-height: 36px;
+  --row-height: 40px;
+}
+
+[data-density="comfortable"] {
+  --button-height: 44px;
+  --row-height: 52px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-scale: 0;
+    --motion-duration-fast: 0ms;
+    --motion-duration-normal: 0ms;
+    --motion-duration-slow: 0ms;
+    --transition-default: none;
+    --transition-fast: none;
+    --animation-card-enter: none;
+    --duration-theme: 0ms;
+  }
 }

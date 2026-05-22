@@ -45,8 +45,87 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 })
 
+class BrowserWindowMock {
+  static instances: BrowserWindowMock[] = []
+  readonly webContents = {
+    setWindowOpenHandler: vi.fn(),
+    on: vi.fn(),
+    send: vi.fn()
+  }
+
+  private destroyed = false
+  private readonly onceHandlers = new Map<string, () => void>()
+  readonly options: unknown
+  readonly show = vi.fn()
+  readonly focus = vi.fn()
+  readonly setAlwaysOnTop = vi.fn()
+  readonly setOpacity = vi.fn()
+  readonly setBounds = vi.fn()
+  readonly loadURL = vi.fn(async () => undefined)
+  readonly loadFile = vi.fn(async () => undefined)
+
+  constructor(options: unknown) {
+    this.options = options
+    BrowserWindowMock.instances.push(this)
+  }
+
+  once(event: string, handler: () => void) {
+    this.onceHandlers.set(event, handler)
+    if (event === 'ready-to-show') queueMicrotask(handler)
+    return this
+  }
+
+  close() {
+    this.destroyed = true
+    this.onceHandlers.get('closed')?.()
+  }
+
+  isDestroyed() {
+    return this.destroyed
+  }
+}
+
 // Mock electron modules
+const createSessionMock = (partition: string) => ({
+  partition,
+  webRequest: {
+    onHeadersReceived: vi.fn()
+  }
+})
+
 vi.mock('electron', () => ({
+  app: {
+    getPath: vi.fn(() => process.cwd()),
+    isDefaultProtocolClient: vi.fn(() => false),
+    removeAsDefaultProtocolClient: vi.fn(() => true),
+    setAsDefaultProtocolClient: vi.fn(() => true)
+  },
+  BrowserWindow: BrowserWindowMock,
+  session: {
+    fromPartition: vi.fn(createSessionMock),
+    defaultSession: {
+      webRequest: {
+        onHeadersReceived: vi.fn()
+      }
+    }
+  },
+  screen: {
+    getAllDisplays: vi.fn(() => [
+      { id: 1, workArea: { x: 0, y: 0, width: 1920, height: 1080 } },
+      { id: 2, workArea: { x: 1920, y: 0, width: 1920, height: 1080 } }
+    ])
+  },
+  shell: {
+    openExternal: vi.fn()
+  },
+  clipboard: {
+    writeText: vi.fn()
+  },
+  safeStorage: {
+    isEncryptionAvailable: vi.fn(() => true),
+    encryptString: vi.fn((plainText: string) => Buffer.from(`encrypted:${plainText}`, 'utf8')),
+    decryptString: vi.fn((encrypted: Buffer) => encrypted.toString('utf8').replace(/^encrypted:/, ''))
+  },
   ipcRenderer: {
     invoke: vi.fn(),
     send: vi.fn(),
@@ -81,6 +160,25 @@ const mockDevhub = {
     onEntry: vi.fn(),
     clear: vi.fn()
   },
+  scanner: {
+    subscribe: vi.fn(),
+    getSnapshot: vi.fn(),
+    getStatus: vi.fn(),
+    retryScanner: vi.fn(),
+    requestResync: vi.fn(),
+    onProcessesDiff: vi.fn(),
+    onPortsDiff: vi.fn(),
+    onWindowsDiff: vi.fn(),
+    onAiTasksDiff: vi.fn(),
+    onSummaryUpdate: vi.fn(),
+    onSnapshotPush: vi.fn(),
+    onScannerFailed: vi.fn()
+  },
+  topology: {
+    buildScopedGraph: vi.fn(),
+    buildScopedFlow: vi.fn(),
+    warmScope: vi.fn()
+  },
   window: {
     minimize: vi.fn(),
     maximize: vi.fn(),
@@ -88,13 +186,17 @@ const mockDevhub = {
     hideToTray: vi.fn(),
     forceClose: vi.fn(),
     onCloseConfirm: vi.fn()
+  },
+  devObs: {
+    getRuntimeMetrics: vi.fn(),
+    getThrottleReport: vi.fn(),
+    resetMetrics: vi.fn(),
+    exportDiagnosticBundle: vi.fn()
   }
 }
 
-Object.defineProperty(global, 'window', {
-  value: {
-    ...global.window,
-    devhub: mockDevhub
-  },
-  writable: true
+Object.defineProperty(window, 'devhub', {
+  value: mockDevhub,
+  writable: true,
+  configurable: true
 })

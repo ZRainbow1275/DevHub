@@ -24,6 +24,7 @@ export const ViewModeToggle = memo(function ViewModeToggle({
       {modes.map(({ key, icon, label }) => (
         <button
           key={key}
+          data-view-mode={key}
           onClick={() => onChange(key)}
           className={`
             p-2 transition-all duration-200

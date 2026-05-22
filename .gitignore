@@ -5,6 +5,13 @@ node_modules/
 out/
 dist/
 release/
+resources/shims/**/*.exe
+resources/shims/**/*.bin
+resources/shims/**/*.sha256
+resources/shims/codex/codex-shim-*
+!resources/shims/
+!resources/shims/**/
+!resources/shims/**/.gitkeep
 
 # Test coverage
 coverage/

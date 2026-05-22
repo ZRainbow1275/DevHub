@@ -7,16 +7,79 @@ import {
   PortFocusData, PortConnection, ProcessInfo, ProcessInfoExtended
 } from '@shared/types-extended'
 import { auditLogger } from './AuditLogger'
+import { SystemInformationAdapter } from './integrations/SystemInformationAdapter'
+import { PowerShellGateway, getPowerShellGateway } from './runtime/PowerShellGateway'
 
 const execFileAsync = promisify(execFile)
+type NetstatExecutor = () => Promise<string>
+type SystemInformationPortSource = Pick<SystemInformationAdapter, 'listNetworkPorts'>
+
+async function defaultNetstatExecutor(): Promise<string> {
+  const { stdout } = await execFileAsync('netstat', ['-ano', '-p', 'TCP'], { windowsHide: true })
+  return stdout
+}
+
+function isUsablePortInfo(port: unknown): port is PortInfo {
+  if (!port || typeof port !== 'object') return false
+  const candidate = port as Partial<PortInfo>
+  return Number.isInteger(candidate.port)
+    && Number.isInteger(candidate.pid)
+    && typeof candidate.processName === 'string'
+    && typeof candidate.state === 'string'
+    && typeof candidate.protocol === 'string'
+    && typeof candidate.localAddress === 'string'
+    && typeof candidate.foreignAddress === 'string'
+    && (candidate.port ?? 0) > 0
+    && (candidate.pid ?? 0) > 0
+}
 
 export class PortScanner {
   private processNameCache = new Map<number, string>()
+  private readonly powerShellGateway: PowerShellGateway
+
+  constructor(
+    powerShellGateway: PowerShellGateway = getPowerShellGateway(),
+    private readonly systemInformation: SystemInformationPortSource = new SystemInformationAdapter(),
+    private readonly executeNetstat: NetstatExecutor = defaultNetstatExecutor
+  ) {
+    this.powerShellGateway = powerShellGateway
+  }
+
+  private executePowerShell<T = string>(
+    script: string,
+    options: {
+      label: string
+      maxBuffer?: number
+      parser?: (stdout: string) => T
+      timeoutMs?: number
+    }
+  ): Promise<T> {
+    return this.powerShellGateway.execute(script, {
+      encoding: 'utf8',
+      executionPolicyBypass: true,
+      killOnTimeout: true,
+      label: options.label,
+      maxBuffer: options.maxBuffer,
+      nonInteractive: true,
+      parser: options.parser,
+      timeoutMs: options.timeoutMs ?? 15000,
+      windowsHide: true
+    })
+  }
 
   async scanAll(): Promise<PortInfo[]> {
+    this.processNameCache.clear()
+    const systemInformationPorts = await this.systemInformation.listNetworkPorts()
+    const systemInformationData = systemInformationPorts.success && systemInformationPorts.data
+      ? systemInformationPorts.data.filter(isUsablePortInfo)
+      : []
+    if (systemInformationData.length > 0) {
+      for (const port of systemInformationData) this.processNameCache.set(port.pid, port.processName)
+      return systemInformationData
+    }
+
     try {
-      this.processNameCache.clear()
-      const { stdout } = await execFileAsync('netstat', ['-ano', '-p', 'TCP'], { windowsHide: true })
+      const stdout = await this.executeNetstat()
       return await this.parseNetstatOutput(stdout)
     } catch {
       return []
@@ -121,7 +184,8 @@ export class PortScanner {
         state: normalizedState,
         protocol: 'TCP',
         localAddress: localAddr,
-        foreignAddress: foreignAddr || '*:*'
+        foreignAddress: foreignAddr || '*:*',
+        source: 'netstat'
       })
     }
 
@@ -153,11 +217,9 @@ export class PortScanner {
       const pidFilter = pids.map(p => `ProcessId = ${Math.floor(p)}`).join(' OR ')
       const psCmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-CimInstance Win32_Process -Filter '${pidFilter}' | Select-Object ProcessId,Name | ConvertTo-Csv -NoTypeInformation`
 
-      const { stdout } = await execFileAsync(
-        'powershell.exe',
-        ['-NoProfile', '-NonInteractive', '-Command', psCmd],
-        { windowsHide: true, timeout: 15000, encoding: 'utf8' }
-      )
+      const stdout = await this.executePowerShell(psCmd, {
+        label: 'port-scanner:enrich-process-names'
+      })
 
       // CSV format: "ProcessId","Name"
       const lines = stdout.split('\n').filter(l => l.trim())
@@ -363,10 +425,7 @@ export class PortScanner {
   ): Promise<PortFocusData | null> {
     try {
       // Filtered netstat: only rows matching this port
-      const { stdout } = await execFileAsync(
-        'netstat', ['-ano', '-p', 'TCP'],
-        { windowsHide: true, timeout: 5000 }
-      )
+      const stdout = await this.executeNetstat()
 
       const lines = stdout.split('\n').slice(4)
       const portEntries: PortInfo[] = []
@@ -397,7 +456,8 @@ export class PortScanner {
           state: normalizedState,
           protocol: 'TCP',
           localAddress: localAddr,
-          foreignAddress: foreignAddr || '*:*'
+          foreignAddress: foreignAddr || '*:*',
+          source: 'netstat'
         })
       }
 

@@ -1,0 +1,64 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "loading": "Loading",
+    "language": "Language",
+    "settings": "Settings"
+  },
+  "settings": {
+    "locale": {
+      "title": "Language and Region",
+      "description": "Simplified Chinese is the default. English resources are prepared for public release and currently provide partial coverage.",
+      "current": "Current language",
+      "coverage": "Coverage",
+      "status": {
+        "stable": "Stable",
+        "preview": "Preview",
+        "partial": "Partial"
+      }
+    },
+    "appearance": {
+      "decoration": {
+        "none": "None",
+        "sovietGeo": "Soviet Geometry",
+        "diagonals": "Diagonals",
+        "paper": "Paper",
+        "scanline": "Scanline",
+        "grid": "Grid",
+        "golden": "Golden Ratio",
+        "noise": "Noise",
+        "blocks": "Blocks",
+        "customSvg": "Custom SVG",
+        "position": {
+          "cardBackground": "Card Background",
+          "detailPanelBackground": "Detail Panel",
+          "globalBackground": "Global Background",
+          "statusbarBackground": "Status Bar Background",
+          "emptyState": "Empty State",
+          "header": "Header"
+        }
+      }
+    }
+  },
+  "cmdk": {
+    "placeholder": "Type a command, URI, or search..."
+  },
+  "a11y": {
+    "skipToMain": "Skip to main content"
+  },
+  "monitor": {
+    "title": "Monitor",
+    "tab": {
+      "process": "Process",
+      "port": "Port",
+      "window": "Window",
+      "aiTask": "AI Task"
+    }
+  },
+  "errors": {
+    "E_VALIDATION": "Validation failed",
+    "E_NOT_FOUND": "Not found",
+    "E_INTERNAL": "Internal error"
+  }
+}

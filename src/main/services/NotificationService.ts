@@ -1,10 +1,16 @@
-import { Notification, BrowserWindow } from 'electron'
+import { BrowserWindow } from 'electron'
 import {
   NotificationType,
   NotificationConfig,
   AppNotification
 } from '@shared/types-extended'
+import { getUnifiedNotificationService } from './notification'
+import type { NotificationLevel, NotificationSource } from '@shared/schemas/notification'
 
+function buildAliasNotificationDisplayName(toolName: string, alias?: string): string {
+  if (!alias) return toolName
+  return alias.startsWith(`${toolName}-`) ? alias : `${toolName}-${alias}`
+}
 export class NotificationService {
   private config: NotificationConfig = {
     enabled: true,
@@ -94,6 +100,16 @@ export class NotificationService {
     this.recentNotifications.set(dedupKey, Date.now())
   }
 
+  private toUnifiedLevel(type: NotificationType): NotificationLevel {
+    if (type === 'task-complete') return 'INFO'
+    if (type === 'task-error' || type === 'project-error') return 'ERROR'
+    return 'WARN'
+  }
+
+  private toUnifiedSource(type: NotificationType): NotificationSource {
+    return type === 'task-complete' || type === 'task-error' ? 'ai-task' : 'system'
+  }
+
   async notify(
     type: NotificationType,
     title: string,
@@ -124,7 +140,8 @@ export class NotificationService {
       icon: options?.icon,
       actions: options?.actions,
       createdAt: Date.now(),
-      read: false
+      read: false,
+      metadata: options?.metadata
     }
 
     this.history.unshift(notification)
@@ -137,36 +154,32 @@ export class NotificationService {
       this.mainWindow.webContents.send('notification:new', notification)
     }
 
-    // Capture metadata for click handler closure
-    const metadata = options?.metadata
-
-    // Show system notification
-    if (Notification.isSupported()) {
-      const systemNotif = new Notification({
-        title,
-        body,
-        silent: !this.config.sound
-      })
-
-      systemNotif.on('click', () => {
-        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-          this.mainWindow.show()
-          this.mainWindow.focus()
-
-          // If metadata contains a taskId, send navigate-to-task to renderer
-          if (metadata?.taskId && typeof metadata.taskId === 'string') {
-            this.mainWindow.webContents.send('navigate-to-task', metadata.taskId)
-          }
-
-          // If metadata contains windowHwnd, tell renderer to focus that external window
-          if (metadata?.windowHwnd && typeof metadata.windowHwnd === 'number') {
-            this.mainWindow.webContents.send('notification:focus-window', metadata.windowHwnd)
-          }
+    const unifiedService = getUnifiedNotificationService(this.mainWindow)
+    const focusActionId = `legacy-focus:${notification.id}`
+    unifiedService.registerAction(focusActionId, () => {
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        this.mainWindow.show()
+        this.mainWindow.focus()
+        if (notification.metadata?.taskId && typeof notification.metadata.taskId === 'string') {
+          this.mainWindow.webContents.send('navigate-to-task', notification.metadata.taskId)
         }
-      })
-
-      systemNotif.show()
-    }
+        if (notification.metadata?.windowHwnd && typeof notification.metadata.windowHwnd === 'number') {
+          this.mainWindow.webContents.send('notification:focus-window', notification.metadata.windowHwnd)
+        }
+      }
+    })
+    await unifiedService.emit({
+      level: this.toUnifiedLevel(type),
+      source: this.toUnifiedSource(type),
+      instanceId: typeof options?.metadata?.taskId === 'string' ? options.metadata.taskId : undefined,
+      title,
+      body,
+      actions: [
+        { label: 'Open', actionId: focusActionId },
+        ...(options?.actions?.map(action => ({ label: action.label, actionId: action.action })) ?? [])
+      ].slice(0, 3),
+      signalContributions: undefined
+    })
   }
 
   notifyTaskComplete(
@@ -177,7 +190,7 @@ export class NotificationService {
     windowHwnd?: number,
     pid?: number
   ): void {
-    const displayName = alias ?? toolName
+    const displayName = buildAliasNotificationDisplayName(toolName, alias)
     const durationSec = Math.round(duration / 1000)
     const durationMin = Math.floor(durationSec / 60)
     const durationRemSec = durationSec % 60
@@ -199,7 +212,8 @@ export class NotificationService {
         metadata: {
           taskId,
           windowHwnd,
-          aliasOrToolName: displayName
+          aliasOrToolName: alias ?? toolName,
+          displayName
         }
       }
     )
@@ -213,7 +227,7 @@ export class NotificationService {
     windowHwnd?: number,
     pid?: number
   ): void {
-    const displayName = alias ?? toolName
+    const displayName = buildAliasNotificationDisplayName(toolName, alias)
     this.notify(
       'task-error',
       `[${displayName}] 检测到错误`,
@@ -223,7 +237,8 @@ export class NotificationService {
         metadata: {
           taskId,
           windowHwnd,
-          aliasOrToolName: displayName
+          aliasOrToolName: alias ?? toolName,
+          displayName
         }
       }
     )

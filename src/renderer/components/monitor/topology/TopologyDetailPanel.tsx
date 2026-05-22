@@ -1,6 +1,13 @@
 import { memo } from 'react'
 import type { ProcessInfo, PortInfo, WindowInfo } from '@shared/types-extended'
-import { CloseIcon, ProcessIcon, PortIcon, WindowIcon, FolderIcon } from '../../icons'
+import { CloseIcon, ProcessIcon, PortIcon, WindowIcon, FolderIcon, NetworkIcon } from '../../icons'
+import {
+  openGlobalTopologyNode,
+  toPortTopologyNodeId,
+  toProcessTopologyNodeId,
+  toProjectTopologyNodeId,
+  toWindowTopologyNodeId
+} from '../../../utils/globalTopologyNavigation'
 
 interface SelectedNodeInfo {
   nodeType: 'project' | 'process' | 'port' | 'window'
@@ -111,11 +118,32 @@ const HEADER_CONFIG: Record<string, { icon: React.ReactNode; label: string; colo
   }
 }
 
+function getGlobalTopologyNodeId(node: SelectedNodeInfo): string | null {
+  if (node.nodeType === 'process' && node.processInfo) {
+    return toProcessTopologyNodeId(node.processInfo.pid)
+  }
+
+  if (node.nodeType === 'port' && node.portInfo) {
+    return toPortTopologyNodeId(node.portInfo)
+  }
+
+  if (node.nodeType === 'window' && node.windowInfo) {
+    return toWindowTopologyNodeId(node.windowInfo.hwnd)
+  }
+
+  if (node.nodeType === 'project' && node.projectId) {
+    return toProjectTopologyNodeId(node.projectId)
+  }
+
+  return null
+}
+
 export const TopologyDetailPanel = memo(function TopologyDetailPanel({
   node,
   onClose
 }: TopologyDetailPanelProps) {
   const config = HEADER_CONFIG[node.nodeType]
+  const globalTopologyNodeId = getGlobalTopologyNodeId(node)
 
   return (
     <div
@@ -132,12 +160,28 @@ export const TopologyDetailPanel = memo(function TopologyDetailPanel({
             {config.label}
           </span>
         </div>
-        <button
-          onClick={onClose}
-          className="w-6 h-6 flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-surface-700 transition-colors radius-sm"
-        >
-          <CloseIcon size={14} />
-        </button>
+        <div className="flex items-center gap-1.5">
+          {globalTopologyNodeId && (
+            <button
+              type="button"
+              data-testid="topology-detail-global-button"
+              data-graph-entry={`${node.nodeType}-detail-global-topology`}
+              data-graph-kind="global"
+              onClick={() => openGlobalTopologyNode(globalTopologyNodeId)}
+              title="在全局拓扑中查看"
+              className="h-6 px-2 flex items-center gap-1 text-[10px] text-text-muted hover:text-accent hover:bg-surface-700 transition-colors radius-sm"
+            >
+              <NetworkIcon size={12} />
+              全局
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="w-6 h-6 flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-surface-700 transition-colors radius-sm"
+          >
+            <CloseIcon size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Content */}

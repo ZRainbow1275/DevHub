@@ -1,15 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ProcessView } from './ProcessView'
 import { PortView } from './PortView'
 import { WindowView } from './WindowView'
 import { AITaskView } from './AITaskView'
-import { TopologyView } from './TopologyView'
-import { PortRelationshipGraph } from './PortRelationshipGraph'
+import { R8OpsPanel } from './R8OpsPanel'
+import { FullScreenTopologyView } from '../topology/FullScreenTopologyView'
 import { ErrorBoundary } from '../ErrorBoundary'
 import { ViewErrorFallback } from '../ui/ViewErrorFallback'
-import { ProcessIcon, PortIcon, WindowIcon, AIIcon, MonitorIcon, TopologyIcon, TreeIcon } from '../icons'
+import { ProcessIcon, PortIcon, WindowIcon, AIIcon, MonitorIcon, GearIcon, TopologyIcon } from '../icons'
 
-type MonitorTab = 'process' | 'port' | 'window' | 'ai-task' | 'topology' | 'flow'
+type MonitorTab = 'process' | 'port' | 'window' | 'ai-task' | 'topology' | 'r8-ops'
 
 const TABS: { id: MonitorTab; label: string; icon: React.ReactNode }[] = [
   {
@@ -38,14 +38,30 @@ const TABS: { id: MonitorTab; label: string; icon: React.ReactNode }[] = [
     icon: <TopologyIcon size={16} />
   },
   {
-    id: 'flow',
-    label: '流程图',
-    icon: <TreeIcon size={16} />
+    id: 'r8-ops',
+    label: 'R8 运营',
+    icon: <GearIcon size={16} />
   }
 ]
 
+function initialMonitorTab(): MonitorTab {
+  const params = new URLSearchParams(window.location.search)
+  return params.get('surface') === 'monitor' ? 'r8-ops' : 'process'
+}
+
 export function MonitorPanel() {
-  const [activeTab, setActiveTab] = useState<MonitorTab>('process')
+  const [activeTab, setActiveTab] = useState<MonitorTab>(() => initialMonitorTab())
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ tab?: MonitorTab }>).detail
+      if (detail?.tab && TABS.some(tab => tab.id === detail.tab)) {
+        setActiveTab(detail.tab)
+      }
+    }
+    window.addEventListener('devhub:monitor-navigate', handler)
+    return () => window.removeEventListener('devhub:monitor-navigate', handler)
+  }, [])
 
   return (
     <div className="h-full flex flex-col bg-surface-950">
@@ -134,16 +150,16 @@ export function MonitorPanel() {
         )}
         {activeTab === 'topology' && (
           <ErrorBoundary fallbackRender={({ error, resetErrorBoundary }) => (
-            <ViewErrorFallback viewName="关系拓扑" error={error} onRetry={resetErrorBoundary} />
+            <ViewErrorFallback viewName="全局拓扑" error={error} onRetry={resetErrorBoundary} />
           )}>
-            <TopologyView />
+            <FullScreenTopologyView />
           </ErrorBoundary>
         )}
-        {activeTab === 'flow' && (
+        {activeTab === 'r8-ops' && (
           <ErrorBoundary fallbackRender={({ error, resetErrorBoundary }) => (
-            <ViewErrorFallback viewName="流程图" error={error} onRetry={resetErrorBoundary} />
+            <ViewErrorFallback viewName="R8 运营" error={error} onRetry={resetErrorBoundary} />
           )}>
-            <PortRelationshipGraph />
+            <R8OpsPanel />
           </ErrorBoundary>
         )}
       </div>

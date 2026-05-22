@@ -5,6 +5,7 @@ import {
   WindowInfo,
   AITask,
   SystemSummary,
+  ScannerCacheSnapshot,
   ScannerDiff,
   ScannerType
 } from '@shared/types-extended'
@@ -48,6 +49,7 @@ interface ScannerState {
 
   // Actions
   initialize: () => Promise<void>
+  applySnapshot: (snapshot: ScannerCacheSnapshot) => void
   applyProcessesDiff: (diff: ScannerDiff<ProcessInfo>) => void
   applyPortsDiff: (diff: ScannerDiff<PortInfo>) => void
   applyWindowsDiff: (diff: ScannerDiff<WindowInfo>) => void
@@ -120,6 +122,45 @@ export const useScannerStore = create<ScannerState>((set, get) => ({
   summaryDelta: { processCount: 0, activePortCount: 0, windowCount: 0, aiToolCount: 0 },
   _prevSummary: null,
 
+  applySnapshot: (snapshot) => {
+    const allReady =
+      snapshot.processes.lastUpdated > 0 &&
+      snapshot.ports.lastUpdated > 0 &&
+      snapshot.windows.lastUpdated > 0
+
+    set({
+      processes: snapshot.processes.data,
+      ports: snapshot.ports.data,
+      windows: snapshot.windows.data,
+      aiTasks: snapshot.aiTasks.data,
+      summary: snapshot.systemSummary,
+      _prevSummary: snapshot.systemSummary,
+      initStatus: allReady ? 'ready' : 'partial',
+      scannerStatus: {
+        processes: {
+          ready: snapshot.processes.lastUpdated > 0,
+          count: snapshot.processes.data.length,
+          error: snapshot.processes.error
+        },
+        ports: {
+          ready: snapshot.ports.lastUpdated > 0,
+          count: snapshot.ports.data.length,
+          error: snapshot.ports.error
+        },
+        windows: {
+          ready: snapshot.windows.lastUpdated > 0,
+          count: snapshot.windows.data.length,
+          error: snapshot.windows.error
+        },
+        aiTasks: {
+          ready: snapshot.aiTasks.lastUpdated > 0,
+          count: snapshot.aiTasks.data.length,
+          error: snapshot.aiTasks.error
+        }
+      }
+    })
+  },
+
   initialize: async () => {
     try {
       // Subscribe to background scanner events
@@ -132,41 +173,7 @@ export const useScannerStore = create<ScannerState>((set, get) => ({
         return
       }
 
-      const allReady =
-        snapshot.processes.lastUpdated > 0 &&
-        snapshot.ports.lastUpdated > 0 &&
-        snapshot.windows.lastUpdated > 0
-
-      set({
-        processes: snapshot.processes.data,
-        ports: snapshot.ports.data,
-        windows: snapshot.windows.data,
-        aiTasks: snapshot.aiTasks.data,
-        summary: snapshot.systemSummary,
-        initStatus: allReady ? 'ready' : 'partial',
-        scannerStatus: {
-          processes: {
-            ready: snapshot.processes.lastUpdated > 0,
-            count: snapshot.processes.data.length,
-            error: snapshot.processes.error
-          },
-          ports: {
-            ready: snapshot.ports.lastUpdated > 0,
-            count: snapshot.ports.data.length,
-            error: snapshot.ports.error
-          },
-          windows: {
-            ready: snapshot.windows.lastUpdated > 0,
-            count: snapshot.windows.data.length,
-            error: snapshot.windows.error
-          },
-          aiTasks: {
-            ready: snapshot.aiTasks.lastUpdated > 0,
-            count: snapshot.aiTasks.data.length,
-            error: snapshot.aiTasks.error
-          }
-        }
-      })
+      get().applySnapshot(snapshot)
     } catch (err) {
       console.error('Scanner store initialization failed:', err)
       set({ initStatus: 'error' })

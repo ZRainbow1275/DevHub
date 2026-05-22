@@ -263,6 +263,27 @@
 }
 
 /* ========================================
+   Truncated Text Marquee
+   ======================================== */
+
+@keyframes truncated-text-marquee {
+  0%, 15% {
+    transform: translateX(0);
+  }
+  85%, 100% {
+    transform: translateX(calc(-1 * var(--truncated-text-marquee-distance, 0px)));
+  }
+}
+
+.truncated-text-marquee-track {
+  display: inline-block;
+  min-width: max-content;
+  padding-right: 1rem;
+  animation: truncated-text-marquee 8s linear infinite alternate;
+  will-change: transform;
+}
+
+/* ========================================
    Status Pulse
    ======================================== */
 
@@ -562,6 +583,16 @@
 @keyframes progress-pulse-warm {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.85; }
+}
+
+@keyframes ai-progress-indeterminate-sweep {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(240%); }
+}
+
+.ai-progress-indeterminate-fill {
+  animation: ai-progress-indeterminate-sweep 1.2s ease-in-out infinite;
+  will-change: transform;
 }
 
 [data-theme="warm-light"] .progress-bar-fill {

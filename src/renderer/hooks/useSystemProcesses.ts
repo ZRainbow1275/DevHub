@@ -1,7 +1,7 @@
 import { useEffect, useCallback } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useProcessStore } from '../stores/processStore'
-import { ProcessInfo, ProcessGroup, ProcessRelationship, ProcessDeepDetail, NetworkConnectionInfo, LoadedModuleInfo } from '@shared/types-extended'
+import { ProcessInfo, ProcessGroup, ProcessRelationship, ProcessDeepDetail, NetworkConnectionInfo, LoadedModuleInfo, AccessReport } from '@shared/types-extended'
 
 const isElectron = typeof window !== 'undefined' && window.devhub !== undefined
 
@@ -120,9 +120,38 @@ export function useSystemProcesses() {
     return window.devhub.systemProcess?.getProcessHistory?.(pid) ?? { cpuHistory: [], memoryHistory: [] }
   }, [])
 
+  const getBasicInfo = useCallback(async (pid: number): Promise<ProcessInfo | null> => {
+    if (!isElectron) return null
+    return window.devhub.systemProcess?.getBasicInfo?.(pid) ?? null
+  }, [])
+
   const getDeepDetail = useCallback(async (pid: number): Promise<ProcessDeepDetail | null> => {
     if (!isElectron) return null
     return window.devhub.systemProcess?.getDeepDetail?.(pid) ?? null
+  }, [])
+
+  const probeAccess = useCallback(async (pid: number): Promise<AccessReport> => {
+    if (!isElectron) {
+      return {
+        pid,
+        elevationRequired: false,
+        scanAttempted: false,
+        scanResult: 'wmi-error',
+        currentUser: 'browser',
+        suggestion: 'retry',
+        triedAt: Date.now()
+      }
+    }
+
+    return window.devhub.systemProcess?.probeAccess?.(pid) ?? {
+      pid,
+      elevationRequired: false,
+      scanAttempted: false,
+      scanResult: 'wmi-error',
+      currentUser: 'unknown',
+      suggestion: 'retry',
+      triedAt: Date.now()
+    }
   }, [])
 
   const getConnections = useCallback(async (pid: number): Promise<NetworkConnectionInfo[]> => {
@@ -157,6 +186,14 @@ export function useSystemProcesses() {
   const getModules = useCallback(async (pid: number): Promise<{ modules: LoadedModuleInfo[]; requiresElevation: boolean }> => {
     if (!isElectron) return { modules: [], requiresElevation: false }
     return window.devhub.systemProcess?.getModules?.(pid) ?? { modules: [], requiresElevation: false }
+  }, [])
+
+  const relaunchAsAdmin = useCallback(async (): Promise<{ ok: boolean; reason?: string }> => {
+    if (!isElectron) {
+      return { ok: false, reason: 'not-electron' }
+    }
+
+    return window.devhub.systemProcess?.relaunchAsAdmin?.() ?? { ok: false, reason: 'unavailable' }
   }, [])
 
   useEffect(() => {
@@ -198,13 +235,16 @@ export function useSystemProcesses() {
     getProcessTree,
     getFullRelationship,
     getProcessHistory,
+    getBasicInfo,
     getDeepDetail,
+    probeAccess,
     getConnections,
     getEnvironment,
     killProcessTree,
     setProcessPriority,
     openFileLocation,
     getModules,
+    relaunchAsAdmin,
     toggleSort,
     clearSort,
     setSearchQuery,

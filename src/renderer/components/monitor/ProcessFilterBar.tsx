@@ -1,6 +1,6 @@
 import { memo, useState, useRef, useEffect, useCallback } from 'react'
 import { ProcessStatusType, ProcessType, SortConfig, SortColumn } from '@shared/types-extended'
-import { SearchIcon, FilterIcon, CloseIcon, ChevronDownIcon } from '../icons'
+import { SearchIcon, FilterIcon, CloseIcon, ChevronDownIcon, CheckIcon } from '../icons'
 
 // ============ Sort Column Labels ============
 
@@ -212,7 +212,7 @@ export const ProcessFilterBar = memo(function ProcessFilterBar({
               className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-surface-700 transition-colors"
             >
               <span className={`w-3 h-3 flex items-center justify-center border ${statusFilters.has(status) ? 'border-accent bg-accent' : 'border-surface-500'} radius-sm`}>
-                {statusFilters.has(status) && <span className="text-white text-[8px]">✓</span>}
+                {statusFilters.has(status) && <CheckIcon className="text-white" size={8} />}
               </span>
               <span className={`w-2 h-2 ${STATUS_COLORS[status]} radius-sm`} />
               <span className="text-text-primary">{STATUS_LABELS[status]}</span>
@@ -236,7 +236,7 @@ export const ProcessFilterBar = memo(function ProcessFilterBar({
               className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-surface-700 transition-colors"
             >
               <span className={`w-3 h-3 flex items-center justify-center border ${typeFilters.has(type) ? 'border-accent bg-accent' : 'border-surface-500'} radius-sm`}>
-                {typeFilters.has(type) && <span className="text-white text-[8px]">✓</span>}
+                {typeFilters.has(type) && <CheckIcon className="text-white" size={8} />}
               </span>
               <span className="text-text-primary">{TYPE_LABELS[type]}</span>
             </button>
@@ -254,7 +254,11 @@ export const ProcessFilterBar = memo(function ProcessFilterBar({
               {i < sortConfigs.length - 1 && <span className="text-text-muted mx-0.5">→</span>}
             </span>
           ))}
-          <button onClick={onClearSort} className="text-text-muted hover:text-error ml-1">
+          <button
+            aria-label="清除排序"
+            onClick={onClearSort}
+            className="text-text-muted hover:text-error ml-1"
+          >
             <CloseIcon size={10} />
           </button>
         </div>

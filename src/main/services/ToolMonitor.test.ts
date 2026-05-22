@@ -1,5 +1,6 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { CodingTool } from '@shared/types'
+import type { PowerShellGateway } from './runtime/PowerShellGateway'
 
 // vi.hoisted ensures this runs before vi.mock factories (which are hoisted)
 const { mockExecFileAsync } = vi.hoisted(() => {
@@ -49,11 +50,17 @@ function createTools(): CodingTool[] {
 
 describe('ToolMonitor', () => {
   let monitor: ToolMonitor
+  let mockPowerShellGateway: PowerShellGateway
 
   beforeEach(() => {
     vi.useFakeTimers()
-    monitor = new ToolMonitor()
     vi.clearAllMocks()
+    mockPowerShellGateway = {
+      execute: vi.fn().mockResolvedValue(''),
+      getStats: vi.fn(),
+      shutdown: vi.fn()
+    } as unknown as PowerShellGateway
+    monitor = new ToolMonitor(mockPowerShellGateway)
   })
 
   afterEach(() => {

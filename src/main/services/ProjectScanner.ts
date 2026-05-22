@@ -5,6 +5,7 @@ import { promisify } from 'util'
 import type { ProjectType } from '@shared/types'
 import type { GitInfo, GitCommitSummary, ProjectDependencies, DependencyEntry, LockfileType } from '@shared/types-extended'
 import { detectProjectTypes, type DetectionResult } from './projectDetectors'
+import { PowerShellGateway, getPowerShellGateway } from './runtime/PowerShellGateway'
 
 const execFileAsync = promisify(execFile)
 
@@ -74,6 +75,33 @@ export class ProjectScanner {
     '.venv',        // Python venv
     'venv',
   ])
+  private readonly powerShellGateway: PowerShellGateway
+
+  constructor(powerShellGateway: PowerShellGateway = getPowerShellGateway()) {
+    this.powerShellGateway = powerShellGateway
+  }
+
+  private executePowerShell<T = string>(
+    script: string,
+    options: {
+      label: string
+      maxBuffer?: number
+      parser?: (stdout: string) => T
+      timeoutMs?: number
+    }
+  ): Promise<T> {
+    return this.powerShellGateway.execute(script, {
+      encoding: 'utf8',
+      executionPolicyBypass: true,
+      killOnTimeout: true,
+      label: options.label,
+      maxBuffer: options.maxBuffer,
+      nonInteractive: true,
+      parser: options.parser,
+      timeoutMs: options.timeoutMs ?? 15000,
+      windowsHide: true
+    })
+  }
 
   /**
    * Scan a directory recursively for projects of any supported type.
@@ -129,11 +157,10 @@ export class ProjectScanner {
     try {
       // Migrated from deprecated wmic to Get-CimInstance Win32_LogicalDisk
       const psCmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-CimInstance Win32_LogicalDisk | Select-Object -ExpandProperty DeviceID`
-      const { stdout } = await execFileAsync(
-        'powershell.exe',
-        ['-NoProfile', '-NonInteractive', '-Command', psCmd],
-        { windowsHide: true, timeout: 15000, encoding: 'utf8' }
-      )
+      const stdout = await this.executePowerShell(psCmd, {
+        label: 'project-scanner:get-available-drives',
+        timeoutMs: 1500
+      })
       const drives = stdout
         .split('\n')
         .map(line => line.trim())

@@ -1,6 +1,7 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { CodingTool } from '@shared/types'
+import { PowerShellGateway, getPowerShellGateway } from './runtime/PowerShellGateway'
 
 const execFileAsync = promisify(execFile)
 
@@ -105,6 +106,7 @@ const TOOL_DETECTION_CONFIG: Record<string, ToolDetectionConfigExt> = {
 }
 
 export class ToolMonitor {
+  private readonly powerShellGateway: PowerShellGateway
   private timeoutId: ReturnType<typeof setTimeout> | null = null
   private tools: CodingTool[] = []
   private previousStatus = new Map<string, boolean>()
@@ -123,6 +125,10 @@ export class ToolMonitor {
   private currentIntervalMs: number = 3000
   private consecutiveIdleCount: number = 0
   private idleThreshold: number = 3  // 连续3次空闲后切换到慢速模式
+
+  constructor(powerShellGateway: PowerShellGateway = getPowerShellGateway()) {
+    this.powerShellGateway = powerShellGateway
+  }
 
   start(
     tools: CodingTool[],
@@ -359,10 +365,13 @@ export class ToolMonitor {
   // 获取所有 node/python 解释器进程的命令行（仅调用一次）
   private async getInterpreterCommandLines(): Promise<string[]> {
     try {
-      const { stdout } = await execFileAsync(
-        'powershell',
-        ['-NoProfile', '-Command', "Get-CimInstance Win32_Process | Where-Object { $_.Name -like '*node*' -or $_.Name -like '*python*' } | Select-Object -ExpandProperty CommandLine"],
-        { windowsHide: true, maxBuffer: 1024 * 1024, timeout: 5000 }
+      const stdout = await this.powerShellGateway.execute(
+        "Get-CimInstance Win32_Process | Where-Object { $_.Name -like '*node*' -or $_.Name -like '*python*' } | Select-Object -ExpandProperty CommandLine",
+        {
+          label: 'tool-monitor:interpreter-command-lines',
+          maxBuffer: 1024 * 1024,
+          timeoutMs: 5000
+        }
       )
       return stdout.split('\n').filter(l => l.trim())
     } catch (error) {

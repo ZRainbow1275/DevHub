@@ -14,6 +14,8 @@ export type ProjectType =
   | 'java-gradle'
   | 'unknown'
 
+export type ProjectOpenTarget = 'vscode' | 'cursor' | 'explorer' | 'terminal'
+
 export interface Project {
   id: string
   name: string
@@ -59,16 +61,86 @@ export interface AppConfig {
 export type ThemeOption = 'constructivism' | 'modern-light' | 'warm-light' | 'cyberpunk' | 'swiss' | 'dark' | 'light'
 export type FontSize = 'small' | 'medium' | 'large'
 export type SidebarPosition = 'left' | 'right'
+export const LAYOUT_MODE_VALUES = ['auto', 'split', 'stacked'] as const
+export type LayoutMode = typeof LAYOUT_MODE_VALUES[number]
+export const LAYOUT_MODE_STORAGE_KEY = 'devhub:layout-mode'
+export const LAYOUT_MODE_CHANGE_EVENT = 'devhub:layout-mode-change'
+export const APP_SETTINGS_CHANGE_EVENT = 'devhub:settings-change'
 export type InformationDensity = 'compact' | 'standard' | 'comfortable'
+export type RadiusFamily = 'sharp' | 'soft' | 'round'
+export type MotionLevel = 'reduced' | 'balanced' | 'expressive'
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
+export const THEME_DECORATION_KIND_VALUES = [
+  'none',
+  'soviet-geo',
+  'diagonals',
+  'paper',
+  'scanline',
+  'grid',
+  'golden',
+  'noise',
+  'blocks',
+  'custom-svg'
+] as const
+export type ThemeDecorationKind = typeof THEME_DECORATION_KIND_VALUES[number]
+export const THEME_DECORATION_POSITION_VALUES = [
+  'card-background',
+  'detail-panel-background',
+  'global-background',
+  'statusbar-background',
+  'empty-state',
+  'header'
+] as const
+export type ThemeDecorationPosition = typeof THEME_DECORATION_POSITION_VALUES[number]
+export type ThemeDecorationBlendMode = 'normal' | 'multiply' | 'overlay' | 'screen'
+
+export interface ThemeDecorationConfig {
+  kind: ThemeDecorationKind
+  customSvgId?: string
+  opacity: number
+  positions: ThemeDecorationPosition[]
+  blendMode: ThemeDecorationBlendMode
+  scale: number
+  motionRespect: boolean
+}
+
+export interface CustomSvgEntry {
+  id: string
+  name: string
+  sanitizedContent: string
+  uploadedAt: number
+  size: number
+  hash: string
+}
+
+export interface ThemeSoundConfig {
+  themeId: ThemeOption
+  enabled: boolean
+  volume: number
+  events: {
+    hover?: string
+    click?: string
+    notify?: string
+    error?: string
+    success?: string
+  }
+}
 
 export interface AppearanceSettings {
   theme: ThemeOption
+  followSystemTheme: boolean
   fontSize: FontSize
   sidebarPosition: SidebarPosition
   compactMode: boolean
   enableAnimations: boolean
+  holidayDecorationsEnabled: boolean
+  holidayAutoPromptEnabled: boolean
+  holidayFocusMode: boolean
+  layoutMode: LayoutMode
   informationDensity: InformationDensity
+  radiusFamily: RadiusFamily
+  motionLevel: MotionLevel
+  decoration?: ThemeDecorationConfig
 }
 
 export interface ScanSettings {
@@ -101,11 +173,53 @@ export interface NotificationSettings {
   quietHoursEnd: string    // HH:mm format
 }
 
+export interface PortPopoutTriggerSettings {
+  hover: boolean
+  click: boolean
+  drag: boolean
+  contextMenu: boolean
+}
+
+export const PORT_POPOUT_SYNC_DIRECTION_VALUES = ['both', 'main-to-popout', 'popout-to-main', 'isolated'] as const
+export type PortPopoutSyncDirection = typeof PORT_POPOUT_SYNC_DIRECTION_VALUES[number]
+
+export interface PortPopoutSyncPolicy {
+  selection: boolean
+  filters: boolean
+  sort: boolean
+  search: boolean
+  theme: boolean
+  density: boolean
+  hover: boolean
+  scroll: boolean
+  direction: PortPopoutSyncDirection
+}
+
+export const DEFAULT_PORT_POPOUT_SYNC_POLICY: PortPopoutSyncPolicy = {
+  selection: true,
+  filters: true,
+  sort: true,
+  search: true,
+  theme: true,
+  density: true,
+  hover: false,
+  scroll: false,
+  direction: 'both',
+}
+
+export interface PortPopoutSettings {
+  triggerEnabled: PortPopoutTriggerSettings
+  hoverDelayMs: number
+  dragThresholdPx: number
+  syncPolicyDefault: PortPopoutSyncPolicy
+}
+
 export interface WindowSettings {
   enabled: boolean
   autoGroupStrategy: 'none' | 'by-project' | 'by-type'
   saveLayoutOnExit: boolean
   snapToEdges: boolean
+  portPopout: PortPopoutSettings
 }
 
 export interface AdvancedSettings {
@@ -199,11 +313,26 @@ export const DEFAULT_TOOLS: CodingTool[] = [
 export const DEFAULT_SETTINGS: AppSettings = {
   appearance: {
     theme: 'constructivism',
+    followSystemTheme: false,
     fontSize: 'medium',
     sidebarPosition: 'left',
     compactMode: false,
     enableAnimations: true,
+    holidayDecorationsEnabled: true,
+    holidayAutoPromptEnabled: true,
+    holidayFocusMode: false,
+    layoutMode: 'auto',
     informationDensity: 'standard',
+    radiusFamily: 'sharp',
+    motionLevel: 'balanced',
+    decoration: {
+      kind: 'soviet-geo',
+      opacity: 0.25,
+      positions: ['card-background', 'header'],
+      blendMode: 'normal',
+      scale: 1,
+      motionRespect: true,
+    },
   },
   scan: {
     scanDrives: ['C', 'D'],
@@ -243,6 +372,19 @@ export const DEFAULT_SETTINGS: AppSettings = {
     autoGroupStrategy: 'by-project',
     saveLayoutOnExit: false,
     snapToEdges: true,
+    portPopout: {
+      triggerEnabled: {
+        hover: true,
+        click: true,
+        drag: true,
+        contextMenu: true,
+      },
+      hoverDelayMs: 1000,
+      dragThresholdPx: 8,
+      syncPolicyDefault: {
+        ...DEFAULT_PORT_POPOUT_SYNC_POLICY,
+      },
+    },
   },
   advanced: {
     autoStartOnBoot: false,  // TODO: 后端实际未实现，暂保留 UI

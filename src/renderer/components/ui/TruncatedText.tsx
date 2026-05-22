@@ -1,4 +1,4 @@
-import { memo, useRef, useState, useEffect, useCallback } from 'react'
+import { memo, useRef, useState, useEffect, useCallback, type MouseEvent, type CSSProperties, type RefObject } from 'react'
 
 interface TruncatedTextProps {
   text: string
@@ -7,6 +7,12 @@ interface TruncatedTextProps {
   maxWidth?: string
   /** HTML tag to render. Defaults to 'span'. */
   as?: 'span' | 'p' | 'div'
+  /** Truncate by characters before CSS width truncation. */
+  maxChars?: number
+  /** Allow double click to toggle marquee mode for long titles. */
+  enableMarquee?: boolean
+  /** Optional test id for interaction checks. */
+  testId?: string
 }
 
 /**
@@ -18,19 +24,34 @@ export const TruncatedText = memo(function TruncatedText({
   className = '',
   maxWidth,
   as: Tag = 'span',
+  maxChars,
+  enableMarquee = false,
+  testId
 }: TruncatedTextProps) {
+  const ELLIPSIS = '\u2026'
   const ref = useRef<HTMLElement>(null)
+  const lastClickDetailToggleAtRef = useRef(0)
+  const lastPlainClickAtRef = useRef(0)
   const [isTruncated, setIsTruncated] = useState(false)
+  const [isMarquee, setIsMarquee] = useState(false)
+  const [marqueeDistance, setMarqueeDistance] = useState(0)
+
+  const isCharTruncated = typeof maxChars === 'number' && text.length > maxChars
+  const displayText = !isMarquee && isCharTruncated
+    ? `${text.slice(0, maxChars)}${ELLIPSIS}`
+    : text
 
   const checkTruncation = useCallback(() => {
     const el = ref.current
     if (!el) return
-    setIsTruncated(el.scrollWidth > el.clientWidth)
+    const overflow = el.scrollWidth > el.clientWidth
+    setIsTruncated(overflow)
+    setMarqueeDistance(overflow ? el.scrollWidth - el.clientWidth : 0)
   }, [])
 
   useEffect(() => {
     checkTruncation()
-  }, [text, checkTruncation])
+  }, [displayText, checkTruncation])
 
   // Re-check on resize since container width can change
   useEffect(() => {
@@ -41,14 +62,65 @@ export const TruncatedText = memo(function TruncatedText({
     return () => observer.disconnect()
   }, [checkTruncation])
 
+  useEffect(() => {
+    if (!enableMarquee || (!isCharTruncated && !isTruncated)) {
+      setIsMarquee(false)
+    }
+  }, [enableMarquee, isCharTruncated, isTruncated])
+
+  const shouldShowTooltip = isCharTruncated || isTruncated
+  const canToggleMarquee = enableMarquee && (isCharTruncated || isTruncated)
+
+  const toggleMarquee = useCallback((event: MouseEvent<HTMLElement>) => {
+    if (!canToggleMarquee) return false
+    event.stopPropagation()
+    setIsMarquee((current) => !current)
+    return true
+  }, [canToggleMarquee])
+
+  const handleClick = useCallback((event: MouseEvent<HTMLElement>) => {
+    if (!canToggleMarquee) return
+    event.stopPropagation()
+    const isSecondPlainClick = lastPlainClickAtRef.current > 0 && event.timeStamp - lastPlainClickAtRef.current <= 500
+    if (event.detail !== 2 && !isSecondPlainClick) {
+      lastPlainClickAtRef.current = event.timeStamp
+      return
+    }
+    lastPlainClickAtRef.current = 0
+    if (toggleMarquee(event)) {
+      lastClickDetailToggleAtRef.current = event.timeStamp
+    }
+  }, [canToggleMarquee, toggleMarquee])
+
+  const handleDoubleClick = useCallback((event: MouseEvent<HTMLElement>) => {
+    event.stopPropagation()
+    if (Math.abs(event.timeStamp - lastClickDetailToggleAtRef.current) < 50) return
+    toggleMarquee(event)
+  }, [toggleMarquee])
+
+  const style: CSSProperties & { '--truncated-text-marquee-distance'?: string } = {
+    ...(maxWidth ? { maxWidth } : {}),
+    ...(isMarquee ? { '--truncated-text-marquee-distance': `${marqueeDistance}px` } : {})
+  }
+
   return (
     <Tag
-      ref={ref as React.RefObject<never>}
-      className={`block truncate ${className}`}
-      style={maxWidth ? { maxWidth } : undefined}
-      title={isTruncated ? text : undefined}
+      ref={ref as RefObject<never>}
+      className={`block ${isMarquee ? 'overflow-hidden whitespace-nowrap' : 'truncate'} ${className}`}
+      style={style}
+      title={shouldShowTooltip ? text : undefined}
+      onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
+      data-testid={testId}
+      data-marquee-active={isMarquee ? 'true' : 'false'}
     >
-      {text}
+      {isMarquee ? (
+        <span className="truncated-text-marquee-track">
+          {text}
+        </span>
+      ) : (
+        displayText
+      )}
     </Tag>
   )
 })

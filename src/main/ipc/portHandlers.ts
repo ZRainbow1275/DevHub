@@ -3,15 +3,39 @@ import { IPC_CHANNELS_EXT, PortInfo, PortTopologyData, PortFocusData } from '@sh
 import { PortScanner } from '../services/PortScanner'
 import { SystemProcessScanner } from '../services/SystemProcessScanner'
 import { ScannerCache } from '../services/ScannerCache'
+import { ScannerRegistry } from '../services/runtime/ScannerRegistry'
 import { validatePort, validatePortArray } from '../utils/validation'
 import { withRateLimit, RATE_LIMITS } from '../utils/rateLimiter'
+import type { SharedMonitorRuntime } from './runtimeBundle'
 
 let portScanner: PortScanner | null = null
 let portScannerCache: ScannerCache | null = null
+let detailProcessScanner: SystemProcessScanner | null = null
+let ownsDetailProcessScanner = false
 
 // Active incremental queries for cancellation
 const activePortQueries = new Map<number, { abort: () => void }>()
 const MAX_PARALLEL_PORT_QUERIES = 3
+const RECENT_TIMEOUT_TTL_MS = 10_000
+const recentTimeoutResults = new Map<number, { data: PortFocusData; expiresAt: number }>()
+
+function getRecentTimeoutResult(port: number): PortFocusData | null {
+  const entry = recentTimeoutResults.get(port)
+  if (!entry) return null
+  if (entry.expiresAt <= Date.now()) {
+    recentTimeoutResults.delete(port)
+    return null
+  }
+  return entry.data
+}
+
+function rememberTimeoutResult(port: number, data: PortFocusData): void {
+  recentTimeoutResults.set(port, { data, expiresAt: Date.now() + RECENT_TIMEOUT_TTL_MS })
+}
+
+function clearRecentTimeoutResult(port: number): void {
+  recentTimeoutResults.delete(port)
+}
 
 function cancelPortQuery(port: number): void {
   const existing = activePortQueries.get(port)
@@ -63,9 +87,20 @@ function buildCachedFocusData(targetPort: number, cachedPorts: PortInfo[]): Port
   }
 }
 
-export function setupPortHandlers(mainWindow: BrowserWindow, scanner?: PortScanner, cache?: ScannerCache): void {
-  portScanner = scanner || new PortScanner()
-  portScannerCache = cache || null
+export function setupPortHandlers(
+  mainWindow: BrowserWindow,
+  scanner?: PortScanner,
+  cache?: ScannerCache,
+  runtime?: SharedMonitorRuntime
+): void {
+  const registeredPortScanner = ScannerRegistry.getInstance('port')
+  const registeredCache = ScannerRegistry.getInstance('scannerCache')
+  const registeredProcessScanner = ScannerRegistry.getInstance('process')
+
+  portScanner = scanner ?? registeredPortScanner ?? new PortScanner()
+  portScannerCache = cache ?? registeredCache ?? null
+  detailProcessScanner = runtime?.processScanner ?? registeredProcessScanner ?? null
+  ownsDetailProcessScanner = false
 
   ipcMain.handle(IPC_CHANNELS_EXT.PORT_SCAN, withRateLimit(
     IPC_CHANNELS_EXT.PORT_SCAN, RATE_LIMITS.SCAN,
@@ -151,14 +186,22 @@ export function setupPortHandlers(mainWindow: BrowserWindow, scanner?: PortScann
     async (_, port: unknown): Promise<PortFocusData | null> => {
       if (!portScanner) return null
       validatePort(port)
-      // Try to create a process scanner for extended info
-      let processScanner: SystemProcessScanner | undefined
-      try {
-        processScanner = new SystemProcessScanner()
-      } catch {
-        // Fallback: no extended process info
+      if (!detailProcessScanner) {
+        const sharedProcessScanner = ScannerRegistry.getInstance('process')
+        if (sharedProcessScanner) {
+          detailProcessScanner = sharedProcessScanner
+          ownsDetailProcessScanner = false
+        } else {
+          try {
+            detailProcessScanner = new SystemProcessScanner(portScanner)
+            ownsDetailProcessScanner = true
+          } catch {
+            detailProcessScanner = null
+            ownsDetailProcessScanner = false
+          }
+        }
       }
-      return portScanner.getPortFocusData(port, processScanner)
+      return portScanner.getPortFocusData(port, detailProcessScanner ?? undefined)
     }
   ))
 
@@ -178,6 +221,10 @@ export function setupPortHandlers(mainWindow: BrowserWindow, scanner?: PortScann
       // 1. Immediately try to return cached data
       const cachedPorts = portScannerCache?.getPorts() ?? []
       const cachedData = buildCachedFocusData(targetPort, cachedPorts)
+      const recentTimeoutData = getRecentTimeoutResult(targetPort)
+      if (recentTimeoutData) {
+        return { data: recentTimeoutData, source: 'timeout', isStale: true }
+      }
 
       // 2. Cancel any previous query for this port and enforce max parallel
       cancelPortQuery(targetPort)
@@ -193,14 +240,23 @@ export function setupPortHandlers(mainWindow: BrowserWindow, scanner?: PortScann
       try {
         const incrementalPromise = (async (): Promise<PortFocusData | null> => {
           if (aborted) return null
-          let processScanner: SystemProcessScanner | undefined
-          try {
-            processScanner = new SystemProcessScanner()
-          } catch {
-            // Fallback: no extended process info
+          if (!detailProcessScanner) {
+            const sharedProcessScanner = ScannerRegistry.getInstance('process')
+            if (sharedProcessScanner) {
+              detailProcessScanner = sharedProcessScanner
+              ownsDetailProcessScanner = false
+            } else {
+              try {
+                detailProcessScanner = new SystemProcessScanner(portScanner)
+                ownsDetailProcessScanner = true
+              } catch {
+                detailProcessScanner = null
+                ownsDetailProcessScanner = false
+              }
+            }
           }
           if (aborted) return null
-          return portScanner!.getPortDetailIncremental(targetPort, processScanner)
+          return portScanner!.getPortDetailIncremental(targetPort, detailProcessScanner ?? undefined)
         })()
 
         const timeoutPromise = new Promise<null>((resolve) => {
@@ -216,11 +272,14 @@ export function setupPortHandlers(mainWindow: BrowserWindow, scanner?: PortScann
         }
 
         if (result === null && cachedData !== null) {
-          // Timeout — return cached data with stale warning
+          // Timeout — return cached data with stale warning. Keep the same real
+          // timeout visible for immediate UI consumers instead of racing it away.
+          rememberTimeoutResult(targetPort, cachedData)
           return { data: cachedData, source: 'timeout', isStale: true }
         }
 
         if (result !== null) {
+          clearRecentTimeoutResult(targetPort)
           return { data: result, source: 'incremental', isStale: false }
         }
 
@@ -236,6 +295,7 @@ export function setupPortHandlers(mainWindow: BrowserWindow, scanner?: PortScann
 
   // Cancel a previous port query (called by renderer when switching ports)
   ipcMain.handle('port:cancel-query', async (_, port: unknown): Promise<boolean> => {
+    runtime?.metricsCollector?.trackIpcChannel('port:cancel-query')
     if (typeof port === 'number') {
       cancelPortQuery(port)
       return true
@@ -250,6 +310,12 @@ export function cleanupPortHandlers(): void {
     cancelPortQuery(port)
   }
   activePortQueries.clear()
+  recentTimeoutResults.clear()
+  if (detailProcessScanner && ownsDetailProcessScanner) {
+    detailProcessScanner.cleanup()
+  }
+  detailProcessScanner = null
+  ownsDetailProcessScanner = false
 
   ipcMain.removeHandler(IPC_CHANNELS_EXT.PORT_SCAN)
   ipcMain.removeHandler(IPC_CHANNELS_EXT.PORT_CHECK)
@@ -262,5 +328,6 @@ export function cleanupPortHandlers(): void {
   ipcMain.removeHandler(IPC_CHANNELS_EXT.PORT_GET_FOCUS_DATA)
   ipcMain.removeHandler('port:get-detail-incremental')
   ipcMain.removeHandler('port:cancel-query')
+  portScanner = null
   portScannerCache = null
 }

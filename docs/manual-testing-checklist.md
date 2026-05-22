@@ -11,6 +11,16 @@
 
 ## 1. 应用启动测试
 
+### 1.0 Startup running surfaces
+- [ ] Development mode `pnpm dev` starts two expected surfaces: the `electron-vite dev` renderer dev server and the Electron main desktop process; this is not a duplicate backend.
+- [ ] If DevHub starts a managed project, the log panel shows that child process stdout/stderr; using open terminal can additionally launch a separate `powershell.exe -NoExit` window.
+- [ ] Record port ownership only after checking the owning process; for example local `127.0.0.1:3001` can be owned by Docker Desktop and must not be attributed to DevHub without process evidence.
+
+### 1.0 启动运行面说明
+- [ ] 开发模式执行 `pnpm dev` 时确认理解双运行面：`electron-vite dev` 会启动 renderer 开发服务，并同时启动 Electron main 桌面进程；这不是独立后端异常。
+- [ ] 若通过 DevHub 启动被管理项目，确认日志面板展示的是子进程 stdout/stderr；若使用“打开终端”，会额外拉起独立 `powershell.exe -NoExit` 窗口，不应与项目监听端口混淆。
+- [ ] 记录端口归属前先核对进程所有者；例如本机 `127.0.0.1:3001` 可能由 Docker Desktop 占用，不能直接归因为 DevHub 后端。
+
 ### 1.1 首次启动
 - [ ] 应用成功启动，无崩溃
 - [ ] 窗口正确显示，无白屏

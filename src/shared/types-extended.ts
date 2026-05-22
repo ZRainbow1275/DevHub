@@ -1,3 +1,7 @@
+import { z } from 'zod'
+
+import { DEFAULT_PORT_POPOUT_SYNC_POLICY } from './types'
+
 // Extended type definitions for DevHub Pro
 
 // ============ Shared Service Result Type ============
@@ -15,6 +19,8 @@ export type ProcessStatusType = 'running' | 'idle' | 'waiting' | 'unknown'
 
 export interface ProcessInfo {
   pid: number
+  ppid?: number
+  parentName?: string
   name: string
   command: string
   port?: number
@@ -85,10 +91,21 @@ export interface ProcessDeepDetail {
   networkConnections: NetworkConnectionInfo[]
   loadedModules: LoadedModuleInfo[]
   environmentVariables: Record<string, string>
-  ancestorChain: ProcessTreeNode[]
-  children: ProcessTreeNode[]
+  ancestorChain: LegacyProcessTreeNode[]
+  children: LegacyProcessTreeNode[]
   relatedProcesses: RelatedProcessInfo[]
   requiresElevation?: boolean
+}
+
+export interface AccessReport {
+  pid: number
+  elevationRequired: boolean
+  scanAttempted: boolean
+  scanResult: 'ok' | 'access-denied' | 'not-found' | 'timeout' | 'wmi-error'
+  currentUser: string
+  targetProcessUser?: string
+  suggestion: 'relaunch-as-admin' | 'retry' | 'none'
+  triedAt: number
 }
 
 export interface NetworkConnectionInfo {
@@ -106,12 +123,12 @@ export interface LoadedModuleInfo {
   sizeKB: number
 }
 
-export interface ProcessTreeNode {
+export interface LegacyProcessTreeNode {
   pid: number
   name: string
   cpuPercent: number
   memoryMB: number
-  children?: ProcessTreeNode[]
+  children?: LegacyProcessTreeNode[]
 }
 
 export interface RelatedProcessInfo {
@@ -156,6 +173,7 @@ export interface PortInfo {
   localAddress: string
   foreignAddress: string
   projectId?: string
+  source?: 'systeminformation' | 'netstat' | 'scanner-cache'
 }
 
 // ============ Port Focus Types ============
@@ -219,6 +237,113 @@ export const COMMON_DEV_PORTS = [
   8000, 8080, 8888, 9000, 4200, 4321
 ] as const
 
+// ============ Port Popout Contracts ============
+
+export const ZIndexTier = {
+  BASE: 0,
+  HOVER: 100,
+  TOOLBAR: 1000,
+  DRAWER: 2000,
+  MODAL: 3000,
+  POPOUT: 4000,
+  TOAST: 5000,
+  COMMAND_PALETTE: 6000,
+  WATCHDOG_ALERT: 7000,
+  DEVTOOLS: 8000,
+  SYSTEM_OVERLAY: 9000
+} as const
+
+export const POPOUT_TRIGGER_VALUES = ['hover', 'click', 'drag', 'context-menu', 'cmdk', 'api'] as const
+export const PopoutTriggerSchema = z.enum(POPOUT_TRIGGER_VALUES)
+export const PortPopoutTriggerSchema = PopoutTriggerSchema
+export type PortPopoutTrigger = z.infer<typeof PopoutTriggerSchema>
+
+export const POPOUT_SYNC_DIRECTION_VALUES = ['both', 'main-to-popout', 'popout-to-main', 'isolated'] as const
+export const PopoutSyncDirectionSchema = z.enum(POPOUT_SYNC_DIRECTION_VALUES)
+
+export const PortPopoutPositionSchema = z.object({
+  x: z.number().finite(),
+  y: z.number().finite()
+})
+export type PortPopoutPosition = z.infer<typeof PortPopoutPositionSchema>
+
+export const PortPopoutSizeSchema = z.object({
+  width: z.number().finite().min(280),
+  height: z.number().finite().min(200)
+})
+export type PortPopoutSize = z.infer<typeof PortPopoutSizeSchema>
+
+export const PopoutSyncPolicySchema = z.object({
+  selection: z.boolean().default(true),
+  filters: z.boolean().default(true),
+  sort: z.boolean().default(true),
+  search: z.boolean().default(true),
+  theme: z.boolean().default(true),
+  density: z.boolean().default(true),
+  hover: z.boolean().default(false),
+  scroll: z.boolean().default(false),
+  direction: PopoutSyncDirectionSchema.default('both')
+})
+
+export type PopoutSyncPolicyContract = z.infer<typeof PopoutSyncPolicySchema>
+
+export const PORT_POPOUT_VIEW_MODE_VALUES = ['cards', 'list', 'relationship'] as const
+export const PortPopoutViewModeSchema = z.enum(PORT_POPOUT_VIEW_MODE_VALUES)
+export type PortPopoutViewMode = z.infer<typeof PortPopoutViewModeSchema>
+
+export const PORT_POPOUT_FILTER_VALUES = ['all', 'common', 'listening', 'exposed'] as const
+export const PortPopoutFilterSchema = z.enum(PORT_POPOUT_FILTER_VALUES)
+export type PortPopoutFilter = z.infer<typeof PortPopoutFilterSchema>
+
+export const PortPopoutViewSyncStateSchema = z.object({
+  selectedPort: z.number().int().nullable(),
+  filter: PortPopoutFilterSchema,
+  searchPort: z.string().max(128),
+  viewMode: PortPopoutViewModeSchema
+}).strict()
+
+export type PortPopoutViewSyncState = z.infer<typeof PortPopoutViewSyncStateSchema>
+
+export const POPOUT_LIMITS = {
+  MAX_FLOATING: 5,
+  MAX_TOTAL: 8,
+  DRAG_DISTANCE_THRESHOLD_PX: 8,
+  HOVER_DELAY_MS: 1000,
+  CARD_MIN_W: 280,
+  CARD_MIN_H: 200,
+  CARD_DEFAULT_W: 360,
+  CARD_DEFAULT_H: 280,
+  RSS_PER_POPOUT_MB: 100,
+  RSS_TOTAL_MB: 500,
+  AUTO_EVICT_IDLE_MIN: 30,
+  Z_INDEX_BASE: ZIndexTier.POPOUT,
+  Z_INDEX_RANGE: 999
+} as const
+
+export const PORT_POPOUT_LIMITS = POPOUT_LIMITS
+
+export const PortPopoutSchema = z.object({
+  id: z.string().min(1),
+  kind: z.literal('port-detail').default('port-detail'),
+  port: z.number().int().min(1).max(65535),
+  pid: z.number().int().nonnegative(),
+  trigger: PopoutTriggerSchema,
+  mode: z.enum(['floating', 'browserwindow']),
+  position: PortPopoutPositionSchema,
+  size: PortPopoutSizeSchema,
+  zIndex: z.number().int().min(POPOUT_LIMITS.Z_INDEX_BASE).max(POPOUT_LIMITS.Z_INDEX_BASE + POPOUT_LIMITS.Z_INDEX_RANGE),
+  pinned: z.boolean().default(false),
+  minimized: z.boolean().default(false),
+  alwaysOnTop: z.boolean().default(false),
+  syncPolicy: PopoutSyncPolicySchema.default(DEFAULT_PORT_POPOUT_SYNC_POLICY),
+  createdAt: z.number().int().nonnegative(),
+  lastInteractedAt: z.number().int().nonnegative(),
+  monitorId: z.number().int().optional(),
+  themeOverride: z.string().optional()
+})
+
+export type PortPopoutContract = z.infer<typeof PortPopoutSchema>
+
 // ============ Window Management Types ============
 
 export interface WindowInfo {
@@ -233,6 +358,72 @@ export interface WindowInfo {
   isSystemWindow: boolean
 }
 
+export type WindowOperationKind =
+  | 'focus'
+  | 'minimize'
+  | 'maximize'
+  | 'restore'
+  | 'move-resize'
+  | 'toggle-always-on-top'
+  | 'set-opacity'
+  | 'screenshot'
+  | 'close'
+  | 'kill-process'
+  | 'jump-process'
+  | 'jump-port'
+  | 'jump-ai-task'
+  | 'toggle-favorite'
+  | 'open-working-dir'
+  | 'open-project'
+  | 'copy-title'
+  | 'set-title'
+  | 'send-safe-keys'
+
+export type WindowOperationCategory = 'state' | 'capture' | 'navigation' | 'metadata' | 'danger'
+
+export interface WindowOperationCatalogItem {
+  kind: WindowOperationKind
+  label: string
+  description: string
+  category: WindowOperationCategory
+  requires?: Array<'pid' | 'port' | 'ai-task' | 'project' | 'clipboard'>
+  danger?: boolean
+}
+
+export interface WindowFavoriteRecord {
+  id: string
+  fingerprintHash: string
+  hwnd: number
+  title: string
+  processName: string
+  pid: number
+  className?: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface WindowFavoriteToggleResult {
+  favorite: boolean
+  record: WindowFavoriteRecord
+}
+
+export interface WindowScreenshotResult {
+  hwnd: number
+  path: string
+  directory: string
+  width: number
+  height: number
+  createdAt: number
+  source: 'win32-copy-from-screen'
+}
+
+export interface WindowOpenDirectoryResult {
+  hwnd: number
+  pid: number
+  directory: string
+  source: 'process-executable-directory'
+}
+
 /** Window class names known to be system/shell windows — filtered by default */
 export const SYSTEM_WINDOW_CLASSNAMES: ReadonlySet<string> = new Set([
   'Progman',
@@ -243,12 +434,124 @@ export const SYSTEM_WINDOW_CLASSNAMES: ReadonlySet<string> = new Set([
   'Shell_SecondaryTrayWnd'
 ])
 
+export type GroupColorTag = 'red' | 'amber' | 'yellow' | 'green' | 'teal' | 'blue' | 'indigo' | 'violet' | 'slate'
+
+export type WindowGroupKind = 'user' | 'auto-ai-cli' | 'auto-browser' | 'auto-editor' | 'auto-terminal'
+
+export interface WindowFingerprint {
+  processName: string
+  titlePattern: {
+    kind: 'exact' | 'prefix' | 'regex'
+    value: string
+  }
+  classNameHint?: string
+  workingDirHint?: string
+  toolTypeHint?: AIToolType
+  hashKey: string
+  createdAt: number
+}
+
+export interface WindowGroupMembership {
+  groupId: string
+  hwnd: number
+  resolvedFromFingerprintHash: string
+  lastResolvedAt: number
+  confidence: number
+}
+
+export interface HwndResolutionReport {
+  groupId: string
+  resolvedAt: number
+  matched: Array<{ fingerprintHash: string; hwnd: number; confidence: number }>
+  unmatched: string[]
+  ambiguous: Array<{ fingerprintHash: string; candidates: number[] }>
+}
+
 export interface WindowGroup {
   id: string
   name: string
   projectId?: string
   windows: WindowInfo[]
   createdAt: number
+  updatedAt?: number
+  colorTag?: GroupColorTag
+  kind?: WindowGroupKind
+  memberFingerprints?: WindowFingerprint[]
+  resolvedMembership?: WindowGroupMembership[]
+  resolutionReport?: HwndResolutionReport
+}
+
+export type LayoutWindowState = 'normal' | 'minimized' | 'maximized'
+
+export type TilePreset =
+  | 'tile-2x2'
+  | 'tile-3x3'
+  | 'tile-3x2'
+  | 'tile-horizontal'
+  | 'tile-vertical'
+  | 'tile-auto'
+  | 'cascade'
+  | 'stack-center'
+
+export type LayoutErrorCode =
+  | 'WINDOW_NOT_FOUND'
+  | 'WIN32_SETPOS_FAILED'
+  | 'MONITOR_OUT_OF_RANGE'
+  | 'MINIMIZED_CANNOT_REPOSITION'
+  | 'PRESET_REQUIRES_HWNDS'
+  | 'SNAPSHOT_NOT_FOUND'
+  | 'SNAPSHOT_MEMBERS_ALL_GONE'
+  | 'MULTI_DPI_FACTOR_UNKNOWN'
+  | 'RESTORE_POINT_EXPIRED'
+  | 'LAYOUT_MULTI_MONITOR_MISMATCH'
+
+export interface WindowLayoutSnapshotItem {
+  fingerprintHash: string
+  windowFingerprint?: WindowFingerprint
+  hwnd?: number
+  processName: string
+  titlePattern: string
+  className?: string
+  rect: WindowInfo['rect']
+  zOrderIdx: number
+  state: LayoutWindowState
+}
+
+export interface WindowLayoutSnapshot {
+  id: string
+  name: string
+  description?: string
+  createdAt: number
+  updatedAt: number
+  monitorId?: number
+  items: WindowLayoutSnapshotItem[]
+  restorePoint?: boolean
+}
+
+export interface ApplyLayoutIntent {
+  preset?: TilePreset
+  snapshotId?: string
+  customRects?: Array<{ hwnd: number; rect: WindowInfo['rect'] }>
+  hwnds?: number[]
+  monitorId?: number
+  saveRestorePoint?: boolean
+}
+
+export interface ApplyLayoutResult {
+  ok: boolean
+  applied: Array<{ hwnd: number; prevRect: WindowInfo['rect']; newRect: WindowInfo['rect'] }>
+  failed: Array<{ hwnd: number; error: LayoutErrorCode; message?: string }>
+  restorePointId?: string
+  snapshotId?: string
+}
+
+export interface MonitorInfo {
+  id: number
+  label: string
+  bounds: WindowInfo['rect']
+  workArea: WindowInfo['rect']
+  scaleFactor: number
+  primary: boolean
 }
 
 export interface WindowLayout {
@@ -352,7 +655,7 @@ export interface AITask {
   projectId?: string
   alias?: string
   aliasColor?: string
-  /** Fine-grained 7-state monitor state */
+  /** Fine-grained 12-state monitor state */
   monitorState?: AIMonitorState
   /** Auto-generated display name (e.g. "Claude Code-1") */
   autoName?: string
@@ -372,6 +675,8 @@ export interface AITask {
     phaseConfidence: number
     /** Names of currently active detection indicators */
     activeIndicators: string[]
+    /** Per-signal weighted contributions captured for observability/calibration */
+    signalContributions?: SignalContribution[]
     /** Whether the task is in a confirmation window before final completion */
     inConfirmationWindow: boolean
     /** Remaining milliseconds in confirmation window, if active */
@@ -397,6 +702,40 @@ export interface AIWindowAlias {
   color?: string
   /** Whether this alias was auto-generated (vs. user-defined) */
   autoGenerated?: boolean
+  /** Last external title applied through Win32 SetWindowText. */
+  appliedExternalTitle?: {
+    hwnd: number
+    originalTitle: string
+    appliedTitle: string
+    appliedAt: number
+  }
+}
+
+export interface AIRenameAndApplyRequest {
+  alias: AIWindowAlias
+  newName: string
+  hwnd: number
+  pid: number
+  toolType: AIToolType
+  toolDisplayName: string
+  originalTitle: string
+  applyToExternalWindow?: boolean
+  requestedAt: number
+}
+
+export interface AIRenameAndApplyResult {
+  success: boolean
+  alias?: AIWindowAlias
+  titleApplied: boolean
+  appliedTitle?: string
+  error?: string
+  code?:
+    | 'ALIAS_NAME_INVALID'
+    | 'ALIAS_SCHEMA_INVALID'
+    | 'ALIAS_PERSIST_WRITE_FAILED'
+    | 'WINDOW_MANAGER_UNAVAILABLE'
+    | 'WINDOW_SET_TITLE_FAILED'
+    | 'ROLLBACK_FAILED'
 }
 
 export interface AITaskHistory {
@@ -408,6 +747,24 @@ export interface AITaskHistory {
   duration: number
   status: 'completed' | 'error' | 'cancelled'
   summary?: string
+  taskAlias?: string
+  windowHwnd?: number
+}
+
+export interface AICompletionOracleEvent {
+  alias: string
+  completedAt: number
+  hookEventName: string
+  source: 'claude-code-hook' | 'bench' | 'runtime'
+  cwd?: string
+  sessionId?: string
+  taskKey?: string
+  transcriptPath?: string
+}
+
+export interface AICompletionOracleRecord {
+  history: AITaskHistory
+  confidenceReport: ConfidenceReport
 }
 
 // ============ AI Progress Timeline Types ============
@@ -415,6 +772,8 @@ export interface AITaskHistory {
 export interface TimelineEntry {
   timestamp: string    // ISO
   status: AITaskState
+  /** Fine-grained monitor state at this timeline point. */
+  monitorState?: AIMonitorState
   duration: number     // seconds this status lasted
   detail?: string      // optional context (e.g. "modifying App.tsx")
 }
@@ -430,15 +789,116 @@ export interface AIToolDetectionConfig {
   confirmationWindowMs: number  // ms to wait before confirming completion
 }
 
-/** Fine-grained AI monitor state for the 7-state state machine */
-export type AIMonitorState = 'idle' | 'thinking' | 'coding' | 'compiling' | 'waiting-input' | 'completed' | 'error'
+export interface ToolProfile extends AIToolDetectionConfig {
+  signalWeights: {
+    cliParse?: number
+    terminalKeywords: number
+    cpuIdle: number
+    lowOutputRate: number
+    promptDetected: number
+    childProcessExit: number
+    timeThreshold: number
+  }
+  minHoldMs?: Partial<Record<AIMonitorState, number>>
+}
+
+export type DetectionSignalName =
+  | 'cli_parse'
+  | 'terminal_keywords'
+  | 'cpu_idle'
+  | 'low_output_rate'
+  | 'prompt_detected'
+  | 'child_process_exit'
+  | 'time_threshold'
+
+export type DetectionSignalKind = 'textual' | 'numeric' | 'event'
+
+export interface SignalResult<V = number | boolean | string> {
+  name: DetectionSignalName
+  kind: DetectionSignalKind
+  raw: V
+  normalized: number
+  confidence: number
+  triggeredAt?: number
+  reason: string
+}
+
+export interface SignalContribution {
+  name: DetectionSignalName
+  result: SignalResult
+  weight: number
+  weightedContribution: number
+}
+
+export interface CalibrationSample {
+  taskKey: string
+  toolType: AIToolType
+  capturedAt: number
+  expected: 'completed' | 'running' | 'error' | 'cancelled'
+  observed: AITaskState | 'cancelled'
+  signals: Partial<Record<DetectionSignalName, number>>
+  completionDelayMs?: number
+  source: 'manual' | 'bench' | 'runtime'
+  notes?: string
+}
+
+export interface CalibrationResult {
+  accepted: boolean
+  toolType: AIToolType
+  sampleCount: number
+  updated: boolean
+  weights: ToolProfile['signalWeights']
+  reason?: string
+}
+
+export interface ConfidenceReport {
+  taskKey: string
+  taskId: string
+  toolType: AIToolType
+  state: AITaskState
+  monitorState?: AIMonitorState
+  completionScore: number
+  threshold: number
+  phaseConfidence: number
+  activeIndicators: string[]
+  signalContributions?: SignalContribution[]
+  inConfirmationWindow: boolean
+  confirmationRemainingMs?: number
+  updatedAt: number
+  narrative: string
+}
+
+export interface StateTransition extends TimelineEntry {
+  taskKey: string
+  monitorState?: AIMonitorState
+}
+
+/** Fine-grained AI monitor state for the 12-state state machine */
+export type AIMonitorState =
+  | 'initializing'
+  | 'idle'
+  | 'thinking'
+  | 'receiving-input'
+  | 'coding'
+  | 'compiling'
+  | 'validating'
+  | 'waiting-input'
+  | 'awaiting-human'
+  | 'stuck'
+  | 'completed'
+  | 'error'
 
 export const AI_MONITOR_STATE_INFO: Record<AIMonitorState, { label: string; color: string; icon: string }> = {
+  'initializing':  { label: '初始化',   color: 'blue',   icon: 'loader' },
   'idle':          { label: '空闲',     color: 'gray',   icon: 'pause' },
   'thinking':      { label: '思考中',   color: 'blue',   icon: 'brain' },
+  'receiving-input': { label: '接收输入', color: 'blue',   icon: 'inbox' },
   'coding':        { label: '编码中',   color: 'green',  icon: 'keyboard' },
   'compiling':     { label: '编译中',   color: 'orange', icon: 'gear' },
+  'validating':    { label: '确认中',   color: 'blue',   icon: 'check' },
   'waiting-input': { label: '等待输入', color: 'yellow', icon: 'hourglass' },
+  'awaiting-human': { label: '等待人工', color: 'yellow', icon: 'user-check' },
+  'stuck':         { label: '疑似卡死', color: 'red',    icon: 'alert' },
   'completed':     { label: '已完成',   color: 'green',  icon: 'check' },
   'error':         { label: '错误',     color: 'red',    icon: 'x' },
 }
@@ -447,23 +907,23 @@ export const AI_MONITOR_STATE_INFO: Record<AIMonitorState, { label: string; colo
 export const DEFAULT_AI_TOOL_CONFIGS: Record<Exclude<AIToolType, 'other'>, AIToolDetectionConfig> = {
   'claude-code': {
     toolType: 'claude-code',
-    completionKeywords: ['Done', 'Complete', 'Finished', 'finished', 'done', '✓', '✔'],
-    errorKeywords: ['Error', 'Failed', 'error:', 'FAILED', 'panic', '✗', '✘'],
-    promptPatterns: ['^\\s*[>$%#]\\s*$', '^\\s*❯\\s*$', '^\\s*>>>\\s*$'],
+    completionKeywords: ['Done', 'Complete', 'Finished', 'finished', 'done', '\u2713', '\u2714'],
+    errorKeywords: ['Error', 'Failed', 'error:', 'FAILED', 'panic', '\u2717', '\u2718'],
+    promptPatterns: ['^\\s*[>$%#]\\s*$', '^\\s*\u276f\\s*$', '^\\s*>>>\\s*$'],
     cpuBaselineThreshold: 1,
     confirmationWindowMs: 8000,
   },
   'codex': {
     toolType: 'codex',
-    completionKeywords: ['Done', 'Complete', 'Finished', 'Ready', '✓'],
+    completionKeywords: ['Done', 'Complete', 'Finished', 'Ready', '\u2713'],
     errorKeywords: ['Error', 'Failed', 'error:'],
-    promptPatterns: ['^\\s*[>$%#]\\s*$', '^\\s*❯\\s*$'],
+    promptPatterns: ['^\\s*[>$%#]\\s*$', '^\\s*\u276f\\s*$'],
     cpuBaselineThreshold: 3,
     confirmationWindowMs: 8000,
   },
   'gemini-cli': {
     toolType: 'gemini-cli',
-    completionKeywords: ['Done', 'Complete', 'Finished', '✓'],
+    completionKeywords: ['Done', 'Complete', 'Finished', '\u2713'],
     errorKeywords: ['Error', 'Failed', 'error:'],
     promptPatterns: ['^\\s*[>$%#]\\s*$'],
     cpuBaselineThreshold: 3,
@@ -479,7 +939,7 @@ export const DEFAULT_AI_TOOL_CONFIGS: Record<Exclude<AIToolType, 'other'>, AIToo
   },
   'opencode': {
     toolType: 'opencode',
-    completionKeywords: ['Done', 'Complete', 'Finished', '✓'],
+    completionKeywords: ['Done', 'Complete', 'Finished', '\u2713'],
     errorKeywords: ['Error', 'Failed', 'error:'],
     promptPatterns: ['^\\s*[>$%#]\\s*$'],
     cpuBaselineThreshold: 3,
@@ -487,7 +947,7 @@ export const DEFAULT_AI_TOOL_CONFIGS: Record<Exclude<AIToolType, 'other'>, AIToo
   },
   'aider': {
     toolType: 'aider',
-    completionKeywords: ['Done', 'Complete', 'Finished', '✓', 'aider>'],
+    completionKeywords: ['Done', 'Complete', 'Finished', '\u2713', 'aider>'],
     errorKeywords: ['Error', 'Failed', 'error:', 'Traceback'],
     promptPatterns: ['^\\s*aider>\\s*$', '^\\s*[>$%#]\\s*$'],
     cpuBaselineThreshold: 3,
@@ -503,7 +963,7 @@ export const DEFAULT_AI_TOOL_CONFIGS: Record<Exclude<AIToolType, 'other'>, AIToo
   },
   'continue-dev': {
     toolType: 'continue-dev',
-    completionKeywords: ['Done', 'Complete', 'Finished', '✓'],
+    completionKeywords: ['Done', 'Complete', 'Finished', '\u2713'],
     errorKeywords: ['Error', 'Failed', 'error:'],
     promptPatterns: ['^\\s*[>$%#]\\s*$'],
     cpuBaselineThreshold: 3,
@@ -511,7 +971,7 @@ export const DEFAULT_AI_TOOL_CONFIGS: Record<Exclude<AIToolType, 'other'>, AIToo
   },
   'cline': {
     toolType: 'cline',
-    completionKeywords: ['Done', 'Complete', 'Finished', 'Task completed', '✓'],
+    completionKeywords: ['Done', 'Complete', 'Finished', 'Task completed', '\u2713'],
     errorKeywords: ['Error', 'Failed', 'error:'],
     promptPatterns: ['^\\s*[>$%#]\\s*$'],
     cpuBaselineThreshold: 3,
@@ -558,6 +1018,7 @@ export interface AppNotification {
   actions?: { label: string; action: string }[]
   createdAt: number
   read: boolean
+  metadata?: Record<string, unknown>
 }
 
 // ============ Task History Types ============
@@ -603,12 +1064,14 @@ export const IPC_CHANNELS_EXT = {
   PROCESS_CLEANUP_ZOMBIES: 'process:cleanup-zombies',
   PROCESS_GET_FULL_RELATIONSHIP: 'process:get-full-relationship',
   PROCESS_GET_DEEP_DETAIL: 'process:get-deep-detail',
+  PROCESS_PROBE_ACCESS: 'process:probe-access',
   PROCESS_GET_CONNECTIONS: 'process:get-connections',
   PROCESS_GET_ENVIRONMENT: 'process:get-environment',
   PROCESS_KILL_TREE: 'process:kill-tree',
   PROCESS_SET_PRIORITY: 'process:set-priority',
   PROCESS_OPEN_FILE_LOCATION: 'process:open-file-location',
   PROCESS_GET_MODULES: 'process:get-modules',
+  APP_RELAUNCH_AS_ADMIN: 'app:relaunch-as-admin',
   PROCESS_UPDATED: 'process:updated',
   PROCESS_ZOMBIE_DETECTED: 'process:zombie-detected',
   PORT_SCAN: 'port:scan',
@@ -617,6 +1080,9 @@ export const IPC_CHANNELS_EXT = {
   PORT_TOPOLOGY: 'port:topology',
   PORT_GET_FOCUS_DATA: 'port:get-focus-data',
   PORT_CONFLICT: 'port:conflict',
+  TOPOLOGY_BUILD_SCOPED_GRAPH: 'topology:build-scoped-graph',
+  TOPOLOGY_WARM_SCOPE: 'topology:warm-scope',
+  FLOW_BUILD_SCOPED_FLOW: 'flow:build-scoped-flow',
   WINDOW_SCAN: 'window:scan',
   WINDOW_FOCUS: 'window:focus',
   WINDOW_MOVE: 'window:move',
@@ -626,11 +1092,26 @@ export const IPC_CHANNELS_EXT = {
   WINDOW_CREATE_GROUP: 'window:create-group',
   WINDOW_GET_GROUPS: 'window:get-groups',
   WINDOW_REMOVE_GROUP: 'window:remove-group',
+  WINDOW_RENAME_GROUP: 'window:rename-group',
   WINDOW_FOCUS_GROUP: 'window:focus-group',
   WINDOW_SAVE_LAYOUT: 'window:save-layout',
   WINDOW_RESTORE_LAYOUT: 'window:restore-layout',
   WINDOW_GET_LAYOUTS: 'window:get-layouts',
   WINDOW_REMOVE_LAYOUT: 'window:remove-layout',
+  WINDOW_APPLY_LAYOUT: 'window:apply-layout',
+  WINDOW_SAVE_SNAPSHOT: 'window:save-snapshot',
+  WINDOW_UPDATE_SNAPSHOT: 'window:update-snapshot',
+  WINDOW_DELETE_SNAPSHOT: 'window:delete-snapshot',
+  WINDOW_RESTORE_SNAPSHOT: 'window:restore-snapshot',
+  WINDOW_LIST_SNAPSHOTS: 'window:list-snapshots',
+  WINDOW_PREVIEW_LAYOUT: 'window:preview-layout',
+  WINDOW_RESTORE_PREVIOUS: 'window:restore-previous',
+  WINDOW_GET_MONITOR_INFO: 'window:get-monitor-info',
+  WINDOW_TILE_GROUP: 'window:tile-group',
+  WINDOW_SCREENSHOT: 'window:screenshot',
+  WINDOW_TOGGLE_FAVORITE: 'window:toggle-favorite',
+  WINDOW_GET_FAVORITES: 'window:get-favorites',
+  WINDOW_OPEN_WORKING_DIR: 'window:open-working-dir',
   WINDOW_UPDATED: 'window:updated',
   AI_TASK_SCAN: 'ai-task:scan',
   AI_TASK_GET_ACTIVE: 'ai-task:get-active',
@@ -645,13 +1126,25 @@ export const IPC_CHANNELS_EXT = {
   AI_ALIAS_GET_ALL: 'ai-alias:get-all',
   AI_ALIAS_SET: 'ai-alias:set',
   AI_ALIAS_REMOVE: 'ai-alias:remove',
+  AI_ALIAS_RENAME: 'ai-alias:rename',
+  AI_ALIAS_RENAME_AND_APPLY: 'ai-alias:rename-and-apply',
   AI_TASK_GET_PROGRESS: 'ai-task:get-progress',
   AI_TASK_MARK_FALSE_POSITIVE: 'ai-task:mark-false-positive',
   AI_TASK_SET_DETECTION_CONFIG: 'ai-task:set-detection-config',
   AI_TASK_GET_DETECTION_CONFIG: 'ai-task:get-detection-config',
+  AI_TASK_GET_CONFIDENCE_REPORT: 'ai-task:get-confidence-report',
+  AI_TASK_RECORD_COMPLETION_ORACLE: 'ai-task:record-completion-oracle',
+  AI_TASK_GET_STATE_HISTORY: 'ai-task:get-state-history',
+  AI_TASK_GET_PROFILE: 'ai-task:get-profile',
+  AI_TASK_SET_PROFILE: 'ai-task:set-profile',
+  AI_TASK_CALIBRATE: 'ai-task:calibrate',
   WINDOW_RESTORE: 'window:restore-window',
   WINDOW_SET_TOPMOST: 'window:set-topmost',
+  WINDOW_ALWAYS_ON_TOP: 'window:always-on-top',
+  WINDOW_GET_TOPMOST: 'window:get-topmost',
+  WINDOW_LIST_TOPMOST: 'window:list-topmost',
   WINDOW_SET_OPACITY: 'window:set-opacity',
+  WINDOW_SET_TITLE: 'window:set-title',
   WINDOW_SEND_KEYS: 'window:send-keys',
   WINDOW_TILE_LAYOUT: 'window:tile-layout',
   WINDOW_CASCADE_LAYOUT: 'window:cascade-layout',
@@ -730,7 +1223,7 @@ export const AI_TOOL_SIGNATURES: Record<AIToolType, {
 export const ALIAS_FORBIDDEN_CHARS = /[<>:"/\\|?*]/
 
 /** Max alias name length */
-export const ALIAS_MAX_LENGTH = 50
+export const ALIAS_MAX_LENGTH = 64
 
 /** Validate an alias name */
 export function validateAliasName(name: string): { valid: boolean; error?: string } {
@@ -858,6 +1351,56 @@ export interface ScannerStatus {
     lastUpdated: number
     error: string | null
   }>
+}
+
+export type ScannerDiffChannel =
+  | 'scanner:processes:diff'
+  | 'scanner:ports:diff'
+  | 'scanner:windows:diff'
+  | 'scanner:aiTasks:diff'
+
+export type ScannerChannelSeqMap = Partial<Record<ScannerDiffChannel, number>>
+
+export interface ScannerSnapshotPushPayload {
+  snapshot: ScannerCacheSnapshot
+  channelSeqs?: ScannerChannelSeqMap
+}
+
+export interface ScannerResyncResponse {
+  accepted: boolean
+  channel: string
+  snapshotPushed: boolean
+}
+
+export type ScannerAckSource = 'diff' | 'snapshot'
+
+export interface ScannerAckRequest {
+  channel: string
+  seq: number
+  source?: ScannerAckSource
+}
+
+export interface ScannerAckResponse {
+  accepted: boolean
+  channel: string
+  ackedSeq: number
+  lastSentSeq: number | null
+  pendingSeq: number | null
+}
+
+export interface IPCEnvelopeMeta {
+  causedBy?: string
+  truncated?: boolean
+}
+
+export interface IPCEnvelope<TPayload> {
+  channel: string
+  seq: number
+  timestamp: number
+  batch: boolean
+  partial: boolean
+  payload: TPayload
+  meta?: IPCEnvelopeMeta
 }
 
 // ============ Type Guards ============

@@ -1,15 +1,15 @@
-import { execFile } from 'child_process'
-import { promisify } from 'util'
 import os from 'os'
 import kill from 'tree-kill'
-import { ProcessInfo, ProcessInfoExtended, ProcessRelationship, ProcessType, ProcessStatusType, ProcessGroup, DEV_PROCESS_PATTERNS, ServiceResult, isProtectedProcess, PortInfo, WindowInfo, ProcessDeepDetail, NetworkConnectionInfo, ProcessTreeNode, RelatedProcessInfo, ProcessPriority } from '@shared/types-extended'
+import { ProcessInfo, ProcessInfoExtended, ProcessRelationship, ProcessType, ProcessStatusType, ProcessGroup, DEV_PROCESS_PATTERNS, ServiceResult, isProtectedProcess, PortInfo, WindowInfo, ProcessDeepDetail, NetworkConnectionInfo, LegacyProcessTreeNode, RelatedProcessInfo, ProcessPriority, AccessReport } from '@shared/types-extended'
+import type { ProcessHistory } from '@shared/schemas/r8-runtime'
 import { Project } from '@shared/types'
 import { PortScanner } from './PortScanner'
-
-const execFileAsync = promisify(execFile)
+import { PowerShellGateway, PowerShellGatewayTimeoutError, getPowerShellGateway } from './runtime/PowerShellGateway'
+import { ProcessHistorySampler } from './ProcessHistorySampler'
 
 interface RawProcessInfo {
   pid: number
+  ppid: number
   name: string
   commandLine: string
   workingDir: string
@@ -24,6 +24,8 @@ interface RawProcessInfo {
 function sanitizeProcessData(raw: Partial<ProcessInfo>): ProcessInfo {
   return {
     pid: (typeof raw.pid === 'number' && Number.isFinite(raw.pid)) ? raw.pid : 0,
+    ppid: (typeof raw.ppid === 'number' && Number.isFinite(raw.ppid)) ? Math.max(0, Math.trunc(raw.ppid)) : undefined,
+    parentName: (typeof raw.parentName === 'string' && raw.parentName.length > 0) ? raw.parentName : undefined,
     name: (typeof raw.name === 'string' && raw.name.length > 0) ? raw.name : 'Unknown',
     command: (typeof raw.command === 'string') ? raw.command : '',
     port: (typeof raw.port === 'number' && Number.isFinite(raw.port)) ? raw.port : undefined,
@@ -38,24 +40,6 @@ function sanitizeProcessData(raw: Partial<ProcessInfo>): ProcessInfo {
       : 'other',
     workingDir: (typeof raw.workingDir === 'string') ? raw.workingDir : undefined,
     projectId: (typeof raw.projectId === 'string') ? raw.projectId : undefined,
-  }
-}
-
-/** Timeout wrapper for promises - returns fallback on timeout */
-async function withTimeout<T>(
-  promise: Promise<T>,
-  timeoutMs: number,
-  fallback: T
-): Promise<T> {
-  let timeoutHandle: ReturnType<typeof setTimeout> | null = null
-  const timeoutPromise = new Promise<T>((resolve) => {
-    timeoutHandle = setTimeout(() => resolve(fallback), timeoutMs)
-  })
-  try {
-    const result = await Promise.race([promise, timeoutPromise])
-    return result
-  } finally {
-    if (timeoutHandle) clearTimeout(timeoutHandle)
   }
 }
 
@@ -100,6 +84,7 @@ class LRUCache<K, V> {
 }
 
 export class SystemProcessScanner {
+  private readonly powerShellGateway: PowerShellGateway
   private processes = new Map<number, ProcessInfo>()
   private processFirstSeen = new Map<number, number>()
   private previousCpuTimes = new Map<number, number>()
@@ -122,8 +107,28 @@ export class SystemProcessScanner {
   // LRU cache for relationship queries (capacity 50, TTL 10s)
   private relationshipCache = new LRUCache<number, ProcessRelationship>(50, 10000)
 
-  constructor(portScanner?: PortScanner) {
+  constructor(
+    portScanner?: PortScanner,
+    powerShellGateway: PowerShellGateway = getPowerShellGateway(),
+    private readonly historySampler: ProcessHistorySampler = new ProcessHistorySampler()
+  ) {
     this.portScanner = portScanner || new PortScanner()
+    this.powerShellGateway = powerShellGateway
+  }
+
+  private async executePowerShell(
+    script: string,
+    options?: {
+      label?: string
+      maxBuffer?: number
+      timeoutMs?: number
+    }
+  ): Promise<string> {
+    return this.powerShellGateway.execute(script, {
+      label: options?.label ?? 'SystemProcessScanner',
+      maxBuffer: options?.maxBuffer,
+      timeoutMs: options?.timeoutMs
+    })
   }
 
   setWindowResolver(resolver: (pid: number) => WindowInfo[]): void {
@@ -184,6 +189,7 @@ export class SystemProcessScanner {
     this.previousCpuTimes.clear()
     this.cpuHistoryMap.clear()
     this.memoryHistoryMap.clear()
+    this.historySampler.close()
     this.relationshipCache.clear()
     this.onUpdateCallback = null
     this.onZombieCallback = null
@@ -195,6 +201,7 @@ export class SystemProcessScanner {
       const rawProcesses = await this.getRawProcesses()
       const portInfo = await this.portScanner.scanAll()
       const portMap = new Map(portInfo.map(p => [p.pid, p.port]))
+      const rawProcessByPid = new Map(rawProcesses.map(process => [process.pid, process]))
 
       const processes: ProcessInfo[] = []
 
@@ -208,6 +215,8 @@ export class SystemProcessScanner {
 
         const processInfo: ProcessInfo = sanitizeProcessData({
           pid: raw.pid,
+          ppid: raw.ppid,
+          parentName: raw.ppid > 0 ? rawProcessByPid.get(raw.ppid)?.name : undefined,
           name: raw.name,
           command: raw.commandLine,
           port: portMap.get(raw.pid),
@@ -236,6 +245,12 @@ export class SystemProcessScanner {
           memHistory.shift()
         }
         this.memoryHistoryMap.set(raw.pid, memHistory)
+
+        try {
+          this.historySampler.sampleProcess(processInfo)
+        } catch (error) {
+          console.warn('SystemProcessScanner: process history sample skipped:', error instanceof Error ? error.message : error)
+        }
       }
 
       // Clean up stale entries
@@ -267,9 +282,12 @@ export class SystemProcessScanner {
     }
   }
 
-  async getAll(): Promise<ProcessInfo[]> {
-    if (this.processes.size === 0) {
-      await this.scan()
+  async getAll(options: { refresh?: boolean } = {}): Promise<ProcessInfo[]> {
+    if (options.refresh || this.processes.size === 0) {
+      const result = await this.scan()
+      if (!result.success && this.processes.size === 0) {
+        return []
+      }
     }
     return Array.from(this.processes.values())
   }
@@ -348,11 +366,11 @@ export class SystemProcessScanner {
     if (!Number.isInteger(pid) || pid <= 0) return []
     try {
       const psCmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-CimInstance Win32_Process | Where-Object { $_.ParentProcessId -eq ${pid} } | Select-Object ProcessId,Name,CommandLine,WorkingSetSize | ConvertTo-Csv -NoTypeInformation`
-      const { stdout } = await execFileAsync(
-        'powershell.exe',
-        ['-NoProfile', '-NonInteractive', '-Command', psCmd],
-        { windowsHide: true, maxBuffer: 5 * 1024 * 1024, encoding: 'utf8', timeout: 15000 }
-      )
+      const stdout = await this.executePowerShell(psCmd, {
+        label: 'process-tree',
+        maxBuffer: 5 * 1024 * 1024,
+        timeoutMs: 15000
+      })
 
       const lines = stdout.split('\n').filter(l => l.trim())
       const children: ProcessInfo[] = []
@@ -402,12 +420,211 @@ export class SystemProcessScanner {
     }
   }
 
+  getProcessHistory24h(exe: string, cwd?: string): ProcessHistory {
+    return this.historySampler.historyFor(exe, cwd)
+  }
+
+  getProcessHistoryBatch(keys: string[]): ProcessHistory[] {
+    return this.historySampler.batchByKeys(keys)
+  }
+
   /**
    * Get basic process info from in-memory cache (no PowerShell call).
    * Always available as long as the process has been scanned at least once.
    */
   getBasicInfo(pid: number): ProcessInfo | null {
     return this.processes.get(pid) ?? null
+  }
+
+  /**
+   * Resolve a PID from the full Win32 process space when it is not part of the
+   * dev-process scan result. This keeps the main list dev-focused while still
+   * allowing exact PID inspection for permission/debugging scenarios.
+   */
+  async lookupProcessByPid(pid: number): Promise<ProcessInfo | null> {
+    const cached = this.getBasicInfo(pid)
+    if (cached) {
+      return cached
+    }
+
+    const sanitizedPid = Math.floor(pid)
+    if (!Number.isFinite(sanitizedPid) || sanitizedPid <= 0) {
+      return null
+    }
+
+    const rawProcesses = await this.getRawProcesses()
+    const raw = rawProcesses.find((candidate) => candidate.pid === sanitizedPid)
+    if (!raw) {
+      return null
+    }
+
+    if (!this.processFirstSeen.has(raw.pid)) {
+      this.processFirstSeen.set(raw.pid, Date.now())
+    }
+
+    return sanitizeProcessData({
+      pid: raw.pid,
+      name: raw.name,
+      command: raw.commandLine,
+      port: undefined,
+      cpu: raw.cpuPercent,
+      memory: raw.memoryMB,
+      status: this.inferStatus(raw.cpuPercent),
+      startTime: this.processFirstSeen.get(raw.pid)!,
+      type: this.inferType(raw.name, raw.commandLine),
+      workingDir: raw.workingDir
+    })
+  }
+
+  async probeProcessAccess(pid: number): Promise<AccessReport> {
+    const sanitizedPid = Math.floor(pid)
+    const fallbackUser = process.env.USERDOMAIN && process.env.USERNAME
+      ? `${process.env.USERDOMAIN}\\${process.env.USERNAME}`
+      : process.env.USERNAME || 'unknown'
+
+    const buildFallback = (
+      scanResult: AccessReport['scanResult'],
+      suggestion: AccessReport['suggestion']
+    ): AccessReport => ({
+      pid: sanitizedPid,
+      elevationRequired: false,
+      scanAttempted: true,
+      scanResult,
+      currentUser: fallbackUser,
+      suggestion,
+      triedAt: Date.now()
+    })
+
+    if (!Number.isInteger(pid) || pid <= 0) {
+      return buildFallback('not-found', 'none')
+    }
+
+    try {
+      const psCmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8;
+$ErrorActionPreference = 'Stop'
+$pidValue = ${sanitizedPid}
+$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+$principal = New-Object Security.Principal.WindowsPrincipal($identity)
+$isElevated = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+$currentUser = $identity.Name
+$result = @{
+  pid = $pidValue
+  elevationRequired = (-not $isElevated)
+  scanAttempted = $true
+  scanResult = 'ok'
+  currentUser = $currentUser
+  targetProcessUser = $null
+  suggestion = 'none'
+  triedAt = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+}
+try {
+  $proc = Get-Process -Id $pidValue -ErrorAction Stop
+} catch {
+  $result.scanResult = 'not-found'
+  $result.suggestion = 'none'
+  $result | ConvertTo-Json -Depth 3 -Compress
+  exit 0
+}
+try {
+  $wmi = Get-CimInstance Win32_Process -Filter "ProcessId=$pidValue" -ErrorAction Stop
+  if (-not $wmi) {
+    $result.scanResult = 'not-found'
+    $result.suggestion = 'none'
+  } else {
+    try {
+      $owner = Invoke-CimMethod -InputObject $wmi -MethodName GetOwner -ErrorAction Stop
+      if ($owner -and $owner.User) {
+        if ($owner.Domain) {
+          $result.targetProcessUser = "$($owner.Domain)\\$($owner.User)"
+        } else {
+          $result.targetProcessUser = $owner.User
+        }
+      }
+    } catch {
+      if ($result.scanResult -eq 'ok') {
+        $result.scanResult = 'access-denied'
+      }
+    }
+
+    $commandLineValue = $null
+    $pathValue = $null
+    try {
+      $commandLineValue = $wmi.CommandLine
+      $pathValue = $proc.Path
+    } catch {
+      $message = $_.Exception.Message
+      if ($message -match 'denied' -or $message -match 'access') {
+        $result.scanResult = 'access-denied'
+      } else {
+        $result.scanResult = 'wmi-error'
+      }
+    }
+
+    if ($result.scanResult -eq 'ok' -and (-not $isElevated)) {
+      $missingPrivilegedField = [string]::IsNullOrWhiteSpace([string]$result.targetProcessUser) -or [string]::IsNullOrWhiteSpace([string]$commandLineValue) -or [string]::IsNullOrWhiteSpace([string]$pathValue)
+      if ($missingPrivilegedField) {
+        $result.scanResult = 'access-denied'
+      }
+    }
+  }
+} catch {
+  $message = $_.Exception.Message
+  if ($message -match 'denied' -or $message -match 'access') {
+    $result.scanResult = 'access-denied'
+  } else {
+    $result.scanResult = 'wmi-error'
+  }
+}
+if ($result.scanResult -eq 'access-denied') {
+  $result.suggestion = if ($result.elevationRequired) { 'relaunch-as-admin' } else { 'retry' }
+} elseif ($result.scanResult -ne 'ok' -and $result.scanResult -ne 'not-found') {
+  $result.suggestion = 'retry'
+}
+$result | ConvertTo-Json -Depth 3 -Compress`
+
+      const stdout = await this.executePowerShell(psCmd, {
+        label: 'process-access-probe',
+        maxBuffer: 1024 * 1024,
+        timeoutMs: 5000
+      })
+
+      const trimmed = stdout.trim()
+      if (!trimmed) {
+        return buildFallback('wmi-error', 'retry')
+      }
+
+      const parsed = JSON.parse(trimmed) as Partial<AccessReport>
+      return {
+        pid: typeof parsed.pid === 'number' ? parsed.pid : sanitizedPid,
+        elevationRequired: Boolean(parsed.elevationRequired),
+        scanAttempted: parsed.scanAttempted !== false,
+        scanResult: parsed.scanResult === 'ok'
+          || parsed.scanResult === 'access-denied'
+          || parsed.scanResult === 'not-found'
+          || parsed.scanResult === 'timeout'
+          || parsed.scanResult === 'wmi-error'
+          ? parsed.scanResult
+          : 'wmi-error',
+        currentUser: typeof parsed.currentUser === 'string' && parsed.currentUser.length > 0
+          ? parsed.currentUser
+          : fallbackUser,
+        targetProcessUser: typeof parsed.targetProcessUser === 'string' && parsed.targetProcessUser.length > 0
+          ? parsed.targetProcessUser
+          : undefined,
+        suggestion: parsed.suggestion === 'relaunch-as-admin'
+          || parsed.suggestion === 'retry'
+          || parsed.suggestion === 'none'
+          ? parsed.suggestion
+          : 'retry',
+        triedAt: typeof parsed.triedAt === 'number' ? parsed.triedAt : Date.now()
+      }
+    } catch (err) {
+      if (err instanceof PowerShellGatewayTimeoutError) {
+        return buildFallback('timeout', 'retry')
+      }
+      console.error('probeProcessAccess failed:', err instanceof Error ? err.message : err)
+      return buildFallback('wmi-error', 'retry')
+    }
   }
 
   /**
@@ -467,19 +684,11 @@ export class SystemProcessScanner {
     try {
       // Level 2+3: Extended info with timeout - Single PowerShell call
       const psCmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name,CommandLine,WorkingSetSize,ThreadCount,HandleCount,Priority,@{N='User';E={try{($_ | Invoke-CimMethod -MethodName GetOwner).User}catch{''}}} | ConvertTo-Csv -NoTypeInformation`
-      const psPromise = execFileAsync(
-        'powershell.exe',
-        ['-NoProfile', '-NonInteractive', '-Command', psCmd],
-        { windowsHide: true, maxBuffer: 10 * 1024 * 1024, encoding: 'utf8', timeout: 5000 }
-      )
-
-      // Use 3s timeout for the PowerShell call; fallback to basic relationship
-      const result = await withTimeout(psPromise, 3000, null)
-      if (!result) {
-        // Timeout: return Level 1 basic info
-        return basicRelationship
-      }
-      const { stdout } = result
+      const stdout = await this.executePowerShell(psCmd, {
+        label: 'full-relationship',
+        maxBuffer: 10 * 1024 * 1024,
+        timeoutMs: 3000
+      })
 
       const lines = stdout.split('\n').filter(l => l.trim())
       interface FullProcInfo {
@@ -536,6 +745,7 @@ export class SystemProcessScanner {
         const existing = this.processes.get(fp.pid)
         return existing || sanitizeProcessData({
           pid: fp.pid,
+          ppid: fp.ppid,
           name: fp.name,
           command: fp.commandLine,
           cpu: 0,
@@ -660,6 +870,9 @@ export class SystemProcessScanner {
 
       return relationship
     } catch (err) {
+      if (err instanceof PowerShellGatewayTimeoutError) {
+        return basicRelationship
+      }
       console.error('getFullRelationship failed:', err instanceof Error ? err.message : err)
       // Fallback to Level 1 basic info instead of null
       return basicRelationship
@@ -695,8 +908,12 @@ if ($p -and $w) {
   $result.handleCount = if ($p.HandleCount) { $p.HandleCount } else { 0 }
   $result.memoryRSS = if ($p.WorkingSet64) { $p.WorkingSet64 } else { 0 }
   $result.memoryVMS = if ($p.VirtualMemorySize64) { $p.VirtualMemorySize64 } else { 0 }
+  $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+  $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+  $isElevated = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+  $missingPrivilegedField = [string]::IsNullOrWhiteSpace([string]$result.userName) -or [string]::IsNullOrWhiteSpace([string]$result.commandLine) -or [string]::IsNullOrWhiteSpace([string]$result.executablePath)
   $result.cpuPercent = 0
-  $result.requiresElevation = $false
+  $result.requiresElevation = ((-not $isElevated) -and $missingPrivilegedField)
   $ioCounters = $p.PrivilegedProcessorTime
   $result.ioReadBytes = 0
   $result.ioWriteBytes = 0
@@ -714,11 +931,11 @@ if ($p -and $w) {
 }
 $result | ConvertTo-Json -Depth 3`
 
-      const { stdout } = await execFileAsync(
-        'powershell.exe',
-        ['-NoProfile', '-NonInteractive', '-Command', psCmd],
-        { windowsHide: true, maxBuffer: 5 * 1024 * 1024, encoding: 'utf8', timeout: 15000 }
-      )
+      const stdout = await this.executePowerShell(psCmd, {
+        label: 'process-deep-detail',
+        maxBuffer: 5 * 1024 * 1024,
+        timeoutMs: 15000
+      })
 
       let info: Record<string, unknown>
       try {
@@ -796,7 +1013,7 @@ $result | ConvertTo-Json -Depth 3`
         ancestorChain: treeData.ancestors,
         children: treeData.children,
         relatedProcesses,
-        requiresElevation: false,
+        requiresElevation: Boolean(info.requiresElevation),
       }
     } catch (err) {
       console.error('getProcessDeepDetail failed:', err instanceof Error ? err.message : err)
@@ -843,11 +1060,11 @@ if ($udp) {
 }
 $conns | ConvertTo-Json -Depth 2`
 
-      const { stdout } = await execFileAsync(
-        'powershell.exe',
-        ['-NoProfile', '-NonInteractive', '-Command', psCmd],
-        { windowsHide: true, maxBuffer: 2 * 1024 * 1024, encoding: 'utf8', timeout: 10000 }
-      )
+      const stdout = await this.executePowerShell(psCmd, {
+        label: 'process-connections',
+        maxBuffer: 2 * 1024 * 1024,
+        timeoutMs: 10000
+      })
 
       const trimmed = stdout.trim()
       if (!trimmed || trimmed === '' || trimmed === 'null') return []
@@ -909,11 +1126,11 @@ try {
 }
 $result | ConvertTo-Json -Depth 3 -Compress`
 
-      const { stdout } = await execFileAsync(
-        'powershell.exe',
-        ['-NoProfile', '-NonInteractive', '-Command', psCmd],
-        { windowsHide: true, maxBuffer: 5 * 1024 * 1024, encoding: 'utf8', timeout: 10000 }
-      )
+      const stdout = await this.executePowerShell(psCmd, {
+        label: 'process-environment',
+        maxBuffer: 5 * 1024 * 1024,
+        timeoutMs: 10000
+      })
 
       const trimmed = stdout.trim()
       if (!trimmed) return { variables: {}, requiresElevation: true }
@@ -963,11 +1180,11 @@ try {
 }
 $result | ConvertTo-Json -Depth 3 -Compress`
 
-      const { stdout } = await execFileAsync(
-        'powershell.exe',
-        ['-NoProfile', '-NonInteractive', '-Command', psCmd],
-        { windowsHide: true, maxBuffer: 5 * 1024 * 1024, encoding: 'utf8', timeout: 15000 }
-      )
+      const stdout = await this.executePowerShell(psCmd, {
+        label: 'process-modules',
+        maxBuffer: 5 * 1024 * 1024,
+        timeoutMs: 15000
+      })
 
       const trimmed = stdout.trim()
       if (!trimmed) return { modules: [], requiresElevation: true }
@@ -1044,11 +1261,11 @@ $p = Get-Process -Id ${sanitizedPid} -ErrorAction Stop
 $p.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::${psPriority}
 Write-Output 'OK'`
 
-      const { stdout } = await execFileAsync(
-        'powershell.exe',
-        ['-NoProfile', '-NonInteractive', '-Command', psCmd],
-        { windowsHide: true, maxBuffer: 1024 * 1024, encoding: 'utf8', timeout: 10000 }
-      )
+      const stdout = await this.executePowerShell(psCmd, {
+        label: 'set-process-priority',
+        maxBuffer: 1024 * 1024,
+        timeoutMs: 10000
+      })
 
       return stdout.trim().includes('OK')
     } catch (err) {
@@ -1060,18 +1277,18 @@ Write-Output 'OK'`
   /**
    * Build ancestor/children tree for the detail view.
    */
-  private async buildTreeForDetail(pid: number): Promise<{ ancestors: ProcessTreeNode[]; children: ProcessTreeNode[] }> {
+  private async buildTreeForDetail(pid: number): Promise<{ ancestors: LegacyProcessTreeNode[]; children: LegacyProcessTreeNode[] }> {
     try {
       // Build ancestors chain
-      const ancestors: ProcessTreeNode[] = []
+      const ancestors: LegacyProcessTreeNode[] = []
       // We need PPID data — use WMI to get the full process table
       const sanitizedPid = Math.floor(pid)
       const psCmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name,WorkingSetSize | ConvertTo-Csv -NoTypeInformation`
-      const { stdout } = await execFileAsync(
-        'powershell.exe',
-        ['-NoProfile', '-NonInteractive', '-Command', psCmd],
-        { windowsHide: true, maxBuffer: 10 * 1024 * 1024, encoding: 'utf8', timeout: 15000 }
-      )
+      const stdout = await this.executePowerShell(psCmd, {
+        label: 'build-process-tree-detail',
+        maxBuffer: 10 * 1024 * 1024,
+        timeoutMs: 15000
+      })
 
       const lines = stdout.split('\n').filter(l => l.trim())
       const procMap = new Map<number, { pid: number; ppid: number; name: string; memoryMB: number }>()
@@ -1113,9 +1330,9 @@ Write-Output 'OK'`
       }
 
       // Collect direct children recursively
-      const collectChildren = (parentPid: number, depth: number): ProcessTreeNode[] => {
+      const collectChildren = (parentPid: number, depth: number): LegacyProcessTreeNode[] => {
         if (depth > 5) return [] // prevent infinite recursion
-        const result: ProcessTreeNode[] = []
+        const result: LegacyProcessTreeNode[] = []
         for (const [, proc] of procMap) {
           if (proc.ppid === parentPid && proc.pid !== parentPid) {
             const existingProc = this.processes.get(proc.pid)
@@ -1245,38 +1462,39 @@ Write-Output 'OK'`
     try {
       // Single PowerShell call: Get-CimInstance Win32_Process returns KernelModeTime + UserModeTime
       // (100-nanosecond units) alongside process info, eliminating the need for a second Get-Process call
-      const psCmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-CimInstance Win32_Process | Select-Object ProcessId,Name,CommandLine,WorkingSetSize,KernelModeTime,UserModeTime | ConvertTo-Csv -NoTypeInformation`
-      const { stdout } = await execFileAsync(
-        'powershell.exe',
-        ['-NoProfile', '-NonInteractive', '-Command', psCmd],
-        { windowsHide: true, maxBuffer: 10 * 1024 * 1024, encoding: 'utf8', timeout: 30000 }
-      )
+      const psCmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name,CommandLine,WorkingSetSize,KernelModeTime,UserModeTime | ConvertTo-Csv -NoTypeInformation`
+      const stdout = await this.executePowerShell(psCmd, {
+        label: 'get-raw-processes',
+        maxBuffer: 10 * 1024 * 1024,
+        timeoutMs: 30000
+      })
       const lines = stdout.split('\n').filter(l => l.trim())
       const processes: RawProcessInfo[] = []
       // Collect CPU times from this single query for dev processes
       const currentCpuTimes = new Map<number, number>()
 
-      // First line is CSV header: "ProcessId","Name","CommandLine","WorkingSetSize","KernelModeTime","UserModeTime"
+      // First line is CSV header: "ProcessId","ParentProcessId","Name","CommandLine","WorkingSetSize","KernelModeTime","UserModeTime"
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim()
         if (!line) continue
 
         // Parse CSV with quoted fields
         const fields = this.parseCsvLine(line)
-        if (fields.length < 4) continue
+        if (fields.length < 5) continue
 
         const pid = parseInt(fields[0], 10)
-        const name = fields[1] || 'Unknown'
-        const commandLine = fields[2] || ''
-        const memoryBytes = parseInt(fields[3], 10) || 0
+        const ppid = parseInt(fields[1], 10)
+        const name = fields[2] || 'Unknown'
+        const commandLine = fields[3] || ''
+        const memoryBytes = parseInt(fields[4], 10) || 0
 
         if (isNaN(pid) || pid === 0) continue
 
         // KernelModeTime and UserModeTime are in 100-nanosecond units
         // Convert to seconds for CPU delta calculation
         // Handle locale: some locales use comma as decimal separator
-        const kernelTimeRaw = (fields[4] || '0').replace(',', '.')
-        const userTimeRaw = (fields[5] || '0').replace(',', '.')
+        const kernelTimeRaw = (fields[5] || '0').replace(',', '.')
+        const userTimeRaw = (fields[6] || '0').replace(',', '.')
         const kernelTime = parseFloat(kernelTimeRaw) || 0
         const userTime = parseFloat(userTimeRaw) || 0
         // Convert 100-nanosecond units to seconds
@@ -1289,6 +1507,7 @@ Write-Output 'OK'`
 
         processes.push({
           pid,
+          ppid: isNaN(ppid) ? 0 : ppid,
           name,
           commandLine,
           workingDir: this.extractWorkingDir(commandLine),

@@ -1,0 +1,55 @@
+:root {
+  --z-base: 0;
+  --z-tier-base: 0;
+  --z-tier-hover: 100;
+  --z-tier-toolbar: 1000;
+  --z-tier-drawer: 2000;
+  --z-tier-modal: 3000;
+  --z-tier-popout: 4000;
+  --z-tier-toast: 5000;
+  --z-tier-command-palette: 6000;
+  --z-tier-watchdog-alert: 7000;
+  --z-tier-devtools: 8000;
+  --z-tier-system-overlay: 9000;
+  --z-card: 10;
+  --z-sticky: 100;
+  --z-sidebar: 200;
+  --z-header: 300;
+  --z-drawer: 500;
+  --z-popover: 700;
+  --z-popout: var(--z-tier-popout);
+  --z-popout-max: 4999;
+  --z-tooltip: 800;
+  --z-modal: 900;
+  --z-critical: 1000;
+  --r8a-port-card-min-height: 96px;
+  --r8a-port-field-gap: 8px;
+  --drawer-top: 0px;
+  --drawer-right: 0px;
+  --drawer-bottom: 0px;
+  --motion-drawer: 200ms;
+}
+
+.r8-drawer-shell {
+  --drawer-safe-right: var(--drawer-right, 0px);
+  --drawer-safe-top: var(--drawer-top, 0px);
+  --drawer-safe-bottom: var(--drawer-bottom, 0px);
+}
+
+.r8-drawer-main {
+  padding-top: var(--drawer-safe-top);
+  padding-right: var(--drawer-safe-right);
+  padding-bottom: var(--drawer-safe-bottom);
+  transition:
+    padding-top var(--motion-drawer, 200ms) cubic-bezier(.4, 0, .2, 1),
+    padding-right var(--motion-drawer, 200ms) cubic-bezier(.4, 0, .2, 1),
+    padding-bottom var(--motion-drawer, 200ms) cubic-bezier(.4, 0, .2, 1);
+}
+
+.monitor-card[data-r8a-port-card="true"] {
+  min-height: var(--r8a-port-card-min-height, 96px);
+}
+
+.monitor-card[data-r8a-port-card="true"] [data-r8a-field-row] + [data-r8a-field-row] {
+  margin-top: var(--r8a-port-field-gap, 8px);
+}

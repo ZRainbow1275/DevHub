@@ -497,3 +497,191 @@
   --deco-rotation: 0deg;
   --deco-slogan-rotation: 0deg;
 }
+
+/* ==============================================================================
+   Dark Ops Theme — Graphite command surface + cobalt/violet accents
+   ============================================================================== */
+[data-theme="dark"] {
+  /* ---- Background Layers (Neutral Graphite) ---- */
+  --surface-50:  #f8fafc;
+  --surface-100: #e2e8f0;
+  --surface-200: #cbd5e1;
+  --surface-300: #94a3b8;
+  --surface-400: #64748b;
+  --surface-500: #475569;
+  --surface-600: #334155;
+  --surface-700: #1e293b;
+  --surface-750: #172033;
+  --surface-800: #111827;
+  --surface-850: #0f172a;
+  --surface-900: #0b1120;
+  --surface-950: #020617;
+
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-tertiary: #94a3b8;
+  --text-muted: #64748b;
+  --text-accent: #bfdbfe;
+
+  --red-300: #93c5fd;
+  --red-400: #60a5fa;
+  --red-500: #3b82f6;
+  --red-600: #2563eb;
+  --red-700: #1d4ed8;
+
+  --gold-300: #c4b5fd;
+  --gold-400: #a78bfa;
+  --gold-500: #8b5cf6;
+  --gold-600: #7c3aed;
+  --gold-700: #6d28d9;
+
+  --steel-300: #cbd5e1;
+  --steel-400: #94a3b8;
+  --steel-500: #64748b;
+  --steel-600: #475569;
+  --steel-700: #334155;
+
+  --success: #22c55e;
+  --success-light: #4ade80;
+  --success-dark: #16a34a;
+  --warning: #f59e0b;
+  --warning-light: #fbbf24;
+  --warning-dark: #d97706;
+  --error: #ef4444;
+  --error-light: #f87171;
+  --error-dark: #dc2626;
+  --info: #38bdf8;
+  --info-light: #7dd3fc;
+  --info-dark: #0284c7;
+
+  --overlay-light: rgba(248, 250, 252, 0.04);
+  --overlay-medium: rgba(248, 250, 252, 0.08);
+  --overlay-heavy: rgba(248, 250, 252, 0.14);
+  --red-overlay: rgba(59, 130, 246, 0.14);
+  --gold-overlay: rgba(139, 92, 246, 0.14);
+  --success-overlay: rgba(34, 197, 94, 0.14);
+
+  --diagonal-stripe: repeating-linear-gradient(
+    -12deg,
+    transparent,
+    transparent 16px,
+    rgba(96, 165, 250, 0.05) 16px,
+    rgba(96, 165, 250, 0.05) 17px
+  );
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-full: 9999px;
+
+  --border-width-thin: 1px;
+  --border-width-default: 1px;
+  --border-width-thick: 2px;
+
+  --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.28);
+  --shadow-glow-accent: 0 0 15px rgba(139, 92, 246, 0.24);
+  --shadow-inner: inset 0 1px 0 rgba(248, 250, 252, 0.06);
+
+  --heading-weight: 650;
+  --heading-transform: none;
+  --heading-tracking: -0.01em;
+  --body-tracking: 0;
+  --display-tracking: -0.01em;
+  --deco-rotation: 0deg;
+  --deco-slogan-rotation: 0deg;
+}
+
+/* ==============================================================================
+   Light Console Theme — Neutral canvas + indigo/emerald accents
+   ============================================================================== */
+[data-theme="light"] {
+  /* ---- Background Layers (Clean Neutral) ---- */
+  --surface-50:  #ffffff;
+  --surface-100: #f9fafb;
+  --surface-200: #f3f4f6;
+  --surface-300: #e5e7eb;
+  --surface-400: #d1d5db;
+  --surface-500: #6b7280;
+  --surface-600: #9ca3af;
+  --surface-700: #d1d5db;
+  --surface-750: #e5e7eb;
+  --surface-800: #eef2ff;
+  --surface-850: #f4f7ff;
+  --surface-900: #f8fafc;
+  --surface-950: #ffffff;
+
+  --text-primary: #111827;
+  --text-secondary: #374151;
+  --text-tertiary: #6b7280;
+  --text-muted: #9ca3af;
+  --text-accent: #312e81;
+
+  --red-300: #a5b4fc;
+  --red-400: #818cf8;
+  --red-500: #6366f1;
+  --red-600: #4f46e5;
+  --red-700: #4338ca;
+
+  --gold-300: #6ee7b7;
+  --gold-400: #34d399;
+  --gold-500: #10b981;
+  --gold-600: #059669;
+  --gold-700: #047857;
+
+  --steel-300: #cbd5e1;
+  --steel-400: #94a3b8;
+  --steel-500: #64748b;
+  --steel-600: #475569;
+  --steel-700: #334155;
+
+  --success: #10b981;
+  --success-light: #34d399;
+  --success-dark: #059669;
+  --warning: #f59e0b;
+  --warning-light: #fbbf24;
+  --warning-dark: #d97706;
+  --error: #dc2626;
+  --error-light: #ef4444;
+  --error-dark: #b91c1c;
+  --info: #6366f1;
+  --info-light: #818cf8;
+  --info-dark: #4f46e5;
+
+  --overlay-light: rgba(17, 24, 39, 0.03);
+  --overlay-medium: rgba(17, 24, 39, 0.06);
+  --overlay-heavy: rgba(17, 24, 39, 0.10);
+  --red-overlay: rgba(99, 102, 241, 0.10);
+  --gold-overlay: rgba(16, 185, 129, 0.10);
+  --success-overlay: rgba(16, 185, 129, 0.10);
+
+  --diagonal-stripe: repeating-linear-gradient(
+    -12deg,
+    transparent,
+    transparent 12px,
+    rgba(99, 102, 241, 0.04) 12px,
+    rgba(99, 102, 241, 0.04) 13px
+  );
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-full: 9999px;
+
+  --border-width-thin: 1px;
+  --border-width-default: 1px;
+  --border-width-thick: 2px;
+
+  --shadow-glow: 0 0 18px rgba(99, 102, 241, 0.18);
+  --shadow-glow-accent: 0 0 14px rgba(16, 185, 129, 0.18);
+  --shadow-inner: inset 0 1px 2px rgba(17, 24, 39, 0.04);
+
+  --heading-weight: 650;
+  --heading-transform: none;
+  --heading-tracking: -0.01em;
+  --body-tracking: 0;
+  --display-tracking: -0.01em;
+  --deco-rotation: 0deg;
+  --deco-slogan-rotation: 0deg;
+}

@@ -1,6 +1,12 @@
+import type { ThemeDecorationConfig } from '@shared/types'
 import { GearIcon, MinimizeIcon, MaximizeIcon, CloseIcon } from '../icons'
+import { ThemeDecoration } from '../ui/ThemeDecoration'
 
-export function TitleBar() {
+interface TitleBarProps {
+  decorationConfig?: ThemeDecorationConfig
+}
+
+export function TitleBar({ decorationConfig }: TitleBarProps) {
   const handleMinimize = () => {
     const devhub = window.devhub
     if (devhub?.window?.minimize) {
@@ -27,6 +33,7 @@ export function TitleBar() {
 
       {/* Diagonal stripe decoration */}
       <div className="absolute inset-0 deco-diagonal pointer-events-none" />
+      <ThemeDecoration config={decorationConfig} position="header" />
 
       {/* Logo and Title */}
       <div className="flex items-center gap-3 pl-4 no-drag relative z-10">

@@ -1,0 +1,7 @@
+# devhub-csv-version=1.0; runner=devhub; concurrentMax=3
+taskId,taskName,priority,status,tool,skill,inputFile,inputArgs,outputDir,outputFormat,tags,dependsOn,timeoutMs,retries,concurrencyKey,createdAt,scheduledAt,note
+dag-a,DAG root,P1,pending,codex,code-review,src/a.ts,"{""prompt"":""root""}",out/dag,md,"dag,fixture",,60000,1,,2026-05-03T08:00:00Z,now,fixture dag root
+dag-b,DAG child B,P2,pending,codex,code-review,src/b.ts,"{""prompt"":""child b""}",out/dag,md,"dag,fixture",dag-a,60000,1,,2026-05-03T08:01:00Z,now,fixture dag child
+dag-c,DAG child C,P2,pending,claude,lint-fix,src/c.ts,"{""prompt"":""child c""}",out/dag,md,"dag,fixture",dag-a,60000,1,,2026-05-03T08:02:00Z,now,fixture dag child
+dag-d,DAG leaf D,P3,pending,gemini,code-review,src/d.ts,"{""prompt"":""leaf d""}",out/dag,md,"dag,fixture",dag-b,60000,1,,2026-05-03T08:03:00Z,now,fixture dag leaf
+dag-e,DAG leaf E,P3,pending,cursor,lint-fix,src/e.ts,"{""prompt"":""leaf e""}",out/dag,md,"dag,fixture",dag-c,60000,1,,2026-05-03T08:04:00Z,now,fixture dag leaf

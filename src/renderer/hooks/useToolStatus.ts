@@ -67,7 +67,7 @@ export function useToolStatus() {
       } catch (error) {
         console.warn('Failed to refresh tool status:', error instanceof Error ? error.message : 'Unknown error')
       }
-    }, 5000)
+    }, 10000)
 
     return () => {
       isMounted = false

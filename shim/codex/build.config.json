@@ -1,0 +1,20 @@
+{
+  "nodeMajor": 22,
+  "targets": [
+    {
+      "id": "win32-x64",
+      "pkgTarget": "node22-win-x64",
+      "fileName": "codex-shim-win32-x64.exe"
+    },
+    {
+      "id": "linux-x64",
+      "pkgTarget": "node22-linux-x64",
+      "fileName": "codex-shim-linux-x64"
+    },
+    {
+      "id": "darwin-x64",
+      "pkgTarget": "node22-macos-x64",
+      "fileName": "codex-shim-darwin-x64"
+    }
+  ]
+}

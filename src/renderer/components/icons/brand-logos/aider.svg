@@ -1,0 +1,20 @@
+<svg width="200" height="60" viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="glow" x="-40%" y="-30%" width="180%" height="160%">
+      <feGaussianBlur stdDeviation="7 1" result="blur" />
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 0.5 0" result="lighter-blur" />
+      <feComposite in="SourceGraphic" in2="lighter-blur" operator="over" />
+    </filter>
+    <style>
+      .logo-text {
+        font-family: monospace;
+        font-size: 60px;
+        fill: #14b014;
+        text-anchor: middle;
+        dominant-baseline: middle;
+        filter: url(#glow);
+      }
+    </style>
+  </defs>
+  <text x="100" y="37.2" class="logo-text">aider</text>
+</svg>

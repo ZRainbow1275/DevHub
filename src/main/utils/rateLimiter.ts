@@ -1,65 +1,88 @@
-/**
- * IPC rate limiter — prevents abuse from renderer process.
- * Uses a sliding window per-channel counter with 60s reset.
- */
+import {
+  RATE_LIMIT_RPM,
+  type ChannelRegistration,
+  type RateLimitClass,
+  type RateLimitStatsResponse
+} from '@shared/schemas/ipc-rate-limit'
+import type { IpcThrottleReport } from '@shared/observability'
+import type { R8IpcChannelDefinition } from '@shared/schemas/r8-runtime'
+import {
+  createRateLimitedHandler,
+  registerRateLimitChannelDefinitions,
+  resetRateLimitMiddlewareState,
+  setRateLimitAuditSink,
+  setRateLimitFeatureFlagProvider,
+  type RateLimitAuditEvent,
+  type RateLimitSetting
+} from '../services/ipc/RateLimitMiddleware'
+import { ipcChannelRegistry } from '../services/ipc/IpcChannelRegistry'
+import { globalIpcRateLimiter } from '../services/ipc/RateLimiter'
 
-interface RateLimitEntry {
-  count: number
-  resetAt: number
-}
-
-const rateLimiter = new Map<string, RateLimitEntry>()
-
-/** Rate limit tiers (requests per minute) */
 export const RATE_LIMITS = {
-  SCAN: 12,
-  ACTION: 30,
-  QUERY: 60,
+  SCAN: RATE_LIMIT_RPM.high_freq_scan,
+  ACTION: RATE_LIMIT_RPM.low_freq_op,
+  QUERY: RATE_LIMIT_RPM.medium_query,
+  BURST: RATE_LIMIT_RPM.meta,
   DESTRUCTIVE: 5
 } as const
 
-/**
- * Wraps an IPC handler with rate limiting.
- * Throws an Error if the rate limit is exceeded for the given channel.
- *
- * @param channel - IPC channel name (used as the rate limit key)
- * @param maxPerMinute - Maximum allowed invocations per 60-second window
- * @param handler - The actual handler function
- * @returns A wrapped handler that enforces the rate limit
- */
+let rateLimitObserver: ((channel: string) => void) | null = null
+
 export function withRateLimit<TArgs extends unknown[], TReturn>(
   channel: string,
-  maxPerMinute: number,
+  limitOrClass: number | RateLimitClass,
   handler: (...args: TArgs) => TReturn
 ): (...args: TArgs) => TReturn {
+  const setting: RateLimitSetting = limitOrClass
+  const limited = createRateLimitedHandler(channel, setting, handler)
+
   return (...args: TArgs): TReturn => {
-    const now = Date.now()
-    const entry = rateLimiter.get(channel)
-
-    if (entry && now < entry.resetAt && entry.count >= maxPerMinute) {
-      throw new Error(`Rate limit exceeded for ${channel}`)
+    try {
+      rateLimitObserver?.(channel)
+    } catch {
+      // Observation must never interfere with the protected handler path.
     }
 
-    if (!entry || now >= entry.resetAt) {
-      rateLimiter.set(channel, { count: 1, resetAt: now + 60_000 })
-    } else {
-      entry.count++
-    }
-
-    // Periodic cleanup of expired entries to prevent memory leak
-    if (rateLimiter.size > 50) {
-      for (const [key, val] of rateLimiter) {
-        if (now >= val.resetAt) rateLimiter.delete(key)
-      }
-    }
-
-    return handler(...args)
+    return limited(...args)
   }
 }
 
-/**
- * Reset all rate limit counters (useful for testing).
- */
 export function resetRateLimits(): void {
-  rateLimiter.clear()
+  globalIpcRateLimiter.reset()
+  ipcChannelRegistry.reset()
+  resetRateLimitMiddlewareState()
+}
+
+export function setRateLimitObserver(observer: ((channel: string) => void) | null): void {
+  rateLimitObserver = observer
+}
+
+export function getRateLimitReport(): IpcThrottleReport {
+  return globalIpcRateLimiter.getLegacyReport(ipcChannelRegistry.listRegistered())
+}
+
+export function getRateLimitStats(): RateLimitStatsResponse {
+  return globalIpcRateLimiter.getStats(ipcChannelRegistry.listRegistered())
+}
+
+export function listRateLimitChannelRegistrations(): ChannelRegistration[] {
+  return ipcChannelRegistry.list()
+}
+
+export function registerR8RateLimitChannels(definitions: readonly R8IpcChannelDefinition[]): ChannelRegistration[] {
+  return registerRateLimitChannelDefinitions(definitions)
+}
+
+export function overrideRateLimitChannelClass(channel: string, rateClass: RateLimitClass): ChannelRegistration {
+  return ipcChannelRegistry.overrideRateClass(channel, rateClass)
+}
+
+export function assertRateLimitChannelsRegistered(channels: Iterable<string>): void {
+  ipcChannelRegistry.assertRegistered(channels)
+}
+
+export {
+  setRateLimitAuditSink,
+  setRateLimitFeatureFlagProvider,
+  type RateLimitAuditEvent
 }

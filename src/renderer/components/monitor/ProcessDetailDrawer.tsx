@@ -1,12 +1,15 @@
 import { memo, useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import {
   ProcessDeepDetail,
+  ProcessInfo,
+  AccessReport,
   NetworkConnectionInfo,
   LoadedModuleInfo,
-  ProcessTreeNode,
+  LegacyProcessTreeNode,
   ProcessPriority,
   isProtectedProcess,
 } from '@shared/types-extended'
+import type { ProcessHistory } from '@shared/schemas/r8-runtime'
 import {
   CloseIcon,
   TreeIcon,
@@ -25,6 +28,8 @@ import {
 import { useToast } from '../ui/Toast'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
+import { PROCESS_VM_FIELD_LIST } from './process-vm-contract'
+import { ProcessSparkline, type ProcessSparklineMetric } from './process/ProcessSparkline'
 
 // ============ Constants ============
 
@@ -46,6 +51,19 @@ const TAB_CONFIG = [
 ] as const
 
 type TabKey = typeof TAB_CONFIG[number]['key']
+
+type ProcessHistoryIdentity = Pick<ProcessInfo, 'name' | 'workingDir'>
+
+const PROCESS_HISTORY_METRIC_OPTIONS: Array<{
+  key: ProcessSparklineMetric
+  label: string
+  color: string
+}> = [
+  { key: 'cpu', label: 'CPU', color: 'var(--accent)' },
+  { key: 'rssMb', label: 'RSS', color: 'var(--info)' },
+  { key: 'handles', label: '句柄', color: 'var(--warning)' },
+  { key: 'threads', label: '线程', color: 'var(--success)' },
+]
 
 // Sensitive environment variable name patterns
 const SENSITIVE_ENV_PATTERNS = [
@@ -71,6 +89,23 @@ function formatStartTime(isoString: string): string {
   if (!isoString) return '-'
   try {
     const date = new Date(isoString)
+    if (isNaN(date.getTime())) return '-'
+    return date.toLocaleString('zh-CN', {
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+  } catch {
+    return '-'
+  }
+}
+
+function formatTimestamp(timestamp?: number): string {
+  if (!timestamp) return '-'
+  try {
+    const date = new Date(timestamp)
     if (isNaN(date.getTime())) return '-'
     return date.toLocaleString('zh-CN', {
       month: '2-digit',
@@ -176,11 +211,12 @@ const CpuChart = memo(function CpuChart({ data }: { data: number[] }) {
 
 // ============ Detail Field ============
 
-function DetailField({ label, value, mono = false, copyable = false }: {
+function DetailField({ label, value, mono = false, copyable = false, testId }: {
   label: string
   value: string
   mono?: boolean
   copyable?: boolean
+  testId?: string
 }) {
   const { showToast } = useToast()
 
@@ -193,6 +229,7 @@ function DetailField({ label, value, mono = false, copyable = false }: {
 
   return (
     <div
+      data-testid={testId}
       className={`bg-surface-900 px-3 py-2 border-l-2 border-surface-700 ${copyable ? 'cursor-pointer hover:bg-surface-800' : ''} radius-sm`}
       onClick={copyable ? handleCopy : undefined}
       title={copyable ? '点击复制' : undefined}
@@ -201,6 +238,63 @@ function DetailField({ label, value, mono = false, copyable = false }: {
       <span className={`text-sm font-bold text-text-primary break-all ${mono ? 'font-mono text-xs' : ''}`}>
         {value || '-'}
       </span>
+    </div>
+  )
+}
+
+function PermissionNotice({
+  report,
+  onRetry,
+  onRelaunch,
+  isRelaunching
+}: {
+  report: AccessReport
+  onRetry: () => void
+  onRelaunch?: () => void
+  isRelaunching?: boolean
+}) {
+  const isNotFound = report.scanResult === 'not-found'
+  const title = isNotFound ? '目标进程已退出或暂时不可访问' : '完整信息需要更高权限'
+  const description = isNotFound
+    ? '当前仅保留已捕获的基础信息，你可以重试刷新确认最新状态。'
+    : report.suggestion === 'relaunch-as-admin'
+      ? 'DevHub 当前不是管理员权限。已保留基础信息，重启为管理员后可继续读取完整详情。'
+      : '已保留基础信息，你可以先重试；如果仍失败，再以管理员身份重启 DevHub。'
+
+  return (
+    <div
+      data-testid="permission-notice"
+      className={`mx-4 mt-4 flex flex-col gap-3 border-l-2 px-3 py-3 radius-sm ${
+        isNotFound ? 'bg-info/10 border-info' : 'bg-warning/10 border-warning'
+      }`}
+    >
+      <div className="flex items-start gap-2">
+        <AlertIcon size={14} className={isNotFound ? 'text-info mt-0.5 flex-shrink-0' : 'text-warning mt-0.5 flex-shrink-0'} />
+        <div className="min-w-0">
+          <div className={`text-xs font-bold ${isNotFound ? 'text-info' : 'text-warning'}`}>{title}</div>
+          <div className="mt-1 text-[11px] text-text-secondary leading-5">
+            {description}
+          </div>
+          <div className="mt-2 text-[10px] text-text-muted">
+            当前用户: {report.currentUser || 'unknown'}
+            {report.targetProcessUser ? ` | 目标用户: ${report.targetProcessUser}` : ''}
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <button onClick={onRetry} className="btn-secondary text-xs px-3 py-1.5">
+          重试
+        </button>
+        {onRelaunch && report.suggestion === 'relaunch-as-admin' && (
+          <button
+            onClick={onRelaunch}
+            className="btn-secondary text-xs px-3 py-1.5"
+            disabled={isRelaunching}
+          >
+            {isRelaunching ? '正在请求提权...' : '以管理员身份重启'}
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -240,7 +334,7 @@ function ConnectionRow({ conn }: { conn: NetworkConnectionInfo }) {
 // ============ Tree Node ============
 
 function TreeNodeRow({ node, depth = 0, isTarget = false }: {
-  node: ProcessTreeNode
+  node: LegacyProcessTreeNode
   depth?: number
   isTarget?: boolean
 }) {
@@ -329,12 +423,16 @@ function EnvVarRow({ name, value }: { name: string; value: string }) {
 
 interface ProcessDetailDrawerProps {
   pid: number
+  basicProcessInfo?: ProcessInfo | null
   onClose: () => void
   fetchDeepDetail: (pid: number) => Promise<ProcessDeepDetail | null>
+  probeAccess: (pid: number) => Promise<AccessReport>
   fetchConnections: (pid: number) => Promise<NetworkConnectionInfo[]>
   fetchEnvironment: (pid: number) => Promise<{ variables: Record<string, string>; requiresElevation: boolean }>
   fetchHistory: (pid: number) => Promise<{ cpuHistory: number[]; memoryHistory: number[] }>
+  fetchHistory24h: (process: ProcessHistoryIdentity) => Promise<ProcessHistory>
   fetchModules: (pid: number) => Promise<{ modules: LoadedModuleInfo[]; requiresElevation: boolean }>
+  onRelaunchAsAdmin: () => Promise<{ ok: boolean; reason?: string }>
   onKillProcess: (pid: number) => Promise<boolean>
   onKillTree: (pid: number) => Promise<boolean>
   onSetPriority: (pid: number, priority: string) => Promise<boolean>
@@ -343,12 +441,16 @@ interface ProcessDetailDrawerProps {
 
 export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
   pid,
+  basicProcessInfo,
   onClose,
   fetchDeepDetail,
+  probeAccess,
   fetchConnections,
   fetchEnvironment,
   fetchHistory,
+  fetchHistory24h,
   fetchModules,
+  onRelaunchAsAdmin,
   onKillProcess,
   onKillTree,
   onSetPriority,
@@ -358,6 +460,8 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
 
   // State
   const [detail, setDetail] = useState<ProcessDeepDetail | null>(null)
+  const [basicInfo, setBasicInfo] = useState<ProcessInfo | null>(basicProcessInfo ?? null)
+  const [accessReport, setAccessReport] = useState<AccessReport | null>(null)
   const [connections, setConnections] = useState<NetworkConnectionInfo[]>([])
   const [envVars, setEnvVars] = useState<Record<string, string>>({})
   const [envRequiresElevation, setEnvRequiresElevation] = useState(false)
@@ -365,6 +469,10 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
   const [modulesRequiresElevation, setModulesRequiresElevation] = useState(false)
   const [moduleSearch, setModuleSearch] = useState('')
   const [cpuHistory, setCpuHistory] = useState<number[]>([])
+  const [history24h, setHistory24h] = useState<ProcessHistory | null>(null)
+  const [history24hLoading, setHistory24hLoading] = useState(false)
+  const [history24hError, setHistory24hError] = useState<string | null>(null)
+  const [historyMetric, setHistoryMetric] = useState<ProcessSparklineMetric>('cpu')
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<TabKey>('overview')
   const [showKillConfirm, setShowKillConfirm] = useState(false)
@@ -373,6 +481,7 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
   const [envSearch, setEnvSearch] = useState('')
   const [drawerWidth, setDrawerWidth] = useState(480)
   const [isDragging, setIsDragging] = useState(false)
+  const [isRelaunching, setIsRelaunching] = useState(false)
   const [connSortCol, setConnSortCol] = useState<'protocol' | 'localPort' | 'remotePort' | 'state' | null>(null)
   const [connSortAsc, setConnSortAsc] = useState(true)
 
@@ -380,10 +489,38 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
   const dragStartX = useRef(0)
   const dragStartWidth = useRef(0)
 
+  useEffect(() => {
+    setBasicInfo(basicProcessInfo ?? null)
+  }, [basicProcessInfo])
+
+  const processHistoryIdentity = useMemo<ProcessHistoryIdentity | null>(() => {
+    const name = detail?.name || basicInfo?.name
+    if (!name) return null
+    const workingDir = detail?.workingDirectory || basicInfo?.workingDir
+    return {
+      name,
+      workingDir: workingDir || undefined,
+    }
+  }, [basicInfo?.name, basicInfo?.workingDir, detail?.name, detail?.workingDirectory])
+
+  const processHistoryName = processHistoryIdentity?.name
+  const processHistoryWorkingDir = processHistoryIdentity?.workingDir
+
+  const history24hPointCount = history24h?.points.length ?? 0
+  const history24hGapCount = history24h?.points.filter(point => point.missing).length ?? 0
+  const selectedHistoryMetric = PROCESS_HISTORY_METRIC_OPTIONS.find(option => option.key === historyMetric) ?? PROCESS_HISTORY_METRIC_OPTIONS[0]
+
+  const loadAccessReport = useCallback(async () => {
+    const report = await probeAccess(pid)
+    setAccessReport(report)
+    return report
+  }, [pid, probeAccess])
+
   // Load initial data
   useEffect(() => {
     let cancelled = false
     setIsLoading(true)
+    setAccessReport(null)
 
     const loadData = async () => {
       const [detailData, histData] = await Promise.all([
@@ -393,6 +530,18 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
       if (cancelled) return
       setDetail(detailData)
       setCpuHistory(detailData?.cpuHistory || histData.cpuHistory || [])
+      if (detailData?.requiresElevation || !detailData) {
+        try {
+          const report = await probeAccess(pid)
+          if (!cancelled) {
+            setAccessReport(report)
+          }
+        } catch {
+          if (!cancelled) {
+            setAccessReport(null)
+          }
+        }
+      }
       setIsLoading(false)
     }
 
@@ -401,7 +550,7 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
     })
 
     return () => { cancelled = true }
-  }, [pid, fetchDeepDetail, fetchHistory])
+  }, [pid, fetchDeepDetail, fetchHistory, probeAccess])
 
   // Load connections when network tab is opened
   useEffect(() => {
@@ -457,6 +606,52 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
     }, 3000)
     return () => clearInterval(interval)
   }, [pid, fetchHistory])
+
+  useEffect(() => {
+    if (activeTab !== 'resource') return
+    let cancelled = false
+
+    const loadHistory24h = async (silent: boolean) => {
+      if (!processHistoryName) {
+        if (!cancelled) {
+          setHistory24h(null)
+          setHistory24hError('缺少进程身份，无法查询 24h 趋势')
+        }
+        return
+      }
+
+      if (!silent) setHistory24hLoading(true)
+      setHistory24hError(null)
+      try {
+        const nextHistory = await fetchHistory24h({
+          name: processHistoryName,
+          workingDir: processHistoryWorkingDir,
+        })
+        if (!cancelled) {
+          setHistory24h(nextHistory)
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setHistory24h(null)
+          setHistory24hError(error instanceof Error ? error.message : '24h 趋势加载失败')
+        }
+      } finally {
+        if (!cancelled && !silent) {
+          setHistory24hLoading(false)
+        }
+      }
+    }
+
+    loadHistory24h(false).catch(() => undefined)
+    const interval = setInterval(() => {
+      loadHistory24h(true).catch(() => undefined)
+    }, 60000)
+
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [activeTab, fetchHistory24h, processHistoryName, processHistoryWorkingDir])
 
   // ESC key handler
   useEffect(() => {
@@ -538,14 +733,16 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
   }, [detail, onOpenFileLocation, showToast])
 
   const handleCopyCommand = useCallback(async () => {
-    if (detail?.commandLine) {
-      await navigator.clipboard.writeText(detail.commandLine)
+    const commandLine = detail?.commandLine ?? basicInfo?.command
+    if (commandLine) {
+      await navigator.clipboard.writeText(commandLine)
       showToast('success', '命令已复制到剪贴板')
     }
-  }, [detail, showToast])
+  }, [basicInfo, detail, showToast])
 
   const handleRefresh = useCallback(async () => {
     setIsLoading(true)
+    setAccessReport(null)
     try {
       const [detailData, histData] = await Promise.all([
         fetchDeepDetail(pid),
@@ -553,6 +750,14 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
       ])
       setDetail(detailData)
       setCpuHistory(detailData?.cpuHistory || histData.cpuHistory || [])
+
+      if (detailData?.requiresElevation || !detailData) {
+        try {
+          await loadAccessReport()
+        } catch {
+          setAccessReport(null)
+        }
+      }
 
       if (activeTab === 'network') {
         const conns = await fetchConnections(pid)
@@ -571,7 +776,27 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
     } finally {
       setIsLoading(false)
     }
-  }, [pid, activeTab, fetchDeepDetail, fetchHistory, fetchConnections, fetchEnvironment, fetchModules])
+  }, [pid, activeTab, fetchDeepDetail, fetchHistory, fetchConnections, fetchEnvironment, fetchModules, loadAccessReport])
+
+  const handleRelaunchAsAdmin = useCallback(async () => {
+    setIsRelaunching(true)
+    try {
+      const result = await onRelaunchAsAdmin()
+      if (result.ok) {
+        showToast('info', '已请求以管理员身份重启，请在新窗口中继续查看详情')
+        return
+      }
+
+      if (result.reason === 'user-cancelled') {
+        showToast('warning', '已取消管理员重启')
+        return
+      }
+
+      showToast('error', result.reason ? `管理员重启失败: ${result.reason}` : '管理员重启失败')
+    } finally {
+      setIsRelaunching(false)
+    }
+  }, [onRelaunchAsAdmin, showToast])
 
   // Filtered environment variables
   const filteredEnvVars = useMemo(() => {
@@ -594,12 +819,13 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
 
   // Check if process is protected (for UI-level kill prevention)
   const isProcessProtected = useMemo(() => {
-    if (!detail?.name) return false
-    return isProtectedProcess(detail.name) || pid < 100
-  }, [detail, pid])
+    const candidateName = detail?.name ?? basicInfo?.name
+    if (!candidateName) return false
+    return isProtectedProcess(candidateName) || pid < 100
+  }, [basicInfo, detail, pid])
 
   // Count children recursively
-  const countChildren = (nodes: ProcessTreeNode[]): number => {
+  const countChildren = (nodes: LegacyProcessTreeNode[]): number => {
     let count = nodes.length
     for (const n of nodes) {
       if (n.children) count += countChildren(n.children)
@@ -642,6 +868,26 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
     }
   }, [connSortCol])
 
+  const displayName = detail?.name ?? basicInfo?.name ?? `PID ${pid}`
+  const displayPid = String(detail?.pid ?? basicInfo?.pid ?? pid)
+  const displayPpid =
+    detail?.ancestorChain?.length
+      ? String(detail.ancestorChain[detail.ancestorChain.length - 1]?.pid ?? '-')
+      : '-'
+  const displayUserName = detail?.userName || accessReport?.targetProcessUser || '-'
+  const displayStartTime = detail?.startTime
+    ? formatStartTime(detail.startTime)
+    : formatTimestamp(basicInfo?.startTime)
+  const displayCommandLine = detail?.commandLine ?? basicInfo?.command ?? '-'
+  const displayWorkingDirectory = detail?.workingDirectory ?? basicInfo?.workingDir ?? '-'
+  const displayCpuPercent = detail?.cpuPercent ?? basicInfo?.cpu ?? 0
+  const displayMemoryRss = detail?.memoryRSS ?? basicInfo?.memory ?? 0
+  const displayMemoryVms = detail?.memoryVMS ?? basicInfo?.memory ?? 0
+  const displayThreadCount = detail?.threadCount ?? 0
+  const displayHandleCount = detail?.handleCount ?? 0
+  const displayConnectionCount = detail?.networkConnections?.length ?? connections.length
+  const hasRenderableFallback = Boolean(detail || basicInfo)
+
   return (
     <>
       {/* Overlay backdrop — click to close */}
@@ -650,6 +896,9 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
       {/* Drawer */}
       <div
         ref={drawerRef}
+        data-vm-surface="detail-drawer"
+        data-vm-pid={pid}
+        data-vm-fields={PROCESS_VM_FIELD_LIST}
         className="fixed top-0 right-0 h-full z-50 bg-surface-900 border-l-2 border-surface-600 flex flex-col animate-slide-in-right shadow-elevated"
         style={{ width: `${drawerWidth}px` }}
       >
@@ -668,23 +917,35 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
             <ProcessIcon size={16} className="text-accent flex-shrink-0" />
             <div className="min-w-0">
               <h4
+                data-vm-field="name"
+                data-vm-status="ok"
+                data-vm-source="ProcessDetail"
                 className="text-sm font-bold text-text-primary uppercase tracking-wider truncate"
                 style={{ fontFamily: 'var(--font-display)' }}
-                title={detail?.name}
+                title={displayName}
               >
-                {detail?.name || `PID ${pid}`}
+                {displayName}
               </h4>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-text-muted font-mono">PID: {pid}</span>
+                <span data-vm-field="pid" data-vm-status="ok" data-vm-source="ProcessDetail" className="text-[10px] text-text-muted font-mono">PID: {displayPid}</span>
                 {detail?.scriptPath && (
-                  <span className="text-[10px] text-accent font-mono truncate" title={detail.scriptPath}>
-                    {detail.scriptPath}
+                  <span className="text-[10px] text-accent font-mono truncate" title={detail?.scriptPath}>
+                    {detail?.scriptPath}
                   </span>
                 )}
               </div>
             </div>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
+            <button
+              data-graph-entry="process-drawer-action"
+              data-graph-kind="attached"
+              onClick={() => window.dispatchEvent(new CustomEvent('devhub:monitor-navigate', { detail: { tab: 'process', scope: { kind: 'process', targetId: pid, depth: 2 } } }))}
+              className="btn-icon-sm text-text-muted hover:text-accent"
+              title="查看关系图"
+            >
+              <TreeIcon size={14} />
+            </button>
             <button
               onClick={handleRefresh}
               className="btn-icon-sm text-text-muted hover:text-text-primary"
@@ -728,44 +989,59 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
               <LoadingSpinner size="sm" className="mr-2" />
               <span className="text-text-muted text-sm">加载进程详情...</span>
             </div>
-          ) : !detail ? (
+          ) : !hasRenderableFallback ? (
             <div className="flex flex-col items-center justify-center py-20 gap-2">
-              <AlertIcon size={24} className="text-error" />
-              <span className="text-text-muted text-sm">无法获取进程信息 (PID: {pid})</span>
-              {detail === null && (
-                <span className="text-[10px] text-text-muted">进程可能已终止或需要管理员权限</span>
-              )}
-            </div>
-          ) : detail.requiresElevation ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-2">
-              <AlertIcon size={24} className="text-warning" />
-              <span className="text-text-muted text-sm">需要管理员权限</span>
-              <span className="text-[10px] text-text-muted">以管理员身份运行 DevHub 以查看此进程的详情</span>
+              <div data-testid="detail-error-only" className="contents">
+                <AlertIcon size={24} className="text-error" />
+                <span className="text-text-muted text-sm">无法获取进程信息 (PID: {pid})</span>
+                <span className="text-[10px] text-text-muted">进程可能已终止或当前会话缺少可显示的基础数据</span>
+              </div>
             </div>
           ) : (
-            <div className="p-4 space-y-3">
-              {/* Overview Tab — Basic Info */}
+            <>
+              {accessReport && (
+                <PermissionNotice
+                  report={accessReport}
+                  onRetry={handleRefresh}
+                  onRelaunch={handleRelaunchAsAdmin}
+                  isRelaunching={isRelaunching}
+                />
+              )}
+              <div className="p-4 space-y-3" data-testid="process-detail-panel">
+                {!detail && (
+                  <div className="bg-surface-900 px-3 py-2 border-l-2 border-warning radius-sm">
+                    <span className="text-xs text-text-secondary">
+                      当前显示的是进程基础信息快照。更多字段需要提升权限或稍后重试。
+                    </span>
+                  </div>
+                )}
+                {/* Overview Tab — Basic Info */}
               {activeTab === 'overview' && (
                 <div className="space-y-3 animate-fade-in">
                   {/* Basic Info Grid */}
                   <div className="grid grid-cols-2 gap-2">
-                    <DetailField label="PID" value={String(detail?.pid ?? pid)} mono />
-                    <DetailField label="PPID" value={(detail?.ancestorChain?.length ?? 0) > 0 ? String(detail.ancestorChain[detail.ancestorChain.length - 1]?.pid ?? '-') : '-'} mono />
-                    <DetailField label="用户" value={detail?.userName ?? '-'} />
-                    <DetailField label="启动时间" value={formatStartTime(detail?.startTime ?? '')} />
-                    {detail.scriptPath && (
-                      <DetailField label="脚本路径" value={detail.scriptPath} mono copyable />
+                    <span data-vm-field="name" data-vm-status="ok" data-vm-source="ProcessDetail"><DetailField label="名称" value={displayName} testId="detail-field-name" /></span>
+                    <span data-vm-field="pid" data-vm-status="ok" data-vm-source="ProcessDetail"><DetailField label="PID" value={displayPid} mono testId="detail-field-pid" /></span>
+                    <DetailField label="PPID" value={displayPpid} mono />
+                    <DetailField label="用户" value={displayUserName} />
+                    <span data-vm-field="startTime" data-vm-status="ok" data-vm-source="ProcessDetail"><DetailField label="启动时间" value={displayStartTime} /></span>
+                    {detail?.scriptPath && (
+                      <DetailField label="脚本路径" value={detail.scriptPath ?? ''} mono copyable />
                     )}
                   </div>
 
                   {/* Executable Path */}
-                  {detail.executablePath && (
-                    <DetailField label="可执行文件路径" value={detail.executablePath} mono copyable />
+                  {detail?.executablePath && (
+                    <DetailField label="可执行文件路径" value={detail.executablePath ?? ''} mono copyable />
                   )}
 
                   {/* Command Line */}
-                  {detail.commandLine && (
-                    <div className="bg-surface-900 px-3 py-2 border-l-2 border-surface-600 radius-sm">
+                  <span data-vm-field="status" data-vm-status="data_missing" data-vm-source="ProcessDetail" className="sr-only">状态在详情抽屉中由进程快照继承</span>
+                  <span data-vm-field="type" data-vm-status="data_missing" data-vm-source="ProcessDetail" className="sr-only">类型在详情抽屉中由进程快照继承</span>
+                  <span data-vm-field="port" data-vm-status={displayConnectionCount > 0 ? 'ok' : 'data_missing'} data-vm-source="ProcessDetail" className="sr-only">{displayConnectionCount} 个网络连接</span>
+
+                  {displayCommandLine !== '-' && (
+                    <div data-vm-field="command" data-vm-status="ok" data-vm-source="ProcessDetail" className="bg-surface-900 px-3 py-2 border-l-2 border-surface-600 radius-sm">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-[10px] text-text-muted uppercase tracking-wider">完整命令</span>
                         <button
@@ -776,21 +1052,21 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
                           <CopyIcon size={12} />
                         </button>
                       </div>
-                      <p className="text-xs text-text-secondary font-mono break-all">$ {detail.commandLine}</p>
+                      <p className="text-xs text-text-secondary font-mono break-all">$ {displayCommandLine}</p>
                     </div>
                   )}
 
                   {/* Working Directory */}
-                  {detail.workingDirectory && (
-                    <DetailField label="工作目录" value={detail.workingDirectory} mono copyable />
+                  {displayWorkingDirectory !== '-' && (
+                    <DetailField label="工作目录" value={displayWorkingDirectory} mono copyable />
                   )}
 
                   {/* Quick stats links to other tabs */}
                   <div className="flex flex-wrap gap-2 text-[10px]">
-                    {(detail?.networkConnections?.length ?? 0) > 0 && (
+                    {displayConnectionCount > 0 && (
                       <button onClick={() => setActiveTab('network')} className="flex items-center gap-1.5 bg-surface-800 px-2 py-1 hover:bg-surface-700 transition-colors radius-sm">
                         <PortIcon size={12} className="text-gold" />
-                        <span className="text-text-muted">{detail?.networkConnections?.length ?? 0} 个网络连接</span>
+                        <span className="text-text-muted">{displayConnectionCount} 个网络连接</span>
                       </button>
                     )}
                     {(detail?.relatedProcesses?.length ?? 0) > 0 && (
@@ -808,7 +1084,7 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
                   </div>
 
                   {/* Process Tree (inline collapsible) */}
-                  {(detail.ancestorChain.length > 0 || detail.children.length > 0) && (
+                  {detail && (detail.ancestorChain.length > 0 || detail.children.length > 0) && (
                     <div className="border-t border-surface-700 pt-3">
                       <span className="text-[10px] text-text-muted uppercase tracking-wider block mb-2">
                         <TreeIcon size={12} className="inline mr-1 text-info" />
@@ -854,30 +1130,89 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
 
               {/* Resource Tab — CPU/Memory/IO */}
               {activeTab === 'resource' && (
-                <div className="space-y-3 animate-fade-in">
+                <div data-vm-field="cpu" data-vm-status="ok" data-vm-source="ProcessDetail" className="space-y-3 animate-fade-in">
                   {/* CPU Chart */}
                   <CpuChart data={cpuHistory} />
+
+                  <div
+                    data-testid="process-detail-history-24h"
+                    className="bg-surface-900 px-3 py-3 border-l-2 border-accent/70 radius-sm"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
+                      <div className="min-w-0">
+                        <span className="text-[10px] text-text-muted uppercase tracking-wider block">24h 趋势</span>
+                        <span className="text-[10px] text-text-secondary font-mono break-all">
+                          {processHistoryName ?? 'unknown'}{processHistoryWorkingDir ? ` · ${processHistoryWorkingDir}` : ''}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1" role="group" aria-label="选择 24h 趋势指标">
+                        {PROCESS_HISTORY_METRIC_OPTIONS.map(option => (
+                          <button
+                            key={option.key}
+                            type="button"
+                            aria-pressed={historyMetric === option.key}
+                            className={`px-2 py-1 text-[10px] font-bold border transition-colors radius-sm ${
+                              historyMetric === option.key
+                                ? 'border-accent text-accent bg-accent/10'
+                                : 'border-surface-700 text-text-muted hover:text-text-primary hover:border-surface-500'
+                            }`}
+                            onClick={() => setHistoryMetric(option.key)}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {history24hLoading && !history24h && (
+                      <div className="flex items-center gap-2 py-3 text-xs text-text-muted">
+                        <LoadingSpinner size="sm" />
+                        <span>正在加载 24h 趋势...</span>
+                      </div>
+                    )}
+                    {history24hError && (
+                      <div className="border-l-2 border-warning bg-warning/10 px-2 py-2 text-[11px] text-warning radius-sm">
+                        {history24hError}
+                      </div>
+                    )}
+                    {!history24hError && (!history24hLoading || history24h) && (
+                      <ProcessSparkline
+                        className="w-full"
+                        color={selectedHistoryMetric.color}
+                        height={108}
+                        history={history24h ?? undefined}
+                        metric={historyMetric}
+                        testId="process-detail-history-24h-chart"
+                        width={420}
+                      />
+                    )}
+                    <div className="mt-2 flex items-center justify-between text-[10px] text-text-muted">
+                      <span>采样点 {history24hPointCount}</span>
+                      <span>间断 {history24hGapCount}</span>
+                    </div>
+                  </div>
 
                   {/* Memory Usage */}
                   <div className="bg-surface-900 px-3 py-2 border-l-2 border-surface-600 radius-sm">
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-[10px] text-text-muted uppercase tracking-wider">内存使用</span>
-                      <span className="font-mono font-bold text-sm text-info">{detail.memoryRSS} MB</span>
+                      <span className="font-mono font-bold text-sm text-info">{displayMemoryRss} MB</span>
                     </div>
                     <div className="h-2 bg-surface-800 radius-sm">
                       <div
                         className="h-full transition-all duration-500 bg-info"
-                        style={{ width: `${Math.min((detail.memoryRSS / Math.max(detail.memoryRSS, 500)) * 100, 100)}%`, borderRadius: '1px' }}
+                          style={{ width: `${Math.min((displayMemoryRss / Math.max(displayMemoryRss, 500)) * 100, 100)}%`, borderRadius: '1px' }}
                       />
                     </div>
                   </div>
 
                   {/* Resource Details Grid */}
                   <div className="grid grid-cols-2 gap-2">
-                    <DetailField label="内存 (RSS)" value={`${detail?.memoryRSS ?? 0} MB`} mono />
-                    <DetailField label="内存 (VMS)" value={`${detail?.memoryVMS ?? 0} MB`} mono />
-                    <DetailField label="线程数" value={String(detail?.threadCount ?? 0)} mono />
-                    <DetailField label="句柄数" value={String(detail?.handleCount ?? 0)} mono />
+                    <DetailField label="CPU" value={`${displayCpuPercent.toFixed(1)}%`} mono />
+                    <span data-vm-field="memory" data-vm-status="ok" data-vm-source="ProcessDetail"><DetailField label="内存 (RSS)" value={`${displayMemoryRss} MB`} mono /></span>
+                    <DetailField label="内存 (VMS)" value={`${displayMemoryVms} MB`} mono />
+                    <DetailField label="线程数" value={String(displayThreadCount)} mono />
+                    <DetailField label="句柄数" value={String(displayHandleCount)} mono />
                     <DetailField label="IO 读取" value={formatBytes(detail?.ioReadBytes ?? 0)} mono />
                     <DetailField label="IO 写入" value={formatBytes(detail?.ioWriteBytes ?? 0)} mono />
                   </div>
@@ -937,12 +1272,12 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
                   )}
 
                   {/* Related processes */}
-                  {detail.relatedProcesses.length > 0 && (
+                  {(detail?.relatedProcesses?.length ?? 0) > 0 && (
                     <div className="space-y-1">
                       <span className="text-[10px] text-text-muted uppercase tracking-wider block mb-1">
-                        关联进程 ({detail.relatedProcesses.length})
+                        关联进程 ({detail?.relatedProcesses?.length ?? 0})
                       </span>
-                      {detail.relatedProcesses.map(rp => (
+                      {detail?.relatedProcesses.map(rp => (
                         <div
                           key={rp.pid}
                           className="flex items-center justify-between bg-surface-900 px-3 py-1.5 border-l-2 border-steel/30 radius-sm"
@@ -1071,7 +1406,8 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
                   </div>
                 </div>
               )}
-            </div>
+              </div>
+            </>
           )}
         </div>
 
@@ -1142,7 +1478,7 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
       <ConfirmDialog
         isOpen={showKillConfirm}
         title="终止进程"
-        message={`确定要终止进程 "${detail?.name}" (PID: ${pid}) 吗？`}
+        message={`确定要终止进程 "${displayName}" (PID: ${pid}) 吗？`}
         confirmText="终止"
         variant="danger"
         onConfirm={handleKill}
@@ -1151,7 +1487,7 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
       <ConfirmDialog
         isOpen={showKillTreeConfirm}
         title="终止进程树"
-        message={`确定要终止 "${detail?.name}" 及其 ${totalChildren} 个子进程吗？此操作不可撤销。`}
+        message={`确定要终止 "${displayName}" 及其 ${totalChildren} 个子进程吗？此操作不可撤销。`}
         confirmText="终止全部"
         variant="danger"
         onConfirm={handleKillTree}

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from 'react'
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { ProjectCard } from './ProjectCard'
 import { TagManagerDialog } from './TagManagerDialog'
@@ -6,13 +6,16 @@ import { useProjects } from '../../hooks/useProjects'
 import { useDebouncedCallback } from '../../hooks/useDebouncedCallback'
 import { useProjectStore } from '../../stores/projectStore'
 import { useToast } from '../ui/Toast'
-import { Project } from '@shared/types'
+import { Project, ProjectOpenTarget, InformationDensity } from '@shared/types'
+import type { ThemeDecorationConfig } from '@shared/types'
 import type { ProjectSortField, ProjectSortDirection } from '@shared/types-extended'
 import { SearchIcon, PlusIcon, FolderIcon, RefreshIcon, SortIcon, ChevronUpIcon, ChevronDownIcon } from '../icons'
+import { ThemeDecoration } from '../ui/ThemeDecoration'
 
 interface ProjectListProps {
   onAddProject: () => void
   onShowProjectDetail?: (project: Project) => void
+  decorationConfig?: ThemeDecorationConfig
 }
 
 const isElectron = typeof window !== 'undefined' && window.devhub !== undefined
@@ -33,12 +36,28 @@ const STATUS_PRIORITY: Record<string, number> = {
   stopped: 2
 }
 
-// Each project card estimated height (with padding)
-const ESTIMATED_ITEM_HEIGHT = 120
+const PROJECT_ROW_HEIGHT_BY_DENSITY: Record<InformationDensity, number> = {
+  compact: 64,
+  standard: 120,
+  comfortable: 144
+}
+
+function isInformationDensity(value: string | undefined): value is InformationDensity {
+  return value === 'compact' || value === 'standard' || value === 'comfortable'
+}
+
+function readDocumentDensity(): InformationDensity {
+  if (typeof document === 'undefined') {
+    return 'standard'
+  }
+
+  const density = document.documentElement.dataset.density
+  return isInformationDensity(density) ? density : 'standard'
+}
 
 const SORT_STORAGE_KEY = 'devhub:project-sort'
 
-export function ProjectList({ onAddProject, onShowProjectDetail }: ProjectListProps) {
+export function ProjectList({ onAddProject, onShowProjectDetail, decorationConfig }: ProjectListProps) {
   const {
     filteredProjects,
     selectedProjectId,
@@ -66,6 +85,19 @@ export function ProjectList({ onAddProject, onShowProjectDetail }: ProjectListPr
 
   // Virtual scroll container ref
   const parentRef = useRef<HTMLDivElement>(null)
+  const [density, setDensity] = useState<InformationDensity>(() => readDocumentDensity())
+
+  useEffect(() => {
+    if (typeof document === 'undefined' || typeof MutationObserver === 'undefined') return undefined
+
+    const syncDensity = () => setDensity(readDocumentDensity())
+    syncDensity()
+
+    const observer = new MutationObserver(syncDensity)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-density'] })
+
+    return () => observer.disconnect()
+  }, [])
 
   // Project statistics derived from filteredProjects
   const projectStats = useMemo(() => {
@@ -102,11 +134,13 @@ export function ProjectList({ onAddProject, onShowProjectDetail }: ProjectListPr
     return sorted
   }, [filteredProjects, sortConfig])
 
+  const estimatedItemHeight = PROJECT_ROW_HEIGHT_BY_DENSITY[density]
+
   // Configure virtualizer
   const virtualizer = useVirtualizer({
     count: sortedProjects.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => ESTIMATED_ITEM_HEIGHT,
+    estimateSize: () => estimatedItemHeight,
     overscan: 5
   })
 
@@ -129,10 +163,20 @@ export function ProjectList({ onAddProject, onShowProjectDetail }: ProjectListPr
   const handleOpenFolder = async (path: string) => {
     if (isElectron) {
       try {
-        await window.devhub.shell.openPath(path)
+        await window.devhub.projects.openIn(path, 'explorer')
       } catch (error) {
         showToast('error', error instanceof Error ? error.message : '打开文件夹失败')
       }
+    }
+  }
+
+  const handleOpenProjectInTarget = async (path: string, target: ProjectOpenTarget) => {
+    if (!isElectron) return
+
+    try {
+      await window.devhub.projects.openIn(path, target)
+    } catch (error) {
+      showToast('error', error instanceof Error ? error.message : '打开项目失败')
     }
   }
 
@@ -217,7 +261,7 @@ export function ProjectList({ onAddProject, onShowProjectDetail }: ProjectListPr
     <>
       <div className="flex flex-col h-full">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b-2 border-surface-700 relative">
+        <div className="project-list-header flex items-center justify-between px-5 py-4 border-b-2 border-surface-700 relative">
           {/* Diagonal decoration */}
           <div className="absolute inset-0 deco-diagonal opacity-20 pointer-events-none" />
 
@@ -284,7 +328,7 @@ export function ProjectList({ onAddProject, onShowProjectDetail }: ProjectListPr
 
         {/* Stats Dashboard Row */}
         {filteredProjects.length > 0 && (
-          <div className="flex items-center gap-3 px-4 py-2 border-b border-surface-700 bg-surface-950/40">
+          <div className="project-list-stats flex items-center gap-3 px-4 py-2 border-b border-surface-700 bg-surface-950/40">
             <span className="text-[11px] text-text-muted">
               共 <span className="text-text-primary font-bold">{projectStats.total}</span> 个
             </span>
@@ -307,7 +351,7 @@ export function ProjectList({ onAddProject, onShowProjectDetail }: ProjectListPr
         )}
 
         {/* Search */}
-        <div className="px-4 py-3 border-b border-surface-700">
+        <div className="project-list-search px-4 py-3 border-b border-surface-700">
           <div className="relative">
             <SearchIcon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" />
             <input
@@ -322,15 +366,19 @@ export function ProjectList({ onAddProject, onShowProjectDetail }: ProjectListPr
         {/* Project List - Virtualized */}
         <div
           ref={parentRef}
-          className="flex-1 overflow-y-auto px-4 pb-4 pt-2"
+          className="project-list-scroll flex-1 overflow-y-auto px-4 pb-4 pt-2"
+          data-density={density}
+          data-estimated-row-height={estimatedItemHeight}
+          data-testid="project-list-scroll"
         >
           {sortedProjects.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-48 text-text-muted">
-              <div className="w-16 h-16 bg-surface-800 flex items-center justify-center mb-4 border-l-3 border-accent radius-md">
+            <div className="relative flex h-48 flex-col items-center justify-center overflow-hidden text-text-muted">
+              <ThemeDecoration config={decorationConfig} position="empty-state" />
+              <div className="relative z-10 w-16 h-16 bg-surface-800 flex items-center justify-center mb-4 border-l-3 border-accent radius-md">
                 <FolderIcon size={32} className="text-text-muted" />
               </div>
-              <p className="text-sm font-medium">暂无项目</p>
-              <div className="flex flex-col items-center gap-2 mt-4">
+              <p className="relative z-10 text-sm font-medium">暂无项目</p>
+              <div className="relative z-10 flex flex-col items-center gap-2 mt-4">
                 <button
                   onClick={handleDiscover}
                   disabled={isDiscovering}
@@ -369,7 +417,7 @@ export function ProjectList({ onAddProject, onShowProjectDetail }: ProjectListPr
                       transform: `translateY(${virtualItem.start}px)`
                     }}
                   >
-                    <div className="pb-2">
+                    <div className="project-list-row">
                       <ProjectCard
                         project={project}
                         isSelected={project.id === selectedProjectId}
@@ -378,9 +426,11 @@ export function ProjectList({ onAddProject, onShowProjectDetail }: ProjectListPr
                         onStop={() => handleStop(project.id)}
                         onRemove={() => handleRemove(project.id, project.name)}
                         onOpenFolder={() => handleOpenFolder(project.path)}
+                        onOpenIn={(target) => handleOpenProjectInTarget(project.path, target)}
                         onCopyPath={() => handleCopyPath(project.path)}
                         onManageTags={() => setTagManagerProject(project)}
                         onShowDetail={onShowProjectDetail ? () => onShowProjectDetail(project) : undefined}
+                        decorationConfig={decorationConfig}
                       />
                     </div>
                   </div>

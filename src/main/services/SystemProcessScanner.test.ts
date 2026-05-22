@@ -447,7 +447,42 @@ describe('SystemProcessScanner', () => {
       expect(processes).toHaveLength(1)
       expect(scanSpy).not.toHaveBeenCalled()
     })
-  })
+
+
+    it('should refresh cached processes when requested', async () => {
+      const cachedProcess: ProcessInfo = {
+        pid: 1234,
+        name: 'node.exe',
+        command: 'npm start',
+        cpu: 10,
+        memory: 100,
+        status: 'running',
+        startTime: Date.now(),
+        type: 'dev-server'
+      }
+      const freshProcess: ProcessInfo = {
+        pid: 5678,
+        name: 'claude.exe',
+        command: 'claude -p "real task"',
+        cpu: 2,
+        memory: 220,
+        status: 'running',
+        startTime: Date.now(),
+        type: 'ai-tool'
+      }
+
+      ;(scanner as any).processes.set(cachedProcess.pid, cachedProcess)
+      const scanSpy = vi.spyOn(scanner, 'scan').mockImplementation(async () => {
+        ;(scanner as any).processes.clear()
+        ;(scanner as any).processes.set(freshProcess.pid, freshProcess)
+        return { success: true, data: [freshProcess] }
+      })
+
+      const processes = await scanner.getAll({ refresh: true })
+
+      expect(scanSpy).toHaveBeenCalledOnce()
+      expect(processes).toEqual([freshProcess])
+    })  })
 
   describe('scan', () => {
     it('should return error result on failure', async () => {
@@ -469,6 +504,40 @@ describe('SystemProcessScanner', () => {
       await scanner.scan()
 
       expect(callback).toHaveBeenCalledWith([])
+    })
+
+    it('should attach parent process metadata to scanned dev processes', async () => {
+      vi.spyOn(scanner as any, 'getRawProcesses').mockResolvedValue([
+        {
+          pid: 100,
+          ppid: 10,
+          name: 'powershell.exe',
+          commandLine: 'powershell -NoLogo',
+          workingDir: 'C:\\Users\\HP',
+          memoryMB: 80,
+          cpuPercent: 0
+        },
+        {
+          pid: 4242,
+          ppid: 100,
+          name: 'node.exe',
+          commandLine: 'npm run dev',
+          workingDir: 'D:\\Desktop\\CREATOR ONE\\devhub',
+          memoryMB: 256,
+          cpuPercent: 12.5
+        }
+      ])
+      ;(mockPortScanner.scanAll as ReturnType<typeof vi.fn>).mockResolvedValue([])
+
+      const result = await scanner.scan()
+
+      expect(result.success).toBe(true)
+      expect(result.data).toHaveLength(1)
+      expect(result.data?.[0]).toMatchObject({
+        pid: 4242,
+        ppid: 100,
+        parentName: 'powershell.exe'
+      })
     })
 
     it('should call zombie callback when zombies detected', async () => {

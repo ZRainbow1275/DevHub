@@ -1,35 +1,227 @@
-import { useEffect, memo, useState, useCallback } from 'react'
+import { useEffect, memo, useState, useCallback, useMemo } from 'react'
 import { useAITasks } from '../../hooks/useAITasks'
 import { useAliasStore } from '../../stores/aliasStore'
 import { useToast } from '../ui/Toast'
-import { AITask, AITaskHistory, AIToolType, AITaskState, AIWindowAlias } from '@shared/types-extended'
+import { AITask, AITaskHistory, AIToolType, AIWindowAlias } from '@shared/types-extended'
+import { assertProgressInvariant, deriveProgress, toDerivableProgressState, type DerivableProgressState, type DerivedProgress } from '@shared/detection/derive-progress'
 import { AIWindowAliasEditor } from './AIWindowAlias'
 import { AIProgressTimeline } from './AIProgressTimeline'
+import { ProgressBar } from './ai-task/ProgressBar'
 import { formatDuration, formatDurationCN } from '../../utils/formatDuration'
+import { AIToolBrandLogo } from '../icons/AIToolBrandLogo'
+import { AIIcon, RefreshIcon } from '../icons'
 
-const TOOL_INFO: Record<AIToolType, { name: string; icon: string; color: string }> = {
-  'codex': { name: 'Codex', icon: '🧠', color: 'text-green-400' },
-  'claude-code': { name: 'Claude Code', icon: '🤖', color: 'text-orange-400' },
-  'gemini-cli': { name: 'Gemini CLI', icon: '✨', color: 'text-blue-400' },
-  'cursor': { name: 'Cursor', icon: '📝', color: 'text-purple-400' },
-  'opencode': { name: 'OpenCode', icon: '💻', color: 'text-cyan-400' },
-  'aider': { name: 'Aider', icon: '[A]', color: 'text-emerald-400' },
-  'windsurf': { name: 'Windsurf', icon: '[W]', color: 'text-teal-400' },
-  'continue-dev': { name: 'Continue', icon: '[C]', color: 'text-indigo-400' },
-  'cline': { name: 'Cline', icon: '[CL]', color: 'text-rose-400' },
-  'other': { name: 'Other', icon: '⚙️', color: 'text-gray-400' }
+const TOOL_INFO: Record<AIToolType, { name: string; accentClass: string }> = {
+  'codex': { name: 'Codex', accentClass: 'text-green-400' },
+  'claude-code': { name: 'Claude Code', accentClass: 'text-orange-400' },
+  'gemini-cli': { name: 'Gemini CLI', accentClass: 'text-blue-400' },
+  'cursor': { name: 'Cursor', accentClass: 'text-purple-400' },
+  'opencode': { name: 'OpenCode', accentClass: 'text-cyan-400' },
+  'aider': { name: 'Aider', accentClass: 'text-emerald-400' },
+  'windsurf': { name: 'Windsurf', accentClass: 'text-teal-400' },
+  'continue-dev': { name: 'Continue', accentClass: 'text-indigo-400' },
+  'cline': { name: 'Cline', accentClass: 'text-rose-400' },
+  'other': { name: 'Other', accentClass: 'text-gray-400' }
 }
 
-const STATE_INFO: Record<AITaskState, { label: string; color: string; bgColor: string }> = {
-  'running': { label: '运行中', color: 'text-success', bgColor: 'bg-success/10' },
+const STATE_INFO: Record<DerivableProgressState, { label: string; color: string; bgColor: string }> = {
+  'initializing': { label: '初始化', color: 'text-info', bgColor: 'bg-info/10' },
   'thinking': { label: '思考中', color: 'text-blue-400', bgColor: 'bg-blue-500/10' },
+  'receiving-input': { label: '接收输入', color: 'text-info', bgColor: 'bg-info/10' },
   'coding': { label: '编码中', color: 'text-green-400', bgColor: 'bg-green-500/10' },
   'compiling': { label: '编译中', color: 'text-orange-400', bgColor: 'bg-orange-500/10' },
-  'waiting': { label: '等待输入', color: 'text-warning', bgColor: 'bg-warning/10' },
+  'validating': { label: '确认中', color: 'text-info', bgColor: 'bg-info/10' },
+  'waiting-input': { label: '等待输入', color: 'text-warning', bgColor: 'bg-warning/10' },
+  'awaiting-human': { label: '等待人工', color: 'text-warning', bgColor: 'bg-warning/10' },
+  'stuck': { label: '疑似卡死', color: 'text-warning', bgColor: 'bg-warning/10' },
   'completed': { label: '已完成', color: 'text-accent-300', bgColor: 'bg-accent/10' },
   'error': { label: '错误', color: 'text-error', bgColor: 'bg-error/10' },
   'idle': { label: '空闲', color: 'text-text-muted', bgColor: 'bg-surface-700' }
 }
+
+type AITaskActiveViewMode = 'cards' | 'list' | 'detail'
+
+const ACTIVE_VIEW_MODES: Array<{ mode: AITaskActiveViewMode; label: string }> = [
+  { mode: 'cards', label: '卡片' },
+  { mode: 'list', label: '列表' },
+  { mode: 'detail', label: '详情' }
+]
+
+function resolveProgressState(task: Pick<AITask, 'monitorState' | 'status'>): DerivableProgressState {
+  return toDerivableProgressState(task.status.state, task.status.phase, task.monitorState)
+}
+
+function getEstimatedTotalMs(task: AITask): number | undefined {
+  const estimate = task.status.progressEstimate
+  if (!estimate) {
+    return undefined
+  }
+
+  if (
+    typeof estimate.elapsed !== 'number' ||
+    !Number.isFinite(estimate.elapsed) ||
+    estimate.elapsed < 0
+  ) {
+    return undefined
+  }
+
+  if (
+    typeof estimate.estimatedRemaining !== 'number' ||
+    !Number.isFinite(estimate.estimatedRemaining) ||
+    estimate.estimatedRemaining < 0
+  ) {
+    return undefined
+  }
+
+  return estimate.elapsed + estimate.estimatedRemaining
+}
+
+function getExplicitProgressPercentage(task: AITask): number | undefined {
+  const estimate = task.status.progressEstimate
+  if (!estimate) {
+    return undefined
+  }
+
+  if (estimate.percentage === 0 || estimate.confidence >= 0.9) {
+    return estimate.percentage
+  }
+
+  return undefined
+}
+
+function getDerivedProgress(
+  state: DerivableProgressState,
+  task: AITask,
+  elapsedMs: number,
+): DerivedProgress {
+  const derived = deriveProgress(state, {
+    elapsedMs,
+    estimatedTotalMs: getEstimatedTotalMs(task),
+    explicitPercentage: getExplicitProgressPercentage(task),
+    confidence: task.status.progressEstimate?.confidence ?? task.detectionSignals?.phaseConfidence,
+  })
+
+  assertProgressInvariant(state, derived)
+  return derived
+}
+
+interface TaskListRowProps {
+  task: AITask
+  isSelected: boolean
+  onSelect: () => void
+  existingAlias?: AIWindowAlias
+}
+
+const TaskListRow = memo(function TaskListRow({ task, isSelected, onSelect, existingAlias }: TaskListRowProps) {
+  const toolInfo = TOOL_INFO[task.toolType]
+  const progressState = resolveProgressState(task)
+  const stateInfo = STATE_INFO[progressState]
+  const displayAlias = task.alias || existingAlias?.alias || toolInfo.name
+  const derivedProgress = getDerivedProgress(progressState, task, Math.max(0, Date.now() - task.startTime))
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={isSelected}
+      data-testid={`ai-task-list-row-${task.id}`}
+      data-view-kind="list"
+      data-state={progressState}
+      className={`
+        grid w-full grid-cols-[minmax(0,1.4fr)_110px_90px_120px] items-center gap-3
+        rounded-lg border px-3 py-2 text-left transition-colors
+        ${isSelected
+          ? 'border-accent/50 bg-surface-700'
+          : 'border-surface-700 bg-surface-800 hover:border-surface-600'
+        }
+      `}
+    >
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-medium text-text-primary">{displayAlias}</span>
+        <span className="block truncate text-xs text-text-muted">{toolInfo.name} / PID {task.pid}</span>
+      </span>
+      <span className={`justify-self-start rounded px-2 py-0.5 text-xs ${stateInfo.bgColor} ${stateInfo.color}`}>
+        {stateInfo.label}
+      </span>
+      <span className="text-xs font-mono text-text-secondary">
+        {derivedProgress.percentage == null ? '--' : `${Math.round(derivedProgress.percentage)}%`}
+      </span>
+      <span className="text-xs text-text-muted">
+        输出 {task.metrics.outputLineCount} 行
+      </span>
+    </button>
+  )
+})
+
+interface TaskDetailPanelProps {
+  task: AITask
+  onSaveAlias: (alias: AIWindowAlias) => void
+  existingAlias?: AIWindowAlias
+}
+
+const TaskDetailPanel = memo(function TaskDetailPanel({ task, onSaveAlias, existingAlias }: TaskDetailPanelProps) {
+  const toolInfo = TOOL_INFO[task.toolType]
+  const progressState = resolveProgressState(task)
+  const stateInfo = STATE_INFO[progressState]
+  const displayAlias = task.alias || existingAlias?.alias || toolInfo.name
+  const derivedProgress = getDerivedProgress(progressState, task, Math.max(0, Date.now() - task.startTime))
+  const estimatedRemaining = task.status.progressEstimate?.estimatedRemaining
+  const estimatedRemainingLabel = derivedProgress.mode === 'determinate' &&
+    derivedProgress.percentage != null &&
+    derivedProgress.percentage < 100 &&
+    estimatedRemaining != null &&
+    estimatedRemaining > 0
+    ? `~${formatDuration(estimatedRemaining)}`
+    : undefined
+
+  return (
+    <section
+      className="space-y-4 rounded-xl border border-surface-700 bg-surface-800 p-4"
+      data-testid="ai-task-detail-panel"
+      data-task-id={task.id}
+      data-view-kind="detail"
+      data-state={progressState}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <AIToolBrandLogo toolType={task.toolType} title={toolInfo.name} size={20} />
+            <h3 className="truncate text-sm font-semibold text-text-primary">{displayAlias}</h3>
+            <span className={`rounded px-2 py-0.5 text-xs ${stateInfo.bgColor} ${stateInfo.color}`}>
+              {stateInfo.label}
+            </span>
+          </div>
+          <div className="mt-2 grid gap-1 text-xs text-text-muted sm:grid-cols-2">
+            <span>工具：{toolInfo.name}</span>
+            <span>PID：{task.pid}</span>
+            <span>窗口：{task.windowHwnd ?? '未绑定'}</span>
+            <span>输出行数：{task.metrics.outputLineCount}</span>
+            <span>当前动作：{task.status.currentAction ?? task.status.phaseLabel ?? '未报告'}</span>
+            <span>最近活动：{formatDuration(Math.max(0, Date.now() - task.status.lastActivity))} 前</span>
+          </div>
+        </div>
+        <AIWindowAliasEditor
+          task={task}
+          existingAlias={existingAlias}
+          onSave={onSaveAlias}
+          onCancel={() => undefined}
+        />
+      </div>
+
+      <ProgressBar
+        derived={derivedProgress}
+        estimatedRemainingLabel={estimatedRemainingLabel}
+        state={progressState}
+      />
+
+      <AIProgressTimeline
+        taskId={task.id}
+        taskAlias={displayAlias}
+        cpuHistory={task.metrics.cpuHistory}
+      />
+    </section>
+  )
+})
 
 interface TaskCardProps {
   task: AITask
@@ -41,18 +233,19 @@ interface TaskCardProps {
 
 const TaskCard = memo(function TaskCard({ task, isSelected, onSelect, onSaveAlias, existingAlias }: TaskCardProps) {
   const toolInfo = TOOL_INFO[task.toolType]
-  const stateInfo = STATE_INFO[task.status.state]
   const [now, setNow] = useState(Date.now())
   const [isEditingAlias, setIsEditingAlias] = useState(false)
   const [showTimeline, setShowTimeline] = useState(false)
+  const progressState = resolveProgressState(task)
+  const stateInfo = STATE_INFO[progressState]
 
   useEffect(() => {
-    if (task.status.state !== 'running' && task.status.state !== 'waiting') return
+    if (progressState === 'idle' || progressState === 'completed' || progressState === 'error') return
     const interval = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(interval)
-  }, [task.status.state])
+  }, [progressState])
 
-  const duration = now - task.startTime
+  const duration = Math.max(0, now - task.startTime)
 
   const avgCpu = task.metrics.cpuHistory.length > 0
     ? task.metrics.cpuHistory.reduce((a, b) => a + b, 0) / task.metrics.cpuHistory.length
@@ -60,10 +253,27 @@ const TaskCard = memo(function TaskCard({ task, isSelected, onSelect, onSaveAlia
 
   const displayAlias = task.alias || existingAlias?.alias
   const aliasColor = task.aliasColor || existingAlias?.color
+  const derivedProgress = getDerivedProgress(progressState, task, duration)
+  const shouldShowProgress = derivedProgress.mode !== 'hidden'
+  const isActiveState = progressState === 'initializing' || progressState === 'thinking' || progressState === 'receiving-input' || progressState === 'coding' || progressState === 'compiling' || progressState === 'validating'
+  const estimatedRemaining = task.status.progressEstimate?.estimatedRemaining
+  const shouldShowEta = derivedProgress.mode === 'determinate' &&
+    derivedProgress.percentage != null &&
+    derivedProgress.percentage < 100 &&
+    estimatedRemaining != null &&
+    estimatedRemaining > 0
+  const progressFillStyle = aliasColor && derivedProgress.accentColor === 'active'
+    ? { backgroundColor: aliasColor }
+    : undefined
+  const estimatedRemainingLabel = shouldShowEta ? `~${formatDuration(estimatedRemaining)}` : undefined
 
   return (
     <div
       onClick={onSelect}
+      data-testid="ai-task-card"
+      data-state={progressState}
+      data-progress-mode={derivedProgress.mode}
+      data-progress-pct={derivedProgress.percentage ?? ''}
       className={`
         group p-4 rounded-xl cursor-pointer transition-all duration-200
         ${isSelected
@@ -74,7 +284,12 @@ const TaskCard = memo(function TaskCard({ task, isSelected, onSelect, onSaveAlia
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3">
-          <span className="text-2xl" title={toolInfo.name}>{toolInfo.icon}</span>
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-lg border border-surface-600 bg-surface-800"
+            title={toolInfo.name}
+          >
+            <AIToolBrandLogo toolType={task.toolType} title={toolInfo.name} size={20} />
+          </div>
           <div>
             <div className="flex items-center gap-2">
               {displayAlias ? (
@@ -90,14 +305,14 @@ const TaskCard = memo(function TaskCard({ task, isSelected, onSelect, onSaveAlia
                   </span>
                 </>
               ) : (
-                <span className={`text-sm font-semibold ${toolInfo.color}`}>
+                <span className={`text-sm font-semibold ${toolInfo.accentClass}`}>
                   {toolInfo.name}
                 </span>
               )}
               <span className={`text-xs px-2 py-0.5 rounded ${stateInfo.bgColor} ${stateInfo.color}`}>
                 {stateInfo.label}
               </span>
-              {task.status.phase && task.status.state === 'running' && (
+              {task.status.phaseLabel && shouldShowProgress && (
                 <span className="text-xs px-2 py-0.5 rounded bg-surface-700 text-text-secondary">
                   {task.status.phaseLabel}
                 </span>
@@ -137,7 +352,7 @@ const TaskCard = memo(function TaskCard({ task, isSelected, onSelect, onSaveAlia
             <div className="text-xs text-text-tertiary">
               平均 CPU: {avgCpu.toFixed(1)}%
             </div>
-            {task.status.state === 'running' && (
+            {isActiveState && (
               <div className="flex items-center gap-1 mt-1">
                 <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
                 <span className="text-xs text-success">活跃</span>
@@ -147,40 +362,15 @@ const TaskCard = memo(function TaskCard({ task, isSelected, onSelect, onSaveAlia
         </div>
       </div>
 
-      {/* Phase + Progress Section */}
-      {task.status.progressEstimate && task.status.state !== 'completed' && task.status.state !== 'error' && (
-        <div className="mt-3 space-y-1.5">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-text-secondary font-medium">
-              {task.status.phaseLabel || task.status.progressEstimate.phaseLabel}
-            </span>
-            <div className="flex items-center gap-2">
-              <span className="text-text-muted font-mono">
-                {task.status.progressEstimate.percentage}%
-              </span>
-              {task.status.progressEstimate.estimatedRemaining != null &&
-                task.status.progressEstimate.estimatedRemaining > 0 && (
-                <span className="text-text-tertiary">
-                  ~{formatDuration(task.status.progressEstimate.estimatedRemaining)}
-                </span>
-              )}
-            </div>
-          </div>
-          {/* Progress bar */}
-          <div className="h-1.5 bg-surface-700 rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-700 ease-out"
-              style={{
-                width: `${task.status.progressEstimate.percentage}%`,
-                backgroundColor: aliasColor || 'var(--color-accent)',
-              }}
-            />
-          </div>
-        </div>
-      )}
+      <ProgressBar
+        derived={derivedProgress}
+        estimatedRemainingLabel={estimatedRemainingLabel}
+        fillStyle={progressFillStyle}
+        state={progressState}
+      />
 
       {/* Alias color indicator bar (only when no progress bar) */}
-      {aliasColor && (!task.status.progressEstimate || task.status.state === 'completed' || task.status.state === 'error') && (
+      {aliasColor && !shouldShowProgress && (
         <div
           className="h-0.5 mt-2 rounded-full opacity-60"
           style={{ backgroundColor: aliasColor }}
@@ -243,9 +433,11 @@ const HistoryItem = memo(function HistoryItem({ entry }: HistoryItemProps) {
     <div className="p-3 bg-surface-800 rounded-lg border border-transparent hover:border-surface-600 transition-colors">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-lg">{toolInfo.icon}</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-surface-600 bg-surface-800">
+            <AIToolBrandLogo toolType={entry.toolType} title={toolInfo.name} size={16} />
+          </div>
           <div>
-            <span className={`text-sm font-medium ${toolInfo.color}`}>
+            <span className={`text-sm font-medium ${toolInfo.accentClass}`}>
               {toolInfo.name}
             </span>
             <div className="text-xs text-text-muted mt-0.5">
@@ -281,6 +473,7 @@ export function AITaskView() {
   const { aliases, fetchAliases, saveAlias } = useAliasStore()
   const { showToast } = useToast()
   const [viewTab, setViewTab] = useState<'active' | 'history' | 'stats'>('active')
+  const [activeViewMode, setActiveViewMode] = useState<AITaskActiveViewMode>('cards')
 
   const findAliasForTask = useCallback((task: AITask) => {
     return aliases.find(
@@ -299,6 +492,10 @@ export function AITaskView() {
       showToast('error', '别名保存失败')
     }
   }, [saveAlias, showToast])
+
+  const selectedActiveTask = useMemo(() => (
+    activeTasks.find((task) => task.id === selectedTaskId) ?? activeTasks[0] ?? null
+  ), [activeTasks, selectedTaskId])
 
   useEffect(() => {
     fetchActiveTasks()
@@ -372,9 +569,7 @@ export function AITaskView() {
               className="btn-icon"
               title="刷新"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+              <RefreshIcon size={16} />
             </button>
           </div>
         </div>
@@ -384,19 +579,71 @@ export function AITaskView() {
       <div className="flex-1 overflow-y-auto p-4">
         {viewTab === 'active' && (
           <div className="space-y-3">
-            {activeTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                isSelected={selectedTaskId === task.id}
-                onSelect={() => selectTask(task.id)}
+            {activeTasks.length > 0 && (
+              <div
+                className="flex items-center justify-between rounded-lg border border-surface-700 bg-surface-900 px-3 py-2"
+                data-testid="ai-task-active-view-switcher"
+              >
+                <span className="text-xs text-text-muted">活动任务视图</span>
+                <div className="flex items-center gap-1">
+                  {ACTIVE_VIEW_MODES.map(({ mode, label }) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setActiveViewMode(mode)}
+                      data-testid={`ai-task-view-mode-${mode}`}
+                      aria-pressed={activeViewMode === mode}
+                      className={`rounded px-2 py-1 text-xs transition-colors ${
+                        activeViewMode === mode
+                          ? 'bg-surface-700 text-text-primary'
+                          : 'text-text-muted hover:text-text-secondary'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeTasks.length > 0 && activeViewMode === 'cards' && activeTasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  isSelected={selectedTaskId === task.id}
+                  onSelect={() => selectTask(task.id)}
+                  onSaveAlias={handleSaveAlias}
+                  existingAlias={findAliasForTask(task)}
+                />
+              ))}
+
+            {activeTasks.length > 0 && activeViewMode === 'list' && (
+              <div className="space-y-2" data-testid="ai-task-list-view" data-view-kind="list">
+                {activeTasks.map((task) => (
+                  <TaskListRow
+                    key={task.id}
+                    task={task}
+                    isSelected={selectedTaskId === task.id}
+                    onSelect={() => selectTask(task.id)}
+                    existingAlias={findAliasForTask(task)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {activeTasks.length > 0 && activeViewMode === 'detail' && selectedActiveTask && (
+              <TaskDetailPanel
+                task={selectedActiveTask}
                 onSaveAlias={handleSaveAlias}
-                existingAlias={findAliasForTask(task)}
+                existingAlias={findAliasForTask(selectedActiveTask)}
               />
-            ))}
+            )}
+
             {activeTasks.length === 0 && (
               <div className="text-center py-12 text-text-muted">
-                <span className="text-4xl mb-3 block">🤖</span>
+                <span className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full border border-surface-700 bg-surface-800">
+                  <AIIcon className="text-text-muted" size={24} />
+                </span>
                 <p>没有检测到运行中的 AI 编程工具</p>
                 <p className="text-xs mt-1">
                   支持: Codex, Claude Code, Gemini CLI, Cursor
@@ -463,8 +710,10 @@ export function AITaskView() {
                       : 0
                     return (
                       <div key={tool} className="flex items-center gap-3">
-                        <span className="text-lg w-8">{info.icon}</span>
-                        <span className={`text-sm w-24 ${info.color}`}>{info.name}</span>
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-surface-600 bg-surface-800">
+                          <AIToolBrandLogo toolType={tool as AIToolType} title={info.name} size={16} />
+                        </div>
+                        <span className={`text-sm w-24 ${info.accentClass}`}>{info.name}</span>
                         <div className="flex-1 h-2 bg-surface-700 rounded-full overflow-hidden">
                           <div
                             className="h-full bg-accent rounded-full"

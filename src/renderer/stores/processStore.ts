@@ -1,8 +1,20 @@
 import { create } from 'zustand'
 import { ProcessInfo, ProcessGroup, SortConfig, SortColumn, ProcessStatusType, ProcessType } from '@shared/types-extended'
 
+interface ProcessParentFields {
+  ppid?: unknown
+  parentPid?: unknown
+}
+
+interface ProcessIndexes {
+  processByPid: Map<number, ProcessInfo>
+  childPidsByParentPid: Map<number, number[]>
+}
+
 interface ProcessState {
   processes: ProcessInfo[]
+  processByPid: Map<number, ProcessInfo>
+  childPidsByParentPid: Map<number, number[]>
   groups: ProcessGroup[]
   zombies: ProcessInfo[]
   isScanning: boolean
@@ -36,6 +48,8 @@ interface ProcessState {
   // Computed
   getProcessesByProject: (projectId: string) => ProcessInfo[]
   getProcessByPid: (pid: number) => ProcessInfo | undefined
+  getChildPidsByParentPid: (parentPid: number) => number[]
+  getChildrenByParentPid: (parentPid: number) => ProcessInfo[]
   getTotalResources: () => { cpu: number; memory: number }
   getFilteredAndSortedProcesses: () => ProcessInfo[]
 }
@@ -110,8 +124,44 @@ function matchesSearch(process: ProcessInfo, query: string): boolean {
   return searchFields.includes(trimmed)
 }
 
+function readParentField(process: ProcessInfo, key: keyof ProcessParentFields): unknown {
+  if (!Object.prototype.hasOwnProperty.call(process, key)) return undefined
+  return (process as unknown as Record<keyof ProcessParentFields, unknown>)[key]
+}
+
+function parentPidOf(process: ProcessInfo): number {
+  const parentPid = Number(readParentField(process, 'ppid') ?? readParentField(process, 'parentPid') ?? 0)
+  return Number.isFinite(parentPid) ? parentPid : 0
+}
+
+export function buildProcessIndexes(processes: ProcessInfo[]): ProcessIndexes {
+  const processByPid = new Map<number, ProcessInfo>()
+  const childPidsByParentPid = new Map<number, number[]>()
+
+  for (const process of processes) {
+    processByPid.set(process.pid, process)
+    const parentPid = parentPidOf(process)
+    const childPids = childPidsByParentPid.get(parentPid) ?? []
+    childPids.push(process.pid)
+    childPidsByParentPid.set(parentPid, childPids)
+  }
+
+  for (const childPids of childPidsByParentPid.values()) {
+    childPids.sort((leftPid, rightPid) => {
+      const left = processByPid.get(leftPid)
+      const right = processByPid.get(rightPid)
+      const nameOrder = (left?.name ?? '').localeCompare(right?.name ?? '')
+      return nameOrder !== 0 ? nameOrder : leftPid - rightPid
+    })
+  }
+
+  return { processByPid, childPidsByParentPid }
+}
+
 export const useProcessStore = create<ProcessState>((set, get) => ({
   processes: [],
+  processByPid: new Map(),
+  childPidsByParentPid: new Map(),
   groups: [],
   zombies: [],
   isScanning: false,
@@ -124,6 +174,7 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
 
   setProcesses: (processes) =>
     set({
+      ...buildProcessIndexes(processes),
       processes,
       lastScanTime: new Date()
     }),
@@ -137,11 +188,15 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
   selectProcess: (selectedPid) => set({ selectedPid }),
 
   removeProcess: (pid) =>
-    set((state) => ({
-      processes: state.processes.filter((p) => p.pid !== pid),
-      zombies: state.zombies.filter((p) => p.pid !== pid),
-      selectedPid: state.selectedPid === pid ? null : state.selectedPid
-    })),
+    set((state) => {
+      const processes = state.processes.filter((p) => p.pid !== pid)
+      return {
+        ...buildProcessIndexes(processes),
+        processes,
+        zombies: state.zombies.filter((p) => p.pid !== pid),
+        selectedPid: state.selectedPid === pid ? null : state.selectedPid
+      }
+    }),
 
   // Sort: click toggles asc/desc/clear. Shift+click appends (max 3 levels).
   toggleSort: (column, append) =>
@@ -209,7 +264,18 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
   },
 
   getProcessByPid: (pid) => {
-    return get().processes.find((p) => p.pid === pid)
+    return get().processByPid.get(pid)
+  },
+
+  getChildPidsByParentPid: (parentPid) => {
+    return get().childPidsByParentPid.get(parentPid) ?? []
+  },
+
+  getChildrenByParentPid: (parentPid) => {
+    const state = get()
+    return (state.childPidsByParentPid.get(parentPid) ?? [])
+      .map(pid => state.processByPid.get(pid))
+      .filter((process): process is ProcessInfo => process !== undefined)
   },
 
   getTotalResources: () => {

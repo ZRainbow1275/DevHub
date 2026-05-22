@@ -2,22 +2,23 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useProjectStore } from '../../stores/projectStore'
 import { useProjects } from '../../hooks/useProjects'
 import { useWindowSize } from '../../hooks/useWindowSize'
-import { FolderIcon, TagIcon, GroupIcon, GearIcon, ChevronLeftIcon, ChevronRightIcon, PlayIcon, StopIcon } from '../icons'
+import { FolderIcon, TagIcon, GroupIcon, GearIcon, ChevronLeftIcon, ChevronRightIcon, PlayIcon, StopIcon, TopologyIcon } from '../icons'
 
 const SIDEBAR_STORAGE_KEY = 'devhub:sidebar-collapsed'
 const SIDEBAR_WIDTH_KEY = 'devhub:sidebar-width'
 const MIN_SIDEBAR_WIDTH = 200
 const MAX_SIDEBAR_WIDTH = 400
 const DEFAULT_SIDEBAR_WIDTH = 224
-const COLLAPSED_WIDTH = 48
+const COLLAPSED_WIDTH = 56
 
 interface SidebarProps {
   onSettingsClick: () => void
+  onTopologyClick: () => void
 }
 
 const isElectron = typeof window !== 'undefined' && window.devhub !== undefined
 
-export function Sidebar({ onSettingsClick }: SidebarProps) {
+export function Sidebar({ onSettingsClick, onTopologyClick }: SidebarProps) {
   const [tags, setTags] = useState<string[]>([])
   const [groups, setGroups] = useState<string[]>([])
   const [collapsed, setCollapsed] = useState(() => {
@@ -49,15 +50,15 @@ export function Sidebar({ onSettingsClick }: SidebarProps) {
   }, [width]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!isElectron) return
+    if (!isElectron || !window.devhub.tags || !window.devhub.groups) return
 
     const refresh = () => {
-      window.devhub.tags.list().then(setTags)
-      window.devhub.groups.list().then(setGroups)
+      window.devhub.tags.list().then(setTags).catch(() => setTags([]))
+      window.devhub.groups.list().then(setGroups).catch(() => setGroups([]))
     }
 
     refresh()
-    const interval = setInterval(refresh, 5000)
+    const interval = setInterval(refresh, 10000)
     return () => clearInterval(interval)
   }, [])
 
@@ -144,6 +145,10 @@ export function Sidebar({ onSettingsClick }: SidebarProps) {
     >
       {/* Collapse Toggle Button */}
       <button
+        type="button"
+        aria-expanded={!collapsed}
+        aria-label={collapsed ? '展开侧边栏' : '折叠侧边栏'}
+        title={collapsed ? '展开侧边栏' : '折叠侧边栏'}
         onClick={handleToggleCollapse}
         className="absolute -right-3 top-1/2 -translate-y-1/2 z-20 w-6 h-6 bg-surface-800 border border-surface-600 flex items-center justify-center text-text-muted hover:text-accent hover:border-accent transition-all duration-200 radius-sm"
       >
@@ -182,6 +187,21 @@ export function Sidebar({ onSettingsClick }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 py-2 overflow-y-auto">
+        <div className="px-2 mb-2">
+          <button
+            type="button"
+            onClick={onTopologyClick}
+            className="nav-item nav-item-animate border-l-2 border-accent/70 bg-accent/10 text-text-primary"
+            style={{ animationDelay: '25ms' }}
+            title={collapsed ? '全局拓扑' : undefined}
+            aria-label="全局拓扑"
+            data-activity-bar-icon="topology-global"
+          >
+            <TopologyIcon size={18} className="text-accent" />
+            {!collapsed && <span className="font-medium">全局拓扑</span>}
+          </button>
+        </div>
+
         {/* All Projects */}
         <div className="px-2 mb-2">
           <button
@@ -322,6 +342,8 @@ export function Sidebar({ onSettingsClick }: SidebarProps) {
           onClick={onSettingsClick}
           className="nav-item hover:text-text-primary group"
           title={collapsed ? '设置' : undefined}
+          aria-label="设置"
+          data-testid="sidebar-settings-button"
         >
           <GearIcon size={18} className="group-hover:animate-gear-spin" style={{ animationDuration: '2s' }} />
           {!collapsed && <span className="font-medium">设置</span>}

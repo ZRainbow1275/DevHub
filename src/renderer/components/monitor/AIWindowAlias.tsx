@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { AITask, AIWindowAlias as AIWindowAliasType, ALIAS_MAX_LENGTH, ALIAS_FORBIDDEN_CHARS } from '@shared/types-extended'
-import { GearIcon, TrashIcon, CheckIcon, CloseIcon } from '../icons'
+import { PencilIcon, TrashIcon, CheckIcon, CloseIcon } from '../icons'
 import { useAliasStore } from '../../stores/aliasStore'
 
 interface AIWindowAliasBadgeProps {
@@ -84,7 +84,7 @@ export function AIWindowAliasBadge({
     (task && aliases.find(a =>
       a.matchCriteria.toolType === task.toolType &&
       a.matchCriteria.workingDir &&
-      a.matchCriteria.workingDir === task.projectId
+      (a.matchCriteria.workingDir === workingDir || a.matchCriteria.workingDir === task.projectId)
     )) ||
     aliases.find(a =>
       a.matchCriteria.titlePrefix && windowTitle.startsWith(a.matchCriteria.titlePrefix)
@@ -99,9 +99,14 @@ export function AIWindowAliasBadge({
   if (isEditing) {
     return (
       <div className="flex flex-col gap-1 min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-2 text-[10px] text-text-muted">
+          <span>重命名</span>
+          <span>{editValue.length}/{ALIAS_MAX_LENGTH}</span>
+        </div>
         <div className="flex items-center gap-1">
           <input
             ref={inputRef}
+            data-testid="ai-alias-input"
             type="text"
             value={editValue}
             onChange={(e) => {
@@ -118,6 +123,7 @@ export function AIWindowAliasBadge({
             style={{ minWidth: '100px' }}
           />
           <button
+            data-testid="ai-alias-confirm-btn"
             onClick={handleConfirm}
             className="p-1 bg-success/20 hover:bg-success text-success hover:text-white transition-colors radius-sm flex-shrink-0"
             title="确认 (Enter)"
@@ -125,6 +131,7 @@ export function AIWindowAliasBadge({
             <CheckIcon size={12} />
           </button>
           <button
+            data-testid="ai-alias-cancel-btn"
             onClick={handleCancel}
             className="p-1 bg-surface-700 hover:bg-surface-600 text-text-muted hover:text-text-primary transition-colors radius-sm flex-shrink-0"
             title="取消 (Esc)"
@@ -153,13 +160,15 @@ export function AIWindowAliasBadge({
           别名
         </span>
       )}
-      {/* Pencil (edit) button - shows on hover */}
+      {/* Pencil (edit) button - always discoverable for alias rename */}
       <button
+        data-testid="ai-alias-rename-btn"
         onClick={(e) => { e.stopPropagation(); handleStartEdit() }}
-        className="opacity-0 group-hover/alias:opacity-100 p-0.5 hover:bg-surface-700 transition-all radius-sm flex-shrink-0"
-        title="编辑别名"
+        className="opacity-100 p-0.5 hover:bg-surface-700 transition-all radius-sm flex-shrink-0"
+        title="重命名"
+        aria-label="重命名 AI 窗口别名"
       >
-        <GearIcon size={11} className="text-text-muted" />
+        <PencilIcon size={16} className="text-text-muted" />
       </button>
       {/* Clear alias button - only when alias exists */}
       {hasAlias && existingAlias && (

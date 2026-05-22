@@ -1,6 +1,13 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import type { PortInfo, PortState } from '@shared/types-extended'
 import { COMMON_DEV_PORTS } from '@shared/types-extended'
+import { auditLogger } from './AuditLogger'
+import { PortScanner } from './PortScanner'
+import type { PowerShellGateway } from './runtime/PowerShellGateway'
+
+const gateway = {
+  execute: async () => '"ProcessId","Name"\n"4321","node.exe"'
+} as unknown as PowerShellGateway
 
 // 由于 PortScanner 依赖于 child_process 和 tree-kill 等 Node.js 模块
 // 在 jsdom 测试环境中难以完全 mock
@@ -218,6 +225,103 @@ describe('PortScanner Logic Tests', () => {
       expect(cache.get(12345)).toBe('node.exe')
       expect(cache.get(67890)).toBe('java.exe')
       expect(cache.get(4)).toBe('System')
+    })
+  })
+
+  describe('Port Operation Audit Logging', () => {
+    it('uses systeminformation as the primary real network source and preserves netstat fallback', async () => {
+      const scanner = new PortScanner(
+        gateway,
+        {
+          listNetworkPorts: async () => ({
+            success: true,
+            data: [{ port: 5173, pid: 1234, processName: 'node.exe', state: 'LISTENING', protocol: 'TCP', localAddress: '127.0.0.1:5173', foreignAddress: '*:*', source: 'systeminformation' }]
+          })
+        },
+        async () => {
+          throw new Error('netstat should not be called')
+        }
+      )
+
+      await expect(scanner.scanAll()).resolves.toEqual([
+        expect.objectContaining({ port: 5173, pid: 1234, processName: 'node.exe', source: 'systeminformation' })
+      ])
+
+      const fallbackScanner = new PortScanner(
+        gateway,
+        { listNetworkPorts: async () => ({ success: false, error: 'SYSTEMINFORMATION_UNAVAILABLE' }) },
+        async () => [
+          'Active Connections',
+          '',
+          '  Proto  Local Address          Foreign Address        State           PID',
+          '',
+          '  TCP    127.0.0.1:4321         0.0.0.0:0              LISTENING       4321'
+        ].join('\n')
+      )
+
+      await expect(fallbackScanner.scanAll()).resolves.toEqual([
+        expect.objectContaining({ port: 4321, pid: 4321, processName: 'node.exe', source: 'netstat' })
+      ])
+
+      const emptyPrimaryFallbackScanner = new PortScanner(
+        gateway,
+        { listNetworkPorts: async () => ({ success: true, data: [] }) },
+        async () => [
+          'Active Connections',
+          '',
+          '  Proto  Local Address          Foreign Address        State           PID',
+          '',
+          '  TCP    127.0.0.1:5432         0.0.0.0:0              LISTENING       4321'
+        ].join('\n')
+      )
+
+      await expect(emptyPrimaryFallbackScanner.scanAll()).resolves.toEqual([
+        expect.objectContaining({ port: 5432, pid: 4321, processName: 'node.exe', source: 'netstat' })
+      ])
+
+      const invalidPrimaryFallbackScanner = new PortScanner(
+        gateway,
+        { listNetworkPorts: async () => ({ success: true, data: [undefined as unknown as PortInfo] }) },
+        async () => [
+          'Active Connections',
+          '',
+          '  Proto  Local Address          Foreign Address        State           PID',
+          '',
+          '  TCP    127.0.0.1:6543         0.0.0.0:0              LISTENING       4321'
+        ].join('\n')
+      )
+
+      await expect(invalidPrimaryFallbackScanner.scanAll()).resolves.toEqual([
+        expect.objectContaining({ port: 6543, pid: 4321, processName: 'node.exe', source: 'netstat' })
+      ])
+    })
+
+    it('writes an audit log when releasePort refuses a protected process', async () => {
+      const scanner = new PortScanner()
+      const auditSpy = vi.spyOn(auditLogger, 'log').mockImplementation(() => undefined)
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+      vi.spyOn(scanner, 'checkPort').mockResolvedValue({
+        port: 3000,
+        pid: 4,
+        processName: 'System',
+        state: 'LISTENING',
+        protocol: 'TCP',
+        localAddress: '0.0.0.0:3000',
+        foreignAddress: '*:*',
+      })
+
+      try {
+        await expect(scanner.releasePort(3000)).resolves.toBe(false)
+        expect(auditSpy).toHaveBeenCalledWith(
+          'port:release',
+          { port: 3000, pid: 4, processName: 'System' },
+          'refused',
+          'protected process',
+        )
+      } finally {
+        auditSpy.mockRestore()
+        warnSpy.mockRestore()
+      }
     })
   })
 })

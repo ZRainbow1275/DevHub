@@ -1,0 +1,5 @@
+# devhub-csv-version=1.0; runner=devhub; concurrentMax=3
+taskId,taskName,priority,status,tool,skill,inputFile,inputArgs,outputDir,outputFormat,tags,dependsOn,timeoutMs,retries,concurrencyKey,createdAt,scheduledAt,note
+resume-1,Resume stable 1,P1,pending,codex,code-review,src/s1.ts,"{""prompt"":""resume 1""}",out/resume,md,"resume,fixture",,60000,1,,2026-05-03T11:00:00Z,now,resume skip fixture
+resume-2,Resume stable 2,P1,pending,claude,lint-fix,src/s2.ts,"{""prompt"":""resume 2""}",out/resume,md,"resume,fixture",,60000,1,,2026-05-03T11:01:00Z,now,resume skip fixture
+resume-3,Resume stable 3,P1,pending,gemini,code-review,src/s3.ts,"{""prompt"":""resume 3""}",out/resume,md,"resume,fixture",,60000,1,,2026-05-03T11:02:00Z,now,resume skip fixture
