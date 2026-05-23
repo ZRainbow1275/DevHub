@@ -394,8 +394,9 @@ export function Sidebar({ onSettingsClick, onTopologyClick }: SidebarProps) {
             onClick={onTopologyClick}
             className="nav-item nav-item-animate border-l-2 border-accent/70 bg-accent/10 text-text-primary"
             style={{ animationDelay: '25ms' }}
-            title={collapsed ? '全局拓扑' : undefined}
-            aria-label="全局拓扑"
+            title="全局拓扑 (Ctrl+T)"
+            aria-label="全局拓扑 (Ctrl+T)"
+            aria-keyshortcuts="Control+T"
             data-activity-bar-icon="topology-global"
           >
             <TopologyIcon size={18} className="text-accent" />

@@ -1,6 +1,7 @@
 import type { ThemeDecorationConfig } from '@shared/types'
 import { GearIcon, MinimizeIcon, MaximizeIcon, CloseIcon } from '../icons'
 import { ThemeDecoration } from '../ui/ThemeDecoration'
+import { NotificationCenter } from '../notify/NotificationCenter'
 
 interface TitleBarProps {
   decorationConfig?: ThemeDecorationConfig
@@ -70,6 +71,8 @@ export function TitleBar({ decorationConfig }: TitleBarProps) {
 
       {/* Window Controls */}
       <div className="flex items-center no-drag relative z-10">
+        <NotificationCenter />
+        <div className="mx-1 h-4 w-px bg-surface-700" aria-hidden="true" />
         <button
           onClick={handleMinimize}
           className="w-12 h-9 flex items-center justify-center text-text-tertiary hover:bg-surface-800 hover:text-text-primary transition-colors"

@@ -14,7 +14,6 @@ import { CloseConfirmDialog } from './components/ui/CloseConfirmDialog'
 import { PanelSplitter } from './components/ui/PanelSplitter'
 import { ToastProvider, useToast } from './components/ui/Toast'
 import { ToastHost } from './components/notify/ToastHost'
-import { NotificationCenter } from './components/notify/NotificationCenter'
 import { InjectCountdownHost } from './components/inject/InjectCountdownModal'
 import { InjectFirstTimeHost } from './components/inject/InjectFirstTimeModal'
 import { HeroStats } from './components/ui/HeroStats'
@@ -36,7 +35,7 @@ import { useGlobalShortcuts } from './hooks/useGlobalShortcuts'
 import { useThemeSound } from './hooks/useThemeSound'
 import { useDecoration } from './hooks/useDecoration'
 import { useScannerStore } from './stores/scannerStore'
-import { GridIcon, LogIcon, MonitorIcon, TopologyIcon } from './components/icons'
+import { GridIcon, LogIcon, MonitorIcon } from './components/icons'
 import { DevObservabilityPanel } from './components/dev/DevObservabilityPanel'
 import { R8CommandPalette } from './components/command/R8CommandPalette'
 import { DrawerProvider } from './components/drawer/DrawerProvider'
@@ -534,19 +533,13 @@ function AppContent() {
                           label="仪表板"
                           testId="nav-dashboard"
                         />
-                        <ViewToggleButton
-                          active={mainView === 'topology'}
-                          onClick={openTopologyGlobal}
-                          icon={<TopologyIcon size={16} />}
-                          label="拓扑"
-                        />
                       </KeyboardNavGroup>
 
                       {/* Active indicator line */}
                       <div
                         className="absolute bottom-0 h-0.5 bg-accent transition-all duration-300"
                         style={{
-                          left: mainView === 'logs' ? '16px' : mainView === 'monitor' ? '92px' : mainView === 'dashboard' ? '168px' : '260px',
+                          left: mainView === 'logs' ? '16px' : mainView === 'monitor' ? '92px' : '168px',
                           width: '64px'
                         }}
                       />
@@ -590,7 +583,6 @@ function AppContent() {
         </DrawerSystemHost>
       </DrawerProvider>
       <ToastHost />
-      <NotificationCenter />
       <InjectCountdownHost />
       <InjectFirstTimeHost />
 

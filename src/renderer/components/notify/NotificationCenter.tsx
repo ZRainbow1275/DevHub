@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { DevhubNotification, NotificationLevel } from '@shared/schemas/notification'
 import { AlertIcon, BellIcon, CloseIcon, InfoIcon, LightningIcon } from '../icons'
 
@@ -12,6 +13,8 @@ function levelIcon(level: NotificationLevel) {
 export function NotificationCenter() {
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState<DevhubNotification[]>([])
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   const refresh = useCallback(() => {
     void window.devhub?.r8?.notify?.list?.()
@@ -33,32 +36,78 @@ export function NotificationCenter() {
     }
   }, [refresh])
 
+  useEffect(() => {
+    if (!open) return
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node | null
+      if (!target) return
+      if (panelRef.current?.contains(target)) return
+      if (triggerRef.current?.contains(target)) return
+      setOpen(false)
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpen(false)
+        triggerRef.current?.focus()
+      }
+    }
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open])
+
   const dismiss = (id: string) => {
     setNotifications(current => current.filter(item => item.id !== id))
     void window.devhub?.r8?.notify?.dismiss?.(id).catch(() => undefined)
   }
 
+  const count = notifications.length
+
   return (
-    <aside className="fixed bottom-11 left-4 z-[55]">
+    <>
       <button
+        ref={triggerRef}
+        type="button"
         aria-label="Open notification center"
-        className="flex items-center gap-2 border-2 border-surface-700 bg-surface-900 px-3 py-2 text-xs uppercase tracking-wide text-text-secondary hover:border-accent hover:text-accent radius-sm"
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        className="relative flex h-9 w-9 items-center justify-center text-text-tertiary hover:bg-surface-800 hover:text-text-primary transition-colors no-drag"
         onClick={() => setOpen(value => !value)}
       >
-        <BellIcon size={16} />
-        Notifications
-        {notifications.length > 0 && <span className="bg-accent px-1.5 py-0.5 text-[10px] font-bold text-surface-950 radius-sm">{notifications.length}</span>}
+        <BellIcon size={14} />
+        {count > 0 && (
+          <span
+            className="absolute top-1 right-1 min-w-[14px] h-[14px] px-1 inline-flex items-center justify-center bg-accent text-surface-950 text-[9px] font-bold leading-none radius-sm"
+            aria-hidden="true"
+          >
+            {count > 99 ? '99+' : count}
+          </span>
+        )}
+        <span className="sr-only">{count > 0 ? `${count} notifications` : 'No notifications'}</span>
       </button>
-      {open && (
-        <div className="mt-2 w-[420px] max-w-[calc(100vw-2rem)] border-2 border-surface-700 bg-surface-900 shadow-elevated radius-sm">
+      {open && createPortal(
+        <div
+          ref={panelRef}
+          role="dialog"
+          aria-label="Notification Center"
+          className="fixed right-4 top-10 z-[60] w-[420px] max-w-[calc(100vw-2rem)] border-2 border-surface-700 bg-surface-900 shadow-elevated radius-sm"
+        >
           <header className="flex items-center justify-between border-b border-surface-700 px-4 py-3">
             <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-text-primary">Notification Center</h2>
-            <button className="text-text-muted hover:text-text-primary" onClick={() => setOpen(false)} aria-label="Close notification center">
+            <button
+              type="button"
+              className="text-text-muted hover:text-text-primary"
+              onClick={() => setOpen(false)}
+              aria-label="Close notification center"
+            >
               <CloseIcon size={14} />
             </button>
           </header>
           <div className="max-h-[360px] overflow-y-auto">
-            {notifications.length === 0 ? (
+            {count === 0 ? (
               <div className="px-4 py-8 text-center text-xs text-text-muted">No active notifications</div>
             ) : notifications.map(notification => (
               <article key={notification.id} className="border-b border-surface-800 px-4 py-3 last:border-b-0">
@@ -76,6 +125,7 @@ export function NotificationCenter() {
                         {notification.actions.map(action => (
                           <button
                             key={action.actionId}
+                            type="button"
                             className="border border-surface-600 px-2 py-1 text-[10px] text-text-secondary hover:border-accent hover:text-accent radius-sm"
                             onClick={() => { void window.devhub?.r8?.notify?.invokeAction?.({ id: notification.id, actionId: action.actionId }) }}
                           >
@@ -85,15 +135,21 @@ export function NotificationCenter() {
                       </div>
                     )}
                   </div>
-                  <button className="text-text-muted hover:text-text-primary" onClick={() => dismiss(notification.id)} aria-label="Dismiss notification">
+                  <button
+                    type="button"
+                    className="text-text-muted hover:text-text-primary"
+                    onClick={() => dismiss(notification.id)}
+                    aria-label="Dismiss notification"
+                  >
                     <CloseIcon size={14} />
                   </button>
                 </div>
               </article>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-    </aside>
+    </>
   )
 }
