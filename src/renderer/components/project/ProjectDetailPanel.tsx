@@ -101,7 +101,10 @@ export const ProjectDetailPanel = memo(function ProjectDetailPanel({
   return (
     <div className="flex flex-col h-full bg-surface-900 border-l-2 border-surface-700 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b-2 border-surface-700 relative">
+      <div
+        className="flex items-center justify-between border-b-2 border-surface-700 relative"
+        style={{ padding: 'var(--container-padding) var(--container-padding)' }}
+      >
         <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none" />
         <div className="flex items-center gap-3 min-w-0 relative z-10">
           <span
@@ -157,7 +160,10 @@ export const ProjectDetailPanel = memo(function ProjectDetailPanel({
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div
+        className="flex-1 overflow-y-auto"
+        style={{ padding: 'var(--space-card-padding)' }}
+      >
         {activeTab === 'overview' && (
           <OverviewTab project={project} gitInfo={gitInfo} deps={deps} onStart={onStart} onStop={onStop} />
         )}
@@ -198,9 +204,12 @@ function OverviewTab({ project, gitInfo, deps, onStart, onStop }: {
   const typeLabel = PROJECT_TYPE_LABELS[project.projectType] || project.projectType
 
   return (
-    <div className="space-y-4">
+    <div
+      className="flex flex-col"
+      style={{ gap: 'var(--space-section-gap)' }}
+    >
       {/* Quick Action */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center" style={{ gap: 'var(--card-gap)' }}>
         {isRunning ? (
           <button onClick={onStop} className="flex items-center gap-2 px-4 py-2 bg-error/10 text-error hover:bg-error/20 transition-colors text-sm font-medium" style={{ borderRadius: '2px' }}>
             <StopIcon size={14} />
@@ -215,7 +224,7 @@ function OverviewTab({ project, gitInfo, deps, onStart, onStop }: {
       </div>
 
       {/* Info Grid */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2" style={{ gap: 'var(--card-gap)' }}>
         <InfoCell label="项目类型" value={typeLabel} />
         <InfoCell label="状态" value={isRunning ? '运行中' : project.status === 'error' ? '错误' : '已停止'} />
         {gitInfo && <InfoCell label="Git 分支" value={gitInfo.branch} />}
@@ -249,7 +258,10 @@ function OverviewTab({ project, gitInfo, deps, onStart, onStop }: {
 
 function InfoCell({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-surface-800 p-2.5 border-l-2 border-surface-600" style={{ borderRadius: '2px' }}>
+    <div
+      className="bg-surface-800 border-l-2 border-surface-600"
+      style={{ borderRadius: '2px', padding: 'var(--space-card-padding)' }}
+    >
       <div className="text-[10px] text-text-muted uppercase tracking-wider">{label}</div>
       <div className="text-sm text-text-primary font-medium mt-0.5 truncate" title={value}>{value}</div>
     </div>

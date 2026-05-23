@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 interface ContextMenuItem {
   label: string
@@ -63,10 +64,14 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
 
   if (!position) return null
 
-  return (
+  if (typeof document === 'undefined') return null
+
+  return createPortal(
     <div
       ref={menuRef}
-      className="fixed z-50 bg-surface-900 border-2 border-surface-600 shadow-elevated py-1.5 min-w-48 animate-fade-in radius-md" style={{ left: adjustedPosition?.x ?? position.x,
+      className="fixed z-[100] bg-surface-900 border-2 border-surface-600 shadow-elevated py-1.5 min-w-48 animate-fade-in radius-md"
+      data-testid="context-menu-portal"
+      style={{ left: adjustedPosition?.x ?? position.x,
         top: adjustedPosition?.y ?? position.y }}
     >
       {/* Diagonal decoration */}
@@ -108,6 +113,7 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
           </button>
         )
       })}
-    </div>
+    </div>,
+    document.body
   )
 }

@@ -9,8 +9,9 @@ import { useToast } from '../ui/Toast'
 import { Project, ProjectOpenTarget, InformationDensity } from '@shared/types'
 import type { ThemeDecorationConfig } from '@shared/types'
 import type { ProjectSortField, ProjectSortDirection } from '@shared/types-extended'
-import { SearchIcon, PlusIcon, FolderIcon, RefreshIcon, SortIcon, ChevronUpIcon, ChevronDownIcon } from '../icons'
+import { PlusIcon, FolderIcon, RefreshIcon, SortIcon, ChevronUpIcon, ChevronDownIcon } from '../icons'
 import { ThemeDecoration } from '../ui/ThemeDecoration'
+import { SearchInput } from '../ui/SearchInput'
 
 interface ProjectListProps {
   onAddProject: () => void
@@ -144,9 +145,23 @@ export function ProjectList({ onAddProject, onShowProjectDetail, decorationConfi
     overscan: 5
   })
 
+  const [searchValue, setSearchValue] = useState('')
   const debouncedSearch = useDebouncedCallback((value: string) => {
     useProjectStore.getState().setSearchFilter(value)
   }, 300)
+
+  const handleSearchChange = useCallback(
+    (next: string) => {
+      setSearchValue(next)
+      debouncedSearch(next)
+    },
+    [debouncedSearch]
+  )
+
+  const handleSearchClear = useCallback(() => {
+    setSearchValue('')
+    useProjectStore.getState().setSearchFilter('')
+  }, [])
 
   const handleSort = useCallback((field: ProjectSortField) => {
     setSortConfig(prev => {
@@ -351,16 +366,14 @@ export function ProjectList({ onAddProject, onShowProjectDetail, decorationConfi
         )}
 
         {/* Search */}
-        <div className="project-list-search px-4 py-3 border-b border-surface-700">
-          <div className="relative">
-            <SearchIcon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" />
-            <input
-              type="text"
-              placeholder="搜索项目名称、路径、标签..."
-              className="input-sm w-full pl-10"
-              onChange={(e) => debouncedSearch(e.target.value)}
-            />
-          </div>
+        <div className="project-list-search border-b border-surface-700" style={{ padding: 'var(--container-padding) var(--container-padding)' }}>
+          <SearchInput
+            value={searchValue}
+            onChange={handleSearchChange}
+            onClear={handleSearchClear}
+            placeholder="搜索项目名称、路径"
+            aria-label="搜索项目名称、路径"
+          />
         </div>
 
         {/* Project List - Virtualized */}

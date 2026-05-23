@@ -7,7 +7,7 @@ import { ContextMenu } from '../ui/ContextMenu'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { ThemeDecoration } from '../ui/ThemeDecoration'
 import { ProjectTypeBadge } from './ProjectTypeBadge'
-import { PlayIcon, StopIcon, FolderIcon, CopyIcon, TagIcon, TrashIcon, GitBranchIcon, EyeIcon, CodeIcon, ExternalLinkIcon, TerminalIcon } from '../icons'
+import { PlayIcon, StopIcon, FolderIcon, CopyIcon, TagIcon, TrashIcon, GitBranchIcon, EyeIcon, CodeIcon, ExternalLinkIcon, TerminalIcon, ChevronDownIcon } from '../icons'
 
 const isElectron = typeof window !== 'undefined' && window.devhub !== undefined
 
@@ -81,10 +81,15 @@ export const ProjectCard = memo(function ProjectCard({
       current
         ? null
         : {
-            x: Math.max(8, rect.left),
+            x: Math.max(8, rect.right - 180),
             y: rect.bottom + 6
           }
     )
+  }
+
+  const handleOpenFolderClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onOpenFolder()
   }
 
   const handleToggle = (e: React.MouseEvent) => {
@@ -275,17 +280,28 @@ export const ProjectCard = memo(function ProjectCard({
 
           {/* Right: Actions */}
           <div className="project-card-actions flex items-center gap-2 action-group flex-shrink-0">
-            <button
-              onClick={handleOpenMenu}
-              className="px-3 py-1.5 text-xs font-medium bg-surface-800 text-text-secondary hover:bg-surface-700 hover:text-text-primary transition-colors border-l-2 border-accent/60 radius-sm"
-              title="打开项目"
-              data-testid="project-open-button"
-            >
-              <span className="project-card-open-label inline-flex items-center gap-1.5">
-                <ExternalLinkIcon size={14} />
-                打开
-              </span>
-            </button>
+            <div className="project-card-open-split inline-flex items-stretch radius-sm overflow-hidden">
+              <button
+                onClick={handleOpenFolderClick}
+                className="px-3 py-1.5 text-xs font-medium bg-surface-800 text-text-secondary hover:bg-surface-700 hover:text-text-primary transition-colors border-l-2 border-accent/60"
+                title="在资源管理器打开"
+                data-testid="project-open-button"
+              >
+                <span className="project-card-open-label inline-flex items-center gap-1.5">
+                  <ExternalLinkIcon size={14} />
+                  打开
+                </span>
+              </button>
+              <button
+                onClick={handleOpenMenu}
+                className="px-1.5 py-1.5 text-xs font-medium bg-surface-800 text-text-secondary hover:bg-surface-700 hover:text-text-primary transition-colors border-l border-surface-700"
+                title="更多打开方式"
+                aria-label="更多打开方式"
+                data-testid="project-open-chevron"
+              >
+                <ChevronDownIcon size={12} />
+              </button>
+            </div>
 
             {/* Detail button */}
             {onShowDetail && (
