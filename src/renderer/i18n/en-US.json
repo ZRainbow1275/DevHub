@@ -97,7 +97,14 @@
     }
   },
   "drawer": {
-    "morphToPopout": "Morph drawer to popout"
+    "morphToPopout": "Morph drawer to popout",
+    "axis": {
+      "top": "TOP",
+      "right": "RIGHT",
+      "bottom": "BOTTOM",
+      "floating": "FLOAT",
+      "statusbar": "STATUS"
+    }
   },
   "dev": {
     "observability": {

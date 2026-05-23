@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import type { DrawerSlot } from '@shared/schemas/r8-runtime'
 import { BellIcon, GridIcon, InfoIcon, TerminalIcon, WindowIcon } from '../icons'
 import { useDrawerStore } from '../../stores/drawerStore'
+import { useT } from '../../hooks/useT'
 import { DRAWER_CONTENT_REGISTRY, DRAWER_SLOTS } from './drawer-model'
 import { DrawerBottom } from './DrawerBottom'
 import { DrawerFloating } from './DrawerFloating'
@@ -11,14 +12,6 @@ import { DrawerTop } from './DrawerTop'
 
 interface DrawerSystemHostProps {
   children: ReactNode
-}
-
-const SLOT_LABELS: Record<DrawerSlot, string> = {
-  top: 'TOP',
-  right: 'RIGHT',
-  bottom: 'BOTTOM',
-  floating: 'FLOAT',
-  statusbar: 'STATUS'
 }
 
 function slotIcon(slot: DrawerSlot) {
@@ -34,7 +27,15 @@ function getDefaultContentId(slot: DrawerSlot): string {
 }
 
 function DrawerLauncherRail() {
+  const { t } = useT()
   const setContent = useDrawerStore(store => store.setContent)
+  const slotLabels: Record<DrawerSlot, string> = {
+    top: t('drawer.axis.top', 'TOP'),
+    right: t('drawer.axis.right', 'RIGHT'),
+    bottom: t('drawer.axis.bottom', 'BOTTOM'),
+    floating: t('drawer.axis.floating', 'FLOAT'),
+    statusbar: t('drawer.axis.statusbar', 'STATUS')
+  }
   return (
     <nav
       aria-label="R8 drawer launchers"
@@ -50,7 +51,7 @@ function DrawerLauncherRail() {
           onClick={() => { void setContent(slot, getDefaultContentId(slot)) }}
         >
           {slotIcon(slot)}
-          {SLOT_LABELS[slot]}
+          {slotLabels[slot]}
         </button>
       ))}
     </nav>

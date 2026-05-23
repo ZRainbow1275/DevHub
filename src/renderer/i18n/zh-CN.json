@@ -97,7 +97,14 @@
     }
   },
   "drawer": {
-    "morphToPopout": "将抽屉切换为弹出窗口"
+    "morphToPopout": "将抽屉切换为弹出窗口",
+    "axis": {
+      "top": "上",
+      "right": "右",
+      "bottom": "下",
+      "floating": "浮动",
+      "statusbar": "状态栏"
+    }
   },
   "dev": {
     "observability": {
