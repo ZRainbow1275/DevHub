@@ -7,9 +7,10 @@ import { ContextMenu } from '../ui/ContextMenu'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { ThemeDecoration } from '../ui/ThemeDecoration'
 import { ProjectTypeBadge } from './ProjectTypeBadge'
-import { PlayIcon, StopIcon, FolderIcon, CopyIcon, TagIcon, TrashIcon, GitBranchIcon, EyeIcon, CodeIcon, ExternalLinkIcon, TerminalIcon, ChevronDownIcon } from '../icons'
+import { PlayIcon, StopIcon, FolderIcon, CopyIcon, TagIcon, TrashIcon, GitBranchIcon, EyeIcon, CodeIcon, ExternalLinkIcon, TerminalIcon, ChevronDownIcon, GroupIcon } from '../icons'
 
 const isElectron = typeof window !== 'undefined' && window.devhub !== undefined
+const PROJECT_DRAG_MIME = 'application/x-devhub-project'
 
 interface ProjectCardProps {
   project: Project
@@ -23,6 +24,8 @@ interface ProjectCardProps {
   onCopyPath: () => void
   onManageTags: () => void
   onShowDetail?: () => void
+  onAssignGroup?: (group: string | undefined) => void
+  availableGroups?: string[]
   decorationConfig?: ThemeDecorationConfig
 }
 
@@ -38,12 +41,15 @@ export const ProjectCard = memo(function ProjectCard({
   onCopyPath,
   onManageTags,
   onShowDetail,
+  onAssignGroup,
+  availableGroups,
   decorationConfig
 }: ProjectCardProps) {
   const isRunning = project.status === 'running'
   const isError = project.status === 'error'
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null)
   const [openMenuPos, setOpenMenuPos] = useState<{ x: number; y: number } | null>(null)
+  const [assignGroupPos, setAssignGroupPos] = useState<{ x: number; y: number } | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [gitInfo, setGitInfo] = useState<GitInfo | null>(null)
 
@@ -69,7 +75,13 @@ export const ProjectCard = memo(function ProjectCard({
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault()
     setOpenMenuPos(null)
+    setAssignGroupPos(null)
     setContextMenuPos({ x: e.clientX, y: e.clientY })
+  }
+
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData(PROJECT_DRAG_MIME, project.id)
+    e.dataTransfer.effectAllowed = 'move'
   }
 
   const handleOpenMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -153,6 +165,17 @@ export const ProjectCard = memo(function ProjectCard({
       icon: <TagIcon size={16} />,
       onClick: onManageTags
     },
+    ...(onAssignGroup ? [{
+      label: project.group ? `分配到分组... (当前: ${project.group})` : '分配到分组...',
+      icon: <GroupIcon size={16} />,
+      onClick: () => {
+        // Reopen at the same anchor as the parent context menu
+        const anchor = contextMenuPos
+        if (anchor) {
+          setAssignGroupPos({ x: anchor.x, y: anchor.y })
+        }
+      }
+    }] : []),
     { label: '', onClick: () => {}, divider: true },
     {
       label: '删除项目',
@@ -162,6 +185,26 @@ export const ProjectCard = memo(function ProjectCard({
       disabled: isRunning
     }
   ]
+
+  const assignGroupMenuItems = onAssignGroup
+    ? [
+        {
+          label: '无 (移出分组)',
+          icon: <GroupIcon size={16} />,
+          onClick: () => onAssignGroup(undefined),
+          disabled: !project.group
+        },
+        ...((availableGroups ?? []).length > 0
+          ? [{ label: '', onClick: () => {}, divider: true }]
+          : []),
+        ...(availableGroups ?? []).map((groupName) => ({
+          label: groupName === project.group ? `${groupName} (当前)` : groupName,
+          icon: <GroupIcon size={16} />,
+          onClick: () => onAssignGroup(groupName),
+          disabled: groupName === project.group
+        }))
+      ]
+    : []
 
   // Determine quick action scripts from project scripts
   const quickScripts = project.scripts.filter(s =>
@@ -174,6 +217,8 @@ export const ProjectCard = memo(function ProjectCard({
         role="button"
         aria-label={`${project.name} 项目卡片${isRunning ? '，运行中' : isError ? '，异常' : '，已停止'}`}
         tabIndex={0}
+        draggable
+        onDragStart={handleDragStart}
         onClick={onSelect}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
@@ -348,6 +393,12 @@ export const ProjectCard = memo(function ProjectCard({
         items={projectOpenMenuItems}
         position={openMenuPos}
         onClose={() => setOpenMenuPos(null)}
+      />
+
+      <ContextMenu
+        items={assignGroupMenuItems}
+        position={assignGroupPos}
+        onClose={() => setAssignGroupPos(null)}
       />
 
       {/* Delete Confirmation */}

@@ -71,6 +71,20 @@ export function ProjectList({ onAddProject, onShowProjectDetail, decorationConfi
   const { showToast } = useToast()
   const [tagManagerProject, setTagManagerProject] = useState<Project | null>(null)
   const [showSortMenu, setShowSortMenu] = useState(false)
+  const [availableGroups, setAvailableGroups] = useState<string[]>([])
+
+  useEffect(() => {
+    if (!isElectron || !window.devhub.groups) return
+    let active = true
+    const refresh = () => {
+      window.devhub.groups.list()
+        .then(list => { if (active) setAvailableGroups(list) })
+        .catch(() => { if (active) setAvailableGroups([]) })
+    }
+    refresh()
+    const interval = setInterval(refresh, 10000)
+    return () => { active = false; clearInterval(interval) }
+  }, [])
 
   // Sort state with persistence
   const [sortConfig, setSortConfig] = useState<{ field: ProjectSortField; direction: ProjectSortDirection }>(() => {
@@ -272,6 +286,15 @@ export function ProjectList({ onAddProject, onShowProjectDetail, decorationConfi
     }
   }
 
+  const handleAssignGroup = async (projectId: string, group: string | undefined) => {
+    try {
+      await updateProject(projectId, { group })
+      showToast('success', group ? `已分配到分组 "${group}"` : '已移出分组')
+    } catch (error) {
+      showToast('error', error instanceof Error ? error.message : '分配分组失败')
+    }
+  }
+
   return (
     <>
       <div className="flex flex-col h-full">
@@ -443,6 +466,8 @@ export function ProjectList({ onAddProject, onShowProjectDetail, decorationConfi
                         onCopyPath={() => handleCopyPath(project.path)}
                         onManageTags={() => setTagManagerProject(project)}
                         onShowDetail={onShowProjectDetail ? () => onShowProjectDetail(project) : undefined}
+                        onAssignGroup={(group) => handleAssignGroup(project.id, group)}
+                        availableGroups={availableGroups}
                         decorationConfig={decorationConfig}
                       />
                     </div>

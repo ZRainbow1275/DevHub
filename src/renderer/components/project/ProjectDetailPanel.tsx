@@ -17,7 +17,8 @@ import {
   ClockIcon,
   TagIcon,
   CodeIcon,
-  NetworkIcon
+  NetworkIcon,
+  GroupIcon
 } from '../icons'
 import { ProjectTypeBadge } from './ProjectTypeBadge'
 import { openProjectInGlobalTopology } from '../../utils/globalTopologyNavigation'
@@ -567,6 +568,22 @@ function ConfigTab({ project }: { project: Project }) {
   const updateProject = useProjectStore(s => s.updateProject)
   const [defaultScript, setDefaultScript] = useState(project.defaultScript)
   const [notes, setNotes] = useState('')
+  const [availableGroups, setAvailableGroups] = useState<string[]>([])
+  const [selectedGroup, setSelectedGroup] = useState<string>(project.group ?? '')
+  const [savingGroup, setSavingGroup] = useState(false)
+
+  useEffect(() => {
+    setSelectedGroup(project.group ?? '')
+  }, [project.group])
+
+  useEffect(() => {
+    if (!isElectron || !window.devhub.groups) return
+    let active = true
+    window.devhub.groups.list()
+      .then(list => { if (active) setAvailableGroups(list) })
+      .catch(() => { if (active) setAvailableGroups([]) })
+    return () => { active = false }
+  }, [])
 
   const handleSaveDefaultScript = async () => {
     if (!isElectron) return
@@ -578,6 +595,23 @@ function ConfigTab({ project }: { project: Project }) {
       showToast('error', error instanceof Error ? error.message : '更新失败')
     }
   }
+
+  const handleSaveGroup = async () => {
+    if (!isElectron) return
+    const nextGroup = selectedGroup === '' ? undefined : selectedGroup
+    setSavingGroup(true)
+    try {
+      await window.devhub.projects.update(project.id, { group: nextGroup })
+      updateProject(project.id, { group: nextGroup })
+      showToast('success', nextGroup ? `已分配到分组 "${nextGroup}"` : '已移出分组')
+    } catch (error) {
+      showToast('error', error instanceof Error ? error.message : '更新分组失败')
+    } finally {
+      setSavingGroup(false)
+    }
+  }
+
+  const groupDirty = selectedGroup !== (project.group ?? '')
 
   return (
     <div className="space-y-4">
@@ -603,6 +637,42 @@ function ConfigTab({ project }: { project: Project }) {
             保存
           </button>
         </div>
+      </div>
+
+      {/* Group */}
+      <div>
+        <div className="text-[10px] text-text-muted uppercase tracking-wider mb-2 flex items-center gap-1.5">
+          <GroupIcon size={10} />
+          分组 (互斥分类)
+        </div>
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedGroup}
+            onChange={(e) => setSelectedGroup(e.target.value)}
+            className="input-sm flex-1 bg-surface-800"
+            data-testid="project-detail-group-select"
+          >
+            <option value="">无</option>
+            {availableGroups.map(g => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+            {project.group && !availableGroups.includes(project.group) && (
+              <option value={project.group}>{project.group}</option>
+            )}
+          </select>
+          <button
+            onClick={handleSaveGroup}
+            disabled={!groupDirty || savingGroup}
+            className="px-3 py-1 text-xs bg-accent/10 text-accent hover:bg-accent/20 disabled:opacity-30 transition-colors"
+            style={{ borderRadius: '2px' }}
+            data-testid="project-detail-group-save"
+          >
+            {savingGroup ? '保存中...' : '保存'}
+          </button>
+        </div>
+        {availableGroups.length === 0 && (
+          <p className="text-[10px] text-text-muted mt-1">尚未创建分组。可在侧栏 "分组" 区点击 + 创建。</p>
+        )}
       </div>
 
       {/* Tags */}
