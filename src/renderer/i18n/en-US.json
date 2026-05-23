@@ -130,6 +130,18 @@
     "placeholder": {
       "snapshotLabel": "snapshot label",
       "confirmedBy": "confirmedBy"
+    },
+    "fact": {
+      "snapshot": "Snapshot",
+      "graphKind": "GraphKind",
+      "nodes": "Nodes",
+      "edges": "Edges",
+      "source": "Source",
+      "historical": "Historical",
+      "id": "ID",
+      "kind": "Kind",
+      "label": "Label",
+      "signal": "Signal"
     }
   },
   "errors": {

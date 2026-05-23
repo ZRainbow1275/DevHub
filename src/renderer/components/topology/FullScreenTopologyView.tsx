@@ -195,22 +195,22 @@ export function FullScreenTopologyView() {
             <section className="mb-4">
               <div className="mb-2 text-xs font-bold uppercase tracking-[0.22em] text-accent">当前快照</div>
               <div className="space-y-2 text-xs">
-                <Fact label="Snapshot" value={snapshot?.snapshotId ?? 'pending'} />
-                <Fact label="GraphKind" value={snapshot?.slice.graphKind ?? graphKind} />
-                <Fact label="Nodes" value={snapshot?.nodes.length ?? 0} />
-                <Fact label="Edges" value={snapshot?.edges.length ?? 0} />
-                <Fact label="Source" value={snapshot?.source ?? 'scanner-cache'} />
-                <Fact label="Historical" value={asOfTs === null ? 'current' : String(asOfTs)} />
+                <Fact label={t('topology.fact.snapshot', 'Snapshot')} value={snapshot?.snapshotId ?? 'pending'} />
+                <Fact label={t('topology.fact.graphKind', 'GraphKind')} value={snapshot?.slice.graphKind ?? graphKind} />
+                <Fact label={t('topology.fact.nodes', 'Nodes')} value={snapshot?.nodes.length ?? 0} />
+                <Fact label={t('topology.fact.edges', 'Edges')} value={snapshot?.edges.length ?? 0} />
+                <Fact label={t('topology.fact.source', 'Source')} value={snapshot?.source ?? 'scanner-cache'} />
+                <Fact label={t('topology.fact.historical', 'Historical')} value={asOfTs === null ? 'current' : String(asOfTs)} />
               </div>
             </section>
             <section className="mb-4">
               <div className="mb-2 text-xs font-bold uppercase tracking-[0.22em] text-accent">节点详情</div>
               {selectedNode ? (
                 <div className="space-y-2 text-xs" data-testid="topology-node-detail">
-                  <Fact label="ID" value={selectedNode.id} />
-                  <Fact label="Kind" value={selectedNode.kind} />
-                  <Fact label="Label" value={selectedNode.label} />
-                  <Fact label="Signal" value={selectedNode.signals?.state ?? 'live'} />
+                  <Fact label={t('topology.fact.id', 'ID')} value={selectedNode.id} />
+                  <Fact label={t('topology.fact.kind', 'Kind')} value={selectedNode.kind} />
+                  <Fact label={t('topology.fact.label', 'Label')} value={selectedNode.label} />
+                  <Fact label={t('topology.fact.signal', 'Signal')} value={selectedNode.signals?.state ?? 'live'} />
                   <button type="button" className="btn-secondary w-full" disabled={nodePid(selectedNode) === null} onClick={openProcessDetail}>open in process detail</button>
                 </div>
               ) : (

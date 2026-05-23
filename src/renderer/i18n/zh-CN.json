@@ -130,6 +130,18 @@
     "placeholder": {
       "snapshotLabel": "快照标签",
       "confirmedBy": "确认人"
+    },
+    "fact": {
+      "snapshot": "快照ID",
+      "graphKind": "图类型",
+      "nodes": "节点数",
+      "edges": "边数",
+      "source": "数据源",
+      "historical": "历史时刻",
+      "id": "ID",
+      "kind": "类型",
+      "label": "标签",
+      "signal": "信号"
     }
   },
   "errors": {
