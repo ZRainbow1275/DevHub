@@ -8,6 +8,7 @@ import { FullScreenTopologyView } from '../topology/FullScreenTopologyView'
 import { ErrorBoundary } from '../ErrorBoundary'
 import { ViewErrorFallback } from '../ui/ViewErrorFallback'
 import { ProcessIcon, PortIcon, WindowIcon, AIIcon, MonitorIcon, GearIcon, TopologyIcon } from '../icons'
+import { useT } from '../../hooks/useT'
 
 type MonitorTab = 'process' | 'port' | 'window' | 'ai-task' | 'topology' | 'r8-ops'
 
@@ -50,6 +51,7 @@ function initialMonitorTab(): MonitorTab {
 }
 
 export function MonitorPanel() {
+  const { t } = useT()
   const [activeTab, setActiveTab] = useState<MonitorTab>(() => initialMonitorTab())
 
   useEffect(() => {
@@ -86,9 +88,9 @@ export function MonitorPanel() {
                   transformOrigin: 'left center'
                 }}
               >
-                系统监控
+                {t('monitor.system.title', '系统监控')}
               </h2>
-              <p className="text-xs text-text-muted">SYSTEM MONITOR</p>
+              <p className="text-xs text-text-muted">{t('monitor.system.subtitle', 'SYSTEM MONITOR')}</p>
             </div>
           </div>
 

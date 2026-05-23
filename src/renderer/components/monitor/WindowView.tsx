@@ -24,6 +24,7 @@ import { MisreportButton } from '../../views/monitor/MisreportButton'
 import { SignalDiagnosticPanel } from '../../views/monitor/SignalDiagnosticPanel'
 import { CardEdgeGraphBadge } from './CardEdgeGraphBadge'
 import { openWindowInGlobalTopology } from '../../utils/globalTopologyNavigation'
+import { useT } from '../../hooks/useT'
 
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { StatCard } from '../ui/StatCard'
@@ -1604,6 +1605,7 @@ const BatchToolbar = memo(function BatchToolbar({
 // Main WindowView Component
 // ============================================
 export function WindowView() {
+  const { t } = useT()
   const {
     windows,
     groups,
@@ -2550,9 +2552,9 @@ export function WindowView() {
                   transformOrigin: 'left center'
                 }}
               >
-                窗口管理
+                {t('monitor.window.title', '窗口管理')}
               </h2>
-              <p className="text-xs text-text-muted">WINDOW MANAGER</p>
+              <p className="text-xs text-text-muted">{t('monitor.window.subtitle', 'WINDOW MANAGER')}</p>
             </div>
           </div>
 

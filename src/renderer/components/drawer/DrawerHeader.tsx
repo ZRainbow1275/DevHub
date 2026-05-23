@@ -2,12 +2,14 @@ import type { DrawerSlot } from '@shared/schemas/r8-runtime'
 import { CloseIcon, WindowIcon } from '../icons'
 import { getDrawerContentDefinition } from './drawer-model'
 import { useDrawer } from '../../hooks/useDrawer'
+import { useT } from '../../hooks/useT'
 
 interface DrawerHeaderProps {
   slot: DrawerSlot
 }
 
 export function DrawerHeader({ slot }: DrawerHeaderProps) {
+  const { t } = useT()
   const { state, setOpen, setPinned, morphToPopout } = useDrawer(slot)
   const definition = getDrawerContentDefinition(state.contentId)
   const title = definition?.title ?? state.contentId ?? slot
@@ -34,7 +36,7 @@ export function DrawerHeader({ slot }: DrawerHeaderProps) {
             className="btn-icon-sm text-text-muted hover:text-text-primary"
             data-testid="morph-to-popout"
             onClick={() => { void morphToPopout() }}
-            title="Morph drawer to popout"
+            title={t('drawer.morphToPopout', 'Morph drawer to popout')}
           >
             <WindowIcon size={13} />
           </button>

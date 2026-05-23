@@ -11,6 +11,7 @@ import {
 import { LoadingSpinner } from '../ui/LoadingSpinner'
 import { ProjectTypeBadge } from './ProjectTypeBadge'
 import type { ProjectType } from '@shared/types'
+import { useT } from '../../hooks/useT'
 
 interface AddProjectDialogProps {
   isOpen: boolean
@@ -28,6 +29,7 @@ interface ScanResult {
 const isElectron = typeof window !== 'undefined' && window.devhub !== undefined
 
 export function AddProjectDialog({ isOpen, onClose, onAdd }: AddProjectDialogProps) {
+  const { t } = useT()
   const [path, setPath] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -222,9 +224,9 @@ export function AddProjectDialog({ isOpen, onClose, onAdd }: AddProjectDialogPro
                   transformOrigin: 'left center'
                 }}
               >
-                添加项目
+                {t('project.addProject.title', '添加项目')}
               </h2>
-              <p className="text-xs text-text-muted">ADD PROJECT</p>
+              <p className="text-xs text-text-muted">{t('project.addProject.subtitle', 'ADD PROJECT')}</p>
             </div>
           </div>
           <button

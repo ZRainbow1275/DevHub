@@ -13,6 +13,7 @@ import {
   readPendingGlobalTopologyGraphKind,
   readPendingGlobalTopologyNodeId
 } from '../../utils/globalTopologyNavigation'
+import { useT } from '../../hooks/useT'
 
 type ScopeValue = GraphSlice['scope']
 
@@ -48,6 +49,7 @@ function Fact({ label, value }: { label: string; value: string | number }) {
 }
 
 export function FullScreenTopologyView() {
+  const { t } = useT()
   const [graphKind, setGraphKind] = useState<GraphKind>(() => readPendingGlobalTopologyGraphKind() ?? 'network-topology')
   const [layout, setLayout] = useState<GraphLayout>('dagre')
   const [scope, setScope] = useState<ScopeValue>('global')
@@ -218,8 +220,8 @@ export function FullScreenTopologyView() {
             <section className="mb-4">
               <div className="mb-2 text-xs font-bold uppercase tracking-[0.22em] text-accent">保存快照</div>
               <div className="space-y-2">
-                <input data-testid="graph-save-label" className="input-sm w-full bg-surface-950" placeholder="snapshot label" value={saveLabel} onChange={event => setSaveLabel(event.target.value)} />
-                <input data-testid="graph-confirmed-by" className="input-sm w-full bg-surface-950" placeholder="confirmedBy" value={confirmedBy} onChange={event => setConfirmedBy(event.target.value)} />
+                <input data-testid="graph-save-label" className="input-sm w-full bg-surface-950" placeholder={t('topology.placeholder.snapshotLabel', 'snapshot label')} value={saveLabel} onChange={event => setSaveLabel(event.target.value)} />
+                <input data-testid="graph-confirmed-by" className="input-sm w-full bg-surface-950" placeholder={t('topology.placeholder.confirmedBy', 'confirmedBy')} value={confirmedBy} onChange={event => setConfirmedBy(event.target.value)} />
                 <button type="button" className="btn-secondary w-full" disabled={!snapshot} onClick={() => { void saveSnapshot() }}>保存当前快照</button>
               </div>
             </section>

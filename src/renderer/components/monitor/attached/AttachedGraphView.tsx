@@ -7,6 +7,7 @@ import type { GraphEdge, GraphNode, NeuralNodeType } from '../topology/NeuralGra
 import { CheckIcon, RefreshIcon, TopologyIcon } from '../../icons'
 import { GraphCanvas } from '../../topology/GraphCanvas'
 import { SELECTED_GLOBAL_TOPOLOGY_NODE_KEY, openGlobalTopologyNode } from '../../../utils/globalTopologyNavigation'
+import { useT } from '../../../hooks/useT'
 
 interface AttachedGraphViewProps { scope: TopologyScope; className?: string; minHeight?: number }
 
@@ -61,11 +62,12 @@ interface LazyExpanderProps {
 }
 
 function LazyExpander({ expandableNodeIds, onExpand }: LazyExpanderProps) {
+  const { t } = useT()
   if (expandableNodeIds.length === 0) return null
 
   return (
     <div data-testid="attached-lazy-expander" className="flex flex-wrap items-center gap-2 border-b border-warning/20 bg-surface-950 px-3 py-2">
-      <span className="text-[10px] text-warning">+{expandableNodeIds.length} more lazy node{expandableNodeIds.length === 1 ? '' : 's'} available. Double-click a placeholder to expand.</span>
+      <span className="text-[10px] text-warning">{t('monitor.attached.lazyHint', '+{{count}} more lazy node(s) available. Double-click a placeholder to expand.').replace('{{count}}', String(expandableNodeIds.length))}</span>
       {expandableNodeIds.slice(0, 6).map(nodeId => (
         <button
           key={nodeId}
@@ -84,6 +86,7 @@ function LazyExpander({ expandableNodeIds, onExpand }: LazyExpanderProps) {
 }
 
 export const AttachedGraphView = memo(function AttachedGraphView({ scope, className = '', minHeight = 360 }: AttachedGraphViewProps) {
+  const { t } = useT()
   const [depth, setDepth] = useState(() => Math.max(3, Math.min(10, scope.depth)))
   const [graphKind, setGraphKind] = useState<AttachedTopologyGraphKind>('network-topology')
   const [expandedNodeIds, setExpandedNodeIds] = useState<string[]>([])
@@ -184,7 +187,7 @@ export const AttachedGraphView = memo(function AttachedGraphView({ scope, classN
     <div ref={containerRef} data-testid="attached-graph-view" data-root-kind={scope.kind} data-root-id={String(scope.targetId)} data-source={snapshot?.source ?? graph?.source ?? 'pending'} data-node-count={snapshot?.nodes.length ?? graph?.nodes.length ?? 0} data-edge-count={snapshot?.edges.length ?? graph?.edges.length ?? 0} data-depth={depth} data-lazy={attached?.lazy ? 'true' : 'false'} className={`overflow-hidden border border-surface-700 bg-surface-950 radius-sm ${className}`} style={{ minHeight }}>
       <div className="flex flex-wrap items-center gap-2 border-b border-surface-700 bg-surface-900/70 px-3 py-2">
         <TopologyIcon size={13} className="text-accent" />
-        <span className="text-[10px] font-bold uppercase tracking-wider text-accent" style={{ fontFamily: 'var(--font-display)' }}>Attached topology</span>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-accent" style={{ fontFamily: 'var(--font-display)' }}>{t('monitor.attached.title', 'Attached topology')}</span>
         <span className="text-[10px] text-text-muted">{scope.kind} ID {String(scope.targetId)}</span>
         <span className="text-[10px] text-text-muted">{statsLabel(snapshot, graph)}</span>
         {activeError && <span className="text-[10px] text-warning">{activeError}</span>}
@@ -245,7 +248,7 @@ export const AttachedGraphView = memo(function AttachedGraphView({ scope, classN
           <div className="mb-2 flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
               <TopologyIcon size={13} className="text-accent" />
-              <span className="truncate font-bold uppercase tracking-wider text-accent" style={{ fontFamily: 'var(--font-display)' }}>Attached mini graph</span>
+              <span className="truncate font-bold uppercase tracking-wider text-accent" style={{ fontFamily: 'var(--font-display)' }}>{t('monitor.attached.miniTitle', 'Attached mini graph')}</span>
             </div>
             <button
               type="button"

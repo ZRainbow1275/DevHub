@@ -13,6 +13,7 @@ import type {
 } from '@shared/observability'
 import type { ObservabilityMetricSample, ObservabilitySnapshot } from '@shared/schemas/r8-runtime'
 import { ObservabilityPanel } from '../../views/observability/ObservabilityPanel'
+import { useT } from '../../hooks/useT'
 
 type PanelTab = 'observability' | 'core' | 'ipc' | 'scanners' | 'errors' | 'cache'
 
@@ -331,6 +332,7 @@ export function DevObservabilityPanel({
   subscribeObservability,
   throttleReport
 }: DevObservabilityPanelProps) {
+  const { t } = useT()
   const [activeTab, setActiveTab] = useState<PanelTab>('observability')
 
   if (!open) {
@@ -421,21 +423,21 @@ export function DevObservabilityPanel({
 
         {activeTab === 'core' ? (
           <>
-            <SectionCard title="Main RSS" testId="metric-main-rss">
+            <SectionCard title={t('dev.observability.cards.mainRss', 'Main RSS')} testId="metric-main-rss">
               <div className="space-y-3">
                 <MetricSummary label="当前" value={formatMetric(snapshot?.mainRss.items.at(-1)?.v ?? Number.NaN, 1, ' MB')} />
                 <MetricSparkline color="#f97316" samples={snapshot?.mainRss.items ?? []} />
               </div>
             </SectionCard>
 
-            <SectionCard title="Renderer RSS" testId="metric-renderer-rss">
+            <SectionCard title={t('dev.observability.cards.rendererRss', 'Renderer RSS')} testId="metric-renderer-rss">
               <div className="space-y-3">
                 <MetricSummary label="当前" value={formatMetric(snapshot?.rendererRss.items.at(-1)?.v ?? Number.NaN, 1, ' MB')} />
                 <MetricSparkline color="#22c55e" samples={snapshot?.rendererRss.items ?? []} />
               </div>
             </SectionCard>
 
-            <SectionCard title="PowerShell Children" testId="metric-ps-children">
+            <SectionCard title={t('dev.observability.cards.psChildren', 'PowerShell Children')} testId="metric-ps-children">
               <div className="space-y-3">
                 <MetricSummary label="活跃子进程" value={formatCount(snapshot?.psChildCount ?? Number.NaN)} />
                 <div className="text-sm text-text-secondary break-all">
@@ -444,14 +446,14 @@ export function DevObservabilityPanel({
               </div>
             </SectionCard>
 
-            <SectionCard title="CPU" testId="metric-cpu">
+            <SectionCard title={t('dev.observability.cards.cpu', 'CPU')} testId="metric-cpu">
               <div className="space-y-3">
                 <MetricSummary label="当前 / 5m 平均" value={`${formatMetric(snapshot?.cpuNow ?? Number.NaN, 1, '%')} / ${formatMetric(snapshot?.cpu5mAvg ?? Number.NaN, 1, '%')}`} />
                 <MetricSparkline color="#38bdf8" samples={snapshot?.cpuSeries.items ?? []} />
               </div>
             </SectionCard>
 
-            <SectionCard title="IPC RPM" testId="metric-ipc-rpm">
+            <SectionCard title={t('dev.observability.cards.ipcRpm', 'IPC RPM')} testId="metric-ipc-rpm">
               <DenseList
                 empty="暂无 IPC 采样"
                 items={snapshot?.ipcRpm.top ?? []}
@@ -459,7 +461,7 @@ export function DevObservabilityPanel({
               />
             </SectionCard>
 
-            <SectionCard title="React Commits" testId="metric-react-commits">
+            <SectionCard title={t('dev.observability.cards.reactCommits', 'React Commits')} testId="metric-react-commits">
               <DenseList
                 empty="暂无 React commit 采样"
                 items={snapshot?.reactCommits.top ?? []}
@@ -471,7 +473,7 @@ export function DevObservabilityPanel({
 
         {activeTab === 'ipc' ? (
           <>
-            <SectionCard title="Throttle Snapshot">
+            <SectionCard title={t('dev.observability.cards.throttleSnapshot', 'Throttle Snapshot')}>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <MetricSummary label="channels" value={formatCount(throttleRows.length)} />
                 <MetricSummary
@@ -481,7 +483,7 @@ export function DevObservabilityPanel({
               </div>
             </SectionCard>
 
-            <SectionCard title="Inbound Limits" testId="metric-ipc-throttle">
+            <SectionCard title={t('dev.observability.cards.inboundLimits', 'Inbound Limits')} testId="metric-ipc-throttle">
               <DenseList
                 empty="暂无 throttle 统计"
                 items={throttleRows}
@@ -493,11 +495,11 @@ export function DevObservabilityPanel({
 
         {activeTab === 'scanners' ? (
           <>
-            <SectionCard title="Scanner Health">
+            <SectionCard title={t('dev.observability.cards.scannerHealth', 'Scanner Health')}>
               <DenseList empty="暂无扫描器状态" items={scannerHealth} renderItem={(item) => renderScanner(item)} />
             </SectionCard>
 
-            <SectionCard title="Renderer ACK Backpressure">
+            <SectionCard title={t('dev.observability.cards.rendererAck', 'Renderer ACK Backpressure')}>
               <DenseList
                 empty="鏆傛棤 ACK 鍘嬪姏鐘舵€?"
                 items={scannerBackpressure}
@@ -505,7 +507,7 @@ export function DevObservabilityPanel({
               />
             </SectionCard>
 
-            <SectionCard title="PowerShell Pool">
+            <SectionCard title={t('dev.observability.cards.powerShellPool', 'PowerShell Pool')}>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <MetricSummary label="workers" value={formatCount(psPoolStats?.workers ?? Number.NaN)} />
                 <MetricSummary label="idle" value={formatCount(psPoolStats?.idle ?? Number.NaN)} />
@@ -519,17 +521,17 @@ export function DevObservabilityPanel({
         ) : null}
 
         {activeTab === 'errors' ? (
-          <SectionCard title="Recent Errors">
+          <SectionCard title={t('dev.observability.cards.recentErrors', 'Recent Errors')}>
             <DenseList empty="最近没有错误" items={recentErrors} renderItem={(item) => renderError(item)} />
           </SectionCard>
         ) : null}
 
         {activeTab === 'cache' ? (
           <>
-            <SectionCard title="Cache Sizes">
+            <SectionCard title={t('dev.observability.cards.cacheSizes', 'Cache Sizes')}>
               <DenseList empty="暂无缓存统计" items={cacheSizes} renderItem={(item) => renderCache(item)} />
             </SectionCard>
-            <SectionCard title="Disposal Pending">
+            <SectionCard title={t('dev.observability.cards.disposalPending', 'Disposal Pending')}>
               <MetricSummary label="待清理对象" value={formatCount(snapshot?.extended.disposalPending ?? Number.NaN)} />
             </SectionCard>
           </>

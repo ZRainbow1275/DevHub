@@ -54,6 +54,75 @@
       "port": "Port",
       "window": "Window",
       "aiTask": "AI Task"
+    },
+    "system": {
+      "title": "System Monitor",
+      "subtitle": "SYSTEM MONITOR"
+    },
+    "window": {
+      "title": "Window Manager",
+      "subtitle": "WINDOW MANAGER",
+      "alwaysOnTop": "Always on top",
+      "vdSwitcher": {
+        "title": "Virtual desktops",
+        "unavailable": "Virtual desktop data is not available on this host."
+      }
+    },
+    "r8": {
+      "restore": {
+        "overwrite": "Overwrite selected categories",
+        "merge": "Merge selected categories",
+        "skip": "Skip existing records"
+      }
+    },
+    "attached": {
+      "title": "Attached topology",
+      "miniTitle": "Attached mini graph",
+      "lazyHint": "+{{count}} more lazy node(s) available. Double-click a placeholder to expand."
+    }
+  },
+  "project": {
+    "autoDiscovery": {
+      "title": "Auto Discovery",
+      "subtitle": "AUTO DISCOVERY"
+    },
+    "addProject": {
+      "title": "Add Project",
+      "subtitle": "ADD PROJECT"
+    }
+  },
+  "skills": {
+    "editor": {
+      "newFromTemplate": "New from template"
+    }
+  },
+  "drawer": {
+    "morphToPopout": "Morph drawer to popout"
+  },
+  "dev": {
+    "observability": {
+      "cards": {
+        "mainRss": "Main RSS",
+        "rendererRss": "Renderer RSS",
+        "psChildren": "PowerShell Children",
+        "cpu": "CPU",
+        "ipcRpm": "IPC RPM",
+        "reactCommits": "React Commits",
+        "throttleSnapshot": "Throttle Snapshot",
+        "inboundLimits": "Inbound Limits",
+        "scannerHealth": "Scanner Health",
+        "rendererAck": "Renderer ACK Backpressure",
+        "powerShellPool": "PowerShell Pool",
+        "recentErrors": "Recent Errors",
+        "cacheSizes": "Cache Sizes",
+        "disposalPending": "Disposal Pending"
+      }
+    }
+  },
+  "topology": {
+    "placeholder": {
+      "snapshotLabel": "snapshot label",
+      "confirmedBy": "confirmedBy"
     }
   },
   "errors": {

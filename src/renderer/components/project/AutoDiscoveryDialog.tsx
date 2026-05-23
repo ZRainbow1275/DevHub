@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { SearchIcon, CloseIcon, CheckIcon, FolderIcon } from '../icons'
 import { ProjectTypeBadge } from './ProjectTypeBadge'
 import type { ProjectType } from '@shared/types'
+import { useT } from '../../hooks/useT'
 
 interface DiscoveredProject {
   path: string
@@ -18,6 +19,7 @@ interface AutoDiscoveryDialogProps {
 }
 
 export function AutoDiscoveryDialog({ isOpen, projects, onImport, onClose }: AutoDiscoveryDialogProps) {
+  const { t } = useT()
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [isImporting, setIsImporting] = useState(false)
 
@@ -101,9 +103,9 @@ export function AutoDiscoveryDialog({ isOpen, projects, onImport, onClose }: Aut
                   transformOrigin: 'left center'
                 }}
               >
-                发现项目
+                {t('project.autoDiscovery.title', '发现项目')}
               </h2>
-              <p className="text-xs text-text-muted">AUTO DISCOVERY</p>
+              <p className="text-xs text-text-muted">{t('project.autoDiscovery.subtitle', 'AUTO DISCOVERY')}</p>
             </div>
           </div>
           <button

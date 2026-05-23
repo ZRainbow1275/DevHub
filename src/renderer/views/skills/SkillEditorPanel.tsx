@@ -1,6 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
 import type { Skill, SkillTemplate, SkillValidationResult } from '@shared/schemas/r8-runtime'
 import { SKILL_EDITOR_MONACO_THEME, configureSkillMonaco } from './skill-monaco-config'
+import { useT } from '../../hooks/useT'
 
 type SkillTab = 'yaml' | 'body' | 'script'
 type SkillScriptLanguage = 'node' | 'python' | 'bash' | 'powershell'
@@ -43,6 +44,7 @@ function validationText(validation: SkillValidationResult): string {
 }
 
 export function SkillEditorPanel() {
+  const { t } = useT()
   const [skills, setSkills] = useState<Skill[]>([])
   const [templates, setTemplates] = useState<SkillTemplate[]>([])
   const [selectedName, setSelectedName] = useState<string>('')
@@ -192,7 +194,7 @@ export function SkillEditorPanel() {
         <select className="input min-w-44" value={selectedTemplateId} onChange={event => setSelectedTemplateId(event.target.value)} aria-label="Skill template">
           {templates.map(template => <option key={template.templateId} value={template.templateId}>{template.templateId}</option>)}
         </select>
-        <button type="button" className="btn-secondary" onClick={() => { void createFromTemplate() }}>New from template</button>
+        <button type="button" className="btn-secondary" onClick={() => { void createFromTemplate() }}>{t('skills.editor.newFromTemplate', 'New from template')}</button>
         <button type="button" className="btn-secondary" onClick={() => { void refresh() }}>Reload</button>
         <button type="button" className="btn-secondary" disabled={!canDeleteSelected} onClick={() => { void deleteSelected() }}>Delete</button>
         <button type="button" className="btn-primary" disabled={!dirty || !validation.valid || saving} onClick={() => { void save() }}>Save</button>

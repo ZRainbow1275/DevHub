@@ -10,6 +10,7 @@ import { MonitorWindowCards } from './MonitorWindowCards'
 import { CountdownBadge } from '../permission/CountdownBadge'
 import { BUILTIN_DRAWER_CONTENTS } from '../drawer/drawer-model'
 import { useDrawerStore } from '../../stores/drawerStore'
+import { useT } from '../../hooks/useT'
 import type { BackupBundle, BackupCategory, ChannelRegistration, CliOutputEvent, DiagnosticPackManifest, DiagnosticPackOptions, DiagnosticPreview, InjectResult, MonitorPopout, MonitorPopoutLayout, MonitorSnapshot, MonitorTool, MonitorWindowState, PermissionExpiryStreamPayload, QueueStats, RecordingSession, RecoveryReport, RestoreResult, SchemaMeta, SecurityTier, StatusAggregate, TaskResultExportResult, ToolDetectResult, ToolDetectionState, WatchdogStatus } from '@shared/schemas/r8-runtime'
 
 interface R8Health {
@@ -94,6 +95,7 @@ function DeferredFact({ label, value, tooltip }: { label: string; value: React.R
 }
 
 export function R8OpsPanel() {
+  const { t } = useT()
   const ports = useScannerStore(state => state.ports)
   const [health, setHealth] = useState<R8Health | null>(null)
   const [channels, setChannels] = useState<ChannelRegistration[]>([])
@@ -604,9 +606,9 @@ export function R8OpsPanel() {
                     setRestoreConfirmed(false)
                   }}
                 >
-                  <option value="overwrite">Overwrite selected categories</option>
-                  <option value="merge">Merge selected categories</option>
-                  <option value="skip">Skip existing records</option>
+                  <option value="overwrite">{t('monitor.r8.restore.overwrite', 'Overwrite selected categories')}</option>
+                  <option value="merge">{t('monitor.r8.restore.merge', 'Merge selected categories')}</option>
+                  <option value="skip">{t('monitor.r8.restore.skip', 'Skip existing records')}</option>
                 </select>
               </label>
               <label className="flex items-center gap-2 border border-surface-800 bg-surface-950 p-2 text-xs text-text-muted radius-sm">

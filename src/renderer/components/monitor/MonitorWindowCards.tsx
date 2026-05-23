@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import type { MonitorPopoutLayout, MonitorSnapshot, MonitorTool, MonitorWindowState, ToolMonitorCard } from '@shared/schemas/r8-runtime'
+import { useT } from '../../hooks/useT'
 
 const TOOL_LABELS: Record<MonitorTool, string> = {
   codex: 'Codex',
@@ -77,6 +78,7 @@ export function MonitorWindowCards({
   onPrefsChange?: (patch: Partial<MonitorPrefsDraft>) => void
   showWindowControls?: boolean
 }) {
+  const { t } = useT()
   const [layoutMenuTool, setLayoutMenuTool] = useState<MonitorTool | null>(null)
   const layoutMenuRef = useRef<HTMLDivElement | null>(null)
 
@@ -244,7 +246,7 @@ export function MonitorWindowCards({
       {showWindowControls && onPrefsChange && (
         <div className="grid gap-3 border border-surface-800 bg-surface-950 p-3 radius-md lg:grid-cols-[1fr_220px]">
           <label className="flex items-center justify-between gap-3 text-sm">
-            <span className="text-text-secondary">Always on top</span>
+            <span className="text-text-secondary">{t('monitor.window.alwaysOnTop', 'Always on top')}</span>
             <input
               type="checkbox"
               checked={prefsDraft.alwaysOnTop}
