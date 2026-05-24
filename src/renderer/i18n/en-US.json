@@ -47,6 +47,21 @@
   "a11y": {
     "skipToMain": "Skip to main content"
   },
+  "titlebar": {
+    "window": {
+      "minimize": "Minimize",
+      "maximize": "Maximize",
+      "restore": "Restore",
+      "close": "Close"
+    }
+  },
+  "notify": {
+    "center": {
+      "open": "Open notification center",
+      "empty": "No notifications",
+      "count": "{{count}} notifications"
+    }
+  },
   "monitor": {
     "title": "Monitor",
     "tab": {

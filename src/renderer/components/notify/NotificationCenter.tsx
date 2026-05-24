@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { DevhubNotification, NotificationLevel } from '@shared/schemas/notification'
+import { useT } from '../../hooks/useT'
 import { AlertIcon, BellIcon, CloseIcon, InfoIcon, LightningIcon } from '../icons'
 
 function levelIcon(level: NotificationLevel) {
@@ -11,6 +12,7 @@ function levelIcon(level: NotificationLevel) {
 }
 
 export function NotificationCenter() {
+  const { t } = useT()
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState<DevhubNotification[]>([])
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -71,7 +73,7 @@ export function NotificationCenter() {
       <button
         ref={triggerRef}
         type="button"
-        aria-label="Open notification center"
+        aria-label={t('notify.center.open', 'Open notification center')}
         aria-expanded={open}
         aria-haspopup="dialog"
         className="relative flex h-9 w-9 items-center justify-center text-text-tertiary hover:bg-surface-800 hover:text-text-primary transition-colors no-drag"
@@ -86,7 +88,7 @@ export function NotificationCenter() {
             {count > 99 ? '99+' : count}
           </span>
         )}
-        <span className="sr-only">{count > 0 ? `${count} notifications` : 'No notifications'}</span>
+        <span className="sr-only">{count > 0 ? `${count} ${t('notify.center.count', 'notifications').replace('{{count}}', '').trim()}` : t('notify.center.empty', 'No notifications')}</span>
       </button>
       {open && createPortal(
         <div

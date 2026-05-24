@@ -2,12 +2,14 @@ import type { ThemeDecorationConfig } from '@shared/types'
 import { GearIcon, MinimizeIcon, MaximizeIcon, CloseIcon } from '../icons'
 import { ThemeDecoration } from '../ui/ThemeDecoration'
 import { NotificationCenter } from '../notify/NotificationCenter'
+import { useT } from '../../hooks/useT'
 
 interface TitleBarProps {
   decorationConfig?: ThemeDecorationConfig
 }
 
 export function TitleBar({ decorationConfig }: TitleBarProps) {
+  const { t } = useT()
   const handleMinimize = () => {
     const devhub = window.devhub
     if (devhub?.window?.minimize) {
@@ -76,21 +78,21 @@ export function TitleBar({ decorationConfig }: TitleBarProps) {
         <button
           onClick={handleMinimize}
           className="w-12 h-9 flex items-center justify-center text-text-tertiary hover:bg-surface-800 hover:text-text-primary transition-colors"
-          aria-label="Minimize"
+          aria-label={t('titlebar.window.minimize', 'Minimize')}
         >
           <MinimizeIcon size={14} />
         </button>
         <button
           onClick={handleMaximize}
           className="w-12 h-9 flex items-center justify-center text-text-tertiary hover:bg-surface-800 hover:text-text-primary transition-colors"
-          aria-label="Maximize"
+          aria-label={t('titlebar.window.maximize', 'Maximize')}
         >
           <MaximizeIcon size={14} />
         </button>
         <button
           onClick={handleClose}
           className="w-12 h-9 flex items-center justify-center text-text-tertiary hover:bg-accent hover:text-white transition-colors"
-          aria-label="Close"
+          aria-label={t('titlebar.window.close', 'Close')}
         >
           <CloseIcon size={14} />
         </button>

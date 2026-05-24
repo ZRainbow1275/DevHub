@@ -47,6 +47,21 @@
   "a11y": {
     "skipToMain": "跳到主内容"
   },
+  "titlebar": {
+    "window": {
+      "minimize": "最小化",
+      "maximize": "最大化",
+      "restore": "还原",
+      "close": "关闭"
+    }
+  },
+  "notify": {
+    "center": {
+      "open": "打开通知中心",
+      "empty": "暂无通知",
+      "count": "{{count}} 条通知"
+    }
+  },
   "monitor": {
     "title": "监控",
     "tab": {
