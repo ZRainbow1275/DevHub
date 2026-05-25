@@ -35,7 +35,7 @@ export function TemplateNodePalette({
     <section aria-label={t('dag.templatePalette.aria', 'Template node palette')} className="space-y-2 border border-surface-800 bg-surface-950 p-3 radius-md" data-testid="template-node-palette">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <div className="text-xs font-bold uppercase text-text-muted">TemplateNodePalette</div>
+          <div className="text-xs font-bold uppercase text-text-muted">{t('dag.templatePalette.eyebrow', 'Template Nodes')}</div>
           <div className="text-xs text-text-muted">{counts}</div>
         </div>
         <button type="button" className="btn-secondary" disabled={!canSaveSelected} onClick={onSaveSelected}>保存选中为模板</button>

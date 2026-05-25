@@ -95,11 +95,13 @@ export function NodeDetailPanel({ onPatch, row, rowIndex, validationErrors }: No
     <section aria-label={ariaLabel} className="space-y-3 border border-surface-800 bg-surface-950 p-3 radius-md" data-testid="node-detail-panel">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <div className="text-xs font-bold uppercase text-text-muted">NodeDetailPanel</div>
+          <div className="text-xs font-bold uppercase text-text-muted">{t('dag.nodeDetail.eyebrow', 'Node Detail')}</div>
           <div className="text-xs text-text-muted">{summary}</div>
         </div>
         <div className={validationErrors.length > 0 ? 'text-xs text-danger' : 'text-xs text-success'}>
-          {validationErrors.length > 0 ? `${validationErrors.length} validation errors` : 'zod valid'}
+          {validationErrors.length > 0
+            ? t('dag.nodeDetail.validationErrors', '{{count}} validation errors').replace('{{count}}', String(validationErrors.length))
+            : t('dag.nodeDetail.zodValid', 'zod valid')}
         </div>
       </div>
 

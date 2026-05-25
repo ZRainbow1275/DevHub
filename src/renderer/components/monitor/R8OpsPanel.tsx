@@ -506,7 +506,7 @@ export function R8OpsPanel() {
               disabled={taskExportBusy}
               onClick={() => { void exportTaskResultsFromPanel() }}
             >
-              {taskExportBusy ? 'Exporting task results' : 'Export task results CSV/JSON'}
+              {taskExportBusy ? t('ops.taskExport.exporting', 'Exporting task results') : t('ops.taskExport.export', 'Export task results CSV/JSON')}
             </button>
             <Fact label={t('ops.r8.fact.lastExportTasks', 'Last Export Tasks')} value={<span data-testid="task-result-export-count">{taskExport?.taskCount ?? 'N/A'}</span>} />
             <div className="break-all font-mono text-[11px] text-text-muted" data-testid="task-result-export-path">

@@ -129,6 +129,7 @@
       "open": "Open notification center",
       "empty": "No notifications",
       "count": "{{count}} notifications",
+      "countAria": "notifications",
       "title": "Notification Center",
       "close": "Close notification center",
       "emptyActive": "No active notifications"
@@ -217,11 +218,15 @@
       "aria": "Template node palette",
       "node": "Node template",
       "builtinQuickPicks": "Builtin template quick picks",
-      "counts": "{{builtin}} builtin / {{user}} user"
+      "counts": "{{builtin}} builtin / {{user}} user",
+      "eyebrow": "Template Nodes"
     },
     "nodeDetail": {
       "aria": "Node detail panel",
-      "summary": "18 columns / row {{row}} / {{taskId}}"
+      "summary": "18 columns / row {{row}} / {{taskId}}",
+      "eyebrow": "Node Detail",
+      "zodValid": "zod valid",
+      "validationErrors": "{{count}} validation errors"
     },
     "canvas": {
       "nodes": "DAG canvas nodes"
@@ -251,6 +256,9 @@
     "close": "Close drawer",
     "launchers": "R8 drawer launchers",
     "resize": "Resize {{slot}} drawer",
+    "label": "Drawer {{slot}}",
+    "unpin": "Unpin drawer",
+    "pin": "Pin drawer",
     "axis": {
       "top": "TOP",
       "right": "RIGHT",
@@ -350,6 +358,10 @@
         "noActiveTtl": "No active TTL grants",
         "noClassifiedBackup": "No classified backup yet"
       }
+    },
+    "taskExport": {
+      "exporting": "Exporting task results",
+      "export": "Export task results CSV/JSON"
     }
   },
   "topology": {

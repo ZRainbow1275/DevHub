@@ -55,7 +55,7 @@ const mimeLikePattern = /^[a-z]+\/[a-z0-9.+-]+$/i
 function isWhitelisted(text) {
   const trimmed = text.trim()
   if (!trimmed) return true
-  if (trimmed.length < 4) return true
+  if (trimmed.length < 3) return true
   if (brandWhitelist.has(trimmed)) return true
   if (keyboardShortcutPattern.test(trimmed)) return true
   if (urlPattern.test(trimmed)) return true
@@ -178,11 +178,11 @@ const attributePatterns = [
 // JSX text node: a literal sitting between `>` and `</` (closing tag), the
 // element's closing tag — this distinguishes real JSX content from TypeScript
 // generics like `Promise<DagCanvasPngExport>` where the trailing `<` does not
-// start a closing tag. We further require the text to either contain a space
-// (multi-word) or be reasonably JSX-shaped; bare single Capitalized tokens
-// like "Promise" alone between angle brackets are virtually always TS
-// generics and produce too many false positives, so they're skipped.
-const jsxTextPattern = />\s*([A-Z][a-zA-Z][a-zA-Z\s\-+/.,!?:&()'"%]{2,})\s*<\/[a-zA-Z]/g
+// start a closing tag. The leading character may be upper or lower case so
+// that labels like `zod valid` or `validation errors` also surface; a
+// post-match filter in scanLine requires either a space (multi-word) or a
+// minimum length to keep CSS-fragment noise low.
+const jsxTextPattern = />\s*([A-Za-z][a-zA-Z][a-zA-Z\s\-+/.,!?:&()'"%]{2,})\s*<\/[a-zA-Z]/g
 
 // sr-only span: <span className="sr-only">Submit</span>
 const srOnlyPattern = /<span\s+className\s*=\s*"sr-only"\s*>\s*([A-Z][a-zA-Z][a-zA-Z\s\-+/.,!?:&()'"%]{2,})\s*<\/span>/g
@@ -223,6 +223,12 @@ function scanLine(rawLine, cleanedLine) {
     if (isWhitelisted(text)) continue
     // Skip if this looks like a closing tag context "</Foo>" or "/>"
     if (cleanedLine.slice(jm.index, jm.index + 2) === '</') continue
+    // Post-match filter for the relaxed lower-case-leading pattern: keep
+    // multi-word phrases (any text containing a space) or any single token
+    // with length >= 5 characters. This guards against CSS-fragment noise
+    // like `flex` / `text` appearing in className concatenations.
+    const hasSpace = /\s/.test(text)
+    if (!hasSpace && text.length < 5) continue
     matches.push({ type: 'jsx-text', text, column: jm.index })
   }
 

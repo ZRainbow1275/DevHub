@@ -88,7 +88,7 @@ export function NotificationCenter() {
             {count > 99 ? '99+' : count}
           </span>
         )}
-        <span className="sr-only">{count > 0 ? `${count} ${t('notify.center.count', 'notifications').replace('{{count}}', '').trim()}` : t('notify.center.empty', 'No notifications')}</span>
+        <span className="sr-only">{count > 0 ? `${count} ${t('notify.center.countAria', 'notifications')}` : t('notify.center.empty', 'No notifications')}</span>
       </button>
       {open && createPortal(
         <div

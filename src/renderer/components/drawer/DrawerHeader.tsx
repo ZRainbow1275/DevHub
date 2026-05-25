@@ -17,7 +17,7 @@ export function DrawerHeader({ slot }: DrawerHeaderProps) {
   return (
     <header className="flex items-center justify-between gap-3 border-b border-surface-700 bg-surface-900 px-3 py-2">
       <div className="min-w-0">
-        <div className="text-[10px] uppercase tracking-[0.2em] text-text-muted">Drawer {slot}</div>
+        <div className="text-[10px] uppercase tracking-[0.2em] text-text-muted">{t('drawer.label', 'Drawer {{slot}}').replace('{{slot}}', slot)}</div>
         <h2 className="truncate text-sm font-bold text-text-primary">{title}</h2>
       </div>
       <div className="flex items-center gap-1">
@@ -26,7 +26,7 @@ export function DrawerHeader({ slot }: DrawerHeaderProps) {
           className={`btn-icon-sm ${state.pinned ? 'bg-accent/10 text-accent' : 'text-text-muted hover:text-text-primary'}`}
           data-testid={`drawer-${slot}-pin`}
           onClick={() => { void setPinned(!state.pinned) }}
-          title={state.pinned ? 'Unpin drawer' : 'Pin drawer'}
+          title={state.pinned ? t('drawer.unpin', 'Unpin drawer') : t('drawer.pin', 'Pin drawer')}
         >
           <WindowIcon size={13} />
         </button>
