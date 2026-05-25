@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import type { ProcessHistory } from '@shared/schemas/r8-runtime'
+import { useT } from '../../../hooks/useT'
 
 export type ProcessSparklineMetric = 'cpu' | 'rssMb' | 'handles' | 'threads'
 
@@ -75,6 +76,7 @@ export function ProcessSparkline({
   className?: string
   testId?: string
 }) {
+  const { t } = useT()
   const { paths, missingCount, latest } = useMemo(() => {
     const maxRenderPoints = Math.max(2, Math.min(160, Math.ceil(width / 2)))
     const points = compactHistoryPoints(history?.points ?? [], metric, maxRenderPoints)
@@ -112,7 +114,7 @@ export function ProcessSparkline({
   if (!history || history.points.length < 2 || paths.length === 0) {
     return (
       <svg
-        aria-label="24h history unavailable"
+        aria-label={t('statusbar.history.unavailable', '24h history unavailable')}
         className={className}
         data-testid={testId}
         height={height}

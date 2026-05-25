@@ -1,3 +1,5 @@
+import { useT } from '../../hooks/useT'
+
 interface TimeCursorProps {
   cursorTs: number
   onChange: (timestamp: number) => void
@@ -10,6 +12,7 @@ function formatTime(timestamp: number): string {
 }
 
 export function TimeCursor({ cursorTs, onChange, windowEnd, windowStart }: TimeCursorProps) {
+  const { t } = useT()
   const span = Math.max(windowEnd - windowStart, 1)
   const value = Math.round(((cursorTs - windowStart) / span) * 1000)
 
@@ -17,11 +20,11 @@ export function TimeCursor({ cursorTs, onChange, windowEnd, windowStart }: TimeC
     <div className="border border-surface-700 bg-surface-900/80 p-3 radius-md" data-testid="observability-time-cursor">
       <div className="flex items-center justify-between gap-3 text-xs text-text-muted mb-2">
         <span>{formatTime(windowStart)}</span>
-        <span>Cursor {formatTime(cursorTs)}</span>
+        <span>{t('observability.cursor', 'Cursor {{time}}').replace('{{time}}', formatTime(cursorTs))}</span>
         <span>{formatTime(windowEnd)}</span>
       </div>
       <input
-        aria-label="Observability time cursor"
+        aria-label={t('observability.timeCursor', 'Observability time cursor')}
         className="w-full"
         max={1000}
         min={0}

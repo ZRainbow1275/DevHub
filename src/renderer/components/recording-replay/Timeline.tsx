@@ -1,5 +1,6 @@
 import type { RecordingReplayState } from '@shared/schemas/r8-runtime'
 import { TimelineCursor } from './TimelineCursor'
+import { useT } from '../../hooks/useT'
 
 interface TimelineProps {
   state: RecordingReplayState
@@ -7,6 +8,7 @@ interface TimelineProps {
 }
 
 export function Timeline({ onSeek, state }: TimelineProps) {
+  const { t } = useT()
   const durationMs = Math.max(0, state.endedAtAbsTs - state.startedAtAbsTs)
   const cursorOffset = Math.max(0, state.cursorTs - state.startedAtAbsTs)
   const percent = durationMs === 0 ? 0 : Math.min(100, Math.round((cursorOffset / durationMs) * 100))
@@ -22,11 +24,11 @@ export function Timeline({ onSeek, state }: TimelineProps) {
       <div className="mt-2 flex gap-1 overflow-hidden">
         {state.anchors.map(anchor => (
           <button
-            aria-label={`Jump to ${anchor.label}`}
+            aria-label={t('replay.jumpTo', 'Jump to {{label}}').replace('{{label}}', String(anchor.label))}
             className="h-1 min-w-3 flex-1 bg-accent/80 hover:bg-accent"
             key={`${anchor.kind}-${anchor.ts}-${anchor.label}`}
             onClick={() => onSeek(anchor.ts)}
-            title={`${anchor.kind}: ${anchor.label}`}
+            title={t('replay.anchorTitle', '{{kind}}: {{label}}').replace('{{kind}}', String(anchor.kind)).replace('{{label}}', String(anchor.label))}
             type="button"
           />
         ))}

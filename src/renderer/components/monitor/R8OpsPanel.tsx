@@ -453,52 +453,52 @@ export function R8OpsPanel() {
 
       <div className="grid gap-4 xl:grid-cols-3">
         <div className="xl:col-span-3">
-          <DenseCard title="CSV Launch">
+          <DenseCard title={t('ops.r8.section.csvLaunch', 'CSV Launch')}>
             <CsvLaunchWizard />
           </DenseCard>
         </div>
 
         <DenseCard title="R8 健康">
           <div className="space-y-2">
-            <Fact label="Feature Flags" value={health?.featureFlags ?? 'N/A'} />
-            <Fact label="IPC Channels" value={health?.ipcChannels ?? 'N/A'} />
-            <Fact label="Zod Schemas" value={health?.schemas ?? 'N/A'} />
-            <Fact label="Popouts" value={health?.popouts ?? 'N/A'} />
+            <Fact label={t('ops.r8.fact.featureFlags', 'Feature Flags')} value={health?.featureFlags ?? 'N/A'} />
+            <Fact label={t('ops.r8.fact.ipcChannels', 'IPC Channels')} value={health?.ipcChannels ?? 'N/A'} />
+            <Fact label={t('ops.r8.fact.zodSchemas', 'Zod Schemas')} value={health?.schemas ?? 'N/A'} />
+            <Fact label={t('ops.r8.fact.popouts', 'Popouts')} value={health?.popouts ?? 'N/A'} />
           </div>
         </DenseCard>
 
         <DenseCard title="IPC 限流与确认">
           <div className="space-y-2">
-            <Fact label="Registered" value={channels.length} />
-            <Fact label="High Freq" value={highFreqChannels.length} />
-            <Fact label="Per Sender" value={perSenderChannels.length} />
-            <Fact label="Rate Classes" value={new Set(channels.map(channel => channel.rateClass)).size} />
+            <Fact label={t('ops.r8.fact.registered', 'Registered')} value={channels.length} />
+            <Fact label={t('ops.r8.fact.highFreq', 'High Freq')} value={highFreqChannels.length} />
+            <Fact label={t('ops.r8.fact.perSender', 'Per Sender')} value={perSenderChannels.length} />
+            <Fact label={t('ops.r8.fact.rateClasses', 'Rate Classes')} value={new Set(channels.map(channel => channel.rateClass)).size} />
           </div>
         </DenseCard>
 
         <DenseCard title="禁用接口">
           <div className="space-y-2">
             <DeferredFact
-              label="OCR"
+              label={t('ops.r8.fact.ocr', 'OCR')}
               value={ocrCode ?? 'E_OCR_DISABLED'}
               tooltip="OCR is not supported in R8. Recognition calls return E_OCR_DISABLED and do not load OCR engines."
             />
             <DeferredFact
-              label="Skill Cloud Sync"
+              label={t('ops.r8.fact.skillCloudSync', 'Skill Cloud Sync')}
               value={cloudCode ?? 'E_FEATURE_DEFERRED'}
               tooltip="Skill cloud sync is deferred to R9. R8 returns E_FEATURE_DEFERRED and performs no network sync."
             />
-            <Fact label="Watchdog" value={watchdog?.state ?? 'N/A'} />
-            <Fact label="Heartbeat" value={watchdog ? `${watchdog.heartbeatTimeoutMs}ms` : 'N/A'} />
+            <Fact label={t('ops.r8.fact.watchdog', 'Watchdog')} value={watchdog?.state ?? 'N/A'} />
+            <Fact label={t('ops.r8.fact.heartbeat', 'Heartbeat')} value={watchdog ? `${watchdog.heartbeatTimeoutMs}ms` : 'N/A'} />
           </div>
         </DenseCard>
 
         <DenseCard title="R8.C 队列">
           <div className="space-y-2" data-testid="task-result-export-panel">
-            <Fact label="Total" value={queueStats?.total ?? 'N/A'} />
-            <Fact label="Queued" value={queueStats?.queued ?? 'N/A'} />
-            <Fact label="Running" value={queueStats?.running ?? 'N/A'} />
-            <Fact label="Failed" value={queueStats?.failed ?? 'N/A'} />
+            <Fact label={t('ops.r8.fact.total', 'Total')} value={queueStats?.total ?? 'N/A'} />
+            <Fact label={t('ops.r8.fact.queued', 'Queued')} value={queueStats?.queued ?? 'N/A'} />
+            <Fact label={t('ops.r8.fact.running', 'Running')} value={queueStats?.running ?? 'N/A'} />
+            <Fact label={t('ops.r8.fact.failed', 'Failed')} value={queueStats?.failed ?? 'N/A'} />
             <button
               type="button"
               className="btn-secondary mt-2 w-full"
@@ -508,7 +508,7 @@ export function R8OpsPanel() {
             >
               {taskExportBusy ? 'Exporting task results' : 'Export task results CSV/JSON'}
             </button>
-            <Fact label="Last Export Tasks" value={<span data-testid="task-result-export-count">{taskExport?.taskCount ?? 'N/A'}</span>} />
+            <Fact label={t('ops.r8.fact.lastExportTasks', 'Last Export Tasks')} value={<span data-testid="task-result-export-count">{taskExport?.taskCount ?? 'N/A'}</span>} />
             <div className="break-all font-mono text-[11px] text-text-muted" data-testid="task-result-export-path">
               {taskExport?.artifactDir ?? ''}
             </div>
@@ -521,10 +521,10 @@ export function R8OpsPanel() {
           </div>
         </DenseCard>
 
-        <DenseCard title="Permission TTL">
+        <DenseCard title={t('ops.r8.section.permissionTtl', 'Permission TTL')}>
           <div className="space-y-2">
-            <Fact label="Active Grants" value={permissionExpiry?.grants.length ?? 'N/A'} />
-            <Fact label="Stream At" value={permissionExpiry ? new Date(permissionExpiry.emittedAt).toLocaleTimeString() : 'N/A'} />
+            <Fact label={t('ops.r8.fact.activeGrants', 'Active Grants')} value={permissionExpiry?.grants.length ?? 'N/A'} />
+            <Fact label={t('ops.r8.fact.streamAt', 'Stream At')} value={permissionExpiry ? new Date(permissionExpiry.emittedAt).toLocaleTimeString() : 'N/A'} />
             <div className="space-y-1 pt-1" data-testid="permission-countdown-list">
               {(permissionExpiry?.grants ?? []).length > 0 ? (
                 permissionExpiry?.grants.map(grant => (
@@ -534,21 +534,21 @@ export function R8OpsPanel() {
                   </div>
                 ))
               ) : (
-                <div className="text-xs text-text-muted">No active TTL grants</div>
+                <div className="text-xs text-text-muted">{t('ops.r8.empty.noActiveTtl', 'No active TTL grants')}</div>
               )}
             </div>
           </div>
         </DenseCard>
 
-        <DenseCard title="Diagnostic Pack">
+        <DenseCard title={t('ops.r8.section.diagnosticPack', 'Diagnostic Pack')}>
           <div className="space-y-2" data-testid="diagnostic-pack-panel">
-            <Fact label="Status" value={<span data-testid="diagnostic-pack-export-status">{diagnosticBusy ? 'exporting' : diagnosticManifest ? 'exported' : 'idle'}</span>} />
-            <Fact label="Preview Sections" value={diagnosticPreview?.sections.length ?? 'N/A'} />
-            <Fact label="Preview Bytes" value={diagnosticPreview?.totalEstimatedSize ?? 'N/A'} />
-            <Fact label="Preview Redactions" value={<span data-testid="diagnostic-pack-preview-redactions">{diagnosticPreviewRedactions ?? 'N/A'}</span>} />
-            <Fact label="Export Sections" value={<span data-testid="diagnostic-pack-section-count">{diagnosticManifest?.sectionsIncluded.length ?? 'N/A'}</span>} />
-            <Fact label="Screenshots" value={<span data-testid="diagnostic-pack-screenshots">{diagnosticScreenshotsIncluded ? 'included' : 'excluded'}</span>} />
-            <Fact label="No Telemetry" value={diagnosticManifest ? String(diagnosticManifest.noTelemetry) : 'N/A'} />
+            <Fact label={t('ops.r8.fact.status', 'Status')} value={<span data-testid="diagnostic-pack-export-status">{diagnosticBusy ? 'exporting' : diagnosticManifest ? 'exported' : 'idle'}</span>} />
+            <Fact label={t('ops.r8.fact.previewSections', 'Preview Sections')} value={diagnosticPreview?.sections.length ?? 'N/A'} />
+            <Fact label={t('ops.r8.fact.previewBytes', 'Preview Bytes')} value={diagnosticPreview?.totalEstimatedSize ?? 'N/A'} />
+            <Fact label={t('ops.r8.fact.previewRedactions', 'Preview Redactions')} value={<span data-testid="diagnostic-pack-preview-redactions">{diagnosticPreviewRedactions ?? 'N/A'}</span>} />
+            <Fact label={t('ops.r8.fact.exportSections', 'Export Sections')} value={<span data-testid="diagnostic-pack-section-count">{diagnosticManifest?.sectionsIncluded.length ?? 'N/A'}</span>} />
+            <Fact label={t('ops.r8.fact.screenshots', 'Screenshots')} value={<span data-testid="diagnostic-pack-screenshots">{diagnosticScreenshotsIncluded ? 'included' : 'excluded'}</span>} />
+            <Fact label={t('ops.r8.fact.noTelemetry', 'No Telemetry')} value={diagnosticManifest ? String(diagnosticManifest.noTelemetry) : 'N/A'} />
             <div className="break-all font-mono text-[11px] text-text-muted" data-testid="diagnostic-pack-artifact-path">
               {diagnosticManifest?.artifactPath ?? ''}
             </div>
@@ -556,7 +556,7 @@ export function R8OpsPanel() {
           </div>
         </DenseCard>
 
-        <DenseCard title="Backup RestoreWizard">
+        <DenseCard title={t('ops.r8.section.backupRestore', 'Backup RestoreWizard')}>
           <div className="space-y-3" data-testid="backup-restore-wizard">
             <div className="grid gap-2 sm:grid-cols-2">
               {BACKUP_CATEGORY_OPTIONS.map(option => (
@@ -586,7 +586,7 @@ export function R8OpsPanel() {
                 }}
               >
                 {backupBundles.length === 0 ? (
-                  <option value="">No classified backup yet</option>
+                  <option value="">{t('ops.r8.empty.noClassifiedBackup', 'No classified backup yet')}</option>
                 ) : backupBundles.map(bundle => (
                   <option key={bundle.bundleId} value={bundle.backupId ?? bundle.bundleId}>
                     {new Date(bundle.createdAt).toLocaleString()} / {(bundle.categories ?? []).map(category => category.category).join(', ') || bundle.scope.join(', ')}
@@ -654,10 +654,10 @@ export function R8OpsPanel() {
               </button>
             </div>
             <div className="space-y-1 text-xs text-text-muted">
-              <Fact label="Available Backups" value={<span data-testid="backup-count">{backupBundles.length}</span>} />
-              <Fact label="Last Created" value={backupCreated ? new Date(backupCreated.createdAt).toLocaleString() : 'N/A'} />
-              <Fact label="Last Restore" value={<span data-testid="backup-restore-status">{restoreResult ? `${restoreResult.restored.filter(item => item.success).length}/${restoreResult.restored.length}` : 'N/A'}</span>} />
-              <Fact label="Pre Snapshot" value={<span data-testid="backup-pre-snapshot-id">{restoreResult?.preRestoreSnapshotId ?? 'N/A'}</span>} />
+              <Fact label={t('ops.r8.fact.availableBackups', 'Available Backups')} value={<span data-testid="backup-count">{backupBundles.length}</span>} />
+              <Fact label={t('ops.r8.fact.lastCreated', 'Last Created')} value={backupCreated ? new Date(backupCreated.createdAt).toLocaleString() : 'N/A'} />
+              <Fact label={t('ops.r8.fact.lastRestore', 'Last Restore')} value={<span data-testid="backup-restore-status">{restoreResult ? `${restoreResult.restored.filter(item => item.success).length}/${restoreResult.restored.length}` : 'N/A'}</span>} />
+              <Fact label={t('ops.r8.fact.preSnapshot', 'Pre Snapshot')} value={<span data-testid="backup-pre-snapshot-id">{restoreResult?.preRestoreSnapshotId ?? 'N/A'}</span>} />
             </div>
             {backupError && <div className="border border-warning/50 bg-warning/10 p-2 text-xs text-warning radius-sm">{backupError}</div>}
           </div>
@@ -665,21 +665,21 @@ export function R8OpsPanel() {
 
         <DenseCard title="操作闭环状态">
           <div className="space-y-2">
-            <Fact label="CSV Sessions" value={csvSessions.length} />
-            <Fact label="CSV Templates" value={csvTemplates.length} />
-            <Fact label="Recordings" value={recordings.length} />
-            <Fact label="Recovery Reports" value={recoveryReports.length} />
-            <Fact label="Inject History" value={injectHistory.length} />
-            <Fact label="Supervisor" value={supervisor?.status ?? 'N/A'} />
+            <Fact label={t('ops.r8.fact.csvSessions', 'CSV Sessions')} value={csvSessions.length} />
+            <Fact label={t('ops.r8.fact.csvTemplates', 'CSV Templates')} value={csvTemplates.length} />
+            <Fact label={t('ops.r8.fact.recordings', 'Recordings')} value={recordings.length} />
+            <Fact label={t('ops.r8.fact.recoveryReports', 'Recovery Reports')} value={recoveryReports.length} />
+            <Fact label={t('ops.r8.fact.injectHistory', 'Inject History')} value={injectHistory.length} />
+            <Fact label={t('ops.r8.fact.supervisor', 'Supervisor')} value={supervisor?.status ?? 'N/A'} />
           </div>
         </DenseCard>
 
         <DenseCard title="CLI 进度">
           <div className="space-y-2">
-            <Fact label="Tool" value={cliLatest?.tool ?? 'N/A'} />
-            <Fact label="Phase" value={cliLatest?.phase ?? 'N/A'} />
-            <Fact label="Progress" value={cliLatest?.progress === null || cliLatest?.progress === undefined ? 'N/A' : `${Math.round(cliLatest.progress * 100)}%`} />
-            <Fact label="Confidence" value={cliLatest ? `${Math.round(cliLatest.confidence * 100)}%` : 'N/A'} />
+            <Fact label={t('ops.r8.fact.tool', 'Tool')} value={cliLatest?.tool ?? 'N/A'} />
+            <Fact label={t('ops.r8.fact.phase', 'Phase')} value={cliLatest?.phase ?? 'N/A'} />
+            <Fact label={t('ops.r8.fact.progress', 'Progress')} value={cliLatest?.progress === null || cliLatest?.progress === undefined ? 'N/A' : `${Math.round(cliLatest.progress * 100)}%`} />
+            <Fact label={t('ops.r8.fact.confidence', 'Confidence')} value={cliLatest ? `${Math.round(cliLatest.confidence * 100)}%` : 'N/A'} />
           </div>
         </DenseCard>
 
@@ -697,9 +697,9 @@ export function R8OpsPanel() {
         <DenseCard title="端口安全分级">
           {portTier ? (
             <div className="space-y-2">
-              <Fact label="Target" value={`${portTier.ip}:${portTier.port}`} />
-              <Fact label="Tier" value={portTier.tier} />
-              <Fact label="Score" value={portTier.score} />
+              <Fact label={t('ops.r8.fact.target', 'Target')} value={`${portTier.ip}:${portTier.port}`} />
+              <Fact label={t('ops.r8.fact.tier', 'Tier')} value={portTier.tier} />
+              <Fact label={t('ops.r8.fact.score', 'Score')} value={portTier.score} />
               <div className="flex flex-wrap gap-1 pt-2">
                 {portTier.reasons.map(reason => <span key={reason} className="status-badge">{reason}</span>)}
               </div>
@@ -709,7 +709,7 @@ export function R8OpsPanel() {
           )}
         </DenseCard>
 
-        <DenseCard title="Schema Registry">
+        <DenseCard title={t('ops.r8.section.schemaRegistry', 'Schema Registry')}>
           <div className="max-h-48 overflow-y-auto space-y-1">
             {schemas.map(schema => (
           <div key={schema.schemaName} className="flex items-center gap-2 text-xs text-text-secondary">
@@ -802,10 +802,10 @@ export function R8OpsPanel() {
 
         <DenseCard title="CLI / 注入结果">
           <div className="space-y-2 text-xs">
-            <Fact label="Detected" value={toolDetect.length} />
-            <Fact label="Found" value={toolDetect.filter(tool => tool.found).length} />
-            <Fact label="Scan" value={toolDetectionState ? `${toolDetectionState.scanDurationMs}ms` : 'N/A'} />
-            <Fact label="Dry Run" value={injectDryRun ? `${injectDryRun.characters} chars` : 'N/A'} />
+            <Fact label={t('ops.r8.fact.detected', 'Detected')} value={toolDetect.length} />
+            <Fact label={t('ops.r8.fact.found', 'Found')} value={toolDetect.filter(tool => tool.found).length} />
+            <Fact label={t('ops.r8.fact.scan', 'Scan')} value={toolDetectionState ? `${toolDetectionState.scanDurationMs}ms` : 'N/A'} />
+            <Fact label={t('ops.r8.fact.dryRun', 'Dry Run')} value={injectDryRun ? `${injectDryRun.characters} chars` : 'N/A'} />
             <div className="max-h-24 overflow-y-auto space-y-1">
               {toolDetect.map(tool => (
                 <div key={tool.tool} className="grid grid-cols-[auto_1fr] gap-2 border border-surface-800 bg-surface-950 px-2 py-1 radius-sm">

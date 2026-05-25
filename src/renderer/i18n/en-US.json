@@ -4,7 +4,15 @@
     "save": "Save",
     "loading": "Loading",
     "language": "Language",
-    "settings": "Settings"
+    "settings": "Settings",
+    "noData": "No data",
+    "close": "Close",
+    "delete": "Delete",
+    "reload": "Reload",
+    "refresh": "Refresh"
+  },
+  "nav": {
+    "main": "Main view navigation"
   },
   "settings": {
     "locale": {
@@ -39,6 +47,67 @@
           "header": "Header"
         }
       }
+    },
+    "title": "Application Settings",
+    "eyebrow": "APPLICATION SETTINGS",
+    "close": "Close settings",
+    "nav": "Settings categories",
+    "loading": "Loading...",
+    "dataCategory": {
+      "label": "Data",
+      "sublabel": "OWNERSHIP"
+    },
+    "holiday": {
+      "section": "Holiday Themes",
+      "enable": "Enable seasonal themes",
+      "enableDesc": "Applies Spring Festival, Christmas, and Halloween decoration packs during their local date windows.",
+      "ask": "Ask before seasonal themes",
+      "askDesc": "Before each holiday date, DevHub asks once per year before enabling the seasonal pack.",
+      "focus": "Focus work mode",
+      "focusDesc": "Suppresses all seasonal decoration layers without changing the saved theme palette."
+    },
+    "dataOwnership": {
+      "section": "Data Ownership",
+      "intro": "Local data inventory is generated from the live Electron userData directory and related runtime stores.",
+      "introHint": "Sensitive paths are listed for transparency; export uses the classified backup pipeline with redaction.",
+      "refreshing": "Refreshing",
+      "refresh": "Refresh",
+      "exporting": "Exporting",
+      "exportAll": "Export all local data",
+      "exportCompleted": "Export completed",
+      "openExport": "Open export",
+      "localStoragePaths": "Local Storage Paths",
+      "exists": "exists",
+      "missing": "missing",
+      "exportable": "exportable",
+      "inspectOnly": "inspect only",
+      "filesUnit": "files",
+      "truncated": "truncated",
+      "sensitive": "sensitive"
+    },
+    "dataViewer": {
+      "section": "Data Viewer",
+      "noRootSelected": "No root selected",
+      "selectRootHint": "Select a storage root to inspect entries.",
+      "openPath": "Open path",
+      "loadingEntries": "Loading entries",
+      "entryListTruncated": "Entry list is truncated to keep the UI responsive.",
+      "noEntries": "No entries in this path.",
+      "inspect": "Inspect",
+      "handler": "Handler"
+    },
+    "themeEditor": {
+      "previewCard": "Preview card",
+      "previewCardDesc": "Real button, card, table, and chart tokens",
+      "action": "Action",
+      "processLabel": "Process",
+      "processStatus": "running",
+      "portLabel": "Port",
+      "portStatus": "listening",
+      "accentToken": "Accent token",
+      "cardRadiusToken": "Card radius token",
+      "spacingBaseToken": "Spacing base token",
+      "motionNormalToken": "Motion normal token"
     }
   },
   "cmdk": {
@@ -59,8 +128,12 @@
     "center": {
       "open": "Open notification center",
       "empty": "No notifications",
-      "count": "{{count}} notifications"
-    }
+      "count": "{{count}} notifications",
+      "title": "Notification Center",
+      "close": "Close notification center",
+      "emptyActive": "No active notifications"
+    },
+    "dismiss": "Dismiss notification"
   },
   "monitor": {
     "title": "Monitor",
@@ -93,7 +166,29 @@
     "attached": {
       "title": "Attached topology",
       "miniTitle": "Attached mini graph",
-      "lazyHint": "+{{count}} more lazy node(s) available. Double-click a placeholder to expand."
+      "lazyHint": "+{{count}} more lazy node(s) available. Double-click a placeholder to expand.",
+      "refresh": "Refresh attached topology",
+      "kindNetwork": "Network",
+      "kindNeural": "Neural",
+      "depth": "depth",
+      "viewSelectedGlobally": "View selected globally",
+      "pinned": "Pinned",
+      "pin": "Pin view",
+      "doubleClickToExpand": "Double-click to expand {{nodeId}}",
+      "lazyMorePrefix": "+1 more: ",
+      "expandFloatingCard": "Expand attached mini topology floating card",
+      "expandFloatingCardShort": "Expand floating card",
+      "miniDialog": "Attached mini topology floating card",
+      "closeFloatingCard": "Close attached mini topology floating card"
+    },
+    "port": {
+      "openFloatingCard": "Open floating port card",
+      "popout": "Popout"
+    },
+    "aiTask": {
+      "progressTimeline": "Progress Timeline",
+      "hideTimeline": "Hide Timeline",
+      "timeline": "Timeline"
     }
   },
   "project": {
@@ -108,11 +203,54 @@
   },
   "skills": {
     "editor": {
-      "newFromTemplate": "New from template"
+      "newFromTemplate": "New from template",
+      "selector": "Skill selector",
+      "template": "Skill template",
+      "scriptLanguage": "Script language",
+      "loading": "Skill editor loading",
+      "noPermissions": "no permissions",
+      "noSkillSelected": "No skill selected"
     }
+  },
+  "dag": {
+    "templatePalette": {
+      "aria": "Template node palette",
+      "node": "Node template",
+      "builtinQuickPicks": "Builtin template quick picks",
+      "counts": "{{builtin}} builtin / {{user}} user"
+    },
+    "nodeDetail": {
+      "aria": "Node detail panel",
+      "summary": "18 columns / row {{row}} / {{taskId}}"
+    },
+    "canvas": {
+      "nodes": "DAG canvas nodes"
+    }
+  },
+  "replay": {
+    "speed": "Replay speed",
+    "jumpTo": "Jump to {{label}}",
+    "anchorTitle": "{{kind}}: {{label}}",
+    "timelineCursor": "Replay timeline cursor",
+    "tracks": "Replay tracks",
+    "track": "track {{track}}"
+  },
+  "observability": {
+    "cursor": "Cursor {{time}}",
+    "timeCursor": "Observability time cursor"
+  },
+  "popout": {
+    "unpin": "Unpin popout",
+    "pin": "Pin popout",
+    "promote": "Promote to BrowserWindow",
+    "close": "Close popout",
+    "resize": "Resize port popout {{direction}}"
   },
   "drawer": {
     "morphToPopout": "Morph drawer to popout",
+    "close": "Close drawer",
+    "launchers": "R8 drawer launchers",
+    "resize": "Resize {{slot}} drawer",
     "axis": {
       "top": "TOP",
       "right": "RIGHT",
@@ -121,8 +259,17 @@
       "statusbar": "STATUS"
     }
   },
+  "statusbar": {
+    "history": {
+      "unavailable": "24h history unavailable"
+    }
+  },
   "dev": {
     "observability": {
+      "header": {
+        "eyebrow": "Developer Observability",
+        "title": "Runtime Metrics"
+      },
       "cards": {
         "mainRss": "Main RSS",
         "rendererRss": "Renderer RSS",
@@ -138,6 +285,70 @@
         "recentErrors": "Recent Errors",
         "cacheSizes": "Cache Sizes",
         "disposalPending": "Disposal Pending"
+      }
+    }
+  },
+  "ops": {
+    "r8": {
+      "section": {
+        "csvLaunch": "CSV Launch",
+        "permissionTtl": "Permission TTL",
+        "diagnosticPack": "Diagnostic Pack",
+        "backupRestore": "Backup RestoreWizard",
+        "schemaRegistry": "Schema Registry"
+      },
+      "fact": {
+        "featureFlags": "Feature Flags",
+        "ipcChannels": "IPC Channels",
+        "zodSchemas": "Zod Schemas",
+        "popouts": "Popouts",
+        "registered": "Registered",
+        "highFreq": "High Freq",
+        "perSender": "Per Sender",
+        "rateClasses": "Rate Classes",
+        "ocr": "OCR",
+        "skillCloudSync": "Skill Cloud Sync",
+        "watchdog": "Watchdog",
+        "heartbeat": "Heartbeat",
+        "total": "Total",
+        "queued": "Queued",
+        "running": "Running",
+        "failed": "Failed",
+        "lastExportTasks": "Last Export Tasks",
+        "activeGrants": "Active Grants",
+        "streamAt": "Stream At",
+        "status": "Status",
+        "previewSections": "Preview Sections",
+        "previewBytes": "Preview Bytes",
+        "previewRedactions": "Preview Redactions",
+        "exportSections": "Export Sections",
+        "screenshots": "Screenshots",
+        "noTelemetry": "No Telemetry",
+        "availableBackups": "Available Backups",
+        "lastCreated": "Last Created",
+        "lastRestore": "Last Restore",
+        "preSnapshot": "Pre Snapshot",
+        "csvSessions": "CSV Sessions",
+        "csvTemplates": "CSV Templates",
+        "recordings": "Recordings",
+        "recoveryReports": "Recovery Reports",
+        "injectHistory": "Inject History",
+        "supervisor": "Supervisor",
+        "tool": "Tool",
+        "phase": "Phase",
+        "progress": "Progress",
+        "confidence": "Confidence",
+        "target": "Target",
+        "tier": "Tier",
+        "score": "Score",
+        "detected": "Detected",
+        "found": "Found",
+        "scan": "Scan",
+        "dryRun": "Dry Run"
+      },
+      "empty": {
+        "noActiveTtl": "No active TTL grants",
+        "noClassifiedBackup": "No classified backup yet"
       }
     }
   },

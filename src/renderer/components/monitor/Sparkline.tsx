@@ -1,4 +1,5 @@
 import { memo, useMemo } from 'react'
+import { useT } from '../../hooks/useT'
 
 interface SparklineProps {
   data: number[]
@@ -25,6 +26,7 @@ export const Sparkline = memo(function Sparkline({
   animate = true,
   className = ''
 }: SparklineProps) {
+  const { t } = useT()
   const { linePath, areaPath, maxVal } = useMemo(() => {
     if (!data || data.length === 0) {
       return { linePath: '', areaPath: '', maxVal: 0 }
@@ -58,7 +60,7 @@ export const Sparkline = memo(function Sparkline({
         height={height}
         className={className}
         viewBox={`0 0 ${width} ${height}`}
-        aria-label="No data"
+        aria-label={t('common.noData', 'No data')}
       >
         <line
           x1={1}

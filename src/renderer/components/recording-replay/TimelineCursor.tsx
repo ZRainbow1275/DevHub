@@ -1,3 +1,5 @@
+import { useT } from '../../hooks/useT'
+
 interface TimelineCursorProps {
   cursorTs: number
   startedAtAbsTs: number
@@ -6,9 +8,10 @@ interface TimelineCursorProps {
 }
 
 export function TimelineCursor({ cursorTs, endedAtAbsTs, onSeek, startedAtAbsTs }: TimelineCursorProps) {
+  const { t } = useT()
   return (
     <input
-      aria-label="Replay timeline cursor"
+      aria-label={t('replay.timelineCursor', 'Replay timeline cursor')}
       className="w-full accent-accent"
       data-testid="timeline-cursor"
       max={Math.max(startedAtAbsTs, endedAtAbsTs)}

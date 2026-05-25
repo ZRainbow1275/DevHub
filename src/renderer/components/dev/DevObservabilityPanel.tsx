@@ -360,8 +360,8 @@ export function DevObservabilityPanel({
       <div className="px-5 py-4 border-b border-surface-700 bg-surface-900/90">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="text-xs uppercase tracking-[0.28em] text-text-muted">Developer Observability</div>
-            <div className="text-lg font-semibold text-text-primary mt-1">Runtime Metrics</div>
+            <div className="text-xs uppercase tracking-[0.28em] text-text-muted">{t('dev.observability.header.eyebrow', 'Developer Observability')}</div>
+            <div className="text-lg font-semibold text-text-primary mt-1">{t('dev.observability.header.title', 'Runtime Metrics')}</div>
             <div className="text-xs text-text-muted mt-1">
               热键 {hotkeyLabel} · 最近采样 {formatTimestamp(snapshot?.sampledAt ?? null)}
             </div>

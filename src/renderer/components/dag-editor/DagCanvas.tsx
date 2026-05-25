@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import cytoscape, { type Core, type ElementDefinition, type EventObject } from 'cytoscape'
 import dagre from 'cytoscape-dagre'
+import { useT } from '../../hooks/useT'
 
 export interface DagCanvasPngExport {
   content: string
@@ -153,6 +154,7 @@ export const DagCanvas = forwardRef<DagCanvasHandle, DagCanvasProps>(function Da
   onNodeClick,
   testId = 'dag-cytoscape-canvas'
 }, ref) {
+  const { t } = useT()
   const containerRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<Core | null>(null)
   const onNodeClickRef = useRef(onNodeClick)
@@ -277,7 +279,7 @@ export const DagCanvas = forwardRef<DagCanvasHandle, DagCanvasProps>(function Da
       />
       <div
         aria-activedescendant={activeOptionId}
-        aria-label="DAG canvas nodes"
+        aria-label={t('dag.canvas.nodes', 'DAG canvas nodes')}
         className="absolute bottom-2 left-2 right-2 z-10 flex max-h-24 flex-wrap gap-1 overflow-auto border border-surface-800 bg-surface-950/90 p-2 radius-sm"
         role="listbox"
       >

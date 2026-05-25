@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { DevhubNotification, NotificationLevel } from '@shared/schemas/notification'
+import { useT } from '../../hooks/useT'
 import { AlertIcon, CheckIcon, CloseIcon, InfoIcon, LightningIcon } from '../icons'
 
 const MAX_TOASTS = 5
@@ -35,6 +36,7 @@ function playDesktopBell(): void {
 }
 
 export function ToastHost() {
+  const { t } = useT()
   const [toasts, setToasts] = useState<DevhubNotification[]>([])
   const timers = useRef<Set<number>>(new Set())
 
@@ -94,7 +96,7 @@ export function ToastHost() {
                 </div>
               )}
             </div>
-            <button aria-label="Dismiss notification" className="h-7 w-7 text-text-muted hover:text-text-primary" onClick={() => dismiss(toast.id)}>
+            <button aria-label={t('notify.dismiss', 'Dismiss notification')} className="h-7 w-7 text-text-muted hover:text-text-primary" onClick={() => dismiss(toast.id)}>
               <CheckIcon size={16} />
             </button>
           </div>

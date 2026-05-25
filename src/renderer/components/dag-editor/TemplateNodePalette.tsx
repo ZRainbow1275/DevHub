@@ -1,4 +1,5 @@
 import type { NodeTemplate } from '@shared/schemas/r8-runtime'
+import { useT } from '../../hooks/useT'
 
 interface TemplateNodePaletteProps {
   canInsert: boolean
@@ -23,21 +24,25 @@ export function TemplateNodePalette({
   selectedTemplateId,
   templates
 }: TemplateNodePaletteProps) {
+  const { t } = useT()
   const builtinTemplates = templatesBySource(templates, 'builtin')
   const userTemplates = templatesBySource(templates, 'user')
+  const counts = t('dag.templatePalette.counts', '{{builtin}} builtin / {{user}} user')
+    .replace('{{builtin}}', String(builtinTemplates.length))
+    .replace('{{user}}', String(userTemplates.length))
 
   return (
-    <section aria-label="Template node palette" className="space-y-2 border border-surface-800 bg-surface-950 p-3 radius-md" data-testid="template-node-palette">
+    <section aria-label={t('dag.templatePalette.aria', 'Template node palette')} className="space-y-2 border border-surface-800 bg-surface-950 p-3 radius-md" data-testid="template-node-palette">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="text-xs font-bold uppercase text-text-muted">TemplateNodePalette</div>
-          <div className="text-xs text-text-muted">{builtinTemplates.length} builtin / {userTemplates.length} user</div>
+          <div className="text-xs text-text-muted">{counts}</div>
         </div>
         <button type="button" className="btn-secondary" disabled={!canSaveSelected} onClick={onSaveSelected}>保存选中为模板</button>
       </div>
 
       <div className="grid gap-2 lg:grid-cols-[1fr_auto]">
-        <select aria-label="Node template" className="border border-surface-700 bg-surface-950 px-3 py-2 text-xs text-text-primary radius-sm" value={selectedTemplateId} onChange={event => onSelectTemplate(event.currentTarget.value)}>
+        <select aria-label={t('dag.templatePalette.node', 'Node template')} className="border border-surface-700 bg-surface-950 px-3 py-2 text-xs text-text-primary radius-sm" value={selectedTemplateId} onChange={event => onSelectTemplate(event.currentTarget.value)}>
           <option value="">选择模板</option>
           {builtinTemplates.length > 0 && (
             <optgroup label="内置模板">
@@ -53,7 +58,7 @@ export function TemplateNodePalette({
         <button type="button" className="btn-secondary" disabled={!canInsert} onClick={onInsert}>插入模板</button>
       </div>
 
-      <div className="flex flex-wrap gap-2" aria-label="Builtin template quick picks">
+      <div className="flex flex-wrap gap-2" aria-label={t('dag.templatePalette.builtinQuickPicks', 'Builtin template quick picks')}>
         {builtinTemplates.map(template => (
           <button
             key={template.id}

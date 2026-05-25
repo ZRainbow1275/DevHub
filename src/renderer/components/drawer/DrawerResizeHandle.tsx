@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { DrawerSlot } from '@shared/schemas/r8-runtime'
 import { useDrawer } from '../../hooks/useDrawer'
+import { useT } from '../../hooks/useT'
 
 interface DrawerResizeHandleProps {
   slot: DrawerSlot
@@ -22,6 +23,7 @@ function nextSizeForDrag(slot: DrawerSlot, dragStart: DragStart, event: PointerE
 }
 
 export function DrawerResizeHandle({ slot }: DrawerResizeHandleProps) {
+  const { t } = useT()
   const { state, setSize } = useDrawer(slot)
   const [dragStart, setDragStart] = useState<DragStart | null>(null)
   const horizontal = slot === 'top' || slot === 'bottom' || slot === 'statusbar'
@@ -45,7 +47,7 @@ export function DrawerResizeHandle({ slot }: DrawerResizeHandleProps) {
   return (
     <button
       type="button"
-      aria-label={`Resize ${slot} drawer`}
+      aria-label={t('drawer.resize', 'Resize {{slot}} drawer').replace('{{slot}}', String(slot))}
       data-testid={`drawer-${slot}-resize-handle`}
       className={horizontal
         ? 'absolute left-0 right-0 h-2 cursor-row-resize bg-accent/20 hover:bg-accent/40'

@@ -46,7 +46,7 @@ export function DrawerHeader({ slot }: DrawerHeaderProps) {
           className="btn-icon-sm text-error/70 hover:text-error"
           data-testid={`drawer-${slot}-close`}
           onClick={() => { void setOpen(false) }}
-          title="Close drawer"
+          title={t('drawer.close', 'Close drawer')}
         >
           <CloseIcon size={13} />
         </button>

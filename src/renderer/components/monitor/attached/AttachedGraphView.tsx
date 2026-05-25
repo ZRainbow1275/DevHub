@@ -76,9 +76,9 @@ function LazyExpander({ expandableNodeIds, onExpand }: LazyExpanderProps) {
           data-node-id={nodeId}
           onDoubleClick={() => onExpand(nodeId)}
           className="btn-secondary px-2 py-1 text-[10px] text-warning"
-          title={`Double-click to expand ${nodeId}`}
+          title={t('monitor.attached.doubleClickToExpand', 'Double-click to expand {{nodeId}}').replace('{{nodeId}}', String(nodeId))}
         >
-          +1 more: {nodeId}
+          {t('monitor.attached.lazyMorePrefix', '+1 more: ')}{nodeId}
         </button>
       ))}
     </div>
@@ -191,32 +191,32 @@ export const AttachedGraphView = memo(function AttachedGraphView({ scope, classN
         <span className="text-[10px] text-text-muted">{scope.kind} ID {String(scope.targetId)}</span>
         <span className="text-[10px] text-text-muted">{statsLabel(snapshot, graph)}</span>
         {activeError && <span className="text-[10px] text-warning">{activeError}</span>}
-        <button type="button" onClick={() => { if (bridgeAvailable) { void loadAttached() } else { void refresh() } }} disabled={activeLoading} className="ml-auto btn-icon-sm text-text-muted hover:text-text-primary disabled:opacity-50" title="Refresh attached topology">
+        <button type="button" onClick={() => { if (bridgeAvailable) { void loadAttached() } else { void refresh() } }} disabled={activeLoading} className="ml-auto btn-icon-sm text-text-muted hover:text-text-primary disabled:opacity-50" title={t('monitor.attached.refresh', 'Refresh attached topology')}>
           <RefreshIcon size={13} className={activeLoading ? 'animate-spin' : ''} />
         </button>
       </div>
       <div className="flex flex-wrap items-center gap-3 border-b border-surface-800 bg-surface-950 px-3 py-2">
         {GRAPH_KINDS.map(kind => (
-          <button key={kind} type="button" data-testid={`attached-kind-${kind}`} onClick={() => setGraphKind(kind)} className={`btn-secondary px-2 py-1 text-[10px] ${graphKind === kind ? 'border-accent text-accent' : ''}`}>{kind === 'network-topology' ? 'Network' : 'Neural'}</button>
+          <button key={kind} type="button" data-testid={`attached-kind-${kind}`} onClick={() => setGraphKind(kind)} className={`btn-secondary px-2 py-1 text-[10px] ${graphKind === kind ? 'border-accent text-accent' : ''}`}>{kind === 'network-topology' ? t('monitor.attached.kindNetwork', 'Network') : t('monitor.attached.kindNeural', 'Neural')}</button>
         ))}
         <label className="flex min-w-[220px] items-center gap-2 text-[10px] text-text-muted">
-          depth
+          {t('monitor.attached.depth', 'depth')}
           <input data-testid="attached-depth-slider" type="range" min={1} max={10} value={depth} onChange={event => setDepth(Number(event.currentTarget.value))} className="flex-1 accent-[var(--accent)]" />
           <span className="w-5 text-right text-accent">{depth}</span>
         </label>
         <span className="text-[9px] uppercase tracking-wider text-text-muted">1 / 3 / 7 / 10</span>
         <button type="button" data-testid="attached-open-global-button" onClick={openSelectedInGlobalTopology} disabled={!selectedNodeId} className="btn-secondary ml-auto px-2 py-1 text-[10px] disabled:opacity-40">
-          View selected globally
+          {t('monitor.attached.viewSelectedGlobally', 'View selected globally')}
         </button>
         <button type="button" data-testid="attached-favorite-button" onClick={toggleFavorite} className={`btn-secondary flex items-center gap-1 px-2 py-1 text-[10px] ${isFavorite ? 'border-accent text-accent' : ''}`}>
-          <CheckIcon size={12} />{isFavorite ? 'Pinned' : 'Pin view'}
+          <CheckIcon size={12} />{isFavorite ? t('monitor.attached.pinned', 'Pinned') : t('monitor.attached.pin', 'Pin view')}
         </button>
       </div>
       {favorites.length > 0 && (
         <div data-testid="attached-favorites-menu" className="flex flex-wrap gap-2 border-b border-surface-800 bg-surface-950 px-3 py-2">
           {favorites.slice(0, 6).map(favorite => (
             <button key={favoriteKey(favorite)} type="button" className="btn-secondary px-2 py-1 text-[10px]" onClick={() => applyFavorite(favorite)}>
-              {favorite.label} / {favorite.graphKind === 'network-topology' ? 'Network' : 'Neural'}
+              {favorite.label} / {favorite.graphKind === 'network-topology' ? t('monitor.attached.kindNetwork', 'Network') : t('monitor.attached.kindNeural', 'Neural')}
             </button>
           ))}
         </div>
@@ -229,11 +229,11 @@ export const AttachedGraphView = memo(function AttachedGraphView({ scope, classN
             <button
               type="button"
               data-testid="attached-mini-popout-button"
-              aria-label="Expand attached mini topology floating card"
+              aria-label={t('monitor.attached.expandFloatingCard', 'Expand attached mini topology floating card')}
               onClick={() => setMiniFloatingOpen(true)}
               className="btn-secondary px-2 py-1 text-[10px]"
             >
-              Expand floating card
+              {t('monitor.attached.expandFloatingCardShort', 'Expand floating card')}
             </button>
           </div>
         </details>
@@ -241,7 +241,7 @@ export const AttachedGraphView = memo(function AttachedGraphView({ scope, classN
       {miniFloatingOpen && (
         <div
           role="dialog"
-          aria-label="Attached mini topology floating card"
+          aria-label={t('monitor.attached.miniDialog', 'Attached mini topology floating card')}
           data-testid="attached-mini-floating-card"
           className="fixed bottom-6 right-6 z-50 w-[min(420px,calc(100vw-48px))] border border-accent/50 bg-surface-950 p-3 text-[10px] text-text-muted shadow-elevated radius-sm"
         >
@@ -253,17 +253,17 @@ export const AttachedGraphView = memo(function AttachedGraphView({ scope, classN
             <button
               type="button"
               data-testid="attached-mini-floating-close"
-              aria-label="Close attached mini topology floating card"
+              aria-label={t('monitor.attached.closeFloatingCard', 'Close attached mini topology floating card')}
               onClick={() => setMiniFloatingOpen(false)}
               className="btn-secondary px-2 py-1 text-[10px]"
             >
-              Close
+              {t('common.close', 'Close')}
             </button>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="border-l-2 border-accent bg-surface-900 px-2 py-1 radius-sm">scope: {scope.kind}</div>
             <div className="border-l-2 border-surface-600 bg-surface-900 px-2 py-1 radius-sm">target: {String(scope.targetId)}</div>
-            <div className="border-l-2 border-info bg-surface-900 px-2 py-1 radius-sm">{graphKind === 'network-topology' ? 'Network' : 'Neural'}</div>
+            <div className="border-l-2 border-info bg-surface-900 px-2 py-1 radius-sm">{graphKind === 'network-topology' ? t('monitor.attached.kindNetwork', 'Network') : t('monitor.attached.kindNeural', 'Neural')}</div>
             <div className="border-l-2 border-warning bg-surface-900 px-2 py-1 radius-sm">{statsLabel(snapshot, graph)}</div>
           </div>
         </div>

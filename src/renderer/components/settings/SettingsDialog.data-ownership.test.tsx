@@ -165,7 +165,7 @@ describe('SettingsDialog data ownership panel', () => {
       </LocaleProvider>
     )
 
-    fireEvent.click(await screen.findByRole('button', { name: /Data\s+OWNERSHIP/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /数据\s+OWNERSHIP/ }))
 
     await screen.findByTestId('data-ownership-panel')
     await screen.findByText('User skills')
@@ -175,7 +175,7 @@ describe('SettingsDialog data ownership panel', () => {
     await screen.findByTestId('data-ownership-entry-skill-one')
     expect(bridge.listEntries).toHaveBeenCalledWith({ rootId: 'skills', relativePath: '' })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Inspect' }))
+    fireEvent.click(screen.getByRole('button', { name: '查看' }))
     await screen.findByTestId('data-ownership-entry-SKILL.md')
     expect(bridge.listEntries).toHaveBeenCalledWith({ rootId: 'skills', relativePath: 'skill-one' })
 
@@ -183,7 +183,7 @@ describe('SettingsDialog data ownership panel', () => {
     await screen.findByTestId('data-ownership-export-result')
     expect(bridge.exportAll).toHaveBeenCalledWith({ confirmedBy: 'data-ownership-panel' })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open export' }))
+    fireEvent.click(screen.getByRole('button', { name: '打开导出文件' }))
     await waitFor(() => expect(bridge.openPath).toHaveBeenCalledWith('C:/Users/HP/AppData/Roaming/DevHub/r8-backups/bundle-data-ownership.zip'))
   })
 })

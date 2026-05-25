@@ -1,3 +1,5 @@
+import { useT } from '../../hooks/useT'
+
 const SPEEDS = [0.25, 0.5, 1, 2, 4, 8] as const
 
 interface SpeedControlProps {
@@ -9,12 +11,13 @@ interface SpeedControlProps {
 }
 
 export function SpeedControl({ onPause, onPlay, onSpeedChange, paused, speed }: SpeedControlProps) {
+  const { t } = useT()
   return (
     <div className="flex flex-wrap items-center gap-2">
       <button className="btn-secondary" data-testid="replay-play-toggle" onClick={paused ? onPlay : onPause} type="button">
         {paused ? '播放' : '暂停'}
       </button>
-      <div className="flex flex-wrap gap-1" role="group" aria-label="Replay speed">
+      <div className="flex flex-wrap gap-1" role="group" aria-label={t('replay.speed', 'Replay speed')}>
         {SPEEDS.map(value => (
           <button
             className={value === speed ? 'btn-primary' : 'btn-secondary'}

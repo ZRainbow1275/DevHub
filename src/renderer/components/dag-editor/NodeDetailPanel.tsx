@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { CSV_COLUMN_INFO, csvTaskRow18Schema, type CsvColumnName } from '@shared/schemas/csv-task-row'
 import type { CsvTaskRow18, DagEditorValidationError } from '@shared/schemas/r8-runtime'
+import { useT } from '../../hooks/useT'
 
 interface NodeDetailPanelProps {
   onPatch: (patch: Partial<CsvTaskRow18>) => void
@@ -74,22 +75,28 @@ function inputTypeFor(field: CsvColumnName): 'number' | 'text' {
 }
 
 export function NodeDetailPanel({ onPatch, row, rowIndex, validationErrors }: NodeDetailPanelProps) {
+  const { t } = useT()
   const groupedErrors = useMemo(() => errorsByField(validationErrors), [validationErrors])
+  const ariaLabel = t('dag.nodeDetail.aria', 'Node detail panel')
 
   if (!row || rowIndex < 0) {
     return (
-      <section aria-label="Node detail panel" className="border border-surface-800 bg-surface-950 p-3 text-xs text-text-muted radius-md" data-testid="node-detail-panel">
+      <section aria-label={ariaLabel} className="border border-surface-800 bg-surface-950 p-3 text-xs text-text-muted radius-md" data-testid="node-detail-panel">
         选择一个节点以编辑 18 列字段
       </section>
     )
   }
 
+  const summary = t('dag.nodeDetail.summary', '18 columns / row {{row}} / {{taskId}}')
+    .replace('{{row}}', String(rowIndex + 1))
+    .replace('{{taskId}}', String(row.taskId))
+
   return (
-    <section aria-label="Node detail panel" className="space-y-3 border border-surface-800 bg-surface-950 p-3 radius-md" data-testid="node-detail-panel">
+    <section aria-label={ariaLabel} className="space-y-3 border border-surface-800 bg-surface-950 p-3 radius-md" data-testid="node-detail-panel">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="text-xs font-bold uppercase text-text-muted">NodeDetailPanel</div>
-          <div className="text-xs text-text-muted">18 columns / row {rowIndex + 1} / {row.taskId}</div>
+          <div className="text-xs text-text-muted">{summary}</div>
         </div>
         <div className={validationErrors.length > 0 ? 'text-xs text-danger' : 'text-xs text-success'}>
           {validationErrors.length > 0 ? `${validationErrors.length} validation errors` : 'zod valid'}

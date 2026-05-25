@@ -121,7 +121,7 @@ const CATEGORIES: CategoryDef[] = [
   { key: 'notification', label: '通知', sublabel: 'NOTIFICATION', icon: BellIcon },
   { key: 'window', label: '窗口', sublabel: 'WINDOW', icon: LayoutIcon },
   { key: 'signal', label: '信号', sublabel: 'SIGNAL', icon: ProcessIcon },
-  { key: 'data', label: 'Data', sublabel: 'OWNERSHIP', icon: FolderIcon },
+  { key: 'data', label: '数据', sublabel: 'OWNERSHIP', icon: FolderIcon },
   { key: 'advanced', label: '高级', sublabel: 'ADVANCED', icon: WrenchIcon },
 ]
 
@@ -261,6 +261,7 @@ interface SettingsDialogProps {
 // ============ Main Component ============
 
 export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
+  const { t } = useT()
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [activeCategory, setActiveCategory] = useState<SettingsCategory>('appearance')
   const [availableDrives, setAvailableDrives] = useState<string[]>([])
@@ -485,13 +486,13 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                   transformOrigin: 'left center',
                 }}
               >
-                系统设置
+                {t('settings.title', 'Application Settings')}
               </h2>
-              <p className="text-xs text-text-muted">APPLICATION SETTINGS</p>
+              <p className="text-xs text-text-muted">{t('settings.eyebrow', 'APPLICATION SETTINGS')}</p>
             </div>
           </div>
           <button
-            aria-label="关闭设置"
+            aria-label={t('settings.close', 'Close settings')}
             onClick={onClose}
             className="btn-icon-sm text-text-muted hover:text-text-primary"
           >
@@ -505,7 +506,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
           <nav
             ref={navRef}
             className="w-48 flex-shrink-0 border-r-2 border-surface-700 overflow-y-auto py-2"
-            aria-label="Settings categories"
+            aria-label={t('settings.nav', 'Settings categories')}
           >
             {CATEGORIES.map((cat) => {
               const Icon = cat.icon
@@ -530,7 +531,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
           {/* Right Panel */}
           <div className="flex-1 overflow-y-auto p-6">
             {!settings ? (
-              <div className="text-text-muted text-center py-8">加载中...</div>
+              <div className="text-text-muted text-center py-8">{t('settings.loading', 'Loading...')}</div>
             ) : (
               <>
                 {activeCategory === 'appearance' && (
@@ -1315,8 +1316,8 @@ function AppearancePanel({
             >
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-sm font-bold text-text-primary">Preview card</div>
-                  <div className="text-xs text-text-muted">Real button, card, table, and chart tokens</div>
+                  <div className="text-sm font-bold text-text-primary">{t('settings.themeEditor.previewCard', 'Preview card')}</div>
+                  <div className="text-xs text-text-muted">{t('settings.themeEditor.previewCardDesc', 'Real button, card, table, and chart tokens')}</div>
                 </div>
                 <button
                   type="button"
@@ -1324,15 +1325,15 @@ function AppearancePanel({
                   className="px-3 py-1.5 text-xs text-white"
                   style={{ background: 'var(--theme-editor-accent)', borderRadius: 'var(--theme-editor-radius)' }}
                 >
-                  Action
+                  {t('settings.themeEditor.action', 'Action')}
                 </button>
               </div>
               <div className="mt-4 overflow-hidden border border-surface-700" style={{ borderRadius: 'var(--theme-editor-radius)' }}>
                 <table className="w-full text-xs" data-testid="theme-preview-table">
                   <tbody>
                     {[
-                      ['Process', 'running', '42%'],
-                      ['Port', 'listening', '5173']
+                      [t('settings.themeEditor.processLabel', 'Process'), t('settings.themeEditor.processStatus', 'running'), '42%'],
+                      [t('settings.themeEditor.portLabel', 'Port'), t('settings.themeEditor.portStatus', 'listening'), '5173']
                     ].map(([label, status, value]) => (
                       <tr key={label} className="border-b border-surface-700 last:border-b-0">
                         <td className="px-3 py-2 text-text-secondary">{label}</td>
@@ -1361,7 +1362,7 @@ function AppearancePanel({
           </div>
           <div className="space-y-3">
             <label className="block p-3 bg-surface-800 border border-surface-700 radius-sm">
-              <span className="block text-xs text-text-muted mb-2">Accent token</span>
+              <span className="block text-xs text-text-muted mb-2">{t('settings.themeEditor.accentToken', 'Accent token')}</span>
               <input
                 data-testid="theme-editor-accent"
                 type="color"
@@ -1370,9 +1371,9 @@ function AppearancePanel({
                 className="w-full h-9 bg-transparent"
               />
             </label>
-            <SettingSlider label="Card radius token" value={editorCardRadiusPx} min={0} max={32} step={1} unit="px" onChange={setEditorCardRadiusPx} />
-            <SettingSlider label="Spacing base token" value={editorSpacingBasePx} min={2} max={16} step={1} unit="px" onChange={setEditorSpacingBasePx} />
-            <SettingSlider label="Motion normal token" value={editorMotionNormalMs} min={0} max={500} step={10} unit="ms" onChange={setEditorMotionNormalMs} />
+            <SettingSlider label={t('settings.themeEditor.cardRadiusToken', 'Card radius token')} value={editorCardRadiusPx} min={0} max={32} step={1} unit="px" onChange={setEditorCardRadiusPx} />
+            <SettingSlider label={t('settings.themeEditor.spacingBaseToken', 'Spacing base token')} value={editorSpacingBasePx} min={2} max={16} step={1} unit="px" onChange={setEditorSpacingBasePx} />
+            <SettingSlider label={t('settings.themeEditor.motionNormalToken', 'Motion normal token')} value={editorMotionNormalMs} min={0} max={500} step={10} unit="ms" onChange={setEditorMotionNormalMs} />
             <button
               type="button"
               data-testid="theme-pack-export"
@@ -1532,23 +1533,23 @@ function AppearancePanel({
       </section>
 
       <section data-testid="holiday-theme-settings">
-        <SectionHeader title="Holiday Themes" borderColor="border-gold" />
+        <SectionHeader title={t('settings.holiday.section', 'Holiday Themes')} borderColor="border-gold" />
         <div className="space-y-3">
           <SettingToggle
-            label="Enable seasonal themes"
-            description="Applies Spring Festival, Christmas, and Halloween decoration packs during their local date windows."
+            label={t('settings.holiday.enable', 'Enable seasonal themes')}
+            description={t('settings.holiday.enableDesc', 'Applies Spring Festival, Christmas, and Halloween decoration packs during their local date windows.')}
             checked={appearance.holidayDecorationsEnabled ?? true}
             onChange={(holidayDecorationsEnabled) => updateAppearance({ holidayDecorationsEnabled })}
           />
           <SettingToggle
-            label="Ask before seasonal themes"
-            description="Before each holiday date, DevHub asks once per year before enabling the seasonal pack."
+            label={t('settings.holiday.ask', 'Ask before seasonal themes')}
+            description={t('settings.holiday.askDesc', 'Before each holiday date, DevHub asks once per year before enabling the seasonal pack.')}
             checked={appearance.holidayAutoPromptEnabled ?? true}
             onChange={(holidayAutoPromptEnabled) => updateAppearance({ holidayAutoPromptEnabled })}
           />
           <SettingToggle
-            label="Focus work mode"
-            description="Suppresses all seasonal decoration layers without changing the saved theme palette."
+            label={t('settings.holiday.focus', 'Focus work mode')}
+            description={t('settings.holiday.focusDesc', 'Suppresses all seasonal decoration layers without changing the saved theme palette.')}
             checked={appearance.holidayFocusMode ?? false}
             onChange={(holidayFocusMode) => updateAppearance({ holidayFocusMode })}
           />
@@ -2618,6 +2619,7 @@ function formatDataOwnershipTimestamp(value: number | null): string {
 }
 
 function DataOwnershipPanel() {
+  const { t } = useT()
   const [paths, setPaths] = useState<DataOwnershipListPathsResponse | null>(null)
   const [selectedRootId, setSelectedRootId] = useState<string | null>(null)
   const [entries, setEntries] = useState<DataOwnershipListEntriesResponse | null>(null)
@@ -2709,15 +2711,15 @@ function DataOwnershipPanel() {
   return (
     <div className="space-y-6" data-testid="data-ownership-panel">
       <section>
-        <SectionHeader title="Data Ownership" borderColor="border-gold" />
+        <SectionHeader title={t('settings.dataOwnership.section', 'Data Ownership')} borderColor="border-gold" />
         <div className="space-y-3 p-4 bg-surface-800 border-l-3 border-gold radius-sm">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm text-text-secondary">
-                Local data inventory is generated from the live Electron userData directory and related runtime stores.
+                {t('settings.dataOwnership.intro', 'Local data inventory is generated from the live Electron userData directory and related runtime stores.')}
               </p>
               <p className="mt-1 text-xs text-text-muted">
-                Sensitive paths are listed for transparency; export uses the classified backup pipeline with redaction.
+                {t('settings.dataOwnership.introHint', 'Sensitive paths are listed for transparency; export uses the classified backup pipeline with redaction.')}
               </p>
             </div>
             <div className="flex flex-wrap justify-end gap-2">
@@ -2728,7 +2730,7 @@ function DataOwnershipPanel() {
                 className="px-3 py-2 bg-surface-700 text-text-secondary text-xs hover:bg-surface-600 disabled:opacity-60 transition-colors radius-sm"
                 data-testid="data-ownership-refresh"
               >
-                {loadingPaths ? 'Refreshing' : 'Refresh'}
+                {loadingPaths ? t('settings.dataOwnership.refreshing', 'Refreshing') : t('settings.dataOwnership.refresh', 'Refresh')}
               </button>
               <button
                 type="button"
@@ -2738,7 +2740,7 @@ function DataOwnershipPanel() {
                 data-testid="data-ownership-export"
               >
                 <DownloadIcon size={14} />
-                {exporting ? 'Exporting' : 'Export all local data'}
+                {exporting ? t('settings.dataOwnership.exporting', 'Exporting') : t('settings.dataOwnership.exportAll', 'Export all local data')}
               </button>
             </div>
           </div>
@@ -2749,14 +2751,14 @@ function DataOwnershipPanel() {
 
           {exportBundle ? (
             <div className="p-3 bg-surface-900 border border-surface-600 radius-sm" data-testid="data-ownership-export-result">
-              <div className="text-sm text-text-secondary">Export completed</div>
+              <div className="text-sm text-text-secondary">{t('settings.dataOwnership.exportCompleted', 'Export completed')}</div>
               <div className="mt-1 text-xs text-text-muted break-all">{exportBundle.zipPath ?? exportBundle.path}</div>
               <button
                 type="button"
                 onClick={() => { void openPath(exportBundle.zipPath ?? exportBundle.path) }}
                 className="mt-2 px-3 py-1.5 bg-surface-700 text-text-secondary text-xs hover:bg-surface-600 transition-colors radius-sm"
               >
-                Open export
+                {t('settings.dataOwnership.openExport', 'Open export')}
               </button>
             </div>
           ) : null}
@@ -2764,7 +2766,7 @@ function DataOwnershipPanel() {
       </section>
 
       <section>
-        <SectionHeader title="Local Storage Paths" borderColor="border-info" />
+        <SectionHeader title={t('settings.dataOwnership.localStoragePaths', 'Local Storage Paths')} borderColor="border-info" />
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
           {(paths?.roots ?? []).map(root => {
             const active = root.rootId === selectedRootId
@@ -2779,19 +2781,19 @@ function DataOwnershipPanel() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="text-sm text-text-secondary">{root.label}</div>
-                    <div className="mt-1 text-[11px] text-text-muted">{DATA_OWNERSHIP_CATEGORY_LABELS[root.category]} · {root.kind} · {root.exists ? 'exists' : 'missing'}</div>
+                    <div className="mt-1 text-[11px] text-text-muted">{DATA_OWNERSHIP_CATEGORY_LABELS[root.category]} · {root.kind} · {root.exists ? t('settings.dataOwnership.exists', 'exists') : t('settings.dataOwnership.missing', 'missing')}</div>
                   </div>
                   <div className={`text-[10px] uppercase tracking-wider ${root.exportable ? 'text-accent' : 'text-text-muted'}`}>
-                    {root.exportable ? 'exportable' : 'inspect only'}
+                    {root.exportable ? t('settings.dataOwnership.exportable', 'exportable') : t('settings.dataOwnership.inspectOnly', 'inspect only')}
                   </div>
                 </div>
                 <div className="mt-2 text-xs text-text-muted break-all">{root.path}</div>
                 <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-text-muted">
-                  <span>{root.fileCount} files</span>
+                  <span>{root.fileCount} {t('settings.dataOwnership.filesUnit', 'files')}</span>
                   <span>{formatDataOwnershipBytes(root.sizeBytes)}</span>
                   <span>{formatDataOwnershipTimestamp(root.updatedAt)}</span>
-                  {root.truncated ? <span className="text-warning">truncated</span> : null}
-                  {root.sensitive ? <span className="text-warning">sensitive</span> : null}
+                  {root.truncated ? <span className="text-warning">{t('settings.dataOwnership.truncated', 'truncated')}</span> : null}
+                  {root.sensitive ? <span className="text-warning">{t('settings.dataOwnership.sensitive', 'sensitive')}</span> : null}
                 </div>
               </button>
             )
@@ -2800,12 +2802,12 @@ function DataOwnershipPanel() {
       </section>
 
       <section>
-        <SectionHeader title="Data Viewer" borderColor="border-accent" />
+        <SectionHeader title={t('settings.dataViewer.section', 'Data Viewer')} borderColor="border-accent" />
         <div className="space-y-3 p-4 bg-surface-800 border-l-3 border-surface-600 radius-sm" data-testid="data-ownership-viewer">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="text-sm text-text-secondary">{selectedRoot?.label ?? 'No root selected'}</div>
-              <div className="mt-1 text-xs text-text-muted break-all">{entries?.absolutePath ?? selectedRoot?.path ?? 'Select a storage root to inspect entries.'}</div>
+              <div className="text-sm text-text-secondary">{selectedRoot?.label ?? t('settings.dataViewer.noRootSelected', 'No root selected')}</div>
+              <div className="mt-1 text-xs text-text-muted break-all">{entries?.absolutePath ?? selectedRoot?.path ?? t('settings.dataViewer.selectRootHint', 'Select a storage root to inspect entries.')}</div>
             </div>
             {entries?.absolutePath ? (
               <button
@@ -2814,13 +2816,13 @@ function DataOwnershipPanel() {
                 className="flex items-center gap-2 px-3 py-2 bg-surface-700 text-text-secondary text-xs hover:bg-surface-600 transition-colors radius-sm"
               >
                 <FolderIcon size={14} />
-                Open path
+                {t('settings.dataViewer.openPath', 'Open path')}
               </button>
             ) : null}
           </div>
 
-          {loadingEntries ? <div className="text-xs text-text-muted">Loading entries</div> : null}
-          {entries?.entriesTruncated ? <div className="text-xs text-warning">Entry list is truncated to keep the UI responsive.</div> : null}
+          {loadingEntries ? <div className="text-xs text-text-muted">{t('settings.dataViewer.loadingEntries', 'Loading entries')}</div> : null}
+          {entries?.entriesTruncated ? <div className="text-xs text-warning">{t('settings.dataViewer.entryListTruncated', 'Entry list is truncated to keep the UI responsive.')}</div> : null}
 
           <div className="space-y-2">
             {(entries?.entries ?? []).map(entry => (
@@ -2839,13 +2841,13 @@ function DataOwnershipPanel() {
                     onClick={() => { void loadEntries(selectedRootId, entry.relativePath) }}
                     className="px-2 py-1 bg-surface-700 text-text-secondary text-[11px] hover:bg-surface-600 transition-colors radius-sm"
                   >
-                    Inspect
+                    {t('settings.dataViewer.inspect', 'Inspect')}
                   </button>
                 ) : null}
               </div>
             ))}
             {entries && entries.entries.length === 0 ? (
-              <div className="text-xs text-text-muted">No entries in this path.</div>
+              <div className="text-xs text-text-muted">{t('settings.dataViewer.noEntries', 'No entries in this path.')}</div>
             ) : null}
           </div>
         </div>

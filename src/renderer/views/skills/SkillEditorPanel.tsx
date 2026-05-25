@@ -188,29 +188,29 @@ export function SkillEditorPanel() {
   return (
     <div className="space-y-3" data-testid="skill-editor-panel" data-theme-axis-sync="palette-density-radius-motion">
       <div className="flex flex-wrap items-center gap-2">
-        <select className="input flex-1 min-w-48" value={selectedName} onChange={event => setSelectedName(event.target.value)} aria-label="Skill selector">
+        <select className="input flex-1 min-w-48" value={selectedName} onChange={event => setSelectedName(event.target.value)} aria-label={t('skills.editor.selector', 'Skill selector')}>
           {skills.map(skill => <option key={skill.name} value={skill.name}>{skill.name} · {skill.source}</option>)}
         </select>
-        <select className="input min-w-44" value={selectedTemplateId} onChange={event => setSelectedTemplateId(event.target.value)} aria-label="Skill template">
+        <select className="input min-w-44" value={selectedTemplateId} onChange={event => setSelectedTemplateId(event.target.value)} aria-label={t('skills.editor.template', 'Skill template')}>
           {templates.map(template => <option key={template.templateId} value={template.templateId}>{template.templateId}</option>)}
         </select>
         <button type="button" className="btn-secondary" onClick={() => { void createFromTemplate() }}>{t('skills.editor.newFromTemplate', 'New from template')}</button>
-        <button type="button" className="btn-secondary" onClick={() => { void refresh() }}>Reload</button>
-        <button type="button" className="btn-secondary" disabled={!canDeleteSelected} onClick={() => { void deleteSelected() }}>Delete</button>
-        <button type="button" className="btn-primary" disabled={!dirty || !validation.valid || saving} onClick={() => { void save() }}>Save</button>
+        <button type="button" className="btn-secondary" onClick={() => { void refresh() }}>{t('common.reload', 'Reload')}</button>
+        <button type="button" className="btn-secondary" disabled={!canDeleteSelected} onClick={() => { void deleteSelected() }}>{t('common.delete', 'Delete')}</button>
+        <button type="button" className="btn-primary" disabled={!dirty || !validation.valid || saving} onClick={() => { void save() }}>{t('common.save', 'Save')}</button>
       </div>
 
       <div className="flex flex-wrap gap-2">
         {(['yaml', 'body', 'script'] as const).map(tab => (
           <button key={tab} type="button" className={activeTab === tab ? 'btn-primary' : 'btn-secondary'} onClick={() => setActiveTab(tab)} data-tab={tab}>{tab.toUpperCase()}</button>
         ))}
-        <select className="input-sm" value={scriptLanguage} onChange={event => { setScriptLanguage(event.target.value as SkillScriptLanguage); setDirty(true) }} aria-label="Script language">
+        <select className="input-sm" value={scriptLanguage} onChange={event => { setScriptLanguage(event.target.value as SkillScriptLanguage); setDirty(true) }} aria-label={t('skills.editor.scriptLanguage', 'Script language')}>
           {skillScriptLanguages.map(language => <option key={language} value={language}>{language}</option>)}
         </select>
       </div>
 
       <div className="border border-surface-700 bg-surface-950 radius-md overflow-hidden transition-colors" data-testid="skill-monaco-frame" style={{ borderRadius: 'var(--radius-md)', transitionDuration: 'var(--duration-theme)' }}>
-        <Suspense fallback={<textarea className="h-80 w-full bg-surface-950 p-3 font-mono text-sm text-text-primary" value={currentValue} readOnly aria-label="Skill editor loading" />}>
+        <Suspense fallback={<textarea className="h-80 w-full bg-surface-950 p-3 font-mono text-sm text-text-primary" value={currentValue} readOnly aria-label={t('skills.editor.loading', 'Skill editor loading')} />}>
           <MonacoEditor
             height="360px"
             value={currentValue}
@@ -226,7 +226,7 @@ export function SkillEditorPanel() {
 
       <div className="grid gap-2 text-xs md:grid-cols-3">
         <div className={validation.valid ? 'text-success' : 'text-warning'} data-validation-error={!validation.valid || undefined}>{validationText(validation)}</div>
-        <div className="text-text-muted">{selectedSkill ? `${selectedSkill.runtime} · ${selectedSkill.permissions.join(', ') || 'no permissions'}` : 'No skill selected'}</div>
+        <div className="text-text-muted">{selectedSkill ? `${selectedSkill.runtime} · ${selectedSkill.permissions.join(', ') || t('skills.editor.noPermissions', 'no permissions')}` : t('skills.editor.noSkillSelected', 'No skill selected')}</div>
         <div className="text-text-muted">{lastSavedAt ? `lastSavedAt ${new Date(lastSavedAt).toLocaleString()} · ${message}` : message}</div>
       </div>
     </div>

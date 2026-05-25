@@ -4,7 +4,15 @@
     "save": "保存",
     "loading": "加载中",
     "language": "语言",
-    "settings": "设置"
+    "settings": "设置",
+    "noData": "暂无数据",
+    "close": "关闭",
+    "delete": "删除",
+    "reload": "重新加载",
+    "refresh": "刷新"
+  },
+  "nav": {
+    "main": "主视图导航"
   },
   "settings": {
     "locale": {
@@ -39,6 +47,67 @@
           "header": "标题栏"
         }
       }
+    },
+    "title": "系统设置",
+    "eyebrow": "应用设置",
+    "close": "关闭设置",
+    "nav": "设置分类",
+    "loading": "加载中...",
+    "dataCategory": {
+      "label": "数据",
+      "sublabel": "OWNERSHIP"
+    },
+    "holiday": {
+      "section": "节日主题",
+      "enable": "启用节日主题",
+      "enableDesc": "在各自的本地日期窗口内应用春节、圣诞节和万圣节装饰包。",
+      "ask": "节日主题启用前询问",
+      "askDesc": "节日到来前，DevHub 每年仅询问一次是否启用该节日装饰包。",
+      "focus": "专注工作模式",
+      "focusDesc": "抑制所有节日装饰图层，不改变已保存的主题调色板。"
+    },
+    "dataOwnership": {
+      "section": "数据所有权",
+      "intro": "本地数据清单由真实的 Electron userData 目录及相关运行时存储生成。",
+      "introHint": "敏感路径在此公开列出；导出通过分级备份管线并附带敏感字段脱敏。",
+      "refreshing": "刷新中",
+      "refresh": "刷新",
+      "exporting": "导出中",
+      "exportAll": "导出全部本地数据",
+      "exportCompleted": "导出完成",
+      "openExport": "打开导出文件",
+      "localStoragePaths": "本地存储路径",
+      "exists": "存在",
+      "missing": "缺失",
+      "exportable": "可导出",
+      "inspectOnly": "仅可查看",
+      "filesUnit": "个文件",
+      "truncated": "已截断",
+      "sensitive": "敏感"
+    },
+    "dataViewer": {
+      "section": "数据查看器",
+      "noRootSelected": "未选择存储根",
+      "selectRootHint": "选择一个存储根以查看条目。",
+      "openPath": "打开路径",
+      "loadingEntries": "加载条目中",
+      "entryListTruncated": "条目列表已截断以保持 UI 响应。",
+      "noEntries": "此路径下无条目。",
+      "inspect": "查看",
+      "handler": "处理器"
+    },
+    "themeEditor": {
+      "previewCard": "预览卡片",
+      "previewCardDesc": "真实按钮、卡片、表格和图表令牌",
+      "action": "操作",
+      "processLabel": "进程",
+      "processStatus": "运行中",
+      "portLabel": "端口",
+      "portStatus": "监听中",
+      "accentToken": "强调色令牌",
+      "cardRadiusToken": "卡片圆角令牌",
+      "spacingBaseToken": "间距基准令牌",
+      "motionNormalToken": "动效常态令牌"
     }
   },
   "cmdk": {
@@ -59,8 +128,12 @@
     "center": {
       "open": "打开通知中心",
       "empty": "暂无通知",
-      "count": "{{count}} 条通知"
-    }
+      "count": "{{count}} 条通知",
+      "title": "通知中心",
+      "close": "关闭通知中心",
+      "emptyActive": "暂无活跃通知"
+    },
+    "dismiss": "关闭通知"
   },
   "monitor": {
     "title": "监控",
@@ -93,7 +166,29 @@
     "attached": {
       "title": "附加拓扑",
       "miniTitle": "附加迷你图",
-      "lazyHint": "+{{count}} 个延迟节点可用。双击占位符展开。"
+      "lazyHint": "+{{count}} 个延迟节点可用。双击占位符展开。",
+      "refresh": "刷新附加拓扑",
+      "kindNetwork": "网络拓扑",
+      "kindNeural": "神经关系",
+      "depth": "深度",
+      "viewSelectedGlobally": "在全局拓扑中查看",
+      "pinned": "已固定",
+      "pin": "固定视图",
+      "doubleClickToExpand": "双击展开 {{nodeId}}",
+      "lazyMorePrefix": "+1 更多：",
+      "expandFloatingCard": "展开附加迷你拓扑浮动卡",
+      "expandFloatingCardShort": "展开浮动卡",
+      "miniDialog": "附加迷你拓扑浮动卡",
+      "closeFloatingCard": "关闭附加迷你拓扑浮动卡"
+    },
+    "port": {
+      "openFloatingCard": "打开端口浮动卡",
+      "popout": "弹出"
+    },
+    "aiTask": {
+      "progressTimeline": "进度时间线",
+      "hideTimeline": "隐藏时间线",
+      "timeline": "时间线"
     }
   },
   "project": {
@@ -108,11 +203,54 @@
   },
   "skills": {
     "editor": {
-      "newFromTemplate": "从模板新建"
+      "newFromTemplate": "从模板新建",
+      "selector": "技能选择器",
+      "template": "技能模板",
+      "scriptLanguage": "脚本语言",
+      "loading": "正在加载技能编辑器",
+      "noPermissions": "无权限",
+      "noSkillSelected": "未选中技能"
     }
+  },
+  "dag": {
+    "templatePalette": {
+      "aria": "模板节点面板",
+      "node": "节点模板",
+      "builtinQuickPicks": "内置模板快速选择",
+      "counts": "{{builtin}} 内置 / {{user}} 用户"
+    },
+    "nodeDetail": {
+      "aria": "节点详情面板",
+      "summary": "18 列 / 第 {{row}} 行 / {{taskId}}"
+    },
+    "canvas": {
+      "nodes": "DAG 画布节点"
+    }
+  },
+  "replay": {
+    "speed": "回放速度",
+    "jumpTo": "跳转到 {{label}}",
+    "anchorTitle": "{{kind}}: {{label}}",
+    "timelineCursor": "回放时间轴游标",
+    "tracks": "回放轨道",
+    "track": "轨道 {{track}}"
+  },
+  "observability": {
+    "cursor": "游标 {{time}}",
+    "timeCursor": "可观测性时间游标"
+  },
+  "popout": {
+    "unpin": "取消固定弹出窗口",
+    "pin": "固定弹出窗口",
+    "promote": "提升为浏览器窗口",
+    "close": "关闭弹出窗口",
+    "resize": "调整端口弹出窗口 {{direction}}"
   },
   "drawer": {
     "morphToPopout": "将抽屉切换为弹出窗口",
+    "close": "关闭抽屉",
+    "launchers": "R8 抽屉启动器",
+    "resize": "调整 {{slot}} 抽屉大小",
     "axis": {
       "top": "上",
       "right": "右",
@@ -121,8 +259,17 @@
       "statusbar": "状态栏"
     }
   },
+  "statusbar": {
+    "history": {
+      "unavailable": "24小时历史不可用"
+    }
+  },
   "dev": {
     "observability": {
+      "header": {
+        "eyebrow": "开发者可观测性",
+        "title": "运行时指标"
+      },
       "cards": {
         "mainRss": "主进程内存",
         "rendererRss": "渲染进程内存",
@@ -138,6 +285,70 @@
         "recentErrors": "最近错误",
         "cacheSizes": "缓存占用",
         "disposalPending": "待清理对象"
+      }
+    }
+  },
+  "ops": {
+    "r8": {
+      "section": {
+        "csvLaunch": "CSV 启动",
+        "permissionTtl": "权限 TTL",
+        "diagnosticPack": "诊断包",
+        "backupRestore": "备份恢复向导",
+        "schemaRegistry": "Schema 注册表"
+      },
+      "fact": {
+        "featureFlags": "功能开关",
+        "ipcChannels": "IPC 通道",
+        "zodSchemas": "Zod Schemas",
+        "popouts": "弹出窗口",
+        "registered": "已注册",
+        "highFreq": "高频通道",
+        "perSender": "按发送方",
+        "rateClasses": "限流等级",
+        "ocr": "OCR",
+        "skillCloudSync": "技能云同步",
+        "watchdog": "守护进程",
+        "heartbeat": "心跳",
+        "total": "总数",
+        "queued": "排队中",
+        "running": "运行中",
+        "failed": "失败",
+        "lastExportTasks": "上次导出任务",
+        "activeGrants": "活跃授权",
+        "streamAt": "流式时间",
+        "status": "状态",
+        "previewSections": "预览章节",
+        "previewBytes": "预览字节",
+        "previewRedactions": "预览脱敏",
+        "exportSections": "导出章节",
+        "screenshots": "截图",
+        "noTelemetry": "无遥测",
+        "availableBackups": "可用备份",
+        "lastCreated": "上次创建",
+        "lastRestore": "上次恢复",
+        "preSnapshot": "前置快照",
+        "csvSessions": "CSV 会话",
+        "csvTemplates": "CSV 模板",
+        "recordings": "录制",
+        "recoveryReports": "恢复报告",
+        "injectHistory": "注入历史",
+        "supervisor": "Supervisor",
+        "tool": "工具",
+        "phase": "阶段",
+        "progress": "进度",
+        "confidence": "置信度",
+        "target": "目标",
+        "tier": "等级",
+        "score": "评分",
+        "detected": "已发现",
+        "found": "已识别",
+        "scan": "扫描",
+        "dryRun": "Dry Run"
+      },
+      "empty": {
+        "noActiveTtl": "无活跃 TTL 授权",
+        "noClassifiedBackup": "暂无已分类备份"
       }
     }
   },
@@ -165,6 +376,7 @@
     "E_INTERNAL": "内部错误"
   },
   "legacy": {
+    "0009b1d0": "数据",
     "10817421": "进程标签已保存",
     "13163712": "删除布局",
     "25331036": "别名不能超过 ${ALIAS_MAX_LENGTH} 个字符",

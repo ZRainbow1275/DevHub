@@ -2,6 +2,7 @@ import { useEffect, memo, useState, useCallback, useMemo } from 'react'
 import { useAITasks } from '../../hooks/useAITasks'
 import { useAliasStore } from '../../stores/aliasStore'
 import { useToast } from '../ui/Toast'
+import { useT } from '../../hooks/useT'
 import { AITask, AITaskHistory, AIToolType, AIWindowAlias } from '@shared/types-extended'
 import { assertProgressInvariant, deriveProgress, toDerivableProgressState, type DerivableProgressState, type DerivedProgress } from '@shared/detection/derive-progress'
 import { AIWindowAliasEditor } from './AIWindowAlias'
@@ -232,6 +233,7 @@ interface TaskCardProps {
 }
 
 const TaskCard = memo(function TaskCard({ task, isSelected, onSelect, onSaveAlias, existingAlias }: TaskCardProps) {
+  const { t } = useT()
   const toolInfo = TOOL_INFO[task.toolType]
   const [now, setNow] = useState(Date.now())
   const [isEditingAlias, setIsEditingAlias] = useState(false)
@@ -333,9 +335,9 @@ const TaskCard = memo(function TaskCard({ task, isSelected, onSelect, onSaveAlia
             }}
             className="px-2 py-1 text-xs text-text-muted hover:text-text-primary
                        hover:bg-surface-600 rounded transition-colors opacity-0 group-hover:opacity-100"
-            title="Progress Timeline"
+            title={t('monitor.aiTask.progressTimeline', 'Progress Timeline')}
           >
-            {showTimeline ? 'Hide Timeline' : 'Timeline'}
+            {showTimeline ? t('monitor.aiTask.hideTimeline', 'Hide Timeline') : t('monitor.aiTask.timeline', 'Timeline')}
           </button>
           <button
             onClick={(e) => {

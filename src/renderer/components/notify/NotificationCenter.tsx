@@ -94,23 +94,23 @@ export function NotificationCenter() {
         <div
           ref={panelRef}
           role="dialog"
-          aria-label="Notification Center"
+          aria-label={t('notify.center.title', 'Notification Center')}
           className="fixed right-4 top-10 z-[60] w-[420px] max-w-[calc(100vw-2rem)] border-2 border-surface-700 bg-surface-900 shadow-elevated radius-sm"
         >
           <header className="flex items-center justify-between border-b border-surface-700 px-4 py-3">
-            <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-text-primary">Notification Center</h2>
+            <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-text-primary">{t('notify.center.title', 'Notification Center')}</h2>
             <button
               type="button"
               className="text-text-muted hover:text-text-primary"
               onClick={() => setOpen(false)}
-              aria-label="Close notification center"
+              aria-label={t('notify.center.close', 'Close notification center')}
             >
               <CloseIcon size={14} />
             </button>
           </header>
           <div className="max-h-[360px] overflow-y-auto">
             {count === 0 ? (
-              <div className="px-4 py-8 text-center text-xs text-text-muted">No active notifications</div>
+              <div className="px-4 py-8 text-center text-xs text-text-muted">{t('notify.center.emptyActive', 'No active notifications')}</div>
             ) : notifications.map(notification => (
               <article key={notification.id} className="border-b border-surface-800 px-4 py-3 last:border-b-0">
                 <div className="flex gap-3">
@@ -141,7 +141,7 @@ export function NotificationCenter() {
                     type="button"
                     className="text-text-muted hover:text-text-primary"
                     onClick={() => dismiss(notification.id)}
-                    aria-label="Dismiss notification"
+                    aria-label={t('notify.dismiss', 'Dismiss notification')}
                   >
                     <CloseIcon size={14} />
                   </button>

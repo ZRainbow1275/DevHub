@@ -1,5 +1,6 @@
 import { CloseIcon, MinimizeIcon, PaletteIcon, PortIcon, WindowIcon } from '../icons'
 import type { PortPopout, PortPopoutPosition } from './port-popout-model'
+import { useT } from '../../hooks/useT'
 
 interface PortPopoutTitleBarProps {
   popout: PortPopout
@@ -22,6 +23,7 @@ export function PortPopoutTitleBar({
   onPromote,
   onClose
 }: PortPopoutTitleBarProps) {
+  const { t } = useT()
   return (
     <header
       data-testid={`port-popout-titlebar-${popout.port.port}-${popout.port.pid}`}
@@ -68,8 +70,8 @@ export function PortPopoutTitleBar({
           onPointerDown={(event) => event.stopPropagation()}
           onClick={() => onPin(popout.id, !popout.pinned)}
           className={`btn-icon-sm ${popout.pinned ? 'text-accent bg-accent/10' : 'text-text-muted hover:text-text-primary'}`}
-          title={popout.pinned ? 'Unpin popout' : 'Pin popout'}
-          aria-label={popout.pinned ? 'Unpin popout' : 'Pin popout'}
+          title={popout.pinned ? t('popout.unpin', 'Unpin popout') : t('popout.pin', 'Pin popout')}
+          aria-label={popout.pinned ? t('popout.unpin', 'Unpin popout') : t('popout.pin', 'Pin popout')}
         >
           <WindowIcon size={13} />
         </button>
@@ -79,8 +81,8 @@ export function PortPopoutTitleBar({
           onPointerDown={(event) => event.stopPropagation()}
           onClick={onPromote}
           className="btn-icon-sm text-text-muted hover:text-text-primary"
-          title="Promote to BrowserWindow"
-          aria-label="Promote to BrowserWindow"
+          title={t('popout.promote', 'Promote to BrowserWindow')}
+          aria-label={t('popout.promote', 'Promote to BrowserWindow')}
           disabled={promoteState === 'working'}
         >
           <WindowIcon size={13} />
@@ -91,8 +93,8 @@ export function PortPopoutTitleBar({
           onPointerDown={(event) => event.stopPropagation()}
           onClick={() => onClose(popout.id)}
           className="btn-icon-sm text-error/70 hover:text-error"
-          title="Close popout"
-          aria-label="Close popout"
+          title={t('popout.close', 'Close popout')}
+          aria-label={t('popout.close', 'Close popout')}
         >
           <CloseIcon size={13} />
         </button>

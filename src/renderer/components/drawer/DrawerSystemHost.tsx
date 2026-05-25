@@ -38,7 +38,7 @@ function DrawerLauncherRail() {
   }
   return (
     <nav
-      aria-label="R8 drawer launchers"
+      aria-label={t('drawer.launchers', 'R8 drawer launchers')}
       className="absolute right-3 top-3 z-[2100] flex flex-col gap-1 pointer-events-auto"
       data-testid="drawer-launcher-rail"
     >

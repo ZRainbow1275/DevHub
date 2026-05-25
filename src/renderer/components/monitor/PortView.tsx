@@ -1,5 +1,6 @@
 import { useEffect, memo, useState, useMemo, useCallback } from 'react'
 import { usePorts } from '../../hooks/usePorts'
+import { useT } from '../../hooks/useT'
 import {
   PortInfo,
   COMMON_DEV_PORTS,
@@ -131,6 +132,7 @@ function classifyPortForView(port: PortInfo, blocklistEntries: readonly Blocklis
 }
 
 const PortCard = memo(function PortCard({ port, index, isCommon, isSelected, hasConflict, isPopoutOpen, popoutSettings, blocklistEntries, onSelect, onViewInGraph, onRelease, onOpenPopout }: PortCardProps) {
+  const { t } = useT()
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
   const portLabel = getPortLabel(port.port)
   const securityTier = classifyPortForView(port, blocklistEntries)
@@ -315,10 +317,10 @@ const PortCard = memo(function PortCard({ port, index, isCommon, isSelected, has
                 onOpenPopout('click', { x: e.clientX, y: e.clientY })
               }}
               className="btn-secondary disabled:cursor-not-allowed disabled:opacity-40 flex items-center gap-1.5 text-xs px-3 py-1.5"
-              title="Open floating port card"
+              title={t('monitor.port.openFloatingCard', 'Open floating port card')}
             >
               <WindowIcon size={14} />
-              Popout
+              {t('monitor.port.popout', 'Popout')}
             </button>
             <button
               onClick={(e) => {

@@ -8,6 +8,7 @@ import type {
   RecordingScreenshotResult,
   RecordingStreamKind
 } from '@shared/schemas/r8-runtime'
+import { useT } from '../../hooks/useT'
 import { AnchorList } from './AnchorList'
 import { AsciinemaPlayer } from './AsciinemaPlayer'
 import { FsTrack } from './FsTrack'
@@ -29,6 +30,7 @@ const TRACK_LABELS: Record<RecordingStreamKind, string> = {
 }
 
 export function RecordingReplayPanel() {
+  const { t } = useT()
   const [manifests, setManifests] = useState<RecordingManifest[]>([])
   const [selectedRecordingId, setSelectedRecordingId] = useState<string>('')
   const [state, setState] = useState<RecordingReplayState | null>(null)
@@ -215,10 +217,10 @@ export function RecordingReplayPanel() {
             </div>
             <div className="flex flex-col items-end gap-2">
               <SpeedControl onPause={pause} onPlay={play} onSpeedChange={setReplaySpeed} paused={paused} speed={speed} />
-              <div aria-label="Replay tracks" className="flex flex-wrap justify-end gap-1 text-[10px] uppercase tracking-wider text-text-muted">
+              <div aria-label={t('replay.tracks', 'Replay tracks')} className="flex flex-wrap justify-end gap-1 text-[10px] uppercase tracking-wider text-text-muted">
                 {DEFAULT_TRACKS.map(track => (
                   <label className="flex items-center gap-1 border border-surface-800 bg-surface-900 px-2 py-1 radius-sm" key={track}>
-                    <input aria-label={`track ${track}`} checked={enabledTracks.includes(track)} onChange={() => toggleTrack(track)} type="checkbox" />
+                    <input aria-label={t('replay.track', 'track {{track}}').replace('{{track}}', String(track))} checked={enabledTracks.includes(track)} onChange={() => toggleTrack(track)} type="checkbox" />
                     <span>{TRACK_LABELS[track]}</span>
                   </label>
                 ))}

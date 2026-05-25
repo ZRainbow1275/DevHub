@@ -1,4 +1,5 @@
 import type { PortPopout, PortPopoutPosition, PortPopoutResizeDirection } from './port-popout-model'
+import { useT } from '../../hooks/useT'
 
 interface PortPopoutResizeHandlesProps {
   popout: PortPopout
@@ -19,13 +20,14 @@ const RESIZE_HANDLE_CLASSES: Record<PortPopoutResizeDirection, string> = {
 const RESIZE_DIRECTIONS: readonly PortPopoutResizeDirection[] = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw']
 
 export function PortPopoutResizeHandles({ popout, onStartResize }: PortPopoutResizeHandlesProps) {
+  const { t } = useT()
   return (
     <>
       {RESIZE_DIRECTIONS.map((direction) => (
         <button
           key={direction}
           type="button"
-          aria-label={`Resize port popout ${direction}`}
+          aria-label={t('popout.resize', 'Resize port popout {{direction}}').replace('{{direction}}', String(direction))}
           data-testid={`port-popout-resize-${direction}-${popout.port.port}-${popout.port.pid}`}
           className={`absolute bg-transparent ${RESIZE_HANDLE_CLASSES[direction]}`}
           onPointerDown={(event) => {

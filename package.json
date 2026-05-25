@@ -51,6 +51,7 @@
     "check:zod-sot": "node --experimental-strip-types ./scripts/verify-zod-sot.ts",
     "i18n:extract": "node ./scripts/i18n-extract.mjs",
     "i18n:check": "node ./scripts/i18n-check-coverage.mjs",
+    "i18n:check-english": "node ./scripts/i18n-extract-english.mjs --fail-on-leak",
     "a11y:audit": "node ./scripts/a11y-audit.mjs",
     "a11y:component-audit": "node ./scripts/a11y-component-audit.mjs",
     "check:no-cloud-deps": "node ./scripts/verify-no-cloud-deps.mjs",

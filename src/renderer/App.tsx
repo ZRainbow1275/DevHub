@@ -23,6 +23,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { KeyboardNavGroup } from './components/a11y/KeyboardNavGroup'
 import { SkipLink } from './components/a11y/SkipLink'
 import { useProjects } from './hooks/useProjects'
+import { useT } from './hooks/useT'
 import { useTheme } from './hooks/useTheme'
 import { useA11yRuntime } from './hooks/useA11yRuntime'
 import { useBreakpoint } from './hooks/useBreakpoint'
@@ -102,6 +103,7 @@ function AppContent() {
   const commandPaletteReturnFocusRef = useRef<HTMLElement | null>(null)
   const { selectedProject, selectedProjectId, addProject } = useProjects()
   const { showToast } = useToast()
+  const { t } = useT()
   const { theme, setTheme } = useTheme()
   const themeDecoration = useDecoration()
   useThemeSound(theme)
@@ -513,7 +515,7 @@ function AppContent() {
                       <div className="absolute inset-0 deco-diagonal opacity-5 pointer-events-none" />
                       <ThemeDecoration config={themeDecoration.config} position="header" />
 
-                      <KeyboardNavGroup ariaLabel="Main view navigation" className="flex items-center gap-1 relative z-10">
+                      <KeyboardNavGroup ariaLabel={t('nav.main', 'Main view navigation')} className="flex items-center gap-1 relative z-10">
                         <ViewToggleButton
                           active={mainView === 'logs'}
                           onClick={() => setMainView('logs')}
