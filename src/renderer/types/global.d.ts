@@ -115,6 +115,7 @@ import type {
   MonitorSnapshot,
   MonitorTool,
   MonitorWindowState,
+  PanelPopoutSurface,
   ResetLearnedWeightsResponse,
   StateAssertionRule,
   StateTransitionEvent,
@@ -706,6 +707,11 @@ declare global {
           moveToMonitor: (windowId: string, monitorIndex: number) => Promise<{ success: boolean; windowId: string; monitorIndex: number; bounds: { x: number; y: number; width: number; height: number } }>
           promoteFromFloating: (floatingId: string, input?: { bounds?: { x: number; y: number; width: number; height: number }; alwaysOnTop?: boolean }) => Promise<{ success: boolean; browserPopoutId: string; popout: BrowserPopout }>
           demote: (windowId: string) => Promise<{ success: boolean; floatingId: string; popout: BrowserPopout }>
+        }
+        panel: {
+          openPopout: (surface: PanelPopoutSurface) => Promise<BrowserPopout>
+          listPopouts: () => Promise<BrowserPopout[]>
+          closePopout: (windowId: string) => Promise<{ success: boolean; windowId: string }>
         }
         drawer: {
           getState: () => Promise<DrawerState[]>

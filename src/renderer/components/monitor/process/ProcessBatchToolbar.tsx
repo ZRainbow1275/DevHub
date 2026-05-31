@@ -46,13 +46,14 @@ export const ProcessBatchToolbar = memo(function ProcessBatchToolbar({
   return (
     <div
       data-testid="process-batch-toolbar"
-      className="flex flex-wrap items-center gap-2 border-b border-surface-700/40 bg-surface-900/70 px-5 py-2"
+      className="flex flex-nowrap items-center gap-3 overflow-x-auto border-b border-surface-700/40 bg-surface-900/70 px-5 py-2"
+      style={{ scrollbarWidth: 'none' }}
     >
-      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-accent">
+      <div className="flex items-center gap-2 whitespace-nowrap text-xs font-bold uppercase tracking-wider text-accent">
         <ProcessIcon size={14} />
         批量进程
       </div>
-      <span data-testid="process-selection-counter" className="text-[11px] text-text-muted">
+      <span data-testid="process-selection-counter" className="whitespace-nowrap text-[11px] text-text-muted">
         已选 {selectedCount} / {totalCount}
       </span>
       <button
@@ -60,7 +61,7 @@ export const ProcessBatchToolbar = memo(function ProcessBatchToolbar({
         type="button"
         onClick={onSelectAll}
         disabled={disabled || totalCount === 0}
-        className="btn-secondary flex items-center gap-1 px-2 py-1 text-[11px]"
+        className="btn-secondary flex items-center gap-1 whitespace-nowrap px-2 py-1 text-[11px]"
       >
         <CheckIcon size={12} />
         全选当前过滤
@@ -70,11 +71,11 @@ export const ProcessBatchToolbar = memo(function ProcessBatchToolbar({
         type="button"
         onClick={onClearSelection}
         disabled={disabled || !hasSelection}
-        className="btn-secondary px-2 py-1 text-[11px]"
+        className="btn-secondary whitespace-nowrap px-2 py-1 text-[11px]"
       >
         清除选择
       </button>
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-nowrap items-center gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
         {ACTIONS.map(({ action, icon, danger }) => {
           const disabledReason = disabledActions[action]
           const isDisabled = disabled || !hasSelection || Boolean(disabledReason)
@@ -86,7 +87,7 @@ export const ProcessBatchToolbar = memo(function ProcessBatchToolbar({
               onClick={() => onAction(action)}
               disabled={isDisabled}
               title={disabledReason ?? PROCESS_BATCH_ACTION_LABELS[action]}
-              className={`flex items-center gap-1 border px-2 py-1 text-[11px] font-semibold transition-colors radius-sm ${
+              className={`flex items-center gap-1.5 border px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap transition-colors radius-sm ${
                 danger
                   ? 'border-error/40 bg-error/10 text-error hover:bg-error/20'
                   : 'border-surface-700 bg-surface-800 text-text-secondary hover:border-accent/50 hover:text-accent'

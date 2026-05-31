@@ -43,7 +43,7 @@ export function SecurityTierBadge({ tier, size = 'sm', showLabel = true, classNa
       data-security-tier={normalizedTier}
       data-security-tone={visual.tone}
       data-security-label={visual.label}
-      className={`inline-flex items-center gap-1 border-l-2 font-bold uppercase tracking-wider radius-sm ${padding} ${TIER_CLASS[normalizedTier]} ${className}`}
+      className={`inline-flex items-center gap-1 border-l-2 font-bold uppercase tracking-wider whitespace-nowrap radius-sm ${padding} ${TIER_CLASS[normalizedTier]} ${className}`}
       aria-label={`${visual.label} / ${normalizedTier}`}
       title={`${visual.label} / ${normalizedTier}`}
     >

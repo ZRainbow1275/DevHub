@@ -23,6 +23,7 @@ const FLOW_WINDOW_PRESETS: FlowWindowPreset[] = [
   { label: 'all', value: -1 }
 ]
 const FLOW_SPEEDS: FlowRequest['speed'][] = [0, 1, 2, 4, 8]
+const FLOW_ANIMATION_NODE_LIMIT = 200
 const FLOW_KIND_FILTERS: Array<{ label: string; value: FlowKindFilter }> = [
   { label: 'all', value: 'all' },
   { label: 'fail', value: 'task-fail' },
@@ -75,6 +76,41 @@ function formatDuration(ms: number): string {
   const minutes = Math.round(seconds / 60)
   return `${minutes}min`
 }
+
+interface FlowEventRowProps {
+  node: FlowNode
+  index: number
+  speed: FlowRequest['speed']
+}
+
+const FlowEventRow = memo(function FlowEventRow({ node, index, speed }: FlowEventRowProps) {
+  return (
+    <FlowAnimationLayer node={node} index={index} speed={speed}>
+      <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center border-l-2 border-accent bg-surface-800 text-[10px] font-bold text-accent radius-sm">
+        {index + 1}
+      </div>
+      <div data-testid="flow-event-row" className="min-w-0 flex-1 border-l-2 border-surface-600 bg-surface-800 px-3 py-2 radius-sm">
+        <div className="flex items-center gap-2">
+          <FlowEventIcon node={node} />
+          <span className="truncate text-xs font-bold text-text-primary">{node.label}</span>
+          <span className="ml-auto text-[10px] text-text-muted">{node.kind}</span>
+        </div>
+        <div className="mt-1 text-[10px] text-text-muted">task {node.taskId ?? 'none'} - {node.errorCode ?? 'ok'} - {node.durationMs === null ? 'pending' : formatDuration(node.durationMs)}</div>
+      </div>
+    </FlowAnimationLayer>
+  )
+}, (prev, next) => (
+  prev.index === next.index &&
+  prev.speed === next.speed &&
+  prev.node.id === next.node.id &&
+  prev.node.kind === next.node.kind &&
+  prev.node.ts === next.node.ts &&
+  prev.node.label === next.node.label &&
+  prev.node.taskId === next.node.taskId &&
+  prev.node.instanceId === next.node.instanceId &&
+  prev.node.errorCode === next.node.errorCode &&
+  prev.node.durationMs === next.node.durationMs
+))
 
 export const AttachedFlowView = memo(function AttachedFlowView({ scope, className = '' }: AttachedFlowViewProps) {
   const { flow, loading, error, refresh } = useScopedTopology(scope)
@@ -162,6 +198,7 @@ export const AttachedFlowView = memo(function AttachedFlowView({ scope, classNam
   const activeLoading = flowLoading || loading
   const activeError = flowError ?? error
   const stats = snapshot?.stats
+  const rowAnimationSpeed = visibleNodes.length > FLOW_ANIMATION_NODE_LIMIT ? 0 : speed
 
   return (
     <div
@@ -300,21 +337,9 @@ export const AttachedFlowView = memo(function AttachedFlowView({ scope, classNam
             当前时间窗暂无真实流程事件，可扩大时间窗
           </div>
         )}
-        <FlowAnimationList>
+        <FlowAnimationList enabled={rowAnimationSpeed > 0}>
           {visibleNodes.map((node, index) => (
-            <FlowAnimationLayer key={node.id} node={node} index={index} speed={speed}>
-              <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center border-l-2 border-accent bg-surface-800 text-[10px] font-bold text-accent radius-sm">
-                {index + 1}
-              </div>
-              <div data-testid="flow-event-row" className="min-w-0 flex-1 border-l-2 border-surface-600 bg-surface-800 px-3 py-2 radius-sm">
-                <div className="flex items-center gap-2">
-                  <FlowEventIcon node={node} />
-                  <span className="truncate text-xs font-bold text-text-primary">{node.label}</span>
-                  <span className="ml-auto text-[10px] text-text-muted">{node.kind}</span>
-                </div>
-                <div className="mt-1 text-[10px] text-text-muted">task {node.taskId ?? 'none'} - {node.errorCode ?? 'ok'} - {node.durationMs === null ? 'pending' : formatDuration(node.durationMs)}</div>
-              </div>
-            </FlowAnimationLayer>
+            <FlowEventRow key={node.id} node={node} index={index} speed={rowAnimationSpeed} />
           ))}
         </FlowAnimationList>
 

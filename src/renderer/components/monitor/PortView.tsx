@@ -188,23 +188,23 @@ const PortCard = memo(function PortCard({ port, index, isCommon, isSelected, has
         <div className="relative z-10">
           {/* Port Number */}
           <div data-r8a-field-row="port-header" className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className={`min-w-[4.5rem] h-14 px-2 bg-surface-700 flex items-center justify-center border-l-3 ${hasConflict ? 'border-error' : stateConfig.borderColor} radius-sm`}>
-                <span data-port-field="port" className="text-2xl font-bold text-accent font-mono whitespace-nowrap">:{port.port}</span>
+            <div className="flex items-center gap-3 min-w-0">
+              <div className={`min-w-[max(4.5rem,5ch)] min-h-[3.5rem] h-auto py-1 px-2 bg-surface-700 flex items-center justify-center border-l-3 flex-shrink-0 ${hasConflict ? 'border-error' : stateConfig.borderColor} radius-sm`}>
+                <span data-port-field="port" className="text-[clamp(1.1rem,0.9rem+0.4vw,1.5rem)] font-bold text-accent font-mono whitespace-nowrap">:{port.port}</span>
               </div>
-              <div>
-                <div className="flex items-center gap-2 mb-1">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2 mb-1 min-w-0">
                   <span data-port-field="state" className={`status-badge ${port.state === 'LISTENING' ? 'status-badge-running' : ''}`}>
                     <span className={`w-1.5 h-1.5 ${stateConfig.color} radius-sm`} />
                     {stateConfig.text}
                   </span>
                   {isCommon && (
-                    <span className="text-[10px] bg-info/10 text-info px-2 py-0.5 border-l-2 border-info radius-sm">
+                    <span className="text-[10px] bg-info/10 text-info px-2 py-0.5 border-l-2 border-info whitespace-nowrap radius-sm">
                       常用
                     </span>
                   )}
                   {hasConflict && (
-                    <span className="text-[10px] bg-error/10 text-error px-2 py-0.5 border-l-2 border-error radius-sm">
+                    <span className="text-[10px] bg-error/10 text-error px-2 py-0.5 border-l-2 border-error whitespace-nowrap radius-sm">
                       冲突
                     </span>
                   )}
@@ -212,9 +212,9 @@ const PortCard = memo(function PortCard({ port, index, isCommon, isSelected, has
                     <SecurityTierBadge tier={securityTier} />
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span data-port-field="protocol" className="text-xs text-text-muted font-mono uppercase">{port.protocol}</span>
-                  {portLabel && <span className="text-[9px] text-text-muted">{portLabel}</span>}
+                <div className="flex flex-wrap items-center gap-2 min-w-0">
+                  <span data-port-field="protocol" className="text-xs text-text-muted font-mono uppercase whitespace-nowrap">{port.protocol}</span>
+                  {portLabel && <span className="text-[9px] text-text-muted whitespace-nowrap">{portLabel}</span>}
                 </div>
               </div>
             </div>
@@ -406,34 +406,34 @@ const PortItem = memo(function PortItem({ port, index, isSelected, isCommon, has
               </div>
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <TruncatedText text={port.processName} className="text-sm font-bold text-text-primary" maxWidth="180px" />
-                <span className="text-xs text-text-muted font-mono bg-surface-700 px-2 py-0.5 radius-sm">
+              <div className="flex flex-wrap items-center gap-2 mb-1 min-w-0">
+                <TruncatedText text={port.processName} className="text-sm font-bold text-text-primary" maxWidth="12rem" />
+                <span className="text-xs text-text-muted font-mono bg-surface-700 px-2 py-0.5 whitespace-nowrap radius-sm">
                   PID: {port.pid}
                 </span>
                 {portLabel && (
-                  <span className="text-[9px] text-text-muted bg-surface-700 px-1.5 py-0.5 radius-sm">
+                  <span className="text-[9px] text-text-muted bg-surface-700 px-1.5 py-0.5 whitespace-nowrap radius-sm">
                     {portLabel}
                   </span>
                 )}
                 {isCommon && !portLabel && (
-                  <span className="text-[10px] bg-info/10 text-info px-1.5 py-0.5 border-l-2 border-info radius-sm">
+                  <span className="text-[10px] bg-info/10 text-info px-1.5 py-0.5 border-l-2 border-info whitespace-nowrap radius-sm">
                     常用
                   </span>
                 )}
                 {hasConflict && (
-                  <span className="text-[10px] bg-error/10 text-error px-1.5 py-0.5 border-l-2 border-error font-bold uppercase tracking-wider radius-sm">
+                  <span className="text-[10px] bg-error/10 text-error px-1.5 py-0.5 border-l-2 border-error font-bold uppercase tracking-wider whitespace-nowrap radius-sm">
                     冲突
                   </span>
                 )}
                 <SecurityTierBadge tier={securityTier} />
               </div>
-              <div className="flex items-center gap-2">
-                <p className="text-xs text-text-tertiary font-mono">{port.localAddress}</p>
+              <div className="flex flex-wrap items-center gap-2 min-w-0">
+                <p className="text-xs text-text-tertiary font-mono truncate min-w-0">{port.localAddress}</p>
                 {port.foreignAddress && port.foreignAddress !== '*:*' && port.foreignAddress !== '0.0.0.0:0' && (
                   <>
-                    <span className="text-[10px] text-text-muted">&rarr;</span>
-                    <TruncatedText text={port.foreignAddress} className="text-xs text-warning/70 font-mono" maxWidth="200px" />
+                    <span className="text-[10px] text-text-muted whitespace-nowrap">&rarr;</span>
+                    <TruncatedText text={port.foreignAddress} className="text-xs text-warning/70 font-mono" maxWidth="12rem" />
                   </>
                 )}
               </div>
@@ -827,33 +827,33 @@ export function PortView() {
       data-testid="port-view-root"
       data-port-view-mode={viewMode}
       data-port-view-modes={PORT_VIEW_MODES.join(',')}
-      className="h-full flex flex-col bg-surface-950"
+      className="h-full min-h-0 flex flex-col bg-surface-950"
     >
       {/* Header */}
       <div className="flex-shrink-0 px-5 py-4 border-b-2 border-surface-700 bg-surface-900 relative">
         {/* Diagonal decoration */}
         <div className="absolute inset-0 deco-diagonal opacity-20 pointer-events-none" />
 
-        <div className="flex items-center justify-between relative z-10">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-surface-700 flex items-center justify-center border-l-3 border-accent radius-sm">
+        <div className="flex items-center flex-wrap justify-between gap-y-2 relative z-10">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="w-10 h-10 bg-surface-700 flex items-center justify-center border-l-3 border-accent radius-sm flex-shrink-0">
               <PortIcon size={20} className="text-accent" />
             </div>
-            <div>
+            <div className="min-w-0 truncate">
               <h2
-                className="text-text-primary font-bold uppercase tracking-wider"
+                className="text-text-primary font-bold uppercase tracking-wider whitespace-nowrap"
                 style={{ fontFamily: 'var(--font-display)', fontSize: '16px' }}
               >
                 端口监控
               </h2>
               <div className="flex items-center gap-3 text-xs text-text-muted">
-                <span className="font-mono">{ports.length} 个端口</span>
+                <span className="font-mono whitespace-nowrap">{ports.length} 个端口</span>
                 <LastScanTime lastScanTime={lastScanTime} />
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center flex-wrap gap-3">
             {/* Search */}
             <div className="relative">
               <input
@@ -999,15 +999,15 @@ export function PortView() {
 
       {/* Content */}
       {viewMode === 'relationship' ? (
-        <div className="flex-1 min-h-0 overflow-hidden flex">
-          <div className="flex-1">
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col lg:flex-row">
+          <div className="flex-1 min-h-0 min-w-0">
             <PortRelationshipGraph
               focusPort={selectedPort}
               onNodeClick={handleGraphNodeClick}
             />
           </div>
           {focusedPort && (
-            <div className="w-[420px] min-w-[360px] max-w-[560px] h-full">
+            <div className="w-full lg:w-[clamp(20rem,30vw,35rem)] lg:min-w-[20rem] h-full min-h-0">
               <PortFocusPanel
                 port={focusedPort}
                 onClose={closeFocusPanel}
@@ -1038,7 +1038,7 @@ export function PortView() {
               minSizes={[640, 360]}
               maxSizes={[9999, 560]}
               storageKey="devhub:port-view-split"
-              stackBelow={1004}
+              stackBelow={900}
             >
               <div
                 data-testid="port-list-scroll"
@@ -1090,7 +1090,6 @@ export function PortView() {
         onClose={portPopoutManager.close}
         onMinimize={portPopoutManager.minimize}
         onThemeIsolate={portPopoutManager.isolateTheme}
-        onPin={portPopoutManager.pin}
         onMove={portPopoutManager.move}
         onResize={portPopoutManager.resize}
         onPromote={portPopoutManager.promote}

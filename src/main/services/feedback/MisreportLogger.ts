@@ -1,6 +1,7 @@
 import { appendFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import DatabaseConstructor, { type Database as DatabaseHandle } from 'better-sqlite3'
+import type { Database as DatabaseHandle } from 'better-sqlite3'
+import { loadBetterSqlite } from '../sqlite/betterSqliteLoader'
 import {
   misreportRecordSchema,
   weightAdjustmentSchema,
@@ -117,6 +118,7 @@ export class MisreportLogger {
   private database(): DatabaseHandle {
     if (this.db?.open) return this.db
     mkdirSync(dirname(this.options.dbPath), { recursive: true })
+    const DatabaseConstructor = loadBetterSqlite()
     const db = new DatabaseConstructor(this.options.dbPath)
     db.pragma('journal_mode = WAL')
     db.exec(`

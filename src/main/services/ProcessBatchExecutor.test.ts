@@ -119,8 +119,8 @@ class LocalWindowManager implements ProcessBatchWindowManager {
   readonly calls: string[] = []
   windows: WindowInfo[] = []
 
-  async scanWindows(): Promise<ServiceResult<WindowInfo[]>> {
-    this.calls.push('scan-windows')
+  async scanWindows(includeSystemWindows = false): Promise<ServiceResult<WindowInfo[]>> {
+    this.calls.push(`scan-windows:${includeSystemWindows}`)
     return { success: true, data: [...this.windows] }
   }
 
@@ -237,7 +237,7 @@ describe('ProcessBatchExecutor', () => {
     const protectedProgress = await executor.waitForIdle(protectedKill.jobId)
     expect(protectedProgress.results[0]).toMatchObject({ pid: 4, status: 'failed' })
 
-    expect(windowManager.calls).toEqual(['scan-windows', 'focus:9001', 'scan-windows', 'inject:9001:hello'])
+    expect(windowManager.calls).toEqual(['scan-windows:false', 'focus:9001', 'scan-windows:false', 'inject:9001:hello'])
     expect(runtimeService.calls).toEqual(['watchdog:4201:codex', 'diagnostic'])
     expect(tagStore.get('codex.exe', 'D:/Desktop/CREATOR ONE')).toMatchObject({ tag: 'R8', pinned: true })
     expect(events).toHaveBeenCalledWith(expect.objectContaining({ state: 'running' }))
@@ -264,7 +264,28 @@ describe('ProcessBatchExecutor', () => {
       pids: [4201]
     }))
     expect(await executor.waitForIdle(inject.jobId)).toMatchObject({ completed: 1, failed: 0, state: 'completed' })
-    expect(windowManager.calls).toEqual(['scan-windows', 'focus:9002', 'scan-windows', 'inject:9002:hello'])
+    expect(windowManager.calls).toEqual(['scan-windows:false', 'focus:9002', 'scan-windows:false', 'inject:9002:hello'])
+  })
+
+  it('trusts an explicit hwnd when live scanning misses the target window', async () => {
+    const scanner = new LocalScanner()
+    const windowManager = new LocalWindowManager()
+    scanner.processes.set(4201, createProcessInfo({ pid: 4201 }))
+    windowManager.windows = []
+
+    const executor = new ProcessBatchExecutor(scanner, vi.fn(), { windowManager })
+    const inject = executor.run(createRequest({
+      action: 'inject-text',
+      args: { hwnd: 9003, text: 'hello' },
+      confirmed: true,
+      pids: [4201]
+    }))
+
+    const progress = await executor.waitForIdle(inject.jobId)
+
+    expect(progress).toMatchObject({ completed: 1, failed: 0, state: 'completed' })
+    expect(progress.results[0]).toMatchObject({ pid: 4201, status: 'ok' })
+    expect(windowManager.calls).toEqual(['scan-windows:false', 'scan-windows:true', 'inject:9003:hello'])
   })
 
   it('terminates a real child process by PID without killing by process name', async () => {

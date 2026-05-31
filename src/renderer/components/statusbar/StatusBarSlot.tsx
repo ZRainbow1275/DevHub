@@ -54,15 +54,15 @@ export function StatusBarSlot({ tile, onAction }: StatusBarSlotProps) {
   const content = (
     <>
       {Icon && <Icon size={12} className="shrink-0" />}
-      <span className="uppercase tracking-wider text-text-muted">{tile.label}</span>
-      <span className="font-mono tabular-nums text-text-primary">{String(tile.value)}</span>
+      <span className="hidden whitespace-nowrap uppercase tracking-wider text-text-muted sm:inline">{tile.label}</span>
+      <span className="whitespace-nowrap font-mono tabular-nums text-text-primary">{String(tile.value)}</span>
       {tile.badgeType && tile.badgeValue !== undefined && (
         <StatusBarBadge type={tile.badgeType} value={tile.badgeValue} />
       )}
     </>
   )
 
-  const className = `flex h-[22px] items-center gap-1.5 border-l-2 bg-surface-900/70 px-2 text-[10px] transition-colors radius-sm ${TONE_CLASS[tile.tone]}`
+  const className = `flex h-[22px] shrink-0 items-center gap-1.5 whitespace-nowrap border-l-2 bg-surface-900/70 px-2 text-[10px] transition-colors radius-sm ${TONE_CLASS[tile.tone]}`
 
   if (!tile.clickAction) {
     return (

@@ -66,42 +66,50 @@ export function MonitorPanel() {
   }, [])
 
   return (
-    <div className="h-full flex flex-col bg-surface-950">
+    <div className="h-full min-h-0 flex flex-col bg-surface-950" data-testid="monitor-panel">
       {/* Header */}
       <div className="flex-shrink-0 px-5 py-3 border-b-2 border-surface-700 bg-surface-900 relative">
         {/* Diagonal decoration */}
         <div className="absolute inset-0 deco-diagonal opacity-20 pointer-events-none" />
 
-        <div className="flex items-center justify-between relative z-10">
+        <div className="flex items-center justify-between gap-3 relative z-10">
           {/* Title */}
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-surface-700 flex items-center justify-center border-l-2 border-gold radius-sm">
+          <div className="flex items-center gap-3 min-w-0 max-w-[30%]">
+            <div className="w-8 h-8 bg-surface-700 flex items-center justify-center border-l-2 border-gold radius-sm flex-shrink-0">
               <MonitorIcon size={16} className="text-gold" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h2
-                className="text-gold font-bold uppercase tracking-wider"
+                className="text-gold font-bold uppercase tracking-wider truncate whitespace-nowrap text-sm"
                 style={{
                   fontFamily: 'var(--font-display)',
-                  fontSize: '14px',
                   transform: 'rotate(-2deg)',
                   transformOrigin: 'left center'
                 }}
               >
                 {t('monitor.system.title', '系统监控')}
               </h2>
-              <p className="text-xs text-text-muted">{t('monitor.system.subtitle', 'SYSTEM MONITOR')}</p>
+              <p className="text-xs text-text-muted hidden md:block truncate">{t('monitor.system.subtitle', 'SYSTEM MONITOR')}</p>
             </div>
           </div>
 
           {/* Tab Navigation */}
-          <div className="flex items-center gap-1">
+          <div
+            className="flex flex-nowrap items-center gap-1 overflow-x-auto min-w-0 flex-1"
+            data-testid="monitor-tab-list"
+            style={{ scrollbarWidth: 'none' }}
+          >
             {TABS.map((tab, index) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
+                title={tab.label}
+                aria-label={tab.label}
+                data-testid={`monitor-tab-${tab.id}`}
+                data-active={activeTab === tab.id}
                 className={`
-                  flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all duration-200
+                  flex items-center gap-2 px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200
+                  whitespace-nowrap min-w-max flex-shrink-0
                   ${activeTab === tab.id
                     ? 'bg-accent/15 text-accent border-l-2 border-accent'
                     : 'text-text-secondary hover:bg-surface-800 hover:text-text-primary border-l-2 border-transparent'
@@ -112,8 +120,12 @@ export function MonitorPanel() {
                   animationDelay: `${index * 50}ms`
                 }}
               >
-                {tab.icon}
-                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="inline-flex min-[960px]:hidden">{tab.icon}</span>
+                <span className="hidden min-[960px]:inline min-[1280px]:hidden">{tab.label}</span>
+                <span className="hidden min-[1280px]:inline-flex min-[1280px]:items-center min-[1280px]:gap-2">
+                  {tab.icon}
+                  <span>{tab.label}</span>
+                </span>
               </button>
             ))}
           </div>
@@ -121,7 +133,7 @@ export function MonitorPanel() {
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 overflow-hidden monitor-content panel-container">
+      <div className="flex-1 min-h-0 overflow-hidden monitor-content panel-container">
         {activeTab === 'process' && (
           <ErrorBoundary fallbackRender={({ error, resetErrorBoundary }) => (
             <ViewErrorFallback viewName="进程监控" error={error} onRetry={resetErrorBoundary} />

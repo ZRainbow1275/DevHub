@@ -19,6 +19,7 @@
     "check:no-emoji": "node ./scripts/check-no-emoji.mjs",
     "lint": "pnpm check:no-emoji && eslint .",
     "typecheck": "tsc --noEmit",
+    "rebuild:native": "electron-rebuild -f -o better-sqlite3",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
@@ -75,6 +76,14 @@
   },
   "dependencies": {
     "@dagrejs/dagre": "^3.0.0",
+    "@fontsource-variable/exo-2": "^5.2.8",
+    "@fontsource-variable/inter": "^5.2.8",
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
+    "@fontsource-variable/orbitron": "^5.2.8",
+    "@fontsource-variable/oswald": "^5.2.8",
+    "@fontsource-variable/playfair-display": "^5.2.8",
+    "@fontsource/bebas-neue": "^5.2.7",
+    "@fontsource/share-tech-mono": "^5.2.7",
     "@heroicons/react": "^2.2.0",
     "@iarna/toml": "^2.2.5",
     "@icons-pack/react-simple-icons": "^13.13.0",
@@ -152,6 +161,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.11.3",
     "@electron-toolkit/utils": "^3.0.0",
+    "@electron/rebuild": "^3.7.0",
     "@eslint/js": "^9.39.2",
     "@playwright/test": "^1.57.0",
     "@testing-library/jest-dom": "^6.9.1",
@@ -204,6 +214,10 @@
   "build": {
     "appId": "com.devhub.app",
     "productName": "DevHub",
+    "npmRebuild": true,
+    "asarUnpack": [
+      "**/node_modules/better-sqlite3/**"
+    ],
     "directories": {
       "output": "release"
     },

@@ -8,7 +8,6 @@ interface PortPopoutTitleBarProps {
   onStartDrag: (pointer: PortPopoutPosition) => void
   onMinimize: (id: string, minimized: boolean) => void
   onThemeIsolate: (id: string, themeIsolated: boolean) => void
-  onPin: (id: string, pinned: boolean) => void
   onPromote: () => void
   onClose: (id: string) => void
 }
@@ -19,7 +18,6 @@ export function PortPopoutTitleBar({
   onStartDrag,
   onMinimize,
   onThemeIsolate,
-  onPin,
   onPromote,
   onClose
 }: PortPopoutTitleBarProps) {
@@ -66,23 +64,12 @@ export function PortPopoutTitleBar({
         </button>
         <button
           type="button"
-          data-testid={`port-popout-pin-${popout.port.port}-${popout.port.pid}`}
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={() => onPin(popout.id, !popout.pinned)}
-          className={`btn-icon-sm ${popout.pinned ? 'text-accent bg-accent/10' : 'text-text-muted hover:text-text-primary'}`}
-          title={popout.pinned ? t('popout.unpin', 'Unpin popout') : t('popout.pin', 'Pin popout')}
-          aria-label={popout.pinned ? t('popout.unpin', 'Unpin popout') : t('popout.pin', 'Pin popout')}
-        >
-          <WindowIcon size={13} />
-        </button>
-        <button
-          type="button"
           data-testid={`port-popout-promote-${popout.port.port}-${popout.port.pid}`}
           onPointerDown={(event) => event.stopPropagation()}
           onClick={onPromote}
           className="btn-icon-sm text-text-muted hover:text-text-primary"
-          title={t('popout.promote', 'Promote to BrowserWindow')}
-          aria-label={t('popout.promote', 'Promote to BrowserWindow')}
+          title={t('popout.float', '悬浮到所有应用之上')}
+          aria-label={t('popout.float', '悬浮')}
           disabled={promoteState === 'working'}
         >
           <WindowIcon size={13} />

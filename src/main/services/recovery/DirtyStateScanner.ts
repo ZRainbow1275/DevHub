@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { readdir, readFile, stat } from 'node:fs/promises'
 import { basename, join } from 'node:path'
-import Database from 'better-sqlite3'
+import { loadBetterSqlite } from '../sqlite/betterSqliteLoader'
 import {
   dirtyFindingSchema,
   type AppLifecycleMarker,
@@ -173,6 +173,7 @@ export class DirtyStateScanner {
     for (const dbPath of paths) {
       if (!existsSync(dbPath)) continue
       try {
+        const Database = loadBetterSqlite()
         const db = new Database(dbPath, { readonly: true, fileMustExist: true })
         try {
           const result = db.pragma('integrity_check') as unknown

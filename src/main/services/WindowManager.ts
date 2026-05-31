@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { mkdir } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import { app, clipboard, screen, shell } from 'electron'
+import { app, BrowserWindow, clipboard, screen, shell, type Display } from 'electron'
 import Store from 'electron-store'
 import {
   WindowInfo,
@@ -36,11 +36,21 @@ export interface WindowFocusBatchResult {
   result: ServiceResult
 }
 
-export type WindowTextInjectionMode = 'clipboard-paste' | 'sendinput' | 'wm-char'
+export type WindowTextInjectionMode = 'clipboard-paste' | 'electron-dom' | 'sendinput' | 'wm-char'
 
 // 安全验证: 确保 hwnd 是有效的整数
 function validateHwnd(hwnd: number): boolean {
   return Number.isInteger(hwnd) && hwnd > 0 && hwnd <= Number.MAX_SAFE_INTEGER
+}
+
+function readNativeWindowHandleValue(handle: Buffer): number | null {
+  if (handle.byteLength >= 8) {
+    const value = handle.readBigUInt64LE(0)
+    if (value > BigInt(Number.MAX_SAFE_INTEGER)) return null
+    return Number(value)
+  }
+  if (handle.byteLength >= 4) return handle.readUInt32LE(0)
+  return null
 }
 
 // 安全验证: 确保 pid 是有效的进程 ID
@@ -126,7 +136,7 @@ export class WindowManager {
   // 带有 keybd_event Alt 模拟重试机制
   // ***C# 5 兼容***: 所有 `out _` 已替换为显式变量 `out uint dummy`
   private static readonly HELPER_ADD_TYPE = `Add-Type @"
-using System; using System.Runtime.InteropServices; public class WindowHelper { [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd); [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow); [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int W, int H, bool repaint); [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd); [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam); [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId); [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow(); [DllImport("user32.dll")] public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach); [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr hWnd); [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId(); [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo); [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags); [DllImport("user32.dll")] public static extern bool SetLayeredWindowAttributes(IntPtr hwnd, uint crKey, byte bAlpha, uint dwFlags); [DllImport("user32.dll")] public static extern int GetWindowLong(IntPtr hWnd, int nIndex); [DllImport("user32.dll")] public static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong); [DllImport("user32.dll", CharSet=CharSet.Unicode, SetLastError=true)] public static extern bool SetWindowText(IntPtr hWnd, string lpString); [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr hWnd); private const int SW_RESTORE = 9; private const int SW_MINIMIZE = 6; private const int SW_MAXIMIZE = 3; private const int SW_SHOW = 5; private const byte VK_MENU = 0x12; private const uint KEYEVENTF_EXTENDEDKEY = 0x0001; private const uint KEYEVENTF_KEYUP = 0x0002; private const uint WM_CHAR = 0x0102; private static readonly IntPtr HWND_TOPMOST = new IntPtr(-1); private static readonly IntPtr HWND_NOTOPMOST = new IntPtr(-2); private const uint SWP_NOMOVE = 0x0002; private const uint SWP_NOSIZE = 0x0001; private const int GWL_EXSTYLE = -20; private const int WS_EX_LAYERED = 0x80000; private const uint LWA_ALPHA = 0x02; public static void Focus(IntPtr h) { if(IsIconic(h)) ShowWindow(h, SW_RESTORE); IntPtr fg = GetForegroundWindow(); if(fg == h) return; uint pid1; uint targetThread = GetWindowThreadProcessId(h, out pid1); uint pid2; uint fgThread = (fg != IntPtr.Zero) ? GetWindowThreadProcessId(fg, out pid2) : 0; bool attached = false; try { if(fgThread != 0 && targetThread != fgThread) { attached = AttachThreadInput(fgThread, targetThread, true); } BringWindowToTop(h); SetForegroundWindow(h); } finally { if(attached) AttachThreadInput(fgThread, targetThread, false); } if(GetForegroundWindow() != h) { keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY, UIntPtr.Zero); keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, UIntPtr.Zero); SetForegroundWindow(h); } } public static void Move(IntPtr h,int x,int y,int w,int ht) { MoveWindow(h,x,y,w,ht,true); } public static void Minimize(IntPtr h) { ShowWindow(h,SW_MINIMIZE); } public static void Maximize(IntPtr h) { ShowWindow(h,SW_MAXIMIZE); } public static void Restore(IntPtr h) { ShowWindow(h,SW_RESTORE); } public static void Close(IntPtr h) { PostMessage(h,0x0010,IntPtr.Zero,IntPtr.Zero); } public static void SetTopmost(IntPtr h, bool topmost) { SetWindowPos(h, topmost ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE); } public static void SetOpacity(IntPtr h, byte alpha) { int exStyle = GetWindowLong(h, GWL_EXSTYLE); SetWindowLong(h, GWL_EXSTYLE, exStyle | WS_EX_LAYERED); SetLayeredWindowAttributes(h, 0, alpha, LWA_ALPHA); } public static void SetTitle(IntPtr h, string title) { if(!IsWindow(h)) throw new InvalidOperationException("WINDOW_SET_TITLE_WINDOW_NOT_FOUND"); if(!SetWindowText(h, title)) throw new InvalidOperationException("WINDOW_SET_TITLE_WIN32_ERROR:" + Marshal.GetLastWin32Error()); } public static void SendText(IntPtr h, string text) { if(!IsWindow(h)) throw new InvalidOperationException("WINDOW_SEND_TEXT_WINDOW_NOT_FOUND"); foreach(char c in text) { if(c == '\\r') continue; int code = (c == '\\n') ? 13 : (int)c; if(!PostMessage(h, WM_CHAR, new IntPtr(code), IntPtr.Zero)) throw new InvalidOperationException("WINDOW_SEND_TEXT_WIN32_ERROR:" + Marshal.GetLastWin32Error()); System.Threading.Thread.Sleep(2); } } }
+using System; using System.Runtime.InteropServices; using System.Text; public class WindowHelper { [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd); [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow); [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int W, int H, bool repaint); [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd); [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam); [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId); [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow(); [DllImport("user32.dll")] public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach); [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr hWnd); [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId(); [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo); [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags); [DllImport("user32.dll")] public static extern bool SetLayeredWindowAttributes(IntPtr hwnd, uint crKey, byte bAlpha, uint dwFlags); [DllImport("user32.dll")] public static extern int GetWindowLong(IntPtr hWnd, int nIndex); [DllImport("user32.dll")] public static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong); [DllImport("user32.dll", CharSet=CharSet.Unicode, SetLastError=true)] public static extern bool SetWindowText(IntPtr hWnd, string lpString); [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr hWnd); [DllImport("user32.dll")] public static extern bool EnumChildWindows(IntPtr hWndParent, EnumChildProc lpEnumFunc, IntPtr lParam); [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount); private delegate bool EnumChildProc(IntPtr hWnd, IntPtr lParam); private const int SW_RESTORE = 9; private const int SW_MINIMIZE = 6; private const int SW_MAXIMIZE = 3; private const int SW_SHOW = 5; private const byte VK_MENU = 0x12; private const uint KEYEVENTF_EXTENDEDKEY = 0x0001; private const uint KEYEVENTF_KEYUP = 0x0002; private const uint WM_CHAR = 0x0102; private static readonly IntPtr HWND_TOPMOST = new IntPtr(-1); private static readonly IntPtr HWND_NOTOPMOST = new IntPtr(-2); private const uint SWP_NOMOVE = 0x0002; private const uint SWP_NOSIZE = 0x0001; private const int GWL_EXSTYLE = -20; private const int WS_EX_LAYERED = 0x80000; private const uint LWA_ALPHA = 0x02; private static IntPtr FindEditChild(IntPtr h) { IntPtr target = IntPtr.Zero; EnumChildWindows(h, delegate(IntPtr child, IntPtr lParam) { StringBuilder className = new StringBuilder(256); GetClassName(child, className, className.Capacity); if(className.ToString().IndexOf("EDIT", StringComparison.OrdinalIgnoreCase) >= 0) { target = child; return false; } return true; }, IntPtr.Zero); return target; } public static void Focus(IntPtr h) { if(IsIconic(h)) ShowWindow(h, SW_RESTORE); ShowWindow(h, SW_SHOW); IntPtr fg = GetForegroundWindow(); if(fg == h) return; uint pid1; uint targetThread = GetWindowThreadProcessId(h, out pid1); uint pid2; uint fgThread = (fg != IntPtr.Zero) ? GetWindowThreadProcessId(fg, out pid2) : 0; bool attached = false; try { if(fgThread != 0 && targetThread != fgThread) { attached = AttachThreadInput(fgThread, targetThread, true); } BringWindowToTop(h); SetForegroundWindow(h); } finally { if(attached) AttachThreadInput(fgThread, targetThread, false); } if(GetForegroundWindow() != h) { keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY, UIntPtr.Zero); keybd_event(VK_MENU, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, UIntPtr.Zero); SetForegroundWindow(h); } } public static void Move(IntPtr h,int x,int y,int w,int ht) { MoveWindow(h,x,y,w,ht,true); } public static void Minimize(IntPtr h) { ShowWindow(h,SW_MINIMIZE); } public static void Maximize(IntPtr h) { ShowWindow(h,SW_MAXIMIZE); } public static void Restore(IntPtr h) { ShowWindow(h,SW_RESTORE); } public static void Close(IntPtr h) { PostMessage(h,0x0010,IntPtr.Zero,IntPtr.Zero); } public static void SetTopmost(IntPtr h, bool topmost) { SetWindowPos(h, topmost ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE); } public static void SetOpacity(IntPtr h, byte alpha) { int exStyle = GetWindowLong(h, GWL_EXSTYLE); SetWindowLong(h, GWL_EXSTYLE, exStyle | WS_EX_LAYERED); SetLayeredWindowAttributes(h, 0, alpha, LWA_ALPHA); } public static void SetTitle(IntPtr h, string title) { if(!IsWindow(h)) throw new InvalidOperationException("WINDOW_SET_TITLE_WINDOW_NOT_FOUND"); if(!SetWindowText(h, title)) throw new InvalidOperationException("WINDOW_SET_TITLE_WIN32_ERROR:" + Marshal.GetLastWin32Error()); } public static void SendText(IntPtr h, string text) { if(!IsWindow(h)) throw new InvalidOperationException("WINDOW_SEND_TEXT_WINDOW_NOT_FOUND"); IntPtr target = FindEditChild(h); if(target == IntPtr.Zero) throw new InvalidOperationException("WINDOW_SEND_TEXT_NO_EDIT_CHILD"); foreach(char c in text) { if(c == '\\r') continue; int code = (c == '\\n') ? 13 : (int)c; if(!PostMessage(target, WM_CHAR, new IntPtr(code), IntPtr.Zero)) throw new InvalidOperationException("WINDOW_SEND_TEXT_WIN32_ERROR:" + Marshal.GetLastWin32Error()); System.Threading.Thread.Sleep(2); } } }
 "@`
 
   private static readonly HELPER_SEND_INPUT = `Add-Type @"
@@ -159,6 +169,100 @@ public class TextInputHelper {
   }
 }
 "@`
+
+  private static readonly HELPER_EDIT_TEXT_INJECTION = `Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Reflection;
+
+public class EditTextInjectionHelper {
+  [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr hWnd);
+  [DllImport("user32.dll")] private static extern bool EnumChildWindows(IntPtr hWndParent, EnumChildProc lpEnumFunc, IntPtr lParam);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] private static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+  [DllImport("user32.dll")] private static extern IntPtr SetFocus(IntPtr hWnd);
+  [DllImport("user32.dll", SetLastError=true)] private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode, SetLastError=true)] private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, StringBuilder lParam);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode, SetLastError=true)] private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, string lParam);
+
+  public delegate bool EnumChildProc(IntPtr hWnd, IntPtr lParam);
+  private const uint WM_PASTE = 0x0302;
+  private const uint WM_CHAR = 0x0102;
+  private const uint WM_GETTEXT = 0x000D;
+  private const uint WM_GETTEXTLENGTH = 0x000E;
+  private const uint WM_SETTEXT = 0x000C;
+
+  private static IntPtr FindEditChild(IntPtr owner) {
+    IntPtr target = IntPtr.Zero;
+    EnumChildWindows(owner, delegate(IntPtr child, IntPtr lParam) {
+      StringBuilder className = new StringBuilder(256);
+      GetClassName(child, className, className.Capacity);
+      if (className.ToString().IndexOf("EDIT", StringComparison.OrdinalIgnoreCase) >= 0) {
+        target = child;
+        return false;
+      }
+      return true;
+    }, IntPtr.Zero);
+    return target;
+  }
+
+  private static string ReadWindowText(IntPtr hWnd) {
+    int length = Math.Max(0, SendMessage(hWnd, WM_GETTEXTLENGTH, IntPtr.Zero, IntPtr.Zero).ToInt32());
+    StringBuilder value = new StringBuilder(Math.Max(length + 1, 1));
+    SendMessage(hWnd, WM_GETTEXT, new IntPtr(value.Capacity), value);
+    return value.ToString();
+  }
+
+  private static bool WaitForTextSuffix(IntPtr hWnd, string text) {
+    for (int attempt = 0; attempt < 20; attempt++) {
+      System.Threading.Thread.Sleep(50);
+      if (ReadWindowText(hWnd).EndsWith(text, StringComparison.Ordinal)) return true;
+    }
+    return false;
+  }
+
+  public static void SendText(IntPtr owner, string text) {
+    if (!IsWindow(owner)) throw new InvalidOperationException("WINDOW_SEND_TEXT_WINDOW_NOT_FOUND");
+    IntPtr target = FindEditChild(owner);
+    if (target == IntPtr.Zero) throw new InvalidOperationException("WINDOW_SEND_TEXT_NO_EDIT_CHILD");
+
+    SetFocus(target);
+    System.Threading.Thread.Sleep(40);
+
+    foreach (char c in text) {
+      if (c == '\\r') continue;
+      int code = (c == '\\n') ? 13 : (int)c;
+      SendMessage(target, WM_CHAR, new IntPtr(code), new IntPtr(1));
+      System.Threading.Thread.Sleep(2);
+    }
+
+    if (!WaitForTextSuffix(target, text)) {
+      throw new InvalidOperationException("WINDOW_SEND_TEXT_VERIFY_FAILED");
+    }
+  }
+
+  public static void PasteText(IntPtr owner, string text) {
+    if (!IsWindow(owner)) throw new InvalidOperationException("WINDOW_SEND_TEXT_WINDOW_NOT_FOUND");
+    IntPtr target = FindEditChild(owner);
+    if (target == IntPtr.Zero) throw new InvalidOperationException("WINDOW_SEND_TEXT_NO_EDIT_CHILD");
+
+    SetFocus(target);
+    System.Threading.Thread.Sleep(40);
+    Type shellType = Type.GetTypeFromProgID("WScript.Shell");
+    if (shellType == null) throw new InvalidOperationException("WINDOW_SEND_TEXT_SENDKEYS_UNAVAILABLE");
+    object shell = Activator.CreateInstance(shellType);
+    shell.GetType().InvokeMember("SendKeys", BindingFlags.InvokeMethod, null, shell, new object[] { "^v" });
+    if (!WaitForTextSuffix(target, text)) {
+      throw new InvalidOperationException("WINDOW_SEND_TEXT_VERIFY_FAILED");
+    }
+  }
+}
+"@`
+
+  private static readonly HELPER_WINDOW_ACTIONS = WindowManager.HELPER_ADD_TYPE.replace(
+    'private delegate bool EnumChildProc',
+    'public delegate bool EnumChildProc'
+  )
 
   // scanWindows 用的 C# 代码块（缓存避免源码重复；PowerShell 每次仍是新进程）
   private static readonly HELPER_WINDOW_ENUMERATOR = `Add-Type @"
@@ -247,7 +351,7 @@ public class WindowEnumerator {
       timeoutMs?: number
     }
   ): Promise<T> {
-    const script = `$OutputEncoding = [System.Text.Encoding]::UTF8; [Console]::OutputEncoding = [System.Text.Encoding]::UTF8; ${WindowManager.HELPER_ADD_TYPE}; ${helperCommand}`
+    const script = `$OutputEncoding = [System.Text.Encoding]::UTF8; [Console]::OutputEncoding = [System.Text.Encoding]::UTF8; ${WindowManager.HELPER_WINDOW_ACTIONS}; ${helperCommand}`
     return this.executePowerShell(script, options)
   }
 
@@ -404,6 +508,56 @@ public class WindowEnumerator {
 
   private cloneRect(rect: WindowInfo['rect']): WindowInfo['rect'] {
     return { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+  }
+
+  private getDisplayScaleFactor(display: Display): number {
+    return Number.isFinite(display.scaleFactor) && display.scaleFactor > 0 ? display.scaleFactor : 1
+  }
+
+  private findOwnedBrowserWindowByHwnd(hwnd: number): BrowserWindow | null {
+    const cachedTitle = this.windows.get(hwnd)?.title ?? null
+    return BrowserWindow.getAllWindows().find((candidate) => {
+      if (candidate.isDestroyed()) return false
+      if (readNativeWindowHandleValue(candidate.getNativeWindowHandle()) === hwnd) return true
+      return cachedTitle !== null && candidate.getTitle() === cachedTitle
+    }) ?? null
+  }
+
+  private getPhysicalDisplayBounds(display: Display): WindowInfo['rect'] {
+    const scaleFactor = this.getDisplayScaleFactor(display)
+    return {
+      x: Math.round(display.bounds.x * scaleFactor),
+      y: Math.round(display.bounds.y * scaleFactor),
+      width: Math.round(display.bounds.width * scaleFactor),
+      height: Math.round(display.bounds.height * scaleFactor)
+    }
+  }
+
+  private getDisplayForNativeRect(rect: WindowInfo['rect']): Display {
+    const displays = screen.getAllDisplays()
+    const primaryDisplay = screen.getPrimaryDisplay()
+    const centerX = rect.x + rect.width / 2
+    const centerY = rect.y + rect.height / 2
+    return displays.find(display => {
+      const bounds = this.getPhysicalDisplayBounds(display)
+      return centerX >= bounds.x &&
+        centerX <= bounds.x + bounds.width &&
+        centerY >= bounds.y &&
+        centerY <= bounds.y + bounds.height
+    }) ?? primaryDisplay
+  }
+
+  private normalizeNativeRect(rect: WindowInfo['rect']): WindowInfo['rect'] {
+    const display = this.getDisplayForNativeRect(rect)
+    const scaleFactor = this.getDisplayScaleFactor(display)
+    if (scaleFactor === 1) return this.cloneRect(rect)
+    const physicalBounds = this.getPhysicalDisplayBounds(display)
+    return {
+      x: Math.round(display.bounds.x + ((rect.x - physicalBounds.x) / scaleFactor)),
+      y: Math.round(display.bounds.y + ((rect.y - physicalBounds.y) / scaleFactor)),
+      width: Math.max(0, Math.round(rect.width / scaleFactor)),
+      height: Math.max(0, Math.round(rect.height / scaleFactor))
+    }
   }
 
   private hydrateSnapshot(snapshot: WindowLayoutSnapshot, restorePoint: boolean): WindowLayoutSnapshot {
@@ -718,7 +872,7 @@ ${WindowManager.HELPER_WINDOW_ENUMERATOR}
           processName: pidNameMap.get(pw.pid) || `PID:${pw.pid}`,
           pid: pw.pid,
           className: pw.className,
-          rect: { x: pw.x, y: pw.y, width: pw.width, height: pw.height },
+          rect: this.normalizeNativeRect({ x: pw.x, y: pw.y, width: pw.width, height: pw.height }),
           isVisible: true,
           isMinimized: pw.isMinimized,
           isSystemWindow: isSystem
@@ -818,7 +972,7 @@ ${WindowManager.HELPER_WINDOW_ENUMERATOR}
     const script = [
       '$OutputEncoding = [System.Text.Encoding]::UTF8',
       '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8',
-      WindowManager.HELPER_ADD_TYPE,
+      WindowManager.HELPER_WINDOW_ACTIONS,
       `$hwnds = @(${validHwnds.join(',')})`,
       `foreach($hwnd in $hwnds){ try { [WindowHelper]::Focus([IntPtr]$hwnd); Write-Output "$hwnd|ok"; Start-Sleep -Milliseconds ${safeIntervalMs} } catch { $message = ($_.Exception.Message -replace '[\\r\\n|]+',' '); Write-Output "$hwnd|failed|$message" } }`
     ].join('; ')
@@ -1412,6 +1566,32 @@ ${WindowManager.HELPER_WINDOW_ENUMERATOR}
     const screenshotDirectory = join(app.getPath('userData'), 'window-screenshots')
     const screenshotPath = join(screenshotDirectory, `window-${Math.floor(hwnd)}-${createdAt}.png`)
 
+    const ownedBrowserWindow = this.findOwnedBrowserWindowByHwnd(hwnd)
+    if (ownedBrowserWindow) {
+      try {
+        await mkdir(screenshotDirectory, { recursive: true })
+        const image = await ownedBrowserWindow.webContents.capturePage()
+        if (!image.isEmpty()) {
+          await writeFile(screenshotPath, image.toPNG())
+          const imageSize = image.getSize()
+          return {
+            success: true,
+            data: {
+              hwnd,
+              path: screenshotPath,
+              directory: screenshotDirectory,
+              width: imageSize.width > 0 ? imageSize.width : windowInfo.rect.width,
+              height: imageSize.height > 0 ? imageSize.height : windowInfo.rect.height,
+              createdAt,
+              source: 'electron-capture-page'
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('electron BrowserWindow screenshot fallback failed:', error instanceof Error ? error.message : 'Unknown error')
+      }
+    }
+
     try {
       await mkdir(screenshotDirectory, { recursive: true })
       const script = `Add-Type -AssemblyName System.Drawing
@@ -1553,15 +1733,69 @@ try {
     }
 
     const safeHwnd = Math.floor(Number(hwnd))
+    let electronDomMessage = ''
+    const ownedBrowserWindow = this.findOwnedBrowserWindowByHwnd(safeHwnd)
+    if (ownedBrowserWindow) {
+      try {
+        ownedBrowserWindow.show()
+        ownedBrowserWindow.focus()
+        ownedBrowserWindow.webContents.focus()
+        const injected = await ownedBrowserWindow.webContents.executeJavaScript(`
+(() => {
+  const text = ${JSON.stringify(normalizedText)};
+  const isTextControl = (element) => element instanceof HTMLTextAreaElement || element instanceof HTMLInputElement;
+  const candidate = isTextControl(document.activeElement)
+    ? document.activeElement
+    : document.querySelector('textarea,input');
+  if (!isTextControl(candidate)) return false;
+  candidate.focus();
+  const value = candidate.value;
+  const start = typeof candidate.selectionStart === 'number' ? candidate.selectionStart : value.length;
+  const end = typeof candidate.selectionEnd === 'number' ? candidate.selectionEnd : value.length;
+  const nextValue = value.slice(0, start) + text + value.slice(end);
+  candidate.value = nextValue;
+  const cursor = start + text.length;
+  candidate.selectionStart = cursor;
+  candidate.selectionEnd = cursor;
+  candidate.dispatchEvent(new InputEvent('input', { bubbles: true, data: text, inputType: 'insertText' }));
+  candidate.dispatchEvent(new Event('change', { bubbles: true }));
+  return candidate.value === nextValue && candidate.value.includes(text);
+})()
+        `.trim(), true)
+        if (injected === true) {
+          return {
+            success: true,
+            data: {
+              characters: Array.from(normalizedText).length,
+              mode: 'electron-dom'
+            }
+          }
+        }
+        electronDomMessage = 'E_ELECTRON_DOM_TARGET_NOT_EDITABLE'
+      } catch (electronDomError) {
+        electronDomMessage = electronDomError instanceof Error ? electronDomError.message : 'Electron DOM injection failed'
+      }
+    }
+
     let clipboardPasteMessage = ''
     try {
+      const escapedText = escapePowerShellSingleQuotedString(normalizedText)
       const previousClipboardText = clipboard.readText()
       clipboard.writeText(normalizedText)
       try {
-        await this.executeWindowHelper(
-          `[WindowHelper]::Focus([IntPtr]${safeHwnd}); Start-Sleep -Milliseconds 200; $wshell = New-Object -ComObject wscript.shell; $wshell.SendKeys('^v'); Start-Sleep -Milliseconds 120`,
-          { label: 'send-text-to-window-clipboard-paste' }
-        )
+        const pasteScript = [
+          '$OutputEncoding = [System.Text.Encoding]::UTF8',
+          '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8',
+          WindowManager.HELPER_WINDOW_ACTIONS,
+          WindowManager.HELPER_EDIT_TEXT_INJECTION,
+          `[WindowHelper]::Focus([IntPtr]${safeHwnd})`,
+          'Start-Sleep -Milliseconds 200',
+          `[EditTextInjectionHelper]::PasteText([IntPtr]${safeHwnd}, '${escapedText}')`
+        ].join('; ')
+        await this.executePowerShell(pasteScript, {
+          label: 'send-text-to-window-clipboard-paste',
+          timeoutMs: Math.max(15000, normalizedText.length * 20)
+        })
       } finally {
         clipboard.writeText(previousClipboardText)
       }
@@ -1576,12 +1810,40 @@ try {
       clipboardPasteMessage = clipboardPasteError instanceof Error ? clipboardPasteError.message : 'Clipboard paste failed'
     }
 
+    let wmCharMessage = ''
+    try {
+      const escapedText = escapePowerShellSingleQuotedString(normalizedText)
+      const editControlScript = [
+        '$OutputEncoding = [System.Text.Encoding]::UTF8',
+        '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8',
+        WindowManager.HELPER_WINDOW_ACTIONS,
+        WindowManager.HELPER_EDIT_TEXT_INJECTION,
+        `[WindowHelper]::Focus([IntPtr]${safeHwnd})`,
+        'Start-Sleep -Milliseconds 120',
+        `[EditTextInjectionHelper]::SendText([IntPtr]${safeHwnd}, '${escapedText}')`
+      ].join('; ')
+      await this.executePowerShell(editControlScript, {
+        label: 'send-text-to-window-wm-char',
+        timeoutMs: Math.max(15000, normalizedText.length * 20)
+      })
+      return {
+        success: true,
+        data: {
+          characters: Array.from(normalizedText).length,
+          mode: 'wm-char'
+        }
+      }
+    } catch (wmCharError) {
+      wmCharMessage = wmCharError instanceof Error ? wmCharError.message : 'WM_CHAR failed'
+    }
+
+    let sendInputMessage = ''
     try {
       const escapedText = escapePowerShellSingleQuotedString(normalizedText)
       const sendInputScript = [
         '$OutputEncoding = [System.Text.Encoding]::UTF8',
         '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8',
-        WindowManager.HELPER_ADD_TYPE,
+        WindowManager.HELPER_WINDOW_ACTIONS,
         WindowManager.HELPER_SEND_INPUT,
         `[WindowHelper]::Focus([IntPtr]${safeHwnd})`,
         'Start-Sleep -Milliseconds 120',
@@ -1599,26 +1861,11 @@ try {
         }
       }
     } catch (sendInputError) {
-      const escapedText = escapePowerShellSingleQuotedString(normalizedText)
-      try {
-        await this.executeWindowHelper(
-          `[WindowHelper]::Focus([IntPtr]${safeHwnd}); Start-Sleep -Milliseconds 120; [WindowHelper]::SendText([IntPtr]${safeHwnd}, '${escapedText}')`,
-          { label: 'send-text-to-window-fallback' }
-        )
-        return {
-          success: true,
-          data: {
-            characters: Array.from(normalizedText).length,
-            mode: 'wm-char'
-          }
-        }
-      } catch (wmCharError) {
-        const sendInputMessage = sendInputError instanceof Error ? sendInputError.message : 'SendInput failed'
-        const wmCharMessage = wmCharError instanceof Error ? wmCharError.message : 'WM_CHAR failed'
-        console.error('sendTextToWindow failed:', `${clipboardPasteMessage}; ${sendInputMessage}; ${wmCharMessage}`)
-        return { success: false, error: `ClipboardPaste: ${clipboardPasteMessage}; SendInput: ${sendInputMessage}; WM_CHAR: ${wmCharMessage}` }
-      }
+      sendInputMessage = sendInputError instanceof Error ? sendInputError.message : 'SendInput failed'
     }
+
+    console.error('sendTextToWindow failed:', `${electronDomMessage}; ${clipboardPasteMessage}; ${wmCharMessage}; ${sendInputMessage}`)
+    return { success: false, error: `ElectronDOM: ${electronDomMessage || 'not an owned BrowserWindow'}; ClipboardPaste: ${clipboardPasteMessage}; WM_CHAR: ${wmCharMessage}; SendInput: ${sendInputMessage}` }
   }
 
   /** Tile all specified windows equally across the primary screen */

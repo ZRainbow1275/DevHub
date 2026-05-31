@@ -222,16 +222,16 @@ export const AttachedGraphView = memo(function AttachedGraphView({ scope, classN
         </div>
       )}
       {thumbnailMode && (
-        <details data-testid="attached-mini-thumbnail" className="border-b border-surface-800 bg-surface-900/60 px-3 py-2 text-[10px] text-text-muted">
+        <details data-testid="attached-mini-thumbnail" className="sticky bottom-16 z-[80] scroll-mb-24 border-b border-surface-800 bg-surface-900/60 px-3 py-2 text-[10px] text-text-muted">
           <summary className="cursor-pointer text-text-secondary">Mini thumbnail mode is active below 480px. Expand attached card.</summary>
-          <div data-testid="attached-mini-expanded-card" className="mt-2 flex items-center justify-between gap-2 border border-surface-700 bg-surface-950 p-2 text-text-muted radius-sm">
+          <div data-testid="attached-mini-expanded-card" className="relative z-[90] mt-2 flex items-center justify-between gap-2 border border-surface-700 bg-surface-950 p-2 text-text-muted radius-sm">
             <span>{statsLabel(snapshot, graph)}</span>
             <button
               type="button"
               data-testid="attached-mini-popout-button"
               aria-label={t('monitor.attached.expandFloatingCard', 'Expand attached mini topology floating card')}
               onClick={() => setMiniFloatingOpen(true)}
-              className="btn-secondary px-2 py-1 text-[10px]"
+              className="btn-secondary relative z-[100] shrink-0 scroll-mb-24 whitespace-nowrap px-2 py-1 text-[10px]"
             >
               {t('monitor.attached.expandFloatingCardShort', 'Expand floating card')}
             </button>

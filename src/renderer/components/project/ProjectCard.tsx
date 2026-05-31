@@ -233,15 +233,15 @@ export const ProjectCard = memo(function ProjectCard({
           ${isRunning ? 'card-running' : ''}
           ${isError ? 'card-error' : ''}
         `}
-        style={{ minWidth: 'var(--project-card-min-width, 240px)' }}
+        style={{ minWidth: 'var(--project-card-min-width, 16rem)' }}
         data-testid="project-card"
         data-project-status={project.status}
       >
         <ThemeDecoration config={decorationConfig} position="card-background" />
-        <div className="project-card-layout relative z-10 flex items-start justify-between gap-4">
+        <div className="project-card-layout relative z-10 flex items-start justify-between gap-4 flex-wrap">
           {/* Left: Project Info */}
           <div className="project-card-main flex-1 min-w-0">
-            <div className="project-card-title-row flex items-center gap-3">
+            <div className="project-card-title-row flex items-center gap-2 min-w-0 flex-wrap">
               {/* Status indicator */}
               <span
                 className={`project-card-status-dot w-2.5 h-2.5 flex-shrink-0 ${
@@ -253,15 +253,14 @@ export const ProjectCard = memo(function ProjectCard({
                 } radius-sm`}
               />
               <h3
-                className="project-card-title text-sm font-semibold text-text-primary truncate"
-                style={{ minWidth: '9rem', maxWidth: '100%' }}
+                className="project-card-title text-sm font-semibold text-text-primary truncate flex-1 min-w-0"
                 title={project.name}
               >
                 {project.name}
               </h3>
               <ProjectTypeBadge type={project.projectType} />
               {isRunning && (
-                <span className="status-badge status-badge-running">
+                <span className="status-badge status-badge-running flex-shrink-0 whitespace-nowrap">
                   运行中
                 </span>
               )}
@@ -278,7 +277,7 @@ export const ProjectCard = memo(function ProjectCard({
                 {gitInfo && (
                   <span className="flex items-center gap-1 text-[11px] text-text-secondary">
                     <GitBranchIcon size={12} className="text-accent flex-shrink-0" />
-                    <span className="truncate max-w-[120px]" title={gitInfo.branch}>{gitInfo.branch}</span>
+                    <span className="truncate max-w-[12ch]" title={gitInfo.branch}>{gitInfo.branch}</span>
                     {gitInfo.uncommittedCount > 0 && (
                       <span className="text-warning">+{gitInfo.uncommittedCount}</span>
                     )}
@@ -324,22 +323,22 @@ export const ProjectCard = memo(function ProjectCard({
           </div>
 
           {/* Right: Actions */}
-          <div className="project-card-actions flex items-center gap-2 action-group flex-shrink-0">
-            <div className="project-card-open-split inline-flex items-stretch radius-sm overflow-hidden">
+          <div className="project-card-actions flex items-center gap-2 action-group flex-wrap flex-shrink-0">
+            <div className="project-card-open-split inline-flex items-stretch radius-sm">
               <button
                 onClick={handleOpenFolderClick}
-                className="px-3 py-1.5 text-xs font-medium bg-surface-800 text-text-secondary hover:bg-surface-700 hover:text-text-primary transition-colors border-l-2 border-accent/60"
+                className="px-3 py-1.5 text-xs font-medium bg-surface-800 text-text-secondary hover:bg-surface-700 hover:text-text-primary transition-colors border-l-2 border-accent/60 rounded-l-sm"
                 title="在资源管理器打开"
                 data-testid="project-open-button"
               >
-                <span className="project-card-open-label inline-flex items-center gap-1.5">
+                <span className="project-card-open-label inline-flex items-center gap-1.5 whitespace-nowrap">
                   <ExternalLinkIcon size={14} />
                   打开
                 </span>
               </button>
               <button
                 onClick={handleOpenMenu}
-                className="px-1.5 py-1.5 text-xs font-medium bg-surface-800 text-text-secondary hover:bg-surface-700 hover:text-text-primary transition-colors border-l border-surface-700"
+                className="px-1.5 py-1.5 text-xs font-medium bg-surface-800 text-text-secondary hover:bg-surface-700 hover:text-text-primary transition-colors border-l border-surface-700 rounded-r-sm"
                 title="更多打开方式"
                 aria-label="更多打开方式"
                 data-testid="project-open-chevron"

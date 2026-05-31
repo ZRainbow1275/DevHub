@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
-import DatabaseConstructor, { type Database as DatabaseHandle } from 'better-sqlite3'
+import type { Database as DatabaseHandle } from 'better-sqlite3'
+import { loadBetterSqlite } from '../sqlite/betterSqliteLoader'
 import type { RecordingEvent, RecordingManifest } from '@shared/schemas/recording'
 import { flowNodeSchema, type FlowNode } from '@shared/schemas/flow'
 import type { AuditEntry } from '../AuditLogger'
@@ -238,6 +239,7 @@ export class FlowEventCollector {
     if (!this.options.dbPath) return null
     try {
       mkdirSync(dirname(this.options.dbPath), { recursive: true })
+      const DatabaseConstructor = loadBetterSqlite()
       const db = new DatabaseConstructor(this.options.dbPath)
       db.pragma('journal_mode = WAL')
       db.exec(`

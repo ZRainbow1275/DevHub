@@ -73,7 +73,8 @@ export function NotificationCenter() {
       <button
         ref={triggerRef}
         type="button"
-        aria-label={t('notify.center.open', 'Open notification center')}
+        title="通知中心"
+        aria-label="通知中心"
         aria-expanded={open}
         aria-haspopup="dialog"
         className="relative flex h-9 w-9 items-center justify-center text-text-tertiary hover:bg-surface-800 hover:text-text-primary transition-colors no-drag"

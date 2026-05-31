@@ -521,6 +521,7 @@ interface R8RuntimeStoreShape {
   drawers?: unknown[]
   drawerLayouts?: Record<string, unknown>
   dashboardLayouts?: Record<string, unknown>
+  drawerLayoutVersion?: unknown
   featureOverrides?: Record<string, boolean>
   injectWhitelist?: unknown[]
   notifications?: unknown[]
@@ -598,7 +599,8 @@ interface ClosedPopoutRssReleaseResult {
   dueAt: number
   checkedAt: number
 }
-const BROWSER_POPOUT_LIMIT = 8
+const BROWSER_POPOUT_LIMIT = 10
+const PANEL_POPOUT_SURFACES = new Set(['process', 'window', 'dashboard', 'topology', 'r8-ops'])
 const BROWSER_POPOUT_HEARTBEAT_TIMEOUT_MS = 30_000
 const BROWSER_POPOUT_IDLE_AUTO_CLOSE_MS = 60 * 60_000
 const BROWSER_POPOUT_RSS_MONITOR_INTERVAL_MS = 5_000
@@ -644,6 +646,7 @@ type DrawerLayoutRecord = ReturnType<typeof drawerLayoutRecordSchema.parse>
 type DashboardLayout = ReturnType<typeof dashboardLayoutSchema.parse>
 type DashboardGridItem = ReturnType<typeof dashboardGridItemSchema.parse>
 const DRAWER_SLOTS: DrawerSlot[] = ['top', 'right', 'bottom', 'floating', 'statusbar']
+const DRAWER_LAYOUT_CURRENT_VERSION = '2'
 const DRAWER_SLOT_DEFAULTS: Record<DrawerSlot, Pick<DrawerState, 'contentId' | 'height' | 'open' | 'pinned' | 'scope' | 'size' | 'width' | 'zIndex'>> = {
   top: { contentId: 'notifications.top', height: 80, open: false, pinned: false, scope: 'global', size: 80, zIndex: 2000 },
   right: { contentId: 'monitor.port-detail', open: false, pinned: false, scope: 'monitor', size: 360, width: 360, zIndex: 2010 },
@@ -762,7 +765,7 @@ const ON_FAIL_SKILL_MAX_TIMEOUT_MS = 60_000
 const ON_FAIL_SKILL_MAX_BUFFER_BYTES = 1_048_576
 const SKILL_READ_ONLY_PERMISSIONS = new Set(['fs-read'])
 const SKILL_READ_WRITE_PERMISSIONS = new Set(['fs-read', 'fs-write'])
-const CLI_VERSION_PROBE_TIMEOUT_MS = 3_000
+const CLI_VERSION_PROBE_TIMEOUT_MS = 10_000
 const GEMINI_LOW_MATCH_WARN_MIN_LINES = 5
 const GEMINI_LOW_MATCH_WARN_MAX_MATCH_RATIO = 0.5
 const GEMINI_STDOUT_TIMEOUT_MS = 30_000
@@ -1273,6 +1276,7 @@ export class R8RuntimeService {
     strictMode: () => this.getInjectStrictModeConfig(),
     countdown: () => this.getInjectCountdownConfig()
   })
+
   private readonly injectService = new InjectService({
     store: this.store as unknown as InjectAuditStore,
     nativeTyper: this.nutJsAdapter,
@@ -1771,6 +1775,18 @@ export class R8RuntimeService {
     this.reapStalePopouts()
     this.closeIdlePopouts()
     if (request.mode === 'browserwindow') {
+      if (PANEL_POPOUT_SURFACES.has(request.surface)) {
+        const existingPanelPopout = this.findLiveBrowserPopout(popout => (
+          popout.mode === 'browserwindow'
+          && popout.surface === request.surface
+          && popout.targetId === request.targetId
+        ))
+        if (existingPanelPopout) {
+          this.focusPopoutWindow(existingPanelPopout.windowId)
+          this.touchPopoutInteraction(existingPanelPopout.windowId)
+          return this.listPopouts().find(popout => popout.windowId === existingPanelPopout.windowId) ?? existingPanelPopout
+        }
+      }
       const liveBrowserPopouts = this.listPopouts().filter(popout => popout.mode === 'browserwindow' && this.isLivePopout(popout))
       if (liveBrowserPopouts.length >= BROWSER_POPOUT_LIMIT) throw new Error('E_RATE_LIMITED:popout browserwindow limit reached')
     }
@@ -1779,7 +1795,7 @@ export class R8RuntimeService {
     const windowId = `popout-${randomUUID()}`
     const title = request.title ?? `DevHub ${request.surface} ${String(request.targetId)}`
     const displayId = request.bounds ? this.resolveDisplayIdForBounds(request.bounds, screen.getAllDisplays()) : null
-    const record = browserPopoutSchema.parse({
+    let record = browserPopoutSchema.parse({
       windowId,
       surface: request.surface,
       targetId: request.targetId,
@@ -1794,6 +1810,11 @@ export class R8RuntimeService {
       ...(displayId === null ? {} : { displayId }),
       bridgeState: 'pending'
     })
+    const upsertPopoutRecord = (nextRecord: PopoutRecord) => {
+      const popouts = this.listPopouts().filter(popout => popout.windowId !== windowId)
+      popouts.push(nextRecord)
+      this.store.set('popouts', popouts)
+    }
 
     if (request.mode === 'browserwindow') {
       const popoutWindow = this.createBrowserPopout(record)
@@ -1802,13 +1823,25 @@ export class R8RuntimeService {
         this.popoutWindows.delete(windowId)
         this.updatePopoutBridgeState(windowId, 'closed')
       })
-      await this.loadPopoutWindow(popoutWindow, record)
-      record.bridgeState = 'connected'
+      upsertPopoutRecord(record)
+      try {
+        await this.loadPopoutWindow(popoutWindow, record)
+        const latestRecord = this.listPopouts().find(popout => popout.windowId === windowId)
+        record = browserPopoutSchema.parse({
+          ...(latestRecord ?? record),
+          bridgeState: 'connected'
+        })
+        upsertPopoutRecord(record)
+      } catch (error) {
+        this.popoutWindows.delete(windowId)
+        this.store.set('popouts', this.listPopouts().filter(popout => popout.windowId !== windowId))
+        if (!popoutWindow.isDestroyed()) popoutWindow.close()
+        throw error
+      }
+    } else {
+      upsertPopoutRecord(record)
     }
 
-    const popouts = this.listPopouts().filter(popout => popout.windowId !== windowId)
-    popouts.push(record)
-    this.store.set('popouts', popouts)
     this.syncPopoutRssMonitor()
     return record
   }
@@ -2060,7 +2093,8 @@ export class R8RuntimeService {
       bounds: input.bounds ?? existing?.bounds ?? undefined,
       title: existing?.title ?? 'DevHub Popout'
     })
-    if (input.alwaysOnTop) this.pinPopout({ windowId: popout.windowId, pinned: true })
+    // 0525 R2: "悬浮" always implies setAlwaysOnTop=true
+    this.pinPopout({ windowId: popout.windowId, pinned: true })
     return { success: true, browserPopoutId: popout.windowId, popout }
   }
 
@@ -2672,11 +2706,28 @@ export class R8RuntimeService {
     return DRAWER_SLOTS.map(slot => bySlot.get(slot) ?? this.defaultDrawerState(slot))
   }
 
+  private migrateDrawerStatesIfNeeded(states: DrawerState[]): DrawerState[] {
+    const storedVersion = this.store.get('drawerLayoutVersion')
+    if (storedVersion === DRAWER_LAYOUT_CURRENT_VERSION) {
+      return states
+    }
+
+    const now = Date.now()
+    const migrated = states.map(state => this.normalizeDrawerState({
+      ...state,
+      open: false,
+      updatedAt: now
+    }))
+    this.store.set('drawers', migrated)
+    this.store.set('drawerLayoutVersion', DRAWER_LAYOUT_CURRENT_VERSION)
+    return migrated
+  }
+
   getDrawerState(): DrawerState[] {
     const existing = asArray(this.store.get('drawers', []), item => this.normalizeDrawerState(item))
-    if (existing.length === 0) return DRAWER_SLOTS.map(slot => this.defaultDrawerState(slot))
+    if (existing.length === 0) return this.migrateDrawerStatesIfNeeded(DRAWER_SLOTS.map(slot => this.defaultDrawerState(slot)))
     const bySlot = new Map<DrawerSlot, DrawerState>(existing.map(state => [state.slot, state]))
-    return DRAWER_SLOTS.map(slot => bySlot.get(slot) ?? this.defaultDrawerState(slot))
+    return this.migrateDrawerStatesIfNeeded(DRAWER_SLOTS.map(slot => bySlot.get(slot) ?? this.defaultDrawerState(slot)))
   }
 
   setDrawerState(input: unknown): DrawerState {
@@ -5273,18 +5324,36 @@ export class R8RuntimeService {
 
   async detectTool(input: { tool: string; force?: boolean }): Promise<ToolDetectResult> {
     const tool = this.parseToolName(input.tool)
+    const spec = TOOL_DETECT_COMMANDS[tool]
+    const override = this.getToolOverrides()[tool]
     const cache = this.store.get('toolDetectCache', {}) ?? {}
     const cached = cache[tool]
     if (!input.force && cached) {
       const parsed = toolDetectResultSchema.safeParse(cached)
-      if (parsed.success && Date.now() - parsed.data.checkedAt < 300_000) return parsed.data
+      if (parsed.success && Date.now() - parsed.data.checkedAt < 300_000) {
+        if (parsed.data.found && (!override || (parsed.data.detectStrategy === 'user-override' && parsed.data.path === override))) {
+          return parsed.data
+        }
+      }
+    }
+
+    if (override) {
+      const checkedAt = Date.now()
+      const result = await this.execVersionProbe(override, spec.args, checkedAt, tool, 'user-override')
+      const normalized = toolDetectResultSchema.parse({
+        ...result,
+        recommendedParser: result.found ? spec.parser : null,
+        capabilities: result.found ? spec.capabilities : []
+      })
+      return this.writeToolDetectCache(tool, normalized)
     }
 
     const moduleListResult = this.detectToolFromModuleList(tool)
-    if (moduleListResult) return moduleListResult
+    if (moduleListResult) {
+      this.deleteToolDetectCache(tool)
+      return moduleListResult
+    }
 
-    const spec = TOOL_DETECT_COMMANDS[tool]
-    const override = this.getToolOverrides()[tool]
     const command = override ?? spec.command
     const checkedAt = Date.now()
     const result = await this.execVersionProbe(command, spec.args, checkedAt, tool, override ? 'user-override' : 'path-env')
@@ -5293,9 +5362,7 @@ export class R8RuntimeService {
       recommendedParser: result.found ? spec.parser : null,
       capabilities: result.found ? spec.capabilities : []
     })
-    const latestCache = this.store.get('toolDetectCache', {}) ?? {}
-    this.store.set('toolDetectCache', { ...latestCache, [tool]: normalized })
-    return normalized
+    return this.writeToolDetectCache(tool, normalized)
   }
 
   setToolOverride(input: { tool: string; path: string; confirmedBy?: string }) {
@@ -9681,7 +9748,8 @@ export class R8RuntimeService {
   private createBrowserPopout(record: PopoutRecord): BrowserWindow {
     const isMonitorWindow = this.isMonitorWindow(record)
     const isMonitorToolPopout = this.isMonitorToolPopout(record)
-    const preload = join(__dirname, isMonitorToolPopout ? '../preload/monitor-popout.cjs' : isMonitorWindow ? '../preload/monitor.cjs' : '../preload/port-popout.cjs')
+    const isPanelPopout = this.isPanelPopout(record)
+    const preload = join(__dirname, isPanelPopout ? '../preload/index.cjs' : isMonitorToolPopout ? '../preload/monitor-popout.cjs' : isMonitorWindow ? '../preload/monitor.cjs' : '../preload/port-popout.cjs')
     const isMonitorSurface = record.surface === 'monitor'
     const isPortSurface = record.surface === 'port'
     const browserWindowOptions: BrowserWindowConstructorOptions = {
@@ -9714,7 +9782,7 @@ export class R8RuntimeService {
       }
     }
     const window = new BrowserWindow(browserWindowOptions)
-    if (record.pinned) window.setAlwaysOnTop(true)
+    if (record.pinned || isPanelPopout) window.setAlwaysOnTop(true)
     window.webContents.setWindowOpenHandler(details => {
       void shell.openExternal(details.url)
       return { action: 'deny' }
@@ -9729,17 +9797,17 @@ export class R8RuntimeService {
   }
 
   private async loadPopoutWindow(window: BrowserWindow, record: PopoutRecord): Promise<void> {
-    const query = { r8Popout: record.windowId, surface: record.surface, target: String(record.targetId) }
+    const isPanelPopout = this.isPanelPopout(record)
+    const query: Record<string, string> = { r8Popout: record.windowId, surface: record.surface, target: String(record.targetId) }
+    if (isPanelPopout) query.r8PanelPopout = record.surface
     if (process.env.ELECTRON_RENDERER_URL) {
-      const entry = this.isMonitorToolPopout(record) ? 'monitor-popout.html' : this.isMonitorWindow(record) ? 'monitor.html' : 'port-popout.html'
+      const entry = isPanelPopout ? 'index.html' : this.isMonitorToolPopout(record) ? 'monitor-popout.html' : this.isMonitorWindow(record) ? 'monitor.html' : 'port-popout.html'
       const url = new URL(entry, `${process.env.ELECTRON_RENDERER_URL}/`)
-      url.searchParams.set('r8Popout', query.r8Popout)
-      url.searchParams.set('surface', query.surface)
-      url.searchParams.set('target', query.target)
+      for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value)
       await window.loadURL(url.toString())
       return
     }
-    const rendererEntry = this.isMonitorToolPopout(record) ? '../renderer/monitor-popout.html' : this.isMonitorWindow(record) ? '../renderer/monitor.html' : '../renderer/port-popout.html'
+    const rendererEntry = isPanelPopout ? '../renderer/index.html' : this.isMonitorToolPopout(record) ? '../renderer/monitor-popout.html' : this.isMonitorWindow(record) ? '../renderer/monitor.html' : '../renderer/port-popout.html'
     await window.loadFile(join(__dirname, rendererEntry), { query })
   }
 
@@ -9751,6 +9819,10 @@ export class R8RuntimeService {
     return record.surface === 'monitor'
       && typeof record.targetId === 'string'
       && monitorToolSchema.safeParse(record.targetId).success
+  }
+
+  private isPanelPopout(record: PopoutRecord): boolean {
+    return PANEL_POPOUT_SURFACES.has(record.surface)
   }
 
   private updatePopoutBridgeState(windowId: string, bridgeState: PopoutRecord['bridgeState']): void {
@@ -10564,6 +10636,16 @@ export class R8RuntimeService {
     const nextCache = { ...cache }
     delete nextCache[tool]
     this.store.set('toolDetectCache', nextCache)
+  }
+
+  private writeToolDetectCache(tool: R8ToolName, result: ToolDetectResult): ToolDetectResult {
+    if (!result.found) {
+      this.deleteToolDetectCache(tool)
+      return result
+    }
+    const latestCache = this.store.get('toolDetectCache', {}) ?? {}
+    this.store.set('toolDetectCache', { ...latestCache, [tool]: result })
+    return result
   }
 
   private normalizeCliVersion(output: string): string | null {

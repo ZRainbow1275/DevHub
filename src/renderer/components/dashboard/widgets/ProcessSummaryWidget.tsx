@@ -25,8 +25,8 @@ export default function ProcessSummaryWidget({ item }: DashboardWidgetProps) {
           <ul className="divide-y divide-surface-800 text-xs">
             {topProcesses.map(processInfo => (
               <li className="flex items-center justify-between gap-3 px-3 py-2" key={processInfo.pid}>
-                <span className="truncate text-text-secondary">{processInfo.name}</span>
-                <span className="tabular-nums text-text-muted">{processInfo.cpu.toFixed(1)}%</span>
+                <span className="min-w-0 flex-1 truncate text-text-secondary">{processInfo.name}</span>
+                <span className="shrink-0 whitespace-nowrap tabular-nums text-text-muted">{processInfo.cpu.toFixed(1)}%</span>
               </li>
             ))}
           </ul>

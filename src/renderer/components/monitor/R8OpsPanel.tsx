@@ -7,6 +7,7 @@ import { DagEditorPanel } from '../dag-editor/DagEditorPanel'
 import { RecordingReplayPanel } from '../recording-replay/RecordingReplayPanel'
 import { CsvLaunchWizard } from '../csv/CsvLaunchWizard'
 import { MonitorWindowCards } from './MonitorWindowCards'
+import { PanelDetachButton } from '../popout/PanelDetachButton'
 import { CountdownBadge } from '../permission/CountdownBadge'
 import { BUILTIN_DRAWER_CONTENTS } from '../drawer/drawer-model'
 import { useDrawerStore } from '../../stores/drawerStore'
@@ -442,10 +443,13 @@ export function R8OpsPanel() {
           <h3 className="text-gold font-bold uppercase tracking-wider" style={{ fontFamily: 'var(--font-display)' }}>R8 OPERATIONS</h3>
           <p className="text-sm text-text-muted">R8.B / R8.C 真实契约、Zod、IPC、诊断和禁用接口总览</p>
         </div>
-        <button type="button" onClick={() => { void refresh() }} className="btn-secondary flex items-center gap-2">
-          <RefreshIcon size={14} />
-          刷新
-        </button>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => { void refresh() }} className="btn-secondary flex items-center gap-2">
+            <RefreshIcon size={14} />
+            刷新
+          </button>
+          <PanelDetachButton surface="r8-ops" />
+        </div>
       </div>
 
       {error && <div className="mb-4 border border-warning/50 bg-warning/10 p-3 text-sm text-warning radius-sm">{error}</div>}

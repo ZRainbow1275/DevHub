@@ -50,7 +50,8 @@ export const useDrawerStore = create<DrawerStore>((set, get) => ({
     }
     try {
       const states = await bridge.getState()
-      set({ states: drawerStatesToMap(states), hydrated: true, error: null })
+      const mapped = drawerStatesToMap(states)
+      set({ states: mapped, hydrated: true, error: null })
     } catch (error) {
       set({ hydrated: true, error: toErrorMessage(error) })
     }

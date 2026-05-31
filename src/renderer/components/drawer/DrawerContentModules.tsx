@@ -38,9 +38,9 @@ function normalizeNotification(value: unknown): NotificationLike | null {
 export function RegistryCatalogContent() {
   return (
     <div className="space-y-3" data-r8b-drawer-lazy-content="registry">
-      <div className="flex items-center gap-2 text-sm font-semibold text-text-primary">
-        <InfoIcon size={15} className="text-accent" />
-        Drawer 内容注册表
+      <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-text-primary">
+        <InfoIcon size={15} className="shrink-0 text-accent" />
+        <span className="truncate">Drawer 内容注册表</span>
       </div>
       <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
         {DRAWER_CONTENT_REGISTRY.map(definition => (
@@ -68,10 +68,10 @@ export function NotificationsDrawerContent() {
     <div className="grid gap-2" data-r8b-drawer-lazy-content="notifications.top">
       {items.map(item => (
         <article key={item.id} className="border-l-2 border-accent/70 bg-surface-950 p-3 radius-sm">
-          <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-text-muted">
-            <BellIcon size={12} className="text-accent" />
-            <span>{item.level}</span>
-            <span>{item.source}</span>
+          <div className="flex min-w-0 items-center gap-2 text-[10px] uppercase tracking-wider text-text-muted">
+            <BellIcon size={12} className="shrink-0 text-accent" />
+            <span className="truncate">{item.level}</span>
+            <span className="truncate">{item.source}</span>
           </div>
           <h3 className="mt-1 text-sm font-semibold text-text-primary">{item.title}</h3>
           {item.body && <p className="mt-1 text-xs leading-5 text-text-secondary">{item.body}</p>}
@@ -93,7 +93,7 @@ export function StatusAggregateDrawerContent() {
   return (
     <div className="flex flex-wrap gap-2" data-r8b-drawer-lazy-content="statusbar.aggregate">
       {status.badges.map(badge => (
-        <span key={badge.id} className="border-l-2 border-accent bg-surface-950 px-2 py-1 text-xs text-text-secondary radius-sm">
+        <span key={badge.id} className="inline-flex items-center whitespace-nowrap border-l-2 border-accent bg-surface-950 px-2 py-1 text-xs text-text-secondary radius-sm">
           <span className="uppercase tracking-wider text-text-muted">{badge.label}</span>
           <span className="ml-2 font-mono text-text-primary">{String(badge.value)}</span>
         </span>
@@ -138,16 +138,16 @@ export function PopoutManagerDrawerContent() {
     <div className="grid gap-2" data-r8b-drawer-lazy-content="popout.manager">
       {activePopouts.map(popout => (
         <article key={popout.windowId} className="border-l-2 border-surface-600 bg-surface-950 p-3 radius-sm">
-          <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-text-muted">
-            <WindowIcon size={12} className="text-accent" />
-            <span>{popout.mode}</span>
-            <span>{popout.bridgeState}</span>
+          <div className="flex min-w-0 items-center gap-2 text-[10px] uppercase tracking-wider text-text-muted">
+            <WindowIcon size={12} className="shrink-0 text-accent" />
+            <span className="truncate">{popout.mode}</span>
+            <span className="truncate">{popout.bridgeState}</span>
           </div>
           <h3 className="mt-1 text-sm font-semibold text-text-primary">{popout.title}</h3>
-          <p className="mt-1 text-xs text-text-secondary">{popout.surface} / {String(popout.targetId)}</p>
+          <p className="mt-1 break-all text-xs text-text-secondary">{popout.surface} / {String(popout.targetId)}</p>
           <button
             type="button"
-            className="mt-3 rounded border border-surface-600 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-text-secondary hover:border-accent hover:text-accent disabled:opacity-60"
+            className="mt-3 inline-block self-start whitespace-nowrap rounded border border-surface-600 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-text-secondary hover:border-accent hover:text-accent disabled:opacity-60"
             data-testid={`popout-return-drawer-${popout.windowId}`}
             disabled={returningId === popout.windowId}
             onClick={() => { void returnToDrawer(popout) }}
@@ -167,11 +167,11 @@ export function InjectWhitelistDrawerContent() {
 export function TerminalLikeDrawerContent({ contentId, definition }: DrawerContentModuleProps) {
   return (
     <div className="border-l-2 border-accent/70 bg-surface-950 p-3 radius-sm" data-r8b-drawer-lazy-content={contentId ?? 'terminal-like'}>
-      <div className="flex items-center gap-2 text-sm font-semibold text-text-primary">
-        <TerminalIcon size={15} className="text-accent" />
-        {definition?.title ?? contentId}
+      <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-text-primary">
+        <TerminalIcon size={15} className="shrink-0 text-accent" />
+        <span className="truncate">{definition?.title ?? contentId}</span>
       </div>
-      <p className="mt-2 text-xs leading-5 text-text-secondary">
+      <p className="mt-2 break-words text-xs leading-5 text-text-secondary">
         该内容源复用现有项目日志和任务输出面板；当前 Drawer slice 已完成槽位、尺寸、持久化与 IPC 链路，具体日志嵌入保留给下游内容规格。
       </p>
     </div>
@@ -185,11 +185,11 @@ export function RegisteredBoundaryDrawerContent({ slot, contentId, definition }:
       data-r8b-drawer-content-status="registered-boundary"
       data-r8b-drawer-lazy-content={contentId ?? 'registered-boundary'}
     >
-      <div className="flex items-center gap-2 text-sm font-semibold text-text-primary">
-        <AlertIcon size={15} className="text-warning" />
-        {definition?.title ?? contentId}
+      <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-text-primary">
+        <AlertIcon size={15} className="shrink-0 text-warning" />
+        <span className="truncate">{definition?.title ?? contentId}</span>
       </div>
-      <p className="mt-2 text-xs leading-5 text-text-secondary">
+      <p className="mt-2 break-words text-xs leading-5 text-text-secondary">
         内容 ID 已注册到 R8 Drawer registry，但当前构建尚未暴露该内容源的专用渲染器。该状态不会生成模拟数据。
       </p>
       <div className="mt-3 text-[10px] uppercase tracking-wider text-text-muted">slot: {slot}</div>
@@ -203,18 +203,34 @@ function useNotificationsEffect(
 ) {
   useEffect(() => {
     let disposed = false
-    void window.devhub?.r8?.notify?.list?.()
-      .then(notifications => {
-        if (!disposed) {
-          setItems(notifications.map(normalizeNotification).filter((item): item is NotificationLike => item !== null))
-          setError(null)
-        }
-      })
-      .catch(reason => {
-        if (!disposed) setError(reason instanceof Error ? reason.message : String(reason))
-      })
+
+    const refresh = () => {
+      const list = window.devhub?.r8?.notify?.list?.()
+      if (!list) return
+      void list
+        .then(notifications => {
+          if (!disposed) {
+            setItems(notifications.map(normalizeNotification).filter((item): item is NotificationLike => item !== null))
+            setError(null)
+          }
+        })
+        .catch(reason => {
+          if (!disposed) setError(reason instanceof Error ? reason.message : String(reason))
+        })
+    }
+
+    // Initial fetch of the canonical notification list.
+    refresh()
+
+    // Re-fetch the canonical list whenever a notification streams in so the
+    // drawer reflects live arrivals, dismissals, and aggregation.
+    const unsubscribe = window.devhub?.r8?.notify?.onStream?.(() => {
+      if (!disposed) refresh()
+    })
+
     return () => {
       disposed = true
+      unsubscribe?.()
     }
   }, [setError, setItems])
 }

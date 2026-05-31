@@ -264,7 +264,7 @@ export function PanelSplitter({
         <PanelPane key={i}>
           {/* Pane content */}
           <div
-            className="h-full w-full overflow-hidden panel-splitter-pane"
+            className="h-full w-full min-w-0 min-h-0 overflow-hidden panel-splitter-pane"
             style={isStacked
               ? {
                   flexBasis: i === 0 ? 'min(42%, 320px)' : 'auto',

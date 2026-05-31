@@ -42,7 +42,7 @@ describe('NotificationCenter', () => {
     await act(async () => {
       await Promise.resolve()
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Open notification center' }))
+    fireEvent.click(screen.getByRole('button', { name: '通知中心' }))
 
     expect(screen.getByText('High resource usage')).toBeInTheDocument()
     await act(async () => {

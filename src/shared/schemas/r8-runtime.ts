@@ -790,13 +790,16 @@ export const r8ConfirmedRequestSchema = z.object({
 })
 
 export const popoutCreateRequestSchema = z.object({
-  surface: z.enum(['port', 'monitor', 'process', 'window', 'dashboard']),
+  surface: z.enum(['port', 'monitor', 'process', 'window', 'dashboard', 'topology', 'r8-ops']),
   targetId: z.union([z.string().min(1), z.number().int().nonnegative()]),
   mode: z.enum(['floating', 'browserwindow']).default('browserwindow'),
   route: z.string().min(1).default('/monitor'),
   bounds: r8BoundsSchema.optional(),
   title: z.string().min(1).max(120).optional()
 })
+
+export const panelPopoutSurfaceSchema = z.enum(['process', 'window', 'dashboard', 'topology', 'r8-ops'])
+export type PanelPopoutSurface = z.infer<typeof panelPopoutSurfaceSchema>
 
 export const portPopoutPositionRecordSchema = z.object({
   x: z.number().finite(),
@@ -3430,6 +3433,7 @@ export const r8RuntimeSchemaRegistry = {
   PortPopoutDemoteResponse: portPopoutDemoteResponseSchema,
   BrowserPopout: browserPopoutSchema,
   PopoutCreateRequest: popoutCreateRequestSchema,
+  PanelPopoutSurface: panelPopoutSurfaceSchema,
   PopoutBridgeMessage: popoutBridgeMessageSchema,
   PopoutScreenEvent: popoutScreenEventSchema,
   PopoutThemeSyncPayload: popoutThemeSyncPayloadSchema,

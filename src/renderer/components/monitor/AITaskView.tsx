@@ -329,6 +329,8 @@ const TaskCard = memo(function TaskCard({ task, isSelected, onSelect, onSaveAlia
 
         <div className="flex items-center gap-2">
           <button
+            type="button"
+            aria-label={showTimeline ? 'Hide Timeline' : 'Timeline'}
             onClick={(e) => {
               e.stopPropagation()
               setShowTimeline(!showTimeline)
@@ -513,7 +515,7 @@ export function AITaskView() {
   }, [fetchActiveTasks, fetchHistory, fetchStatistics, fetchAliases])
 
   return (
-    <div className="h-full flex flex-col bg-surface-950">
+    <div className="h-full min-h-0 flex flex-col bg-surface-950">
       {/* Header */}
       <div className="flex-shrink-0 px-4 py-3 border-b border-surface-700 bg-surface-900">
         <div className="flex items-center justify-between">
@@ -578,7 +580,7 @@ export function AITaskView() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4">
         {viewTab === 'active' && (
           <div className="space-y-3">
             {activeTasks.length > 0 && (

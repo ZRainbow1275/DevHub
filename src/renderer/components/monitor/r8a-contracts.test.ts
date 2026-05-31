@@ -37,10 +37,11 @@ ${detailDrawer}`).toContain(`data-vm-field="${field}"`)
 
   it('keeps port cards spacious enough for dense monitoring without color-only cues', () => {
     const portView = source('src/renderer/components/monitor/PortView.tsx')
+    const popoutTriggerLayer = source('src/renderer/components/popout/PopoutTriggerLayer.tsx')
     const css = source('src/renderer/styles/z-index-tokens.css')
 
-    expect(portView).toContain('data-r8a-port-card="true"')
-    expect(portView).toContain('data-r8a-min-height="96"')
+    expect(popoutTriggerLayer).toContain('data-r8a-port-card="true"')
+    expect(popoutTriggerLayer).toContain('data-r8a-min-height="96"')
     expect(portView).toContain('data-r8a-field-row="port-header"')
     expect(portView).toContain('data-r8a-field-row="process"')
     expect(portView).toContain('data-r8a-field-row="local-address"')

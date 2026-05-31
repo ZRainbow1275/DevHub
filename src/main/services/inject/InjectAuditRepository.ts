@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { dirname } from 'node:path'
 import { mkdirSync } from 'node:fs'
-import DatabaseConstructor, { type Database as DatabaseHandle } from 'better-sqlite3'
+import type { Database as DatabaseHandle } from 'better-sqlite3'
+import { loadBetterSqlite } from '../sqlite/betterSqliteLoader'
 import { injectAuditRecordSchema, type InjectActionV2, type InjectAuditRecord, type InjectFailureKind, type InjectMode } from '@shared/schemas/inject'
 
 export interface InjectAuditStore {
@@ -136,6 +137,7 @@ export class InjectAuditRepository {
   private withDatabase<T>(operation: (database: DatabaseHandle) => T): T {
     if (!this.sqlitePath) throw new Error('E_VALIDATION:sqlite path is not configured')
     mkdirSync(dirname(this.sqlitePath), { recursive: true })
+    const DatabaseConstructor = loadBetterSqlite()
     const database = new DatabaseConstructor(this.sqlitePath)
     try {
       return operation(database)

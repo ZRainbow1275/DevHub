@@ -45,6 +45,7 @@ const COMMAND_FUSE_OPTIONS: IFuseOptions<CommandSearchRecord> = {
 }
 
 const COMMAND_FUSE_CACHE = new WeakMap<CommandPaletteEntry[], Fuse<CommandSearchRecord>>()
+const COMMAND_PREFILTER_CACHE = new WeakMap<CommandPaletteEntry[], Map<string, CommandPaletteEntry[]>>()
 const COMMAND_FUSE_PREFILTER_MIN = 300
 const COMMAND_FUSE_PREFILTER_MIN_RESULTS = 10
 const COMMAND_HISTORY_DECAY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
@@ -137,12 +138,22 @@ function prefilterLargeCommandSet(entries: CommandPaletteEntry[], searchTerm: st
     .map(term => term.trim())
     .filter(term => term.length >= 2)
   if (terms.length === 0) return entries
+  const cacheKey = terms.join('\u0000')
+  let cache = COMMAND_PREFILTER_CACHE.get(entries)
+  if (!cache) {
+    cache = new Map()
+    COMMAND_PREFILTER_CACHE.set(entries, cache)
+  }
+  const cached = cache.get(cacheKey)
+  if (cached) return cached
 
   const candidates = entries.filter(entry => {
     const text = buildCommandSearchText(entry).toLowerCase()
     return terms.every(term => text.includes(term))
   })
-  return candidates.length >= COMMAND_FUSE_PREFILTER_MIN_RESULTS ? candidates : entries
+  const result = candidates.length >= COMMAND_FUSE_PREFILTER_MIN_RESULTS ? candidates : entries
+  cache.set(cacheKey, result)
+  return result
 }
 
 export function searchCommandEntries(

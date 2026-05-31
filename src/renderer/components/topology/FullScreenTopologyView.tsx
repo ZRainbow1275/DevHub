@@ -7,6 +7,7 @@ import { GraphKindSwitcher } from './GraphKindSwitcher'
 import { GraphLayoutMenu } from './GraphLayoutMenu'
 import { GraphSliceMenu } from './GraphSliceMenu'
 import { GraphTimeCursor } from './GraphTimeCursor'
+import { PanelDetachButton } from '../popout/PanelDetachButton'
 import {
   OPEN_GLOBAL_TOPOLOGY_EVENT,
   parseGlobalTopologyGraphKind,
@@ -167,6 +168,7 @@ export function FullScreenTopologyView() {
                 <RefreshIcon size={14} />刷新
               </button>
               <GraphExportMenu disabled={!snapshot} onExport={format => { void exportSnapshot(format) }} />
+              <PanelDetachButton surface="topology" />
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">

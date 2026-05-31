@@ -462,7 +462,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="settings-dialog-title"
-        className="bg-surface-900 border-2 border-surface-600 w-full max-w-4xl mx-4 shadow-elevated flex flex-col relative radius-md" style={{ height: '80vh', maxHeight: '700px' }}
+        className="bg-surface-900 border-2 border-surface-600 w-full max-w-4xl mx-4 shadow-elevated flex flex-col relative radius-md h-[min(85vh,56rem)] max-h-[92vh] min-h-[480px]"
       >
         {/* Diagonal decoration */}
         <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none radius-md" />
@@ -478,10 +478,9 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             <div>
               <h2
                 id="settings-dialog-title"
-                className="text-gold font-bold uppercase tracking-wider"
+                className="text-gold font-bold uppercase tracking-wider text-sm"
                 style={{
                   fontFamily: 'var(--font-display)',
-                  fontSize: '14px',
                   transform: 'rotate(-1deg)',
                   transformOrigin: 'left center',
                 }}
@@ -505,7 +504,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
           {/* Left Navigation */}
           <nav
             ref={navRef}
-            className="w-48 flex-shrink-0 border-r-2 border-surface-700 overflow-y-auto py-2"
+            className="w-44 lg:w-52 xl:w-56 flex-shrink-0 border-r-2 border-surface-700 overflow-y-auto py-2"
             aria-label={t('settings.nav', 'Settings categories')}
           >
             {CATEGORIES.map((cat) => {
@@ -518,10 +517,10 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                   className={`nav-item ${isActive ? 'nav-item-active' : ''}`}
                   aria-current={isActive ? 'page' : undefined}
                 >
-                  <Icon size={16} />
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium">{cat.label}</span>
-                    <span className="text-[10px] text-text-muted tracking-wider">{cat.sublabel}</span>
+                  <Icon size={16} className="flex-shrink-0" />
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="text-sm font-medium truncate">{cat.label}</span>
+                    <span className="text-[10px] text-text-muted tracking-wider truncate">{cat.sublabel}</span>
                   </div>
                 </button>
               )
@@ -631,9 +630,9 @@ function SettingToggle({
       data-testid={testId}
       onClick={() => onChange(!checked)}
     >
-      <div className="flex flex-col">
-        <span className="text-text-secondary text-sm">{label}</span>
-        {description && <span className="text-text-muted text-xs mt-0.5">{description}</span>}
+      <div className="flex flex-col min-w-0 flex-1 mr-3">
+        <span className="text-text-secondary text-sm truncate">{label}</span>
+        {description && <span className="text-text-muted text-xs mt-0.5 line-clamp-2">{description}</span>}
       </div>
       <div
         role="switch"
@@ -720,15 +719,15 @@ function SettingSelect<T extends string>({
 }) {
   return (
     <div
-      className="flex items-center justify-between p-3 bg-surface-800 border-l-3 border-surface-600 radius-sm"
+      className="flex items-center justify-between gap-3 p-3 bg-surface-800 border-l-3 border-surface-600 radius-sm"
     >
-      <span className="text-text-secondary text-sm">{label}</span>
+      <span className="text-text-secondary text-sm truncate min-w-0 flex-1">{label}</span>
       <select
         aria-label={label}
         data-testid={`setting-select-${label}`}
         value={value}
         onChange={(e) => onChange(e.target.value as T)}
-        className="px-3 py-1.5 bg-surface-700 border border-surface-600 text-text-primary text-sm focus:outline-none focus:border-accent radius-sm"
+        className="px-3 py-1.5 bg-surface-700 border border-surface-600 text-text-primary text-sm focus:outline-none focus:border-accent radius-sm max-w-[60%] flex-shrink-0"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -781,9 +780,9 @@ function StringListEditor({
           items.map((item) => (
             <div
               key={item}
-              className="flex items-center justify-between bg-surface-800 px-4 py-2 group border-l-3 border-surface-600 radius-sm"
+              className="flex items-center justify-between gap-2 bg-surface-800 px-4 py-2 group border-l-3 border-surface-600 radius-sm"
             >
-              <span className="text-text-secondary text-sm font-mono truncate flex-1" title={item}>
+              <span className="text-text-secondary text-sm font-mono truncate flex-1 min-w-0" title={item}>
                 {item}
               </span>
               <button
@@ -1159,7 +1158,7 @@ function AppearancePanel({
           checked={appearance.followSystemTheme}
           onChange={(v) => updateAppearance({ followSystemTheme: v })}
         />
-        <div className="grid grid-cols-3 gap-3 settings-theme-grid">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 settings-theme-grid">
           {THEMES.map((t) => {
             const isActive = theme === t.key
             const designState = getPaletteDesignState(t.key, activeDensity)
@@ -1191,50 +1190,50 @@ function AppearancePanel({
                 <div
                   style={{
                     width: '100%',
-                    height: '50px',
-                    marginBottom: '8px',
+                    height: '3.25rem',
+                    marginBottom: '0.5rem',
                     background: t.previewBg,
                     border: t.previewBorder,
                     borderRadius: t.previewRadius,
                     boxShadow: isActive ? '0 0 0 2px var(--accent)' : 'none',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '4px',
-                    padding: '6px 8px',
+                    gap: '0.25rem',
+                    padding: '0.375rem 0.5rem',
                     overflow: 'hidden',
                     position: 'relative',
                   }}
                 >
                   <div style={{
-                    height: '7px',
+                    height: '0.4375rem',
                     width: '60%',
                     background: t.colors[1],
                     borderRadius: t.previewRadius,
                     opacity: 0.9,
                   }} />
-                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
                     <div style={{
-                      height: '5px',
+                      height: '0.3125rem',
                       width: '30%',
                       background: t.colors[2],
                       borderRadius: t.previewRadius,
                       opacity: 0.7,
                     }} />
                     <div style={{
-                      height: '5px',
+                      height: '0.3125rem',
                       width: '20%',
                       background: t.colors[1],
                       borderRadius: t.previewRadius,
                       opacity: 0.4,
                     }} />
                   </div>
-                  <div style={{ display: 'flex', gap: '3px', marginTop: 'auto' }}>
+                  <div style={{ display: 'flex', gap: '0.1875rem', marginTop: 'auto' }}>
                     {t.colors.map((c, i) => (
                       <div
                         key={i}
                         style={{
-                          width: '12px',
-                          height: '12px',
+                          width: '0.75rem',
+                          height: '0.75rem',
                           background: c,
                           borderRadius: t.previewRadius,
                           border: '1px solid rgba(128,128,128,0.2)',
@@ -1243,8 +1242,8 @@ function AppearancePanel({
                     ))}
                   </div>
                 </div>
-                <div className="text-sm font-medium text-text-primary">{t.name}</div>
-                <div className="text-xs text-text-muted">{t.desc}</div>
+                <div className="text-sm font-medium text-text-primary truncate">{t.name}</div>
+                <div className="text-xs text-text-muted truncate">{t.desc}</div>
               </button>
             )
           })}
@@ -1293,9 +1292,9 @@ function AppearancePanel({
 
       <section data-testid="theme-preview-editor">
         <SectionHeader title="主题预览与编辑器" borderColor="border-info" />
-        <div className="grid grid-cols-[1.25fr_0.75fr] gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.25fr_0.75fr] gap-4">
           <div
-            className="p-4 bg-surface-850 border border-surface-700 radius-md"
+            className="p-4 bg-surface-850 border border-surface-700 radius-md min-w-0"
             data-testid="theme-live-preview"
             data-accent-color={editorAccentColor}
             style={{
@@ -1360,7 +1359,7 @@ function AppearancePanel({
               </div>
             </div>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-3 min-w-0">
             <label className="block p-3 bg-surface-800 border border-surface-700 radius-sm">
               <span className="block text-xs text-text-muted mb-2">{t('settings.themeEditor.accentToken', 'Accent token')}</span>
               <input
@@ -1378,7 +1377,7 @@ function AppearancePanel({
               type="button"
               data-testid="theme-pack-export"
               onClick={exportThemePack}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-accent text-white text-sm hover:bg-accent-600 transition-colors radius-sm"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-accent text-white text-sm hover:bg-accent-600 transition-colors radius-sm whitespace-nowrap"
             >
               <DownloadIcon size={14} />
               导出 .devhub-theme.json
@@ -1449,8 +1448,8 @@ function AppearancePanel({
             })}
           </div>
           <div className="p-3 bg-surface-800 border-l-3 border-accent radius-sm" data-testid="custom-svg-uploader">
-            <div className="flex items-start justify-between gap-3">
-              <div>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
                 <div className="text-sm text-text-secondary">自定义 SVG 装饰</div>
                 <div className="mt-1 text-xs text-text-muted">
                   上传前使用 DOMPurify SVG profile 清洗，主进程再次校验禁止标签、事件属性、外链和 200KB 限制。
@@ -1458,7 +1457,7 @@ function AppearancePanel({
               </div>
               <button
                 type="button"
-                className="flex items-center gap-2 px-3 py-1.5 bg-surface-700 text-xs text-text-secondary hover:bg-surface-600 hover:text-text-primary transition-colors radius-sm"
+                className="flex items-center gap-2 px-3 py-1.5 bg-surface-700 text-xs text-text-secondary hover:bg-surface-600 hover:text-text-primary transition-colors radius-sm flex-shrink-0 whitespace-nowrap"
                 onClick={() => svgInputRef.current?.click()}
               >
                 <UploadIcon size={14} />
@@ -1553,11 +1552,11 @@ function AppearancePanel({
             checked={appearance.holidayFocusMode ?? false}
             onChange={(holidayFocusMode) => updateAppearance({ holidayFocusMode })}
           />
-          <div className="grid grid-cols-3 gap-2" data-testid="holiday-theme-list">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2" data-testid="holiday-theme-list">
             {HOLIDAY_THEME_DEFINITIONS.map(holiday => (
-              <div key={holiday.id} className="border border-surface-700 bg-surface-850 px-3 py-2 radius-sm">
-                <div className="text-xs font-bold uppercase tracking-wide text-text-primary">{holiday.name}</div>
-                <div className="mt-1 text-[10px] font-mono uppercase text-text-muted">{holiday.id}</div>
+              <div key={holiday.id} className="border border-surface-700 bg-surface-850 px-3 py-2 radius-sm min-w-0">
+                <div className="text-xs font-bold uppercase tracking-wide text-text-primary truncate">{holiday.name}</div>
+                <div className="mt-1 text-[10px] font-mono uppercase text-text-muted truncate">{holiday.id}</div>
               </div>
             ))}
           </div>
@@ -1806,7 +1805,7 @@ function ScanPanel({
           <p>- 用户/code</p>
           <p className="text-text-tertiary mt-3 mb-2">已选盘符下的目录：</p>
           {(scan.scanDrives || ['C', 'D']).map((drive) => (
-            <p key={drive}>
+            <p key={drive} className="break-all">
               - {drive}:\Projects, {drive}:\Desktop, {drive}:\workspace, {drive}:\dev, {drive}:\code, {drive}:\work
             </p>
           ))}
@@ -2010,21 +2009,21 @@ function NotificationPanel({
           />
           {notif.quietHoursEnabled && (
             <div
-              className="flex items-center gap-3 p-3 bg-surface-800 border-l-3 border-surface-600 radius-sm"
+              className="flex flex-wrap items-center gap-3 p-3 bg-surface-800 border-l-3 border-surface-600 radius-sm"
             >
               <span className="text-text-secondary text-sm">时间段</span>
               <input
                 type="time"
                 value={notif.quietHoursStart}
                 onChange={(e) => updateNotification({ quietHoursStart: e.target.value })}
-                className="px-2 py-1 bg-surface-700 border border-surface-600 text-text-primary text-sm focus:outline-none focus:border-accent radius-sm"
+                className="px-2 py-1 bg-surface-700 border border-surface-600 text-text-primary text-sm focus:outline-none focus:border-accent radius-sm min-w-[110px] flex-shrink"
               />
               <span className="text-text-muted text-sm">至</span>
               <input
                 type="time"
                 value={notif.quietHoursEnd}
                 onChange={(e) => updateNotification({ quietHoursEnd: e.target.value })}
-                className="px-2 py-1 bg-surface-700 border border-surface-600 text-text-primary text-sm focus:outline-none focus:border-accent radius-sm"
+                className="px-2 py-1 bg-surface-700 border border-surface-600 text-text-primary text-sm focus:outline-none focus:border-accent radius-sm min-w-[110px] flex-shrink"
               />
             </div>
           )}
@@ -2495,10 +2494,10 @@ function CustomCommandManager() {
             className="flex flex-wrap items-center justify-between gap-3 border border-surface-700 bg-surface-900 p-3 radius-sm"
             data-testid={`custom-command-row-${command.id}`}
           >
-            <div>
-              <div className="text-sm text-text-primary">{command.label}</div>
-              <div className="mt-1 text-[11px] text-text-muted">{command.id} · {command.handlerScript}</div>
-              <div className="mt-1 text-[11px] text-text-muted">状态：{command.enabled ? '启用' : '禁用'}；快捷键：{command.shortcut.join('+') || '未设置'}</div>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm text-text-primary truncate">{command.label}</div>
+              <div className="mt-1 text-[11px] text-text-muted break-all">{command.id} · {command.handlerScript}</div>
+              <div className="mt-1 text-[11px] text-text-muted truncate">状态：{command.enabled ? '启用' : '禁用'}；快捷键：{command.shortcut.join('+') || '未设置'}</div>
             </div>
             <div className="flex gap-2">
               <button
@@ -2713,8 +2712,8 @@ function DataOwnershipPanel() {
       <section>
         <SectionHeader title={t('settings.dataOwnership.section', 'Data Ownership')} borderColor="border-gold" />
         <div className="space-y-3 p-4 bg-surface-800 border-l-3 border-gold radius-sm">
-          <div className="flex items-start justify-between gap-4">
-            <div>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
               <p className="text-sm text-text-secondary">
                 {t('settings.dataOwnership.intro', 'Local data inventory is generated from the live Electron userData directory and related runtime stores.')}
               </p>
@@ -2727,7 +2726,7 @@ function DataOwnershipPanel() {
                 type="button"
                 onClick={() => { void loadPaths() }}
                 disabled={loadingPaths}
-                className="px-3 py-2 bg-surface-700 text-text-secondary text-xs hover:bg-surface-600 disabled:opacity-60 transition-colors radius-sm"
+                className="px-3 py-2 bg-surface-700 text-text-secondary text-xs hover:bg-surface-600 disabled:opacity-60 transition-colors radius-sm whitespace-nowrap flex-shrink-0"
                 data-testid="data-ownership-refresh"
               >
                 {loadingPaths ? t('settings.dataOwnership.refreshing', 'Refreshing') : t('settings.dataOwnership.refresh', 'Refresh')}
@@ -2736,7 +2735,7 @@ function DataOwnershipPanel() {
                 type="button"
                 onClick={() => { void exportAll() }}
                 disabled={exporting}
-                className="flex items-center gap-2 px-3 py-2 bg-accent text-surface-950 text-xs hover:bg-accent/80 disabled:opacity-60 transition-colors radius-sm"
+                className="flex items-center gap-2 px-3 py-2 bg-accent text-surface-950 text-xs hover:bg-accent/80 disabled:opacity-60 transition-colors radius-sm whitespace-nowrap flex-shrink-0"
                 data-testid="data-ownership-export"
               >
                 <DownloadIcon size={14} />
@@ -2779,11 +2778,11 @@ function DataOwnershipPanel() {
                 data-testid={`data-ownership-root-${root.rootId}`}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="text-sm text-text-secondary">{root.label}</div>
-                    <div className="mt-1 text-[11px] text-text-muted">{DATA_OWNERSHIP_CATEGORY_LABELS[root.category]} · {root.kind} · {root.exists ? t('settings.dataOwnership.exists', 'exists') : t('settings.dataOwnership.missing', 'missing')}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm text-text-secondary truncate">{root.label}</div>
+                    <div className="mt-1 text-[11px] text-text-muted truncate">{DATA_OWNERSHIP_CATEGORY_LABELS[root.category]} · {root.kind} · {root.exists ? t('settings.dataOwnership.exists', 'exists') : t('settings.dataOwnership.missing', 'missing')}</div>
                   </div>
-                  <div className={`text-[10px] uppercase tracking-wider ${root.exportable ? 'text-accent' : 'text-text-muted'}`}>
+                  <div className={`text-[10px] uppercase tracking-wider whitespace-nowrap flex-shrink-0 ${root.exportable ? 'text-accent' : 'text-text-muted'}`}>
                     {root.exportable ? t('settings.dataOwnership.exportable', 'exportable') : t('settings.dataOwnership.inspectOnly', 'inspect only')}
                   </div>
                 </div>
@@ -2831,7 +2830,7 @@ function DataOwnershipPanel() {
                 className="flex items-center justify-between gap-3 p-2 bg-surface-900 border border-surface-700 radius-sm"
                 data-testid={`data-ownership-entry-${entry.name}`}
               >
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="text-sm text-text-secondary truncate">{entry.name}</div>
                   <div className="text-[11px] text-text-muted truncate">{entry.relativePath} · {entry.kind} · {formatDataOwnershipBytes(entry.sizeBytes)} · {formatDataOwnershipTimestamp(entry.updatedAt)}</div>
                 </div>
@@ -2839,7 +2838,7 @@ function DataOwnershipPanel() {
                   <button
                     type="button"
                     onClick={() => { void loadEntries(selectedRootId, entry.relativePath) }}
-                    className="px-2 py-1 bg-surface-700 text-text-secondary text-[11px] hover:bg-surface-600 transition-colors radius-sm"
+                    className="px-2 py-1 bg-surface-700 text-text-secondary text-[11px] hover:bg-surface-600 transition-colors radius-sm flex-shrink-0 whitespace-nowrap"
                   >
                     {t('settings.dataViewer.inspect', 'Inspect')}
                   </button>

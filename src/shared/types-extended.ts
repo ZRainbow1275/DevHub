@@ -414,7 +414,7 @@ export interface WindowScreenshotResult {
   width: number
   height: number
   createdAt: number
-  source: 'win32-copy-from-screen'
+  source: 'win32-copy-from-screen' | 'electron-capture-page'
 }
 
 export interface WindowOpenDirectoryResult {

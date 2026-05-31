@@ -14,9 +14,9 @@ export const DASHBOARD_BREAKPOINTS: DashboardBreakpoint[] = ['xs', 'sm', 'md', '
 export const DASHBOARD_BREAKPOINT_WIDTHS: Record<DashboardBreakpoint, number> = {
   xs: 0,
   sm: 640,
-  md: 1024,
-  lg: 1440,
-  xl: 1920
+  md: 960,
+  lg: 1280,
+  xl: 1600
 }
 
 export const DASHBOARD_COLS: Record<DashboardBreakpoint, number> = {
@@ -25,6 +25,51 @@ export const DASHBOARD_COLS: Record<DashboardBreakpoint, number> = {
   md: 8,
   lg: 12,
   xl: 16
+}
+
+export function clampTileWidth(w: number, cols: number): number {
+  return Math.min(Math.max(1, w), Math.max(1, cols))
+}
+
+function clampLayoutForCols(
+  items: readonly LayoutItem[],
+  cols: number
+): { items: LayoutItem[]; changed: boolean } {
+  let changed = false
+  const next = items.map(item => {
+    const w = clampTileWidth(item.w, cols)
+    let x = item.x
+    if (x + w > cols) {
+      x = Math.max(0, cols - w)
+      changed = true
+    }
+    if (w !== item.w) {
+      changed = true
+    }
+    if (w === item.w && x === item.x) return item
+    return { ...item, w, x }
+  })
+  return { items: next, changed }
+}
+
+export function clampLayoutsForBreakpoint(
+  layouts: ResponsiveLayouts<DashboardBreakpoint>,
+  _breakpoint: DashboardBreakpoint
+): ResponsiveLayouts<DashboardBreakpoint> {
+  let anyChanged = false
+  const result = { ...layouts } as Record<string, LayoutItem[]>
+  for (const bp of DASHBOARD_BREAKPOINTS) {
+    const source = layouts[bp]
+    if (!source) continue
+    const cols = DASHBOARD_COLS[bp]
+    const { items, changed } = clampLayoutForCols(source, cols)
+    if (changed) {
+      anyChanged = true
+      result[bp] = items
+    }
+  }
+  if (!anyChanged) return layouts
+  return result as ResponsiveLayouts<DashboardBreakpoint>
 }
 
 export const DEFAULT_WIDGET_IDS: DashboardWidgetId[] = [

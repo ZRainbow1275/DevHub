@@ -16,7 +16,6 @@ interface PortPopoutCardProps {
   onClose: (id: string) => void
   onMinimize: (id: string, minimized: boolean) => void
   onThemeIsolate: (id: string, themeIsolated: boolean) => void
-  onPin: (id: string, pinned: boolean) => void
   onMove: (id: string, position: PortPopoutPosition) => void
   onResize: (
     id: string,
@@ -31,7 +30,7 @@ function formatPortAddress(port: PortInfo): string {
   return `${port.protocol} ${port.localAddress}`
 }
 
-export function PortPopoutCard({ popout, onClose, onMinimize, onThemeIsolate, onPin, onMove, onResize, onPromote }: PortPopoutCardProps) {
+export function PortPopoutCard({ popout, onClose, onMinimize, onThemeIsolate, onMove, onResize, onPromote }: PortPopoutCardProps) {
   const [dragStart, setDragStart] = useState<{ pointer: PortPopoutPosition; origin: PortPopoutPosition } | null>(null)
   const [resizeStart, setResizeStart] = useState<{
     direction: PortPopoutResizeDirection
@@ -129,7 +128,6 @@ export function PortPopoutCard({ popout, onClose, onMinimize, onThemeIsolate, on
         }}
         onMinimize={onMinimize}
         onThemeIsolate={onThemeIsolate}
-        onPin={onPin}
         onPromote={() => void handlePromote()}
         onClose={onClose}
       />

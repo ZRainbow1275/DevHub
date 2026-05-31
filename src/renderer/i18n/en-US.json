@@ -248,17 +248,23 @@
     "unpin": "Unpin popout",
     "pin": "Pin popout",
     "promote": "Promote to BrowserWindow",
+    "float": "Float above all apps",
     "close": "Close popout",
     "resize": "Resize port popout {{direction}}"
   },
   "drawer": {
-    "morphToPopout": "Morph drawer to popout",
+    "morphToPopout": "Tear out to popout window",
     "close": "Close drawer",
-    "launchers": "R8 drawer launchers",
+    "launchers": {
+      "aria": "R8 drawer launchers",
+      "toggle": "Drawer launchers",
+      "closeAll": "Close all"
+    },
     "resize": "Resize {{slot}} drawer",
     "label": "Drawer {{slot}}",
     "unpin": "Unpin drawer",
     "pin": "Pin drawer",
+    "pinLock": "Lock drawer (won't close on outside click)",
     "axis": {
       "top": "TOP",
       "right": "RIGHT",

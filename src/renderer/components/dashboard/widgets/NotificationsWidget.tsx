@@ -49,8 +49,8 @@ export default function NotificationsWidget({ item }: DashboardWidgetProps) {
           <ul className="divide-y divide-surface-800 text-xs">
             {warningBadges.slice(0, 4).map(badge => (
               <li className="flex items-center justify-between gap-3 px-3 py-2" key={badge.id}>
-                <span className="truncate text-text-secondary">{badge.label}</span>
-                <span className="tabular-nums text-text-muted">{String(badge.value)}</span>
+                <span className="min-w-0 flex-1 truncate text-text-secondary">{badge.label}</span>
+                <span className="shrink-0 whitespace-nowrap tabular-nums text-text-muted">{String(badge.value)}</span>
               </li>
             ))}
           </ul>

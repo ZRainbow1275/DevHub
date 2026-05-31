@@ -1,9 +1,5 @@
-import type { CSSProperties, ReactNode } from 'react'
-import type { DrawerSlot } from '@shared/schemas/r8-runtime'
-import { BellIcon, GridIcon, InfoIcon, TerminalIcon, WindowIcon } from '../icons'
+import { type CSSProperties, type ReactNode } from 'react'
 import { useDrawerStore } from '../../stores/drawerStore'
-import { useT } from '../../hooks/useT'
-import { DRAWER_CONTENT_REGISTRY, DRAWER_SLOTS } from './drawer-model'
 import { DrawerBottom } from './DrawerBottom'
 import { DrawerFloating } from './DrawerFloating'
 import { DrawerRight } from './DrawerRight'
@@ -12,50 +8,6 @@ import { DrawerTop } from './DrawerTop'
 
 interface DrawerSystemHostProps {
   children: ReactNode
-}
-
-function slotIcon(slot: DrawerSlot) {
-  if (slot === 'top') return <BellIcon size={12} />
-  if (slot === 'right') return <InfoIcon size={12} />
-  if (slot === 'bottom') return <TerminalIcon size={12} />
-  if (slot === 'floating') return <WindowIcon size={12} />
-  return <GridIcon size={12} />
-}
-
-function getDefaultContentId(slot: DrawerSlot): string {
-  return DRAWER_CONTENT_REGISTRY.find(definition => definition.defaultSlot === slot)?.id ?? 'statusbar.aggregate'
-}
-
-function DrawerLauncherRail() {
-  const { t } = useT()
-  const setContent = useDrawerStore(store => store.setContent)
-  const slotLabels: Record<DrawerSlot, string> = {
-    top: t('drawer.axis.top', 'TOP'),
-    right: t('drawer.axis.right', 'RIGHT'),
-    bottom: t('drawer.axis.bottom', 'BOTTOM'),
-    floating: t('drawer.axis.floating', 'FLOAT'),
-    statusbar: t('drawer.axis.statusbar', 'STATUS')
-  }
-  return (
-    <nav
-      aria-label={t('drawer.launchers', 'R8 drawer launchers')}
-      className="absolute right-3 top-3 z-[2100] flex flex-col gap-1 pointer-events-auto"
-      data-testid="drawer-launcher-rail"
-    >
-      {DRAWER_SLOTS.map(slot => (
-        <button
-          key={slot}
-          type="button"
-          data-testid={`open-drawer-${slot}`}
-          className="flex items-center gap-1 border border-surface-600 bg-surface-950/95 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-text-secondary shadow-elevated hover:border-accent hover:text-accent radius-sm"
-          onClick={() => { void setContent(slot, getDefaultContentId(slot)) }}
-        >
-          {slotIcon(slot)}
-          {slotLabels[slot]}
-        </button>
-      ))}
-    </nav>
-  )
 }
 
 function useDrawerShellStyle(): CSSProperties {
@@ -76,7 +28,7 @@ export function DrawerSystemHost({ children }: DrawerSystemHostProps) {
   return (
     <div className="r8-drawer-shell relative flex-1 min-h-0 overflow-hidden" style={shellStyle} data-testid="drawer-system-host">
       <div className="r8-drawer-main flex h-full min-h-0 flex-col overflow-hidden">
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden">
           {children}
         </div>
       </div>
@@ -85,7 +37,6 @@ export function DrawerSystemHost({ children }: DrawerSystemHostProps) {
       <DrawerBottom />
       <DrawerFloating />
       <DrawerStatusbar />
-      <DrawerLauncherRail />
     </div>
   )
 }

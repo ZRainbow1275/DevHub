@@ -1,13 +1,10 @@
 import { dagCycleErrorSchema, type DagCycleError } from '@shared/schemas/dag'
 import type { DagGraph } from './DagTypes'
-import { graphlib } from './dagreGraphlib'
 
 export class CycleDetector {
   detect(graph: DagGraph): DagCycleError | null {
-    const graphlibCycles = graphlib.alg.findCycles(graph)
     const tarjanCycles = this.findTarjanCycles(graph)
-    const cyclePaths = [...tarjanCycles, ...graphlibCycles.map(cycle => this.closeCycle(cycle))]
-    const unique = this.uniqueCyclePaths(cyclePaths)
+    const unique = this.uniqueCyclePaths(tarjanCycles)
     return unique.length === 0 ? null : dagCycleErrorSchema.parse({ cyclePaths: unique })
   }
 

@@ -19,7 +19,9 @@ export interface RecoveryProbeOptions {
   persistReport?: (report: RecoveryReport) => void
 }
 
-export const DEFAULT_RECOVERY_PROBE_TIMEOUT_MS = 2_000
+// Must exceed the scanner's own 2s Windows process probe budget so slow
+// optional detectors do not mask cheap recoverable findings on loaded systems.
+export const DEFAULT_RECOVERY_PROBE_TIMEOUT_MS = 6_000
 
 export class RecoveryProbe {
   private readonly timeoutMs: number

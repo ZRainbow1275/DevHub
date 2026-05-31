@@ -1,20 +1,47 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import type { DrawerSlot } from '@shared/schemas/r8-runtime'
 import { useProjectStore } from '../../stores/projectStore'
+import { useDrawerStore } from '../../stores/drawerStore'
 import { useProjects } from '../../hooks/useProjects'
 import { useWindowSize } from '../../hooks/useWindowSize'
+import { useT } from '../../hooks/useT'
 import { useToast } from '../ui/Toast'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { ContextMenu } from '../ui/ContextMenu'
-import { FolderIcon, TagIcon, GroupIcon, GearIcon, ChevronLeftIcon, ChevronRightIcon, PlayIcon, StopIcon, TopologyIcon, PlusIcon, InfoIcon, TrashIcon } from '../icons'
+import { DRAWER_CONTENT_REGISTRY, DRAWER_SLOTS } from '../drawer/drawer-model'
+import { FolderIcon, TagIcon, GroupIcon, GearIcon, ChevronLeftIcon, ChevronRightIcon, PlayIcon, StopIcon, TopologyIcon, PlusIcon, InfoIcon, TrashIcon, MenuIcon, BellIcon, TerminalIcon, WindowIcon, GridIcon } from '../icons'
 
 const PROJECT_DRAG_MIME = 'application/x-devhub-project'
 
 const SIDEBAR_STORAGE_KEY = 'devhub:sidebar-collapsed'
 const SIDEBAR_WIDTH_KEY = 'devhub:sidebar-width'
-const MIN_SIDEBAR_WIDTH = 200
-const MAX_SIDEBAR_WIDTH = 400
-const DEFAULT_SIDEBAR_WIDTH = 224
-const COLLAPSED_WIDTH = 56
+// Sidebar widths in rem so the rail scales with browser/OS zoom.
+// Matches the CSS custom property values (--sidebar-w) maintained in globals.css.
+const MIN_SIDEBAR_WIDTH = 12.5 // rem (200px @ 16px root)
+const MAX_SIDEBAR_WIDTH = 25 // rem (400px @ 16px root)
+const DEFAULT_SIDEBAR_WIDTH = 14 // rem (224px @ 16px root)
+const COLLAPSED_WIDTH = 3.5 // rem (56px @ 16px root)
+
+/** Read the root font size so we can translate pointer-pixel deltas into rem. */
+function rootFontSizePx(): number {
+  if (typeof window === 'undefined') return 16
+  const parsed = parseFloat(getComputedStyle(document.documentElement).fontSize)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 16
+}
+
+/**
+ * Parse a persisted sidebar width into rem.
+ * Legacy builds stored raw pixels (e.g. "224"); newer builds store rem (e.g. "14").
+ * Heuristic: any stored value above the rem MAX is treated as a legacy px value.
+ */
+function parseStoredSidebarWidth(stored: string | null): number | null {
+  if (!stored) return null
+  const value = parseFloat(stored)
+  if (!Number.isFinite(value)) return null
+  const remValue = value > MAX_SIDEBAR_WIDTH ? value / rootFontSizePx() : value
+  if (remValue >= MIN_SIDEBAR_WIDTH && remValue <= MAX_SIDEBAR_WIDTH) return remValue
+  return null
+}
 
 interface SidebarProps {
   onSettingsClick: () => void
@@ -30,12 +57,7 @@ export function Sidebar({ onSettingsClick, onTopologyClick }: SidebarProps) {
     return localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'true'
   })
   const [sidebarWidth, setSidebarWidth] = useState(() => {
-    const stored = localStorage.getItem(SIDEBAR_WIDTH_KEY)
-    if (stored) {
-      const w = parseInt(stored, 10)
-      if (w >= MIN_SIDEBAR_WIDTH && w <= MAX_SIDEBAR_WIDTH) return w
-    }
-    return DEFAULT_SIDEBAR_WIDTH
+    return parseStoredSidebarWidth(localStorage.getItem(SIDEBAR_WIDTH_KEY)) ?? DEFAULT_SIDEBAR_WIDTH
   })
   const [isDragging, setIsDragging] = useState(false)
   const sidebarRef = useRef<HTMLElement>(null)
@@ -60,11 +82,20 @@ export function Sidebar({ onSettingsClick, onTopologyClick }: SidebarProps) {
   const newGroupInputRef = useRef<HTMLInputElement>(null)
   const editingInputRef = useRef<HTMLInputElement>(null)
 
-  // Auto-collapse on narrow windows (xs: <640px, sm: <1000px)
+  // Auto-collapse on narrow windows and auto-expand again when there is room.
+  // The auto state is kept separate from user-driven toggles (handleToggleCollapse)
+  // and is NOT persisted, so a brief narrow window never permanently sticks the
+  // sidebar collapsed once the window grows back.
+  const autoCollapsedRef = useRef(false)
   useEffect(() => {
-    if (width < 1000 && !collapsed) {
-      setCollapsed(true)
-      localStorage.setItem(SIDEBAR_STORAGE_KEY, 'true')
+    if (width < 1000) {
+      if (!collapsed) {
+        autoCollapsedRef.current = true
+        setCollapsed(true)
+      }
+    } else if (width >= 1000 && autoCollapsedRef.current) {
+      autoCollapsedRef.current = false
+      setCollapsed(false)
     }
   }, [width]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -88,22 +119,23 @@ export function Sidebar({ onSettingsClick, onTopologyClick }: SidebarProps) {
     setIsDragging(true)
 
     const startX = e.clientX
-    const startWidth = sidebarWidth
+    const startWidth = sidebarWidth // rem
+    const remPx = rootFontSizePx()
 
     const onPointerMove = (moveEvent: PointerEvent) => {
-      const delta = moveEvent.clientX - startX
-      const newWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, startWidth + delta))
+      // Pointer deltas are CSS pixels; convert to rem so the model stays zoom-stable.
+      const deltaRem = (moveEvent.clientX - startX) / remPx
+      const newWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, startWidth + deltaRem))
       setSidebarWidth(newWidth)
     }
 
     const onPointerUp = () => {
       setIsDragging(false)
-      // Persist width
-      const el = sidebarRef.current
-      if (el) {
-        const currentWidth = el.offsetWidth
-        localStorage.setItem(SIDEBAR_WIDTH_KEY, String(currentWidth))
-      }
+      // Persist width (rem) once the drag settles.
+      setSidebarWidth(current => {
+        localStorage.setItem(SIDEBAR_WIDTH_KEY, String(current))
+        return current
+      })
       document.removeEventListener('pointermove', onPointerMove)
       document.removeEventListener('pointerup', onPointerUp)
     }
@@ -121,6 +153,9 @@ export function Sidebar({ onSettingsClick, onTopologyClick }: SidebarProps) {
 
   const handleToggleCollapse = useCallback(() => {
     const next = !collapsed
+    // A manual toggle is user intent: clear the auto-collapse flag so the
+    // responsive effect does not later override the user's choice.
+    autoCollapsedRef.current = false
     setCollapsed(next)
     localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next))
   }, [collapsed])
@@ -329,6 +364,82 @@ export function Sidebar({ onSettingsClick, onTopologyClick }: SidebarProps) {
     }
   }, [handleStartRenameGroup])
 
+  // ---- Drawer launcher (moved from DrawerSystemHost) ----
+  const { t } = useT()
+  const drawerSetContent = useDrawerStore(store => store.setContent)
+  const drawerSetOpen = useDrawerStore(store => store.setOpen)
+  const [drawerMenuOpen, setDrawerMenuOpen] = useState(false)
+  const drawerMenuRef = useRef<HTMLDivElement | null>(null)
+  const drawerToggleRef = useRef<HTMLButtonElement | null>(null)
+  const [flyoutPos, setFlyoutPos] = useState<{ left: number; bottom: number } | null>(null)
+  const drawerSlotLabels: Record<DrawerSlot, string> = {
+    top: t('drawer.axis.top', 'TOP'),
+    right: t('drawer.axis.right', 'RIGHT'),
+    bottom: t('drawer.axis.bottom', 'BOTTOM'),
+    floating: t('drawer.axis.floating', 'FLOAT'),
+    statusbar: t('drawer.axis.statusbar', 'STATUS')
+  }
+
+  const drawerSlotIcon = useCallback((slot: DrawerSlot) => {
+    if (slot === 'top') return <BellIcon size={12} />
+    if (slot === 'right') return <InfoIcon size={12} />
+    if (slot === 'bottom') return <TerminalIcon size={12} />
+    if (slot === 'floating') return <WindowIcon size={12} />
+    return <GridIcon size={12} />
+  }, [])
+
+  const getDefaultContentId = useCallback((slot: DrawerSlot): string => {
+    return DRAWER_CONTENT_REGISTRY.find(d => d.defaultSlot === slot)?.id ?? 'statusbar.aggregate'
+  }, [])
+
+  const openDrawerMenu = useCallback(() => {
+    const btn = drawerToggleRef.current
+    if (btn) {
+      const rect = btn.getBoundingClientRect()
+      setFlyoutPos({ left: rect.right + 8, bottom: window.innerHeight - rect.bottom })
+    }
+    setDrawerMenuOpen(true)
+  }, [])
+
+  useEffect(() => {
+    if (!drawerMenuOpen) return
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDrawerMenuOpen(false)
+    }
+    const handlePointer = (event: PointerEvent) => {
+      const node = drawerMenuRef.current
+      if (!node) return
+      if (event.target instanceof Node && node.contains(event.target)) return
+      const toggleBtn = drawerToggleRef.current
+      if (toggleBtn && event.target instanceof Node && toggleBtn.contains(event.target)) return
+      setDrawerMenuOpen(false)
+    }
+    // The flyout is anchored at fixed coords captured on open; if the window or
+    // rail is resized while it is open the coords go stale, so close it to avoid
+    // a detached menu floating away from the toggle.
+    const handleResize = () => setDrawerMenuOpen(false)
+    window.addEventListener('keydown', handleKey)
+    window.addEventListener('pointerdown', handlePointer)
+    window.addEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('keydown', handleKey)
+      window.removeEventListener('pointerdown', handlePointer)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [drawerMenuOpen])
+
+  const handleSelectDrawerSlot = useCallback((slot: DrawerSlot) => {
+    void drawerSetContent(slot, getDefaultContentId(slot))
+    setDrawerMenuOpen(false)
+  }, [drawerSetContent, getDefaultContentId])
+
+  const handleCloseAllDrawers = useCallback(() => {
+    for (const slot of DRAWER_SLOTS) {
+      void drawerSetOpen(slot, false)
+    }
+    setDrawerMenuOpen(false)
+  }, [drawerSetOpen])
+
   const actualWidth = collapsed ? COLLAPSED_WIDTH : sidebarWidth
 
   return (
@@ -339,8 +450,8 @@ export function Sidebar({ onSettingsClick, onTopologyClick }: SidebarProps) {
         sidebar-transition animate-sidebar-enter
       `}
       style={{
-        width: `${actualWidth}px`,
-        minWidth: `${actualWidth}px`,
+        width: `${actualWidth}rem`,
+        minWidth: `${actualWidth}rem`,
         userSelect: isDragging ? 'none' : undefined
       }}
     >
@@ -370,12 +481,11 @@ export function Sidebar({ onSettingsClick, onTopologyClick }: SidebarProps) {
 
       {/* Header Decoration */}
       {!collapsed && (
-        <div className="px-4 py-4 relative">
+        <div className="px-4 py-4 relative overflow-visible">
           <div
-            className="text-accent-300 font-bold uppercase tracking-wider"
+            className="text-accent-300 font-bold uppercase tracking-wider text-sm whitespace-nowrap overflow-visible"
             style={{
               fontFamily: 'var(--font-display)',
-              fontSize: '14px',
               transform: 'rotate(-8deg)',
               transformOrigin: 'left center'
             }}
@@ -399,8 +509,8 @@ export function Sidebar({ onSettingsClick, onTopologyClick }: SidebarProps) {
             aria-keyshortcuts="Control+T"
             data-activity-bar-icon="topology-global"
           >
-            <TopologyIcon size={18} className="text-accent" />
-            {!collapsed && <span className="font-medium">全局拓扑</span>}
+            <TopologyIcon size={18} className="text-accent flex-shrink-0" />
+            {!collapsed && <span className="font-medium truncate whitespace-nowrap min-w-0 flex-1 text-left">全局拓扑</span>}
           </button>
         </div>
 
@@ -415,8 +525,8 @@ export function Sidebar({ onSettingsClick, onTopologyClick }: SidebarProps) {
             style={{ animationDelay: '50ms' }}
             title={collapsed ? '全部项目' : undefined}
           >
-            <FolderIcon size={18} className={isAllActive ? 'text-accent' : ''} />
-            {!collapsed && <span className="font-medium">全部项目</span>}
+            <FolderIcon size={18} className={`flex-shrink-0 ${isAllActive ? 'text-accent' : ''}`} />
+            {!collapsed && <span className="font-medium truncate whitespace-nowrap min-w-0 flex-1 text-left">全部项目</span>}
           </button>
         </div>
 
@@ -540,7 +650,7 @@ export function Sidebar({ onSettingsClick, onTopologyClick }: SidebarProps) {
           )}
 
           {groups.length === 0 && !collapsed && !groupCreatorOpen && (
-            <div className="text-[10px] text-text-muted px-2 py-1">
+            <div className="text-xs text-text-muted px-2 py-1 whitespace-nowrap">
               暂无分组。点击 + 创建。
             </div>
           )}
@@ -637,6 +747,63 @@ export function Sidebar({ onSettingsClick, onTopologyClick }: SidebarProps) {
         {/* Diagonal decoration */}
         <div className="divider-diagonal mb-2" />
 
+        {/* Drawer launcher button */}
+        <div
+          data-testid="drawer-launcher-rail"
+        >
+          <button
+            ref={drawerToggleRef}
+            type="button"
+            title={t('drawer.launchers.toggle', 'Drawer launchers')}
+            aria-label={t('drawer.launchers.toggle', 'Drawer launchers')}
+            aria-expanded={drawerMenuOpen}
+            aria-haspopup="menu"
+            className="btn-icon flex-shrink-0 w-9 h-9 border border-surface-700 bg-surface-800 hover:border-surface-600 hover:bg-surface-700 hover:text-text-primary group"
+            onClick={openDrawerMenu}
+            onFocus={openDrawerMenu}
+            onMouseEnter={openDrawerMenu}
+            data-testid="drawer-launcher-toggle"
+          >
+            <MenuIcon size={18} />
+          </button>
+          {drawerMenuOpen && (
+            <nav
+              ref={drawerMenuRef}
+              aria-label={t('drawer.launchers.aria', 'R8 drawer launchers')}
+              role="menu"
+              className="fixed flex w-44 flex-col gap-1 border border-surface-600 bg-surface-950/95 p-2 shadow-elevated radius-sm z-[2100]"
+              style={flyoutPos ? { left: flyoutPos.left, bottom: flyoutPos.bottom } : undefined}
+              data-testid="drawer-launcher-panel"
+              data-open="true"
+            >
+              {DRAWER_SLOTS.map(slot => (
+                <button
+                  key={slot}
+                  type="button"
+                  role="menuitem"
+                  data-testid={`open-drawer-${slot}`}
+                  title={drawerSlotLabels[slot]}
+                  aria-label={drawerSlotLabels[slot]}
+                  className="flex items-center gap-2 border border-surface-600 bg-surface-900 px-2 py-1 text-xs font-bold uppercase tracking-wider whitespace-nowrap text-text-secondary hover:border-accent hover:text-accent radius-sm"
+                  onClick={() => handleSelectDrawerSlot(slot)}
+                >
+                  {drawerSlotIcon(slot)}
+                  {drawerSlotLabels[slot]}
+                </button>
+              ))}
+              <button
+                type="button"
+                role="menuitem"
+                data-testid="drawer-launcher-close-all"
+                className="mt-1 border border-surface-600 bg-surface-900 px-2 py-1 text-xs font-bold uppercase tracking-wider whitespace-nowrap text-text-secondary hover:border-accent hover:text-accent radius-sm"
+                onClick={handleCloseAllDrawers}
+              >
+                {t('drawer.launchers.closeAll', 'Close all')}
+              </button>
+            </nav>
+          )}
+        </div>
+
         <button
           onClick={onSettingsClick}
           className="nav-item hover:text-text-primary group"
@@ -644,8 +811,8 @@ export function Sidebar({ onSettingsClick, onTopologyClick }: SidebarProps) {
           aria-label="设置"
           data-testid="sidebar-settings-button"
         >
-          <GearIcon size={18} className="group-hover:animate-gear-spin" style={{ animationDuration: '2s' }} />
-          {!collapsed && <span className="font-medium">设置</span>}
+          <GearIcon size={18} className="group-hover:animate-gear-spin flex-shrink-0" style={{ animationDuration: '2s' }} />
+          {!collapsed && <span className="font-medium truncate whitespace-nowrap min-w-0 flex-1 text-left">设置</span>}
         </button>
       </div>
 

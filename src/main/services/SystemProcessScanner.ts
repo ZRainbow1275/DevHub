@@ -1461,76 +1461,30 @@ Write-Output 'OK'`
   private async getRawProcesses(): Promise<RawProcessInfo[]> {
     try {
       // Single PowerShell call: Get-CimInstance Win32_Process returns KernelModeTime + UserModeTime
-      // (100-nanosecond units) alongside process info, eliminating the need for a second Get-Process call
+      // (100-nanosecond units) alongside process info, eliminating the need for a second Get-Process call.
+      // On some Windows boxes CIM can stall or time out, so we fall back to Get-Process and keep scanning.
       const psCmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name,CommandLine,WorkingSetSize,KernelModeTime,UserModeTime | ConvertTo-Csv -NoTypeInformation`
       const stdout = await this.executePowerShell(psCmd, {
         label: 'get-raw-processes',
         maxBuffer: 10 * 1024 * 1024,
         timeoutMs: 30000
       })
-      const lines = stdout.split('\n').filter(l => l.trim())
-      const processes: RawProcessInfo[] = []
-      // Collect CPU times from this single query for dev processes
-      const currentCpuTimes = new Map<number, number>()
-
-      // First line is CSV header: "ProcessId","ParentProcessId","Name","CommandLine","WorkingSetSize","KernelModeTime","UserModeTime"
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim()
-        if (!line) continue
-
-        // Parse CSV with quoted fields
-        const fields = this.parseCsvLine(line)
-        if (fields.length < 5) continue
-
-        const pid = parseInt(fields[0], 10)
-        const ppid = parseInt(fields[1], 10)
-        const name = fields[2] || 'Unknown'
-        const commandLine = fields[3] || ''
-        const memoryBytes = parseInt(fields[4], 10) || 0
-
-        if (isNaN(pid) || pid === 0) continue
-
-        // KernelModeTime and UserModeTime are in 100-nanosecond units
-        // Convert to seconds for CPU delta calculation
-        // Handle locale: some locales use comma as decimal separator
-        const kernelTimeRaw = (fields[5] || '0').replace(',', '.')
-        const userTimeRaw = (fields[6] || '0').replace(',', '.')
-        const kernelTime = parseFloat(kernelTimeRaw) || 0
-        const userTime = parseFloat(userTimeRaw) || 0
-        // Convert 100-nanosecond units to seconds
-        const totalCpuSeconds = (kernelTime + userTime) / 10_000_000
-
-        const isDev = this.isDevProcess(name)
-        if (isDev) {
-          currentCpuTimes.set(pid, totalCpuSeconds)
-        }
-
-        processes.push({
-          pid,
-          ppid: isNaN(ppid) ? 0 : ppid,
-          name,
-          commandLine,
-          workingDir: this.extractWorkingDir(commandLine),
-          memoryMB: Math.round(memoryBytes / 1024 / 1024),
-          cpuPercent: 0 // Will be filled by CPU delta calculation below
-        })
-      }
-
-      // Calculate CPU usage from delta between current and previous samples
-      if (currentCpuTimes.size > 0) {
-        const cpuMap = this.calculateCpuFromDelta(currentCpuTimes)
-        for (const proc of processes) {
-          const cpu = cpuMap.get(proc.pid)
-          if (cpu !== undefined) {
-            proc.cpuPercent = cpu
-          }
-        }
-      }
-
-      return processes
+      return this.parseCimProcessCsv(stdout)
     } catch (err) {
-      console.error('Process enumeration failed:', err instanceof Error ? err.message : err)
-      return []
+      const errorMessage = err instanceof Error ? err.message : String(err)
+      console.warn('Process enumeration via CIM failed, falling back to Get-Process:', errorMessage)
+      try {
+        const fallbackCmd = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-Process | Select-Object Id,ProcessName,Path,WorkingSet64,CPU | ConvertTo-Csv -NoTypeInformation`
+        const stdout = await this.executePowerShell(fallbackCmd, {
+          label: 'get-raw-processes-fallback',
+          maxBuffer: 10 * 1024 * 1024,
+          timeoutMs: 15000
+        })
+        return this.parseFallbackProcessCsv(stdout)
+      } catch (fallbackErr) {
+        console.error('Process enumeration failed:', fallbackErr instanceof Error ? fallbackErr.message : fallbackErr)
+        return []
+      }
     }
   }
 
@@ -1557,6 +1511,102 @@ Write-Output 'OK'`
     }
     fields.push(current)
     return fields
+  }
+
+  private parseCimProcessCsv(stdout: string): RawProcessInfo[] {
+    const lines = stdout.split('\n').filter(line => line.trim())
+    const processes: RawProcessInfo[] = []
+    const currentCpuTimes = new Map<number, number>()
+
+    // First line is CSV header: "ProcessId","ParentProcessId","Name","CommandLine","WorkingSetSize","KernelModeTime","UserModeTime"
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim()
+      if (!line) continue
+
+      const fields = this.parseCsvLine(line)
+      if (fields.length < 5) continue
+
+      const pid = parseInt(fields[0], 10)
+      const ppid = parseInt(fields[1], 10)
+      const name = fields[2] || 'Unknown'
+      const commandLine = fields[3] || ''
+      const memoryBytes = parseInt(fields[4], 10) || 0
+
+      if (isNaN(pid) || pid === 0) continue
+
+      const kernelTimeRaw = (fields[5] || '0').replace(',', '.')
+      const userTimeRaw = (fields[6] || '0').replace(',', '.')
+      const kernelTime = parseFloat(kernelTimeRaw) || 0
+      const userTime = parseFloat(userTimeRaw) || 0
+      const totalCpuSeconds = (kernelTime + userTime) / 10_000_000
+
+      if (this.isDevProcess(name)) {
+        currentCpuTimes.set(pid, totalCpuSeconds)
+      }
+
+      processes.push({
+        pid,
+        ppid: isNaN(ppid) ? 0 : ppid,
+        name,
+        commandLine,
+        workingDir: this.extractWorkingDir(commandLine),
+        memoryMB: Math.round(memoryBytes / 1024 / 1024),
+        cpuPercent: 0
+      })
+    }
+
+    if (currentCpuTimes.size > 0) {
+      const cpuMap = this.calculateCpuFromDelta(currentCpuTimes)
+      for (const proc of processes) {
+        const cpu = cpuMap.get(proc.pid)
+        if (cpu !== undefined) {
+          proc.cpuPercent = cpu
+        }
+      }
+    }
+
+    return processes
+  }
+
+  private parseFallbackProcessCsv(stdout: string): RawProcessInfo[] {
+    const lines = stdout.split('\n').filter(line => line.trim())
+    const processes: RawProcessInfo[] = []
+
+    // Header: "Id","ProcessName","Path","WorkingSet64","CPU"
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim()
+      if (!line) continue
+
+      const fields = this.parseCsvLine(line)
+      if (fields.length < 2) continue
+
+      const pid = parseInt(fields[0], 10)
+      const processName = fields[1] || 'Unknown'
+      const executablePath = fields[2] || ''
+      const memoryBytes = parseInt(fields[3], 10) || 0
+      const cpuSeconds = parseFloat((fields[4] || '0').replace(',', '.')) || 0
+      if (isNaN(pid) || pid === 0) continue
+
+      const normalizedName = processName.toLowerCase().includes('.exe')
+        ? processName
+        : `${processName}.exe`
+
+      processes.push({
+        pid,
+        ppid: 0,
+        name: normalizedName,
+        commandLine: executablePath,
+        workingDir: executablePath.includes('\\')
+          ? executablePath.slice(0, executablePath.lastIndexOf('\\'))
+          : executablePath.includes('/')
+            ? executablePath.slice(0, executablePath.lastIndexOf('/'))
+            : '',
+        memoryMB: Math.round(memoryBytes / 1024 / 1024),
+        cpuPercent: cpuSeconds
+      })
+    }
+
+    return processes
   }
 
   /**

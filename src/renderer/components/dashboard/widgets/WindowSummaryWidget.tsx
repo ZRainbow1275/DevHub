@@ -28,8 +28,8 @@ export default function WindowSummaryWidget({ item }: DashboardWidgetProps) {
           <ul className="divide-y divide-surface-800 text-xs">
             {topWindows.map(windowInfo => (
               <li className="flex items-center justify-between gap-3 px-3 py-2" key={windowInfo.hwnd}>
-                <span className="truncate text-text-secondary">{windowInfo.title || windowInfo.processName}</span>
-                <span className="tabular-nums text-text-muted">{windowInfo.pid}</span>
+                <span className="min-w-0 flex-1 truncate text-text-secondary">{windowInfo.title || windowInfo.processName}</span>
+                <span className="shrink-0 whitespace-nowrap tabular-nums text-text-muted">{windowInfo.pid}</span>
               </li>
             ))}
           </ul>

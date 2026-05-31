@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events'
+import os from 'os'
 import {
   ProcessInfo, PortInfo, WindowInfo, AITask,
   ScannerDiff, ScannerCacheEntry, SystemSummary, ScannerCacheSnapshot,
@@ -249,7 +250,13 @@ export class ScannerCache extends EventEmitter {
     )
 
     const cpuTotal = processes.reduce((sum, p) => sum + p.cpu, 0)
-    const totalMemory = processes.reduce((sum, p) => sum + p.memory, 0)
+    // p.memory is per-process RSS in MB (see SystemProcessScanner: memoryBytes / 1024 / 1024).
+    // Express memoryUsedPercent as a true percentage of total system RAM, clamped to 0-100.
+    const totalMemoryMb = processes.reduce((sum, p) => sum + p.memory, 0)
+    const totalSystemMb = os.totalmem() / (1024 * 1024)
+    const memoryUsedPercent = totalSystemMb > 0
+      ? Math.min(100, Math.max(0, Math.round((totalMemoryMb / totalSystemMb) * 100)))
+      : 0
 
     return {
       processCount: processes.length,
@@ -257,7 +264,7 @@ export class ScannerCache extends EventEmitter {
       windowCount: windows.length,
       aiToolCount: aiTasks.length,
       cpuTotal: Math.round(cpuTotal * 10) / 10,
-      memoryUsedPercent: Math.round(totalMemory)
+      memoryUsedPercent
     }
   }
 

@@ -58,9 +58,9 @@ export function WidgetHost({
   return (
     <WidgetFrame
       action={
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 flex-wrap items-center gap-1">
           <button
-            className="rounded border border-surface-600 px-2 py-1 text-[11px] text-text-muted hover:border-accent hover:text-accent"
+            className="rounded border border-surface-600 px-2 py-1 text-[11px] whitespace-nowrap text-text-muted hover:border-accent hover:text-accent"
             data-testid={`widget-configure-${item.i}`}
             onClick={() => onConfigure(item.i)}
             type="button"
@@ -68,7 +68,7 @@ export function WidgetHost({
             设置
           </button>
           <button
-            className="rounded border border-surface-600 px-2 py-1 text-[11px] text-text-muted hover:border-accent hover:text-accent"
+            className="rounded border border-surface-600 px-2 py-1 text-[11px] whitespace-nowrap text-text-muted hover:border-accent hover:text-accent"
             data-testid={`widget-morph-right-${item.i}`}
             onClick={() => onMorphToDrawer(item.i, 'right')}
             type="button"
@@ -76,7 +76,7 @@ export function WidgetHost({
             右侧
           </button>
           <button
-            className="rounded border border-surface-600 px-2 py-1 text-[11px] text-text-muted hover:border-accent hover:text-accent"
+            className="rounded border border-surface-600 px-2 py-1 text-[11px] whitespace-nowrap text-text-muted hover:border-accent hover:text-accent"
             data-testid={`widget-morph-bottom-${item.i}`}
             onClick={() => onMorphToDrawer(item.i, 'bottom')}
             type="button"

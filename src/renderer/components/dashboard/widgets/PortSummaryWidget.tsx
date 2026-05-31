@@ -26,8 +26,8 @@ export default function PortSummaryWidget({ item }: DashboardWidgetProps) {
           <ul className="divide-y divide-surface-800 text-xs">
             {byProtocol.map(([protocol, count]) => (
               <li className="flex items-center justify-between gap-3 px-3 py-2" key={protocol}>
-                <span className="uppercase tracking-[0.14em] text-text-secondary">{protocol}</span>
-                <span className="tabular-nums text-text-muted">{count}</span>
+                <span className="min-w-0 flex-1 truncate uppercase tracking-[0.14em] text-text-secondary">{protocol}</span>
+                <span className="shrink-0 whitespace-nowrap tabular-nums text-text-muted">{count}</span>
               </li>
             ))}
           </ul>

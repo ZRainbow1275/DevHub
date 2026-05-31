@@ -48,21 +48,77 @@ async function launchApp(): Promise<LaunchResult> {
 }
 
 async function closeElectronApp(electronApp: ElectronApplication): Promise<void> {
+  const closePromise = new Promise<void>((resolve) => {
+    electronApp.once('close', () => {
+      resolve()
+    })
+  })
+
+  const waitForClose = async (timeoutMs: number): Promise<boolean> => {
+    const timeoutPromise = new Promise<false>((resolve) => {
+      const timer = setTimeout(() => resolve(false), timeoutMs)
+      timer.unref?.()
+    })
+
+    return Promise.race([
+      closePromise.then(() => true),
+      timeoutPromise
+    ])
+  }
+
   try {
     await electronApp.evaluate(({ app }) => {
       app.quit()
     })
   } catch {
-    // The app may already be closing.
+    // The main process may already be closing; fall back to process cleanup below.
   }
 
-  await Promise.race([
-    electronApp.close(),
-    new Promise<void>((resolve) => {
-      const timer = setTimeout(resolve, 8_000)
-      timer.unref?.()
+  if (await waitForClose(8_000)) {
+    return
+  }
+
+  const electronProcess = electronApp.process()
+  if (electronProcess.exitCode !== null || electronProcess.signalCode !== null) {
+    return
+  }
+
+  const processExitPromise = new Promise<boolean>((resolve) => {
+    const timer = setTimeout(() => resolve(false), 8_000)
+    timer.unref?.()
+    electronProcess.once('exit', () => {
+      clearTimeout(timer)
+      resolve(true)
     })
-  ]).catch(() => undefined)
+  })
+
+  if (electronProcess.pid && process.platform === 'win32') {
+    try {
+      execFileSync('taskkill.exe', ['/PID', String(electronProcess.pid), '/T', '/F'], {
+        stdio: 'ignore',
+        timeout: 5_000,
+        windowsHide: true
+      })
+    } catch {
+      try {
+        electronProcess.kill()
+      } catch {
+        // The process may already be gone; fall through to the final wait.
+      }
+    }
+  } else {
+    try {
+      electronProcess.kill()
+    } catch {
+      // The process may already be gone; fall through to the final wait.
+    }
+  }
+
+  if (await Promise.race([waitForClose(8_000), processExitPromise])) {
+    return
+  }
+
+  throw new Error('Timed out while closing Electron app process')
 }
 
 function startWindowProbe(title: string): WindowProbe {
@@ -98,7 +154,6 @@ function startWindowProbe(title: string): WindowProbe {
   ], {
     cwd: directory,
     stdio: 'ignore',
-    timeout: 120_000,
     windowsHide: false
   })
   return { directory, process: child, title }

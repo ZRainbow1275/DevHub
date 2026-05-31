@@ -1,7 +1,8 @@
 import fs from 'fs'
 import path from 'path'
 import { app } from 'electron'
-import DatabaseConstructor, { type Database as DatabaseHandle } from 'better-sqlite3'
+import type { Database as DatabaseHandle } from 'better-sqlite3'
+import { loadBetterSqlite } from './sqlite/betterSqliteLoader'
 import {
   processHistoryPointSchema,
   processHistorySchema,
@@ -47,6 +48,7 @@ export class ProcessHistoryStore {
     let database: DatabaseHandle | null = null
     try {
       fs.mkdirSync(path.dirname(dbPath), { recursive: true })
+      const DatabaseConstructor = loadBetterSqlite()
       database = new DatabaseConstructor(dbPath)
       database.exec(`
         CREATE TABLE IF NOT EXISTS process_history (

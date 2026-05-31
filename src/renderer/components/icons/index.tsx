@@ -38,14 +38,17 @@ const LEGACY_ICON_TOKENS = {
   ListIcon: 'lucide:List',
   LogIcon: 'lucide:FileText',
   MaximizeIcon: 'lucide:Maximize2',
+  MenuIcon: 'lucide:Menu',
   MinimizeIcon: 'lucide:Minus',
   MonitorIcon: 'lucide:BarChart3',
   NetworkIcon: 'lucide:Network',
   PackageIcon: 'lucide:Package',
   PaletteIcon: 'lucide:Palette',
   PencilIcon: 'lucide:Pencil',
+  PinIcon: 'lucide:Pin',
   PlayIcon: 'lucide:Play',
   PlusIcon: 'lucide:Plus',
+  PopoutIcon: 'lucide:PictureInPicture2',
   PortIcon: 'lucide:Network',
   ProcessIcon: 'lucide:Cpu',
   RefreshIcon: 'lucide:RefreshCw',
@@ -89,6 +92,14 @@ export function GearIcon(props: IconProps) {
 
 export function PencilIcon(props: IconProps) {
   return <LegacyIcon iconName="PencilIcon" {...props} />
+}
+
+export function PinIcon(props: IconProps) {
+  return <LegacyIcon iconName="PinIcon" {...props} />
+}
+
+export function PopoutIcon(props: IconProps) {
+  return <LegacyIcon iconName="PopoutIcon" {...props} />
 }
 
 export function LightningIcon(props: IconProps) {
@@ -145,6 +156,10 @@ export function MinimizeIcon(props: IconProps) {
 
 export function MaximizeIcon(props: IconProps) {
   return <LegacyIcon iconName="MaximizeIcon" {...props} />
+}
+
+export function MenuIcon(props: IconProps) {
+  return <LegacyIcon iconName="MenuIcon" {...props} />
 }
 
 export function WrenchIcon(props: IconProps) {

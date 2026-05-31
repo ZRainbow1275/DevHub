@@ -150,6 +150,7 @@ import type {
   PermissionCheckResult,
   PermissionExpiryStreamPayload,
   PermissionTtlGrant,
+  PanelPopoutSurface,
   PopoutBridgeMessage,
   PopoutScreenEvent,
   PortPopoutBatchRequest,
@@ -377,6 +378,17 @@ const r8Api = {
     moveToMonitor: (windowId: string, monitorIndex: number) => ipcRenderer.invoke('popout:move-to-monitor', { windowId, monitorIndex }),
     promoteFromFloating: (floatingId: string, input?: { bounds?: { x: number; y: number; width: number; height: number }; alwaysOnTop?: boolean }) => ipcRenderer.invoke('popout:promote-from-floating', { floatingId, ...input }),
     demote: (windowId: string) => ipcRenderer.invoke('popout:demote', { windowId })
+  },
+  panel: {
+    openPopout: (surface: PanelPopoutSurface): Promise<BrowserPopout> => ipcRenderer.invoke('popout:create', {
+      surface,
+      targetId: `r8-panel-${surface}`,
+      mode: 'browserwindow',
+      route: `/panel/${surface}`,
+      title: `DevHub ${surface}`
+    }),
+    listPopouts: (): Promise<BrowserPopout[]> => ipcRenderer.invoke('popout:list'),
+    closePopout: (windowId: string) => ipcRenderer.invoke('popout:close', { windowId })
   },
   drawer: {
     getState: (): Promise<DrawerState[]> => ipcRenderer.invoke('drawer:get-state'),

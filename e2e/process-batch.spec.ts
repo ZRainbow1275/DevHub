@@ -34,6 +34,7 @@ interface ProcessBatchWindowProbe {
   directory: string
   injectedPath: string
   process: ChildProcess
+  resetPath: string
   title: string
 }
 
@@ -61,27 +62,84 @@ async function launchApp(): Promise<LaunchResult> {
 }
 
 async function closeElectronApp(electronApp: ElectronApplication): Promise<void> {
+  const closePromise = new Promise<void>((resolve) => {
+    electronApp.once('close', () => {
+      resolve()
+    })
+  })
+
+  const waitForClose = async (timeoutMs: number): Promise<boolean> => {
+    const timeoutPromise = new Promise<false>((resolve) => {
+      const timer = setTimeout(() => resolve(false), timeoutMs)
+      timer.unref?.()
+    })
+
+    return Promise.race([
+      closePromise.then(() => true),
+      timeoutPromise
+    ])
+  }
+
   try {
     await electronApp.evaluate(({ app }) => {
       app.quit()
     })
   } catch {
-    // The app may already be closing.
+    // The main process may already be closing; fall back to process cleanup below.
   }
 
-  await Promise.race([
-    electronApp.close(),
-    new Promise<void>((resolve) => {
-      const timer = setTimeout(resolve, 8_000)
-      timer.unref?.()
+  if (await waitForClose(8_000)) {
+    return
+  }
+
+  const electronProcess = electronApp.process()
+  if (electronProcess.exitCode !== null || electronProcess.signalCode !== null) {
+    return
+  }
+
+  const processExitPromise = new Promise<boolean>((resolve) => {
+    const timer = setTimeout(() => resolve(false), 8_000)
+    timer.unref?.()
+    electronProcess.once('exit', () => {
+      clearTimeout(timer)
+      resolve(true)
     })
-  ]).catch(() => undefined)
+  })
+
+  if (electronProcess.pid && process.platform === 'win32') {
+    try {
+      execFileSync('taskkill.exe', ['/PID', String(electronProcess.pid), '/T', '/F'], {
+        stdio: 'ignore',
+        timeout: 5_000,
+        windowsHide: true
+      })
+    } catch {
+      try {
+        electronProcess.kill()
+      } catch {
+        // The process may already be gone; fall through to the final wait.
+      }
+    }
+  } else {
+    try {
+      electronProcess.kill()
+    } catch {
+      // The process may already be gone; fall through to the final wait.
+    }
+  }
+
+  if (await Promise.race([waitForClose(8_000), processExitPromise])) {
+    return
+  }
+
+  throw new Error('Timed out while closing Electron app process')
 }
 
 function startWindowProbe(title: string): ProcessBatchWindowProbe {
   const directory = join(tmpdir(), `devhub-r8b-spec12-${Date.now()}-${Math.random().toString(16).slice(2)}`)
   mkdirSync(directory, { recursive: true })
   const injectedPath = join(directory, 'injected.txt')
+  const resetPath = join(directory, 'reset.txt')
   const scriptPath = join(directory, 'probe.ps1')
   writeFileSync(scriptPath, [
     'Add-Type -AssemblyName System.Windows.Forms',
@@ -91,12 +149,27 @@ function startWindowProbe(title: string): ProcessBatchWindowProbe {
     `$form.Text = ${JSON.stringify(title)}`,
     `$form.Width = 560`,
     `$form.Height = 320`,
+    `$form.ImeMode = [System.Windows.Forms.ImeMode]::Disable`,
     `$text = New-Object System.Windows.Forms.TextBox`,
     `$text.Multiline = $true`,
     `$text.Dock = [System.Windows.Forms.DockStyle]::Fill`,
     `$text.Font = New-Object System.Drawing.Font('Consolas', 12)`,
+    `$text.AcceptsReturn = $true`,
+    `$text.ImeMode = [System.Windows.Forms.ImeMode]::Disable`,
+    `$text.ShortcutsEnabled = $true`,
     `$out = ${JSON.stringify(injectedPath)}`,
+    `$reset = ${JSON.stringify(resetPath)}`,
     `$text.Add_TextChanged({ [System.IO.File]::WriteAllText($out, $text.Text, [System.Text.Encoding]::UTF8) })`,
+    `$timer = New-Object System.Windows.Forms.Timer`,
+    `$timer.Interval = 100`,
+    `$timer.Add_Tick({`,
+    `  if ([System.IO.File]::Exists($reset)) {`,
+    `    [System.IO.File]::Delete($reset)`,
+    `    $text.Clear()`,
+    `    [System.IO.File]::WriteAllText($out, $text.Text, [System.Text.Encoding]::UTF8)`,
+    `  }`,
+    `})`,
+    `$timer.Start()`,
     `$form.Controls.Add($text)`,
     `$form.Add_Shown({ $form.Activate(); $text.Focus() })`,
     `[System.Windows.Forms.Application]::Run($form)`,
@@ -113,10 +186,9 @@ function startWindowProbe(title: string): ProcessBatchWindowProbe {
   ], {
     cwd: directory,
     stdio: 'ignore',
-    timeout: 120_000,
     windowsHide: false
   })
-  return { directory, injectedPath, process: child, title }
+  return { directory, injectedPath, process: child, resetPath, title }
 }
 
 function spawnKillProbe(label: string): ChildProcess {
@@ -126,7 +198,6 @@ function spawnKillProbe(label: string): ChildProcess {
     label
   ], {
     stdio: 'ignore',
-    timeout: 120_000,
     windowsHide: true
   })
 }
@@ -185,6 +256,24 @@ async function stopWindowProbe(probe: ProcessBatchWindowProbe | null): Promise<v
   if (!probe) return
   await stopChildProcess(probe.process)
   await removeDirectoryWithRetry(probe.directory)
+}
+
+async function resetWindowProbeText(probe: ProcessBatchWindowProbe): Promise<void> {
+  writeFileSync(probe.resetPath, String(Date.now()), 'utf8')
+  await expect.poll(async () => existsSync(probe.resetPath), {
+    message: 'wait for WinForms probe reset marker to be consumed',
+    timeout: 5_000,
+    intervals: [100, 150, 250]
+  }).toBe(false)
+  await expect.poll(async () => {
+    return existsSync(probe.injectedPath)
+      ? readFileSync(probe.injectedPath, 'utf8').replace(/^\uFEFF/, '')
+      : ''
+  }, {
+    message: 'wait for WinForms probe textbox to be empty before process batch injection',
+    timeout: 5_000,
+    intervals: [100, 150, 250]
+  }).toBe('')
 }
 
 async function scanWindowTarget(electronApp: ElectronApplication, title: string): Promise<ProcessBatchWindowTarget | null> {
@@ -250,6 +339,16 @@ async function undoProcessBatch(page: Page, jobId: string): Promise<ProcessBatch
 }
 
 function expectSingleSuccess(progress: ProcessBatchProgress): void {
+  const diagnostic = JSON.stringify(progress, null, 2)
+  if (
+    progress.state !== 'completed'
+    || progress.completed !== 1
+    || progress.failed !== 0
+    || progress.results.length !== 1
+    || progress.results[0]?.status !== 'ok'
+  ) {
+    throw new Error(`Expected one successful process batch result, received:\n${diagnostic}`)
+  }
   expect(progress.state).toBe('completed')
   expect(progress.completed).toBe(1)
   expect(progress.failed).toBe(0)
@@ -307,12 +406,15 @@ test('R8.B spec-12 ASSERT_PROCESS_BATCH_6_OPS covers real process batch IPC path
       confirmed: true,
       pids: [target.pid]
     })
+    expectSingleSuccess(focusProgress)
+    await resetWindowProbeText(windowProbe)
     const injectProgress = await runProcessBatch(window, {
       action: 'inject-text',
       args: { hwnd: target.hwnd, text: injectedText },
       confirmed: true,
       pids: [target.pid]
     })
+    expectSingleSuccess(injectProgress)
     await expect.poll(async () => {
       return existsSync(windowProbe!.injectedPath)
         ? readFileSync(windowProbe!.injectedPath, 'utf8').replace(/^\uFEFF/, '')
@@ -347,8 +449,6 @@ test('R8.B spec-12 ASSERT_PROCESS_BATCH_6_OPS covers real process batch IPC path
       pids: [killPid]
     })
 
-    expectSingleSuccess(focusProgress)
-    expectSingleSuccess(injectProgress)
     expectSingleSuccess(tagProgress)
     expect(undo.undone).toBe(1)
     expect(undo.results[0]?.status).toBe('rolled-back')

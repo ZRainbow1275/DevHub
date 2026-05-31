@@ -109,24 +109,23 @@ export const ProjectDetailPanel = memo(function ProjectDetailPanel({
         <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none" />
         <div className="flex items-center gap-3 min-w-0 relative z-10">
           <span
-            className={`w-3 h-3 flex-shrink-0 ${
+            className={`w-3 h-3 flex-shrink-0 radius-sm ${
               isRunning ? 'bg-success status-dot-running' : project.status === 'error' ? 'bg-error' : 'bg-surface-500'
             }`}
-            style={{ borderRadius: '2px' }}
           />
           <h2 className="text-sm font-bold text-text-primary truncate" title={project.name}>
             {project.name}
           </h2>
           <ProjectTypeBadge type={project.projectType} size="sm" />
         </div>
-        <div className="flex items-center gap-2 relative z-10">
+        <div className="flex items-center gap-2 relative z-10 flex-shrink-0">
           <button
             type="button"
             data-testid="project-global-topology-button"
             data-graph-entry="project-detail-global-topology"
             data-graph-kind="global"
             onClick={openInGlobalTopology}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-surface-800 text-text-secondary hover:bg-surface-700 hover:text-accent transition-colors border-l-2 border-surface-600 hover:border-accent radius-sm"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-surface-800 text-text-secondary hover:bg-surface-700 hover:text-accent transition-colors border-l-2 border-surface-600 hover:border-accent radius-sm whitespace-nowrap"
             title="在全局拓扑中查看"
           >
             <NetworkIcon size={12} />
@@ -212,20 +211,20 @@ function OverviewTab({ project, gitInfo, deps, onStart, onStop }: {
       {/* Quick Action */}
       <div className="flex items-center" style={{ gap: 'var(--card-gap)' }}>
         {isRunning ? (
-          <button onClick={onStop} className="flex items-center gap-2 px-4 py-2 bg-error/10 text-error hover:bg-error/20 transition-colors text-sm font-medium" style={{ borderRadius: '2px' }}>
+          <button onClick={onStop} className="flex items-center gap-2 px-4 py-2 bg-error/10 text-error hover:bg-error/20 transition-colors text-sm font-medium radius-sm whitespace-nowrap">
             <StopIcon size={14} />
             停止项目
           </button>
         ) : (
-          <button onClick={() => onStart(project.defaultScript)} className="flex items-center gap-2 px-4 py-2 bg-success/10 text-success hover:bg-success/20 transition-colors text-sm font-medium" style={{ borderRadius: '2px' }}>
+          <button onClick={() => onStart(project.defaultScript)} className="flex items-center gap-2 px-4 py-2 bg-success/10 text-success hover:bg-success/20 transition-colors text-sm font-medium radius-sm whitespace-nowrap">
             <PlayIcon size={14} />
-            启动 ({project.defaultScript})
+            <span className="truncate max-w-[16ch]">启动 ({project.defaultScript})</span>
           </button>
         )}
       </div>
 
       {/* Info Grid */}
-      <div className="grid grid-cols-2" style={{ gap: 'var(--card-gap)' }}>
+      <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(11rem, 1fr))', gap: 'var(--card-gap)' }}>
         <InfoCell label="项目类型" value={typeLabel} />
         <InfoCell label="状态" value={isRunning ? '运行中' : project.status === 'error' ? '错误' : '已停止'} />
         {gitInfo && <InfoCell label="Git 分支" value={gitInfo.branch} />}
@@ -237,7 +236,7 @@ function OverviewTab({ project, gitInfo, deps, onStart, onStop }: {
       </div>
 
       {/* Path */}
-      <div className="bg-surface-800 p-3 border-l-2 border-surface-600" style={{ borderRadius: '2px' }}>
+      <div className="bg-surface-800 p-3 border-l-2 border-surface-600 radius-sm">
         <div className="text-[10px] text-text-muted uppercase tracking-wider mb-1">项目路径</div>
         <div className="text-xs text-text-secondary font-mono break-all">{project.path}</div>
       </div>
@@ -260,8 +259,8 @@ function OverviewTab({ project, gitInfo, deps, onStart, onStop }: {
 function InfoCell({ label, value }: { label: string; value: string }) {
   return (
     <div
-      className="bg-surface-800 border-l-2 border-surface-600"
-      style={{ borderRadius: '2px', padding: 'var(--space-card-padding)' }}
+      className="bg-surface-800 border-l-2 border-surface-600 min-w-0 radius-sm"
+      style={{ padding: 'var(--space-card-padding)' }}
     >
       <div className="text-[10px] text-text-muted uppercase tracking-wider">{label}</div>
       <div className="text-sm text-text-primary font-medium mt-0.5 truncate" title={value}>{value}</div>
@@ -287,11 +286,11 @@ function ScriptsTab({ project, onStart, onStop }: {
       {project.scripts.map(script => {
         const isDefault = script === project.defaultScript
         return (
-          <div key={script} className="flex items-center justify-between bg-surface-800 p-3 border-l-2 border-surface-600 hover:border-accent/50 transition-colors" style={{ borderRadius: '2px' }}>
+          <div key={script} className="flex items-center justify-between bg-surface-800 p-3 border-l-2 border-surface-600 hover:border-accent/50 transition-colors radius-sm">
             <div className="flex items-center gap-2 min-w-0">
-              <span className="text-sm font-mono text-text-primary">{script}</span>
+              <span className="text-sm font-mono text-text-primary truncate">{script}</span>
               {isDefault && (
-                <span className="text-[10px] px-1.5 py-0.5 bg-accent/10 text-accent border-l-2 border-accent" style={{ borderRadius: '2px' }}>
+                <span className="text-[10px] px-1.5 py-0.5 bg-accent/10 text-accent border-l-2 border-accent radius-sm whitespace-nowrap flex-shrink-0">
                   默认
                 </span>
               )}
@@ -299,8 +298,7 @@ function ScriptsTab({ project, onStart, onStop }: {
             {isRunning ? (
               <button
                 onClick={onStop}
-                className="flex items-center gap-1 px-3 py-1 text-xs text-error hover:bg-error/10 transition-colors"
-                style={{ borderRadius: '2px' }}
+                className="flex items-center gap-1 px-3 py-1 text-xs text-error hover:bg-error/10 transition-colors radius-sm whitespace-nowrap flex-shrink-0"
               >
                 <StopIcon size={12} />
                 停止
@@ -308,8 +306,7 @@ function ScriptsTab({ project, onStart, onStop }: {
             ) : (
               <button
                 onClick={() => onStart(script)}
-                className="flex items-center gap-1 px-3 py-1 text-xs text-success hover:bg-success/10 transition-colors"
-                style={{ borderRadius: '2px' }}
+                className="flex items-center gap-1 px-3 py-1 text-xs text-success hover:bg-success/10 transition-colors radius-sm whitespace-nowrap flex-shrink-0"
               >
                 <PlayIcon size={12} />
                 运行
@@ -361,21 +358,19 @@ function DependenciesTab({ deps, loading, onRefresh }: {
     : items
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 h-full flex flex-col">
       {/* Header with counts */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowDev(false)}
-            className={`text-xs px-2 py-1 transition-colors ${!showDev ? 'text-accent bg-accent/10' : 'text-text-muted hover:text-text-secondary'}`}
-            style={{ borderRadius: '2px' }}
+            className={`text-xs px-2 py-1 transition-colors radius-sm whitespace-nowrap ${!showDev ? 'text-accent bg-accent/10' : 'text-text-muted hover:text-text-secondary'}`}
           >
             dependencies ({deps.dependencies.length})
           </button>
           <button
             onClick={() => setShowDev(true)}
-            className={`text-xs px-2 py-1 transition-colors ${showDev ? 'text-accent bg-accent/10' : 'text-text-muted hover:text-text-secondary'}`}
-            style={{ borderRadius: '2px' }}
+            className={`text-xs px-2 py-1 transition-colors radius-sm whitespace-nowrap ${showDev ? 'text-accent bg-accent/10' : 'text-text-muted hover:text-text-secondary'}`}
           >
             devDependencies ({deps.devDependencies.length})
           </button>
@@ -405,7 +400,7 @@ function DependenciesTab({ deps, loading, onRefresh }: {
       </div>
 
       {/* List */}
-      <div className="space-y-1 max-h-[400px] overflow-y-auto">
+      <div className="space-y-1 flex-1 min-h-0 overflow-y-auto">
         {filtered.map(dep => (
           <DepRow key={dep.name} dep={dep} />
         ))}
@@ -421,7 +416,7 @@ function DependenciesTab({ deps, loading, onRefresh }: {
 
 function DepRow({ dep }: { dep: DependencyEntry }) {
   return (
-    <div className="flex items-center justify-between py-1.5 px-2 bg-surface-800/50 hover:bg-surface-800 transition-colors text-xs" style={{ borderRadius: '2px' }}>
+    <div className="flex items-center justify-between py-1.5 px-2 bg-surface-800/50 hover:bg-surface-800 transition-colors text-xs radius-sm">
       <span className="font-mono text-text-primary truncate flex-1 min-w-0">{dep.name}</span>
       <span className="text-text-muted font-mono ml-2 flex-shrink-0">{dep.version}</span>
     </div>
@@ -435,7 +430,7 @@ function PortsTab({ project }: { project: Project }) {
 
   return (
     <div className="space-y-3">
-      <div className="bg-surface-800 p-3 border-l-2 border-gold" style={{ borderRadius: '2px' }}>
+      <div className="bg-surface-800 p-3 border-l-2 border-gold radius-sm">
         <div className="flex items-center gap-2">
           <PortIcon size={16} className="text-gold" />
           <span className="text-lg font-mono font-bold text-gold">:{project.port}</span>
@@ -481,7 +476,7 @@ function LogsTab({ project }: { project: Project }) {
       </div>
 
       {/* Log content */}
-      <div className="flex-1 bg-surface-950 p-3 font-mono text-[11px] overflow-y-auto min-h-[200px] max-h-[400px] border-l-2 border-surface-600" style={{ borderRadius: '2px' }}>
+      <div className="flex-1 min-h-0 bg-surface-950 p-3 font-mono text-[11px] overflow-y-auto border-l-2 border-surface-600 radius-sm">
         {filteredLogs.length === 0 ? (
           <div className="text-text-muted text-center py-8">
             {projectLogs.length === 0 ? '暂无日志。启动项目后日志将显示在这里。' : '无匹配的日志条目。'}
@@ -542,7 +537,7 @@ function GitTab({ gitInfo, loading, onRefresh }: {
         </div>
         <div className="space-y-1">
           {gitInfo.recentCommits.map((commit, i) => (
-            <div key={i} className="flex items-start gap-2 py-1.5 px-2 bg-surface-800/50 hover:bg-surface-800 transition-colors" style={{ borderRadius: '2px' }}>
+            <div key={i} className="flex items-start gap-2 py-1.5 px-2 bg-surface-800/50 hover:bg-surface-800 transition-colors radius-sm">
               <span className="text-[10px] font-mono text-accent flex-shrink-0 mt-0.5">{commit.hash}</span>
               <div className="min-w-0 flex-1">
                 <div className="text-xs text-text-primary truncate">{commit.message}</div>
@@ -631,8 +626,7 @@ function ConfigTab({ project }: { project: Project }) {
           <button
             onClick={handleSaveDefaultScript}
             disabled={defaultScript === project.defaultScript}
-            className="px-3 py-1 text-xs bg-accent/10 text-accent hover:bg-accent/20 disabled:opacity-30 transition-colors"
-            style={{ borderRadius: '2px' }}
+            className="px-3 py-1 text-xs bg-accent/10 text-accent hover:bg-accent/20 disabled:opacity-30 transition-colors radius-sm whitespace-nowrap flex-shrink-0"
           >
             保存
           </button>
@@ -663,8 +657,7 @@ function ConfigTab({ project }: { project: Project }) {
           <button
             onClick={handleSaveGroup}
             disabled={!groupDirty || savingGroup}
-            className="px-3 py-1 text-xs bg-accent/10 text-accent hover:bg-accent/20 disabled:opacity-30 transition-colors"
-            style={{ borderRadius: '2px' }}
+            className="px-3 py-1 text-xs bg-accent/10 text-accent hover:bg-accent/20 disabled:opacity-30 transition-colors radius-sm whitespace-nowrap flex-shrink-0"
             data-testid="project-detail-group-save"
           >
             {savingGroup ? '保存中...' : '保存'}
@@ -702,7 +695,7 @@ function ConfigTab({ project }: { project: Project }) {
       </div>
 
       {/* Project Info */}
-      <div className="bg-surface-800 p-3 border-l-2 border-surface-600" style={{ borderRadius: '2px' }}>
+      <div className="bg-surface-800 p-3 border-l-2 border-surface-600 radius-sm">
         <div className="text-[10px] text-text-muted uppercase tracking-wider mb-2">项目信息</div>
         <div className="space-y-1 text-xs">
           <div className="flex justify-between">

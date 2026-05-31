@@ -333,7 +333,7 @@ export function DevObservabilityPanel({
   throttleReport
 }: DevObservabilityPanelProps) {
   const { t } = useT()
-  const [activeTab, setActiveTab] = useState<PanelTab>('observability')
+  const [activeTab, setActiveTab] = useState<PanelTab>('core')
 
   if (!open) {
     return null
@@ -473,7 +473,7 @@ export function DevObservabilityPanel({
 
         {activeTab === 'ipc' ? (
           <>
-            <SectionCard title={t('dev.observability.cards.throttleSnapshot', 'Throttle Snapshot')}>
+            <SectionCard title={t('dev.observability.cards.throttleSnapshot', 'Throttle Snapshot')} testId="metric-ipc-throttle-summary">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <MetricSummary label="channels" value={formatCount(throttleRows.length)} />
                 <MetricSummary
@@ -495,11 +495,11 @@ export function DevObservabilityPanel({
 
         {activeTab === 'scanners' ? (
           <>
-            <SectionCard title={t('dev.observability.cards.scannerHealth', 'Scanner Health')}>
+            <SectionCard title={t('dev.observability.cards.scannerHealth', 'Scanner Health')} testId="metric-scanner-health">
               <DenseList empty="暂无扫描器状态" items={scannerHealth} renderItem={(item) => renderScanner(item)} />
             </SectionCard>
 
-            <SectionCard title={t('dev.observability.cards.rendererAck', 'Renderer ACK Backpressure')}>
+            <SectionCard title={t('dev.observability.cards.rendererAck', 'Renderer ACK Backpressure')} testId="metric-scanner-backpressure">
               <DenseList
                 empty="鏆傛棤 ACK 鍘嬪姏鐘舵€?"
                 items={scannerBackpressure}
@@ -507,7 +507,7 @@ export function DevObservabilityPanel({
               />
             </SectionCard>
 
-            <SectionCard title={t('dev.observability.cards.powerShellPool', 'PowerShell Pool')}>
+            <SectionCard title={t('dev.observability.cards.powerShellPool', 'PowerShell Pool')} testId="metric-ps-pool">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <MetricSummary label="workers" value={formatCount(psPoolStats?.workers ?? Number.NaN)} />
                 <MetricSummary label="idle" value={formatCount(psPoolStats?.idle ?? Number.NaN)} />

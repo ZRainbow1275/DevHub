@@ -60,7 +60,7 @@ export function BlocklistEditor() {
         </div>
       </div>
 
-      <div className="grid grid-cols-[120px_1fr_auto] gap-2">
+      <div className="grid grid-cols-[minmax(80px,7rem)_minmax(0,1fr)_auto] gap-2">
         <input
           data-testid="blocklist-port-input"
           type="number"
@@ -69,7 +69,7 @@ export function BlocklistEditor() {
           value={portText}
           onChange={event => setPortText(event.target.value)}
           placeholder="端口"
-          className="input-sm"
+          className="input-sm min-w-0"
         />
         <input
           data-testid="blocklist-reason-input"
@@ -78,7 +78,7 @@ export function BlocklistEditor() {
           value={reason}
           onChange={event => setReason(event.target.value)}
           placeholder="原因"
-          className="input-sm"
+          className="input-sm min-w-0"
         />
         <button
           data-testid="blocklist-add-button"
@@ -106,14 +106,14 @@ export function BlocklistEditor() {
         ) : (
           userEntries.map(entry => (
             <div key={entry.id} className="flex items-center justify-between gap-3 bg-surface-800 px-2 py-1.5 radius-sm">
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="font-mono text-xs text-text-primary">{entry.port ? `:${entry.port}` : entry.ip}</div>
                 <div className="truncate text-[10px] text-text-muted">{entry.reason || 'user'}</div>
               </div>
               <button
                 type="button"
                 onClick={() => removeEntry({ id: entry.id, confirmedBy: 'settings-blocklist' })}
-                className="btn-icon-sm text-error/70 hover:text-error"
+                className="btn-icon-sm text-error/70 hover:text-error flex-shrink-0"
                 title="删除用户黑名单项"
               >
                 <TrashIcon size={13} />

@@ -1,7 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
-import DatabaseConstructor, { type Database as DatabaseHandle } from 'better-sqlite3'
+import type { Database as DatabaseHandle } from 'better-sqlite3'
+import { loadBetterSqlite } from '../sqlite/betterSqliteLoader'
 import {
   injectWhitelistEntrySchema,
   type InjectScenario,
@@ -161,6 +162,7 @@ export class InjectFirstTimeConfirmRepository {
 
   private withDatabase<T>(operation: (database: DatabaseHandle) => T): T {
     mkdirSync(dirname(this.options.dbPath), { recursive: true })
+    const DatabaseConstructor = loadBetterSqlite()
     const database = new DatabaseConstructor(this.options.dbPath)
     try {
       return operation(database)

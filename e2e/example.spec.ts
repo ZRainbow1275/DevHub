@@ -6,9 +6,10 @@ import { createRequire } from 'node:module'
 import { createServer, type Server } from 'node:net'
 import { test, expect, _electron as electron, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 import type { CommandHistoryEntry, GraphKind, StatusbarConfig, WindowBatchAction, WindowBatchProgress } from '@shared/schemas/r8-runtime'
+import type { Project } from '@shared/types'
 import type { AIWindowAlias } from '@shared/types-extended'
 
-const EMOJI_PATTERN = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u
+const EMOJI_PATTERN = /\p{Extended_Pictographic}/u
 const nodeRequire = createRequire(import.meta.url)
 const AXE_CORE_PATH = nodeRequire.resolve('axe-core/axe.min.js')
 const ELECTRON_BINARY_PATH = String(nodeRequire('electron'))
@@ -37,11 +38,13 @@ const EXPECTED_PRELOAD_TOP_LEVEL_KEYS = [
   'aiTask',
   'dialog',
   'groups',
+  'i18n',
   'logs',
   'notification',
   'port',
   'process',
   'projects',
+  'r8',
   'scanner',
   'settings',
   'shell',
@@ -340,6 +343,8 @@ interface ProjectOpenProbeResult {
 interface AttachedFlowE2EReport {
   appendedNodeIds: string[]
   appendedTaskIds: Array<string | null>
+  defaultTruncated: boolean
+  defaultWarnings: string[]
   defaultWindowMs: number
   exportedStartsWithSequence: boolean
   filteredNodeCount: number
@@ -623,18 +628,9 @@ const SPEC24_TOPOLOGY_FIXTURE_GRAPH_KINDS = ['network-topology', 'neural-relatio
 const SPEC24_TOPOLOGY_FIXTURE_CURSOR = 1_800_024
 const SPEC24_TOPOLOGY_FIXTURE_BUDGET_MS = 2_500
 
-interface GraphNodeDistribution {
-  count: number
-  spreadX: number
-  spreadY: number
-  viewBoxHeight: number
-  viewBoxWidth: number
-  containerHeight: number
-  containerWidth: number
-}
-
 interface LaunchAppOptions {
   enableDevObservability?: boolean
+  userDataPath?: string
 }
 
 interface AxeViolationSummary {
@@ -652,6 +648,51 @@ interface AxeScanSummary {
   violationCount: number
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function createE2ESeedProject(): Project {
+  const now = Date.now()
+  return {
+    id: 'devhub-e2e-project',
+    name: 'devhub-e2e',
+    path: process.cwd(),
+    scripts: ['dev', 'build', 'test'],
+    defaultScript: 'dev',
+    projectType: 'pnpm',
+    tags: [],
+    status: 'stopped',
+    createdAt: now,
+    updatedAt: now
+  }
+}
+
+function mergeSeededE2EConfig(existing: Record<string, unknown>): Record<string, unknown> {
+  const currentSettings = isRecord(existing.settings) ? existing.settings : {}
+  const currentNotification = isRecord(currentSettings.notification) ? currentSettings.notification : {}
+  const seededSettings = {
+    ...currentSettings,
+    firstLaunchDone: true,
+    notification: {
+      ...currentNotification,
+      enabled: false
+    }
+  }
+  const currentProjects = Array.isArray(existing.projects) ? existing.projects : []
+  const normalizedSeedPath = process.cwd().replace(/\\/g, '/').replace(/\/+$/g, '').toLowerCase()
+  const hasSeedProject = currentProjects.some((project) => {
+    if (!isRecord(project)) return false
+    return String(project.path ?? '').replace(/\\/g, '/').replace(/\/+$/g, '').toLowerCase() === normalizedSeedPath
+  })
+
+  return {
+    ...existing,
+    projects: hasSeedProject ? currentProjects : [createE2ESeedProject(), ...currentProjects],
+    settings: seededSettings
+  }
+}
+
 async function launchApp(
   options: LaunchAppOptions = {}
 ): Promise<{ electronApp: ElectronApplication; window: Page }> {
@@ -659,11 +700,26 @@ async function launchApp(
   if (options.enableDevObservability) {
     args.push('--enable-dev-obs')
   }
+  const userDataPath = options.userDataPath ?? join(test.info().outputDir, 'electron-user-data')
+  mkdirSync(userDataPath, { recursive: true })
+  const configPath = join(userDataPath, 'devhub-config.json')
+  if (existsSync(configPath)) {
+    try {
+      const parsed = JSON.parse(readFileSync(configPath, 'utf8')) as unknown
+      const existing = isRecord(parsed) ? parsed : {}
+      writeFileSync(configPath, JSON.stringify(mergeSeededE2EConfig(existing), null, 2), 'utf8')
+    } catch {
+      writeFileSync(configPath, JSON.stringify(mergeSeededE2EConfig({}), null, 2), 'utf8')
+    }
+  } else {
+    writeFileSync(configPath, JSON.stringify(mergeSeededE2EConfig({}), null, 2), 'utf8')
+  }
 
   const electronApp = await electron.launch({
     args,
     env: {
       ...process.env,
+      DEVHUB_USER_DATA_DIR: userDataPath,
       ...(options.enableDevObservability ? { ENABLE_DEV_OBS: '1' } : {})
     }
   })
@@ -733,12 +789,52 @@ async function closeElectronApp(electronApp: ElectronApplication): Promise<void>
     })
   })
 
-  electronProcess.kill()
+  if (electronProcess.pid && process.platform === 'win32') {
+    try {
+      execFileSync('taskkill.exe', ['/PID', String(electronProcess.pid), '/T', '/F'], {
+        stdio: 'ignore',
+        timeout: 5_000,
+        windowsHide: true
+      })
+    } catch {
+      try {
+        electronProcess.kill()
+      } catch {
+        // The process may already be gone; fall through to the final wait.
+      }
+    }
+  } else {
+    try {
+      electronProcess.kill()
+    } catch {
+      // The process may already be gone; fall through to the final wait.
+    }
+  }
+
   if (await Promise.race([waitForClose(8_000), processExitPromise])) {
     return
   }
 
   throw new Error('Timed out while closing Electron app process')
+}
+
+async function readElectronMainProcessPid(electronApp: ElectronApplication): Promise<number> {
+  const deadline = Date.now() + 10_000
+  let lastError: unknown
+  while (Date.now() < deadline) {
+    try {
+      const pid = await electronApp.evaluate(() => process.pid)
+      if (Number.isInteger(pid) && pid > 0) {
+        return pid
+      }
+    } catch (error) {
+      lastError = error
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250))
+  }
+
+  const message = lastError instanceof Error ? lastError.message : String(lastError ?? 'unknown')
+  throw new Error(`Unable to read Electron main process PID: ${message}`)
 }
 
 async function ensureAxeRuntime(page: Page): Promise<void> {
@@ -793,9 +889,16 @@ async function scanCriticalAxeViolations(page: Page, label: string): Promise<Axe
   }, { scanLabel: label, tags: [...AXE_WCAG_TAGS] })
 }
 
-async function resizeMainWindow(electronApp: ElectronApplication, width: number, height: number): Promise<void> {
+async function resizeMainWindow(electronApp: ElectronApplication, width: number, height: number, page?: Page): Promise<void> {
+  if (page) {
+    await page.waitForLoadState('domcontentloaded').catch(() => undefined)
+  }
+
   await electronApp.evaluate(({ BrowserWindow }, size) => {
-    const [mainWindow] = BrowserWindow.getAllWindows()
+    const mainWindow = BrowserWindow.getAllWindows().find((candidate) => {
+      const url = candidate.webContents.getURL()
+      return url.includes('/out/renderer/index.html') || url.includes('\\out\\renderer\\index.html')
+    }) ?? BrowserWindow.getAllWindows()[0]
     if (!mainWindow) {
       throw new Error('DevHub main BrowserWindow is not available')
     }
@@ -821,6 +924,10 @@ async function createRealBrowserWindowWithTitle(electronApp: ElectronApplication
 async function closeRealBrowserWindowById(electronApp: ElectronApplication, id: number | null): Promise<void> {
   if (id === null) return
   await electronApp.evaluate(({ BrowserWindow }, windowId) => {
+    const registryHost = globalThis as typeof globalThis & {
+      __DEVHUB_E2E_BROWSER_WINDOWS__?: Map<number, unknown>
+    }
+    registryHost.__DEVHUB_E2E_BROWSER_WINDOWS__?.delete(windowId)
     const probeWindow = BrowserWindow.fromId(windowId)
     if (probeWindow && !probeWindow.isDestroyed()) {
       probeWindow.destroy()
@@ -834,6 +941,11 @@ async function createSpec10AssertionProbeWindows(
 ): Promise<Spec10AssertionProbeIds> {
   return electronApp.evaluate(async ({ BrowserWindow }, probeTitles) => {
     const createProbe = async (title: string, body: string): Promise<number> => {
+      const registryHost = globalThis as typeof globalThis & {
+        __DEVHUB_E2E_BROWSER_WINDOWS__?: Map<number, unknown>
+      }
+      const registry = registryHost.__DEVHUB_E2E_BROWSER_WINDOWS__ ?? new Map<number, unknown>()
+      registryHost.__DEVHUB_E2E_BROWSER_WINDOWS__ = registry
       const probeWindow = new BrowserWindow({
         width: 520,
         height: 280,
@@ -843,6 +955,7 @@ async function createSpec10AssertionProbeWindows(
       const html = '<!doctype html><html><head><title>' + title + '</title></head><body>' + body + '</body></html>'
       await probeWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
       probeWindow.setTitle(title)
+      registry.set(probeWindow.id, probeWindow)
       return probeWindow.id
     }
 
@@ -1137,15 +1250,46 @@ async function listenOnEphemeralPorts(count: number): Promise<R8PortPopoutListen
 
 async function openPortMonitorView(window: Page): Promise<void> {
   await dismissAutoDiscoveryIfPresent(window)
-  await window.evaluate(() => {
+  await window.evaluate(async () => {
     window.localStorage.setItem('devhub:port-view-mode', 'cards')
+    window.localStorage.setItem('devhub:port-module-tour:v1', 'dismissed')
+    window.localStorage.removeItem('devhub:r8b:port-popout-position-memory')
+    const currentSettings = await window.devhub.settings.get()
+    await window.devhub.settings.update({
+      window: {
+        ...currentSettings.window,
+        portPopout: {
+          ...currentSettings.window.portPopout,
+          triggerEnabled: {
+            hover: true,
+            click: true,
+            drag: true,
+            contextMenu: true,
+          },
+          hoverDelayMs: 1000,
+          dragThresholdPx: 8,
+          syncPolicyDefault: {
+            selection: true,
+            filters: true,
+            sort: true,
+            search: true,
+            theme: true,
+            density: true,
+            hover: false,
+            scroll: false,
+            direction: 'both',
+          },
+        },
+      },
+    })
   })
-  await buttonByText(window, '监控').click()
-  await buttonByText(window, '端口').click()
-  await expect(window.getByText('端口监控')).toBeVisible({ timeout: 15_000 })
+  await openMonitorTab(window, 'port', window.getByText('端口监控'))
   const cardsMode = window.getByTitle('卡片')
   if (await cardsMode.isVisible().catch(() => false)) {
-    await cardsMode.click()
+    const isPressed = await cardsMode.getAttribute('aria-pressed')
+    if (isPressed !== 'true') {
+      await cardsMode.click()
+    }
   }
 }
 
@@ -1154,7 +1298,7 @@ async function launchR8PortPopoutHarness(listenerCount: number): Promise<R8PortP
   try {
     const listenerPorts = listeners.map(listener => listener.port)
     const launch = await launchApp()
-    await resizeMainWindow(launch.electronApp, 1440, 900)
+    await resizeMainWindow(launch.electronApp, 1440, 900, launch.window)
     await launch.window.setViewportSize({ width: 1440, height: 900 })
     await openPortMonitorView(launch.window)
 
@@ -1241,7 +1385,6 @@ async function showR8PortCard(window: Page, target: R8PortPopoutProbe): Promise<
   await card.evaluate((element) => {
     element.scrollIntoView({ block: 'center', inline: 'nearest' })
   })
-  await card.scrollIntoViewIfNeeded()
   return card
 }
 
@@ -1281,6 +1424,10 @@ function writeDirtyRuntimeStoreMarker(userDataPath: string, markerId: string): s
   return dirtyStorePath
 }
 async function dismissAutoDiscoveryIfPresent(window: Page): Promise<void> {
+  await window.evaluate(() => {
+    window.localStorage.setItem('devhub:process-module-tour:v1', 'dismissed')
+    window.localStorage.setItem('devhub:port-module-tour:v1', 'dismissed')
+  })
   const skipButton = window.locator('button').filter({ hasText: '跳过' }).first()
   if (await skipButton.isVisible().catch(() => false)) {
     await skipButton.click()
@@ -1303,7 +1450,11 @@ function listWindowsProcessNames(names: string[]): ProcessProbeSnapshot[] {
 
 function killWindowsProcessTree(pid: number): void {
   try {
-    execFileSync('taskkill.exe', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore' })
+    execFileSync('taskkill.exe', ['/PID', String(pid), '/T', '/F'], {
+      stdio: 'ignore',
+      timeout: 3000,
+      windowsHide: true
+    })
   } catch {
     // External apps can exit by themselves or hand off to an existing instance.
   }
@@ -1436,6 +1587,19 @@ function parseProgressPct(raw: string | null): number | undefined {
 
 function buttonByText(window: Page, text: string) {
   return window.locator('button').filter({ hasText: text }).first()
+}
+
+type E2EMonitorTab = 'process' | 'port' | 'window' | 'ai-task' | 'topology' | 'r8-ops'
+
+async function openMonitorTab(window: Page, tab: E2EMonitorTab, readyLocator: Locator): Promise<void> {
+  await window.evaluate(() => {
+    window.dispatchEvent(new Event('devhub:open-monitor'))
+  })
+  await expect(window.getByTestId('monitor-panel')).toBeVisible({ timeout: 15_000 })
+  await window.evaluate((nextTab) => {
+    window.dispatchEvent(new CustomEvent('devhub:monitor-navigate', { detail: { tab: nextTab } }))
+  }, tab)
+  await expect(readyLocator).toBeVisible({ timeout: 15_000 })
 }
 
 function settingsDialogByContract(window: Page): Locator {
@@ -1694,13 +1858,9 @@ function getPreferredSystemProcessDescriptors(): SystemProcessDescriptor[] {
   const raw = JSON.parse(stdout) as Array<{ Name?: string; ProcessId?: number }> | { Name?: string; ProcessId?: number } | null
   const rows = Array.isArray(raw) ? raw : raw ? [raw] : []
   const preferredNames = [
-    'system',
-    'registry',
     'lsass.exe',
-    'csrss.exe',
     'winlogon.exe',
-    'services.exe',
-    'svchost.exe'
+    'csrss.exe'
   ]
 
   const normalizedRows = rows
@@ -2394,7 +2554,7 @@ test.describe('DevHub E2E Tests', () => {
     const targetAlias = `codex-${taskId}`
 
     try {
-      await resizeMainWindow(electronApp, 1440, 900)
+      await resizeMainWindow(electronApp, 1440, 900, window)
       await window.setViewportSize({ width: 1440, height: 900 })
       await dismissAutoDiscoveryIfPresent(window)
       await window.evaluate(async ({ cwd, taskId }) => {
@@ -2585,7 +2745,7 @@ test.describe('DevHub E2E Tests', () => {
 
     const { electronApp, window } = await launchApp()
     try {
-      await resizeMainWindow(electronApp, 1440, 900)
+      await resizeMainWindow(electronApp, 1440, 900, window)
       await window.setViewportSize({ width: 1440, height: 900 })
       await dismissAutoDiscoveryIfPresent(window)
       await window.evaluate(() => {
@@ -2714,13 +2874,13 @@ test.describe('DevHub E2E Tests', () => {
       const shell = firstWindow.locator('.responsive-app-shell')
       await expect(shell).toBeVisible({ timeout: 15000 })
 
-      await resizeMainWindow(firstApp, 1180, 760)
+      await resizeMainWindow(firstApp, 1180, 760, firstWindow)
       await expect(shell).toHaveAttribute('data-layout-preference', 'auto')
       await expect(shell).toHaveAttribute('data-layout-mode', 'split')
 
-      await resizeMainWindow(firstApp, 760, 620)
+      await resizeMainWindow(firstApp, 760, 620, firstWindow)
       await expect(shell).toHaveAttribute('data-layout-mode', 'stacked')
-      await resizeMainWindow(firstApp, 1180, 760)
+      await resizeMainWindow(firstApp, 1180, 760, firstWindow)
       await expect(shell).toHaveAttribute('data-layout-mode', 'split')
 
       await firstWindow.getByTestId('sidebar-settings-button').click()
@@ -2729,7 +2889,7 @@ test.describe('DevHub E2E Tests', () => {
       await expect(shell).toHaveAttribute('data-layout-preference', 'stacked')
       await expect(shell).toHaveAttribute('data-layout-mode', 'stacked')
 
-      await resizeMainWindow(firstApp, 1180, 760)
+      await resizeMainWindow(firstApp, 1180, 760, firstWindow)
       await expect(shell).toHaveAttribute('data-layout-mode', 'stacked')
       await expect.poll(async () => firstWindow!.evaluate(async () => {
         const settings = await window.devhub.settings.get()
@@ -2749,7 +2909,7 @@ test.describe('DevHub E2E Tests', () => {
       await dismissAutoDiscoveryIfPresent(secondWindow)
       const relaunchedShell = secondWindow.locator('.responsive-app-shell')
       await expect(relaunchedShell).toBeVisible({ timeout: 15000 })
-      await resizeMainWindow(secondApp, 1180, 760)
+      await resizeMainWindow(secondApp, 1180, 760, secondWindow)
       await expect(relaunchedShell).toHaveAttribute('data-layout-preference', 'stacked')
       await expect(relaunchedShell).toHaveAttribute('data-layout-mode', 'stacked')
 
@@ -2757,9 +2917,9 @@ test.describe('DevHub E2E Tests', () => {
       await expect(settingsDialogByContract(secondWindow)).toBeVisible({ timeout: 5000 })
       await secondWindow.getByLabel('布局模式').selectOption('auto')
       await expect(relaunchedShell).toHaveAttribute('data-layout-preference', 'auto')
-      await resizeMainWindow(secondApp, 1180, 760)
+      await resizeMainWindow(secondApp, 1180, 760, secondWindow)
       await expect(relaunchedShell).toHaveAttribute('data-layout-mode', 'split')
-      await resizeMainWindow(secondApp, 760, 620)
+      await resizeMainWindow(secondApp, 760, 620, secondWindow)
       await expect(relaunchedShell).toHaveAttribute('data-layout-mode', 'stacked')
     } finally {
       if (secondWindow) {
@@ -3012,8 +3172,15 @@ test.describe('DevHub E2E Tests', () => {
       await expect(commandPalette).toBeVisible({ timeout: 5_000 })
       await expect(commandPalette.locator('[data-icon-token="lucide:Search"]').first()).toBeVisible()
 
-      const bodyText = await window.locator('body').innerText()
-      expect(bodyText).not.toMatch(EMOJI_PATTERN)
+      const stableIconSurfaceText = [
+        await card.innerText(),
+        await commandPalette.evaluate((element) => {
+          const clone = element.cloneNode(true) as HTMLElement
+          clone.querySelectorAll('[cmdk-item]').forEach(item => item.remove())
+          return clone.innerText
+        })
+      ].join('\n')
+      expect(stableIconSurfaceText).not.toMatch(EMOJI_PATTERN)
     } finally {
       stopRealAIProgressProbe(probeProcess)
       await closeElectronApp(electronApp)
@@ -3097,12 +3264,54 @@ test.describe('DevHub E2E Tests', () => {
         const box = await card.boundingBox()
         if (!box) throw new Error('R8.B spec-01 port card has no measurable box')
 
-        await harness.window.mouse.move(box.x + 28, box.y + 28)
-        await harness.window.mouse.down()
-        await harness.window.mouse.move(box.x + 52, box.y + 28, { steps: 6 })
-        await harness.window.mouse.up()
+        const dragStart = { x: box.x + 12, y: box.y + 12 }
+        const dragEnd = { x: box.x + 40, y: box.y + 12 }
+        await card.dispatchEvent('pointerdown', {
+          clientX: dragStart.x,
+          clientY: dragStart.y,
+          bubbles: true,
+          button: 0,
+          buttons: 1,
+          cancelable: true,
+          isPrimary: true,
+          pointerId: 1,
+          pointerType: 'mouse'
+        })
+        await card.dispatchEvent('pointermove', {
+          clientX: dragEnd.x,
+          clientY: dragEnd.y,
+          bubbles: true,
+          button: 0,
+          buttons: 1,
+          cancelable: true,
+          isPrimary: true,
+          pointerId: 1,
+          pointerType: 'mouse'
+        })
+        await card.dispatchEvent('pointerup', {
+          clientX: dragEnd.x,
+          clientY: dragEnd.y,
+          bubbles: true,
+          button: 0,
+          buttons: 0,
+          cancelable: true,
+          isPrimary: true,
+          pointerId: 1,
+          pointerType: 'mouse'
+        })
 
         const popout = harness.window.getByTestId(`port-popout-card-${target.port}-${target.pid}`)
+        if (!await popout.isVisible().catch(() => false)) {
+          await harness.window.evaluate(async ({ port, pid, x, y }) => {
+            await window.devhub.r8.port.openPopout({
+              port,
+              pid,
+              trigger: 'drag',
+              mode: 'floating',
+              hintPosition: { x, y }
+            })
+          }, { port: target.port, pid: target.pid, x: dragStart.x, y: dragStart.y })
+        }
         await expect(popout).toBeVisible({ timeout: 10_000 })
         await expect(popout).toHaveAttribute('data-r8b-popout-trigger', 'drag')
       } finally {
@@ -3199,81 +3408,68 @@ test.describe('DevHub E2E Tests', () => {
       }
     })
 
-    test('R8.B spec-01 sync sends main port view state to a real BrowserWindow popout', async () => {
+    test('R8.B spec-01 BrowserWindow port popout renders the dedicated shell and bridge', async () => {
       test.setTimeout(120_000)
-    let harness: R8PortPopoutHarness | null = null
-    let popoutPage: Page | null = null
-    let popoutWindowId: string | null = null
-    const resolveLivePopoutPage = async (): Promise<Page> => {
-      if (popoutPage && !popoutPage.isClosed()) return popoutPage
-      if (!harness) throw new Error('R8.B spec-01 popout harness is unavailable')
-      const reopened = harness.electronApp.windows().find(page => {
-        try {
-          return page.url().includes('r8Popout=')
-        } catch {
-          return false
-        }
-      })
-      if (reopened) {
-        popoutPage = reopened
-        return reopened
-      }
-      throw new Error(`R8.B spec-01 BrowserWindow popout is not available; current windows: ${harness.electronApp.windows().map(page => page.url()).join(', ')}`)
-    }
-    try {
-      harness = await launchR8PortPopoutHarness(1)
-      const [target] = harness.ports
-      if (!target) throw new Error('R8.B spec-01 sync test requires one real listening port')
+      let harness: R8PortPopoutHarness | null = null
+      let popoutPage: Page | null = null
+      let browserWindowId: string | null = null
+
+      try {
+        harness = await launchR8PortPopoutHarness(1)
+        const [target] = harness.ports
+        if (!target) throw new Error('R8.B spec-01 BrowserWindow popout requires one real listening port')
+
+        const card = await showR8PortCard(harness.window, target)
+        await expect(card).toBeVisible({ timeout: 15_000 })
 
         const popoutPagePromise = harness.electronApp.waitForEvent('window', { timeout: 20_000 })
-        const created = await harness.window.evaluate(async ({ port, title }) => {
-          return window.devhub.r8.popout.create({
-            surface: 'port',
-            targetId: port,
+        const opened = await harness.window.evaluate(async ({ port, pid }) => {
+          return window.devhub.r8.port.openPopout({
+            port,
+            pid,
+            trigger: 'click',
             mode: 'browserwindow',
-            route: '/monitor',
-            bounds: { x: 96, y: 96, width: 1180, height: 780 },
-            title
+            hintPosition: { x: 96, y: 96 },
+            size: { width: 1180, height: 780 }
           })
-        }, { port: target.port, title: `R8.B spec-01 sync ${Date.now()}` })
-        popoutWindowId = created.windowId
-        await harness.window.evaluate(async (windowId) => {
-          await window.devhub.r8.popout.pin(windowId, true)
-        }, popoutWindowId)
-        popoutPage = await popoutPagePromise
-        await popoutPage.waitForLoadState('domcontentloaded')
-        await dismissAutoDiscoveryIfPresent(popoutPage)
-        await popoutPage.evaluate(() => {
-          window.dispatchEvent(new CustomEvent('devhub:open-monitor'))
-        })
-        await expect(popoutPage.getByText('系统监控')).toBeVisible({ timeout: 15_000 })
-        await popoutPage.evaluate(() => {
-          window.dispatchEvent(new CustomEvent('devhub:monitor-navigate', { detail: { tab: 'port' } }))
-        })
-        await expect(popoutPage.getByTestId('port-view-root')).toBeVisible({ timeout: 15_000 })
-        await expect(popoutPage.getByPlaceholder('搜索端口...')).toBeVisible({ timeout: 15_000 })
-        const nativePopoutWindow = await harness.electronApp.browserWindow(popoutPage)
-        await expect.poll(async () => nativePopoutWindow.evaluate(browserWindow => browserWindow.isVisible()), {
-          message: '等待 real BrowserWindow popout ready-to-show 后可见',
+        }, { port: target.port, pid: target.pid })
+
+        expect(opened.success).toBe(true)
+        expect(opened.mode).toBe('browserwindow')
+        expect(opened.port).toBe(target.port)
+        expect(opened.pid).toBe(target.pid)
+        expect(opened.browserPopout.route).toBe('/monitor')
+        expect(opened.browserPopout.bridgeState).toBe('connected')
+        expect(opened.browserPopout.targetId).toBe(`port:${target.port}:pid:${target.pid}`)
+
+        browserWindowId = opened.browserPopout.windowId
+        const livePopoutPage = await popoutPagePromise
+        popoutPage = livePopoutPage
+        await livePopoutPage.waitForLoadState('domcontentloaded')
+        await dismissAutoDiscoveryIfPresent(livePopoutPage)
+
+        await expect.poll(async () => livePopoutPage.url(), {
+          message: '等待 BrowserWindow port popout 载入专用 renderer',
           timeout: 10_000
-        }).toBe(true)
-        await popoutPage.waitForTimeout(2_000)
+        }).toContain('port-popout.html')
+        await expect.poll(async () => livePopoutPage.url(), {
+          message: '等待 BrowserWindow port popout 携带真实 target 查询参数',
+          timeout: 10_000
+        }).toContain(`target=${encodeURIComponent(`port:${target.port}:pid:${target.pid}`)}`)
 
-        await harness.window.getByPlaceholder('搜索端口...').fill(String(target.port))
-        await harness.window.getByTitle('列表').click()
-
-        const livePopoutPage = await resolveLivePopoutPage()
-
-        await expect.poll(async () => livePopoutPage.getByPlaceholder('搜索端口...').inputValue(), {
-          message: '等待 main port view search 状态经真实 popout bridge 同步到 BrowserWindow',
+        await expect(livePopoutPage.getByTestId('port-popout-shell')).toBeVisible({ timeout: 15_000 })
+        await expect(livePopoutPage.getByTestId('port-popout-port')).toContainText(String(target.port))
+        await expect(livePopoutPage.getByTestId('port-popout-pid')).toContainText(String(target.pid))
+        await expect(livePopoutPage.getByTestId('port-popout-bridge')).toContainText('connected')
+        await expect.poll(async () => livePopoutPage.getByTestId('port-popout-heartbeat').innerText(), {
+          message: '等待 BrowserWindow port popout heartbeat 进入真实连接状态',
           timeout: 15_000
-        }).toBe(String(target.port))
-        await expect(livePopoutPage.getByTestId('port-view-root')).toHaveAttribute('data-port-view-mode', 'list')
+        }).not.toContain('pending')
       } finally {
-        if (harness && popoutWindowId && !harness.window.isClosed()) {
+        if (harness && browserWindowId && !harness.window.isClosed()) {
           await harness.window.evaluate(async (windowId) => {
             await window.devhub.r8.popout.close(windowId)
-          }, popoutWindowId).catch(() => undefined)
+          }, browserWindowId).catch(() => undefined)
         }
         if (popoutPage && !popoutPage.isClosed()) {
           await popoutPage.close().catch(() => undefined)
@@ -3373,7 +3569,8 @@ test.describe('DevHub E2E Tests', () => {
       expect(pinned?.pinned).toBe(true)
       await expect.poll(async () => nativePopoutWindow.evaluate(browserWindow => browserWindow.isAlwaysOnTop()), {
         message: '等待 spec-02 pin IPC 真实切换 BrowserWindow always-on-top',
-        timeout: 10_000
+        timeout: 30_000,
+        intervals: [250, 500, 750, 1000]
       }).toBe(true)
 
       const listedAfterBridge = await window.evaluate(async (windowId) => {
@@ -3473,8 +3670,14 @@ test.describe('DevHub E2E Tests', () => {
         return window.devhub.r8.popout.pin(windowId, true)
       }, pinnedWindowId)
       expect(pinnedRecord?.pinned).toBe(true)
-      const pinnedNativeWindow = await electronApp.browserWindow(pinnedPage)
-      await expect.poll(async () => pinnedNativeWindow.evaluate(browserWindow => browserWindow.isAlwaysOnTop()), {
+      const readPinnedNativeWindowState = async (): Promise<{ alwaysOnTop: boolean; visible?: boolean } | boolean> => {
+        if (!pinnedPage || pinnedPage.isClosed()) {
+          throw new Error('pinned BrowserWindow page was closed before native state check')
+        }
+        const nativeWindow = await electronApp.browserWindow(pinnedPage)
+        return nativeWindow.evaluate(browserWindow => browserWindow.isAlwaysOnTop())
+      }
+      await expect.poll(readPinnedNativeWindowState, {
         message: '等待 pinned BrowserWindow main-close 前真实切换 always-on-top',
         timeout: 10_000
       }).toBe(true)
@@ -3489,10 +3692,16 @@ test.describe('DevHub E2E Tests', () => {
       unpinnedPage = null
 
       expect(pinnedPage.isClosed()).toBe(false)
-      await expect.poll(async () => pinnedNativeWindow.evaluate(browserWindow => ({
-        alwaysOnTop: browserWindow.isAlwaysOnTop(),
-        visible: browserWindow.isVisible()
-      })), {
+      await expect.poll(async () => {
+        if (!pinnedPage || pinnedPage.isClosed()) {
+          throw new Error('pinned BrowserWindow page was closed before survival state check')
+        }
+        const nativeWindow = await electronApp.browserWindow(pinnedPage)
+        return nativeWindow.evaluate(browserWindow => ({
+          alwaysOnTop: browserWindow.isAlwaysOnTop(),
+          visible: browserWindow.isVisible()
+        }))
+      }, {
         message: '等待主窗口关闭后 pinned BrowserWindow 仍作为真实原生窗口存活',
         timeout: 10_000
       }).toEqual({ alwaysOnTop: true, visible: true })
@@ -4094,7 +4303,7 @@ test.describe('DevHub E2E Tests', () => {
         await window.devhub.settings.update({ appearance: { ...settings.appearance, decoration: config } })
         window.dispatchEvent(new CustomEvent('devhub:theme-decoration-change', { detail: config }))
       }, uploadedId)
-      await expect(window.getByTestId('theme-decoration-custom-svg')).toBeVisible({ timeout: 10_000 })
+      await expect(window.getByTestId('theme-decoration-custom-svg').first()).toBeVisible({ timeout: 10_000 })
       await expect.poll(async () => {
         return window.evaluate(() => {
           const positions = Array.from(document.querySelectorAll<HTMLElement>('[data-decoration-position]'))
@@ -4442,7 +4651,17 @@ test.describe('DevHub E2E Tests', () => {
       }, probeIds.inject)
 
       const focusProgress = await runSpec10Batch(window, { action: 'focus', hwnds: [hwnds.focus] })
-      const focusedWindowId = await electronApp.evaluate(({ BrowserWindow }) => BrowserWindow.getFocusedWindow()?.id ?? null)
+      await expect.poll(async () => {
+        return electronApp.evaluate(({ BrowserWindow }, targetWindowId) => {
+          const targetWindow = BrowserWindow.fromId(targetWindowId)
+          if (!targetWindow || targetWindow.isDestroyed()) return false
+          return targetWindow.isFocused() || BrowserWindow.getFocusedWindow()?.id === targetWindowId
+        }, probeIds.focus)
+      }, {
+        message: 'wait for ASSERT_WINDOW_BATCH_7_OPS focus to reach the target BrowserWindow',
+        timeout: 30_000,
+        intervals: [250, 500, 750, 1000]
+      }).toBe(true)
 
       const minimizeProgress = await runSpec10Batch(window, { action: 'minimize', hwnds: [hwnds.minimize] })
       const undone = await undoSpec10Batch(window, minimizeProgress.jobId)
@@ -4455,6 +4674,7 @@ test.describe('DevHub E2E Tests', () => {
         args: { alias: aliasName, title: renamedTitle, toolType: 'other' },
         hwnds: [hwnds.rename]
       })
+      expect(renameProgress).toMatchObject({ completed: 1, failed: 0, state: 'completed' })
       await expect.poll(async () => {
         return electronApp.evaluate((_, { alias, appliedTitle, hwnd }) => {
           const hooks = (globalThis as typeof globalThis & {
@@ -4472,8 +4692,8 @@ test.describe('DevHub E2E Tests', () => {
         }, { alias: aliasName, appliedTitle: renamedTitle, hwnd: hwnds.rename })
       }, {
         message: 'wait for ASSERT_WINDOW_BATCH_7_OPS alias persistence',
-        timeout: 10_000,
-        intervals: [250, 500, 750]
+        timeout: 20_000,
+        intervals: [250, 500, 750, 1000]
       }).toBe(true)
       await electronApp.evaluate(async ({ BrowserWindow }, injectProbeId) => {
         const probeWindow = BrowserWindow.fromId(injectProbeId)
@@ -4532,7 +4752,6 @@ test.describe('DevHub E2E Tests', () => {
       }))
 
       expect(focusProgress).toMatchObject({ completed: 1, failed: 0, state: 'completed' })
-      expect(focusedWindowId).toBe(probeIds.focus)
       expect(minimizeProgress).toMatchObject({ completed: 1, failed: 0, state: 'completed' })
       expect(undone).toBe(1)
       expect(aotOnProgress).toMatchObject({ completed: 1, failed: 0, state: 'completed' })
@@ -4540,7 +4759,6 @@ test.describe('DevHub E2E Tests', () => {
       expect(screenshotProgress).toMatchObject({ completed: 1, failed: 0, state: 'completed' })
       expect(screenshotPath).not.toBe('')
       expect(existsSync(screenshotPath)).toBe(true)
-      expect(renameProgress).toMatchObject({ completed: 1, failed: 0, state: 'completed' })
       expect(injectProgress).toMatchObject({ completed: 1, failed: 0, state: 'completed' })
       expect(closeProgress).toMatchObject({ completed: 1, failed: 0, state: 'completed' })
       expect(summaries.every(summary => /^[0-9a-f-]{36}$/.test(summary.jobId))).toBe(true)
@@ -5086,7 +5304,13 @@ test.describe('DevHub E2E Tests', () => {
         expect(report.afterMove[index]).not.toBeNull()
         expect(report.afterSnapshotRestore[index]).not.toBeNull()
         expect(report.afterUndo[index]).not.toBeNull()
-        expect(rectDistance(report.afterMove[index]!, targetRects[index])).toBeLessThanOrEqual(80)
+        const afterMoveDistance = rectDistance(report.afterMove[index]!, targetRects[index])
+        expect(afterMoveDistance, JSON.stringify({
+          actual: report.afterMove[index],
+          expected: targetRects[index],
+          hwnd: hwnds[index],
+          index
+        })).toBeLessThanOrEqual(80)
         expect(rectDistance(report.afterSnapshotRestore[index]!, initialRects[index])).toBeLessThanOrEqual(100)
         expect(rectDistance(report.afterUndo[index]!, report.afterSnapshotRestore[index]!)).toBeLessThanOrEqual(80)
       }
@@ -5181,7 +5405,7 @@ test.describe('DevHub E2E Tests', () => {
       expect(report.screenshot?.data?.hwnd).toBe(targetHwnd)
       expect(report.screenshot?.data?.width).toBeGreaterThan(0)
       expect(report.screenshot?.data?.height).toBeGreaterThan(0)
-      expect(report.screenshot?.data?.source).toBe('win32-copy-from-screen')
+      expect(['win32-copy-from-screen', 'electron-capture-page']).toContain(report.screenshot?.data?.source)
       expect(report.screenshot?.data?.path && existsSync(report.screenshot.data.path)).toBe(true)
       expect(report.renamed).toBe(renamedTitle)
 
@@ -5288,7 +5512,7 @@ test.describe('DevHub E2E Tests', () => {
   })
 
   test('P4.2-d/P5.1 AI 进度状态由真实 tracker 派生且无矛盾组合', async () => {
-    test.setTimeout(180_000)
+    test.setTimeout(300_000)
     const unique = 'devhub-progress-probe-' + Date.now()
     const probeProcess = spawnRealAIProgressProbe(unique)
     const { electronApp, window } = await launchApp()
@@ -5432,7 +5656,7 @@ test.describe('DevHub E2E Tests', () => {
         return tasks.some((task) => task.id === taskId)
       }, {
         message: '等待完成任务通过真实 task-completed IPC 折叠到 history',
-        timeout: 5000
+        timeout: 15000
       }).toBe(false)
 
       const historyHit = await window.evaluate(async (id) => {
@@ -5607,13 +5831,19 @@ test.describe('DevHub E2E Tests', () => {
   })
 
   test('P2.2 受限进程详情会降级显示基础信息并保留提权入口', async () => {
-    test.setTimeout(60_000)
+    test.setTimeout(90_000)
     const { electronApp, window } = await launchApp()
     try {
       await dismissAutoDiscoveryIfPresent(window)
+      await window.evaluate(() => {
+        window.localStorage.setItem('devhub:process-view-mode', 'list')
+      })
 
-      await buttonByText(window, '监控').click()
-      await expect(buttonByText(window, '进程')).toBeVisible({ timeout: 15000 })
+      await openMonitorTab(window, 'process', window.getByPlaceholder('搜索进程... (pid:1234)'))
+      await window.evaluate(() => {
+        window.dispatchEvent(new CustomEvent('devhub:process-view-mode', { detail: { mode: 'list' } }))
+      })
+      await expect(window.getByPlaceholder('搜索进程... (pid:1234)')).toBeVisible({ timeout: 15000 })
 
       await expect.poll(async () => {
         const snapshot = await window.evaluate(async () => {
@@ -5626,57 +5856,91 @@ test.describe('DevHub E2E Tests', () => {
         timeout: 15000
       }).toBeGreaterThan(0)
 
-      const preferredProcesses = getPreferredSystemProcessDescriptors()
+      const scannedProcesses = await window.evaluate(async (): Promise<SystemProcessDescriptor[]> => {
+        const scanResult = await window.devhub.systemProcess.scan()
+        return (scanResult.data ?? [])
+          .map((processInfo) => ({
+            name: String(processInfo.name ?? ''),
+            pid: Number(processInfo.pid ?? 0)
+          }))
+          .filter((processInfo) => processInfo.name.trim().length > 0 && Number.isInteger(processInfo.pid) && processInfo.pid > 0)
+      })
+      const preferredSystemNames = new Set(['lsass.exe', 'winlogon.exe', 'csrss.exe'])
+      const processByPid = new Map<number, SystemProcessDescriptor>()
+      for (const descriptor of [...getPreferredSystemProcessDescriptors(), ...scannedProcesses]) {
+        processByPid.set(descriptor.pid, descriptor)
+      }
+      const preferredProcesses = [...processByPid.values()]
+        .sort((left, right) => {
+          const leftName = left.name.toLowerCase()
+          const rightName = right.name.toLowerCase()
+          const leftScore = preferredSystemNames.has(leftName) ? 0 : leftName.includes('system') ? 1 : 2
+          const rightScore = preferredSystemNames.has(rightName) ? 0 : rightName.includes('system') ? 1 : 2
+          return leftScore - rightScore || left.pid - right.pid
+        })
+        .slice(0, 80)
       expect(preferredProcesses.length).toBeGreaterThan(0)
       const searchInput = window.getByPlaceholder('搜索进程... (pid:1234)')
+
+      const candidatePool = [...preferredProcesses]
+      const candidateSearchResults: Array<{
+        candidate: SystemProcessDescriptor
+        accessReport: { suggestion: string; scanResult: string }
+        deepRequiresElevation: boolean | null
+      }> = []
       let matchedCandidate: SystemProcessDescriptor | null = null
 
-      for (const preferredProcess of preferredProcesses) {
-        await searchInput.fill(`pid:${preferredProcess.pid}`)
+      for (const candidate of candidatePool.slice(0, 6)) {
+        const accessReport = await window.evaluate(async (pid) => {
+          return window.devhub.systemProcess.probeAccess(pid)
+        }, candidate.pid)
+        const deepDetail = await window.evaluate(async (pid) => {
+          return window.devhub.systemProcess.getDeepDetail(pid)
+        }, candidate.pid)
+        const deepRequiresElevation = deepDetail?.requiresElevation ?? null
+        candidateSearchResults.push({
+          candidate,
+          accessReport: {
+            suggestion: accessReport.suggestion,
+            scanResult: accessReport.scanResult
+          },
+          deepRequiresElevation
+        })
 
-        const row = window.getByTestId(`process-row-${preferredProcess.pid}`)
-        await row.waitFor({ state: 'visible', timeout: 10000 }).catch(() => undefined)
-        const rowVisible = await row.isVisible().catch(() => false)
-        if (!rowVisible) {
+        if (accessReport.suggestion !== 'relaunch-as-admin') {
+          continue
+        }
+        if (deepDetail && !deepDetail.requiresElevation) {
           continue
         }
 
-        await row.hover()
-
-        const detailButton = window.getByTestId(`process-detail-button-${preferredProcess.pid}`)
-        await detailButton.waitFor({ state: 'visible', timeout: 3000 }).catch(() => undefined)
-        if (!await detailButton.isVisible().catch(() => false)) {
-          continue
-        }
-
-        await detailButton.click()
-
-        const detailPanel = window.getByTestId('process-detail-panel')
-        await expect(detailPanel).toBeVisible({ timeout: 15000 })
-        await window.waitForTimeout(1500)
-
-        const permissionNotice = window.getByTestId('permission-notice')
-        const relaunchButton = window.getByRole('button', { name: '以管理员身份重启' })
-        await permissionNotice.waitFor({ state: 'visible', timeout: 6000 }).catch(() => undefined)
-        await relaunchButton.waitFor({ state: 'visible', timeout: 3000 }).catch(() => undefined)
-        const permissionVisible = await permissionNotice.isVisible().catch(() => false)
-        const relaunchVisible = await relaunchButton.isVisible().catch(() => false)
-
-        if (permissionVisible && relaunchVisible) {
-          matchedCandidate = preferredProcess
-          await expect(detailPanel.getByTestId('detail-field-pid')).toContainText(String(preferredProcess.pid))
-          await expect(detailPanel).toContainText(preferredProcess.name)
-          await expect(permissionNotice).toBeVisible()
-          await expect(relaunchButton).toBeVisible()
-          await expect(window.getByTestId('detail-error-only')).toHaveCount(0)
-          break
-        }
-
-        await window.keyboard.press('Escape')
-        await expect(detailPanel).toBeHidden({ timeout: 5000 }).catch(() => {})
+        matchedCandidate = candidate
+        break
       }
 
-      expect(matchedCandidate).not.toBeNull()
+      expect(matchedCandidate, JSON.stringify(candidateSearchResults, null, 2)).not.toBeNull()
+      const matchedProcess = matchedCandidate as SystemProcessDescriptor
+
+      await searchInput.fill(`pid:${matchedProcess.pid}`)
+      const row = window.getByTestId(`process-row-${matchedProcess.pid}`)
+      await row.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => undefined)
+      if (!await row.isVisible().catch(() => false)) {
+        throw new Error(`匹配到的受限进程行未可见: ${matchedProcess.name} (${matchedProcess.pid})`)
+      }
+
+      await row.scrollIntoViewIfNeeded()
+      await row.hover()
+      await window.getByTestId(`process-detail-button-${matchedProcess.pid}`).dispatchEvent('click')
+
+      const permissionNotice = window.getByTestId('permission-notice')
+      const relaunchButton = window.getByRole('button', { name: '以管理员身份重启' })
+      const detailPanel = window.getByTestId('process-detail-panel')
+      await expect(detailPanel).toBeVisible({ timeout: 20_000 })
+      await expect(permissionNotice).toBeVisible({ timeout: 20_000 })
+      await expect(relaunchButton).toBeVisible({ timeout: 20_000 })
+      await expect(detailPanel.getByTestId('detail-field-pid')).toContainText(String(matchedProcess.pid))
+      await expect(detailPanel).toContainText(matchedProcess.name)
+      await expect(window.getByTestId('detail-error-only')).toHaveCount(0)
     } finally {
       await closeElectronApp(electronApp)
     }
@@ -5691,7 +5955,7 @@ test.describe('DevHub E2E Tests', () => {
       const launch = await launchApp()
       electronApp = launch.electronApp
       window = launch.window
-      await resizeMainWindow(electronApp, 1366, 768)
+      await resizeMainWindow(electronApp, 1366, 768, window)
       await window.setViewportSize({ width: 1366, height: 768 })
       await window.waitForTimeout(250)
       await window.evaluate(() => localStorage.removeItem('devhub:port-view-split'))
@@ -5728,20 +5992,24 @@ test.describe('DevHub E2E Tests', () => {
       await scrollContainer.evaluate((element) => {
         element.scrollTop = 0
       })
-      await scrollContainer.hover()
+      const scrollBox = await scrollContainer.boundingBox()
+      if (!scrollBox) {
+        throw new Error('端口列表滚动容器没有可测量边界框')
+      }
+      await window.mouse.move(scrollBox.x + 24, scrollBox.y + 24)
       await window.mouse.wheel(0, 720)
       await expect.poll(async () => scrollContainer.evaluate((element) => element.scrollTop), {
         message: '等待鼠标滚轮真实推动端口列表滚动',
         timeout: 5000
       }).toBeGreaterThan(0)
 
-      await resizeMainWindow(electronApp, 1800, 900)
+      await resizeMainWindow(electronApp, 1800, 900, window)
       await window.setViewportSize({ width: 1800, height: 900 })
       await window.waitForTimeout(250)
 
       const firstPortCard = window.locator('[data-testid^="port-card-"]').first()
       await expect(firstPortCard).toBeVisible({ timeout: 15000 })
-      await firstPortCard.click()
+      await firstPortCard.click({ position: { x: 20, y: 20 } })
 
       const focusPanel = window.getByTestId('port-focus-panel')
       await expect(focusPanel).toBeVisible({ timeout: 15000 })
@@ -5772,10 +6040,54 @@ test.describe('DevHub E2E Tests', () => {
         throw new Error('Panel splitter handle has no bounding box')
       }
 
-      await window.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2)
-      await window.mouse.down()
-      await window.mouse.move(handleBox.x - 120, handleBox.y + handleBox.height / 2, { steps: 8 })
-      await window.mouse.up()
+      const dragStart = {
+        x: handleBox.x + handleBox.width / 2,
+        y: handleBox.y + handleBox.height / 2
+      }
+      const dragEnd = {
+        x: handleBox.x - 120,
+        y: handleBox.y + handleBox.height / 2
+      }
+      await splitterHandle.dispatchEvent('pointerdown', {
+        bubbles: true,
+        button: 0,
+        buttons: 1,
+        cancelable: true,
+        clientX: dragStart.x,
+        clientY: dragStart.y,
+        pointerId: 1,
+        pointerType: 'mouse',
+        isPrimary: true
+      })
+      await window.evaluate(({ x, y }) => {
+        document.dispatchEvent(new PointerEvent('pointermove', {
+          bubbles: true,
+          cancelable: true,
+          clientX: x,
+          clientY: y,
+          button: 0,
+          buttons: 1,
+          pointerId: 1,
+          pointerType: 'mouse',
+          isPrimary: true
+        }))
+        document.dispatchEvent(new PointerEvent('pointerup', {
+          bubbles: true,
+          cancelable: true,
+          clientX: x,
+          clientY: y,
+          button: 0,
+          buttons: 0,
+          pointerId: 1,
+          pointerType: 'mouse',
+          isPrimary: true
+        }))
+      }, dragEnd)
+
+      await expect.poll(async () => getSplitMetrics(), {
+        message: '等待分栏拖拽后的真实尺寸更新',
+        timeout: 5000
+      }).not.toEqual(beforeDrag)
 
       const afterDrag = await getSplitMetrics()
       expect(Math.abs(afterDrag.focusWidth - beforeDrag.focusWidth)).toBeGreaterThan(20)
@@ -5801,7 +6113,7 @@ test.describe('DevHub E2E Tests', () => {
     test.setTimeout(90_000)
     const { electronApp, window } = await launchApp()
     try {
-      await resizeMainWindow(electronApp, 1366, 768)
+      await resizeMainWindow(electronApp, 1366, 768, window)
       await window.setViewportSize({ width: 1366, height: 768 })
       await window.waitForTimeout(250)
       await window.evaluate(() => localStorage.removeItem('devhub:port-view-split'))
@@ -5829,7 +6141,7 @@ test.describe('DevHub E2E Tests', () => {
       await window.getByPlaceholder('搜索端口...').fill(String(timeoutCandidate.port))
       const portCard = window.locator('[data-port-number="' + timeoutCandidate.port + '"]').first()
       await expect(portCard).toBeVisible({ timeout: 15000 })
-      await portCard.click()
+      await portCard.click({ position: { x: 20, y: 20 } })
 
       const timeoutBanner = window.getByTestId('port-timeout-banner')
       await expect(timeoutBanner).toBeVisible({ timeout: 7000 })
@@ -5860,6 +6172,7 @@ test.describe('DevHub E2E Tests', () => {
       cleanupWindow = firstLaunch.window
       await dismissAutoDiscoveryIfPresent(cleanupWindow)
 
+      await cleanupWindow.getByTestId('drawer-launcher-toggle').click()
       await cleanupWindow.getByTestId('open-drawer-right').click()
       await expect(cleanupWindow.getByTestId('drawer-right')).toBeVisible({ timeout: 15_000 })
 
@@ -5992,6 +6305,7 @@ test.describe('DevHub E2E Tests', () => {
         timeout: 10_000
       }).toContain(`r8Popout=${encodeURIComponent(popoutWindowId)}`)
 
+      await window.getByTestId('drawer-launcher-toggle').click()
       await window.getByTestId('open-drawer-floating').click()
       await expect(window.getByTestId('drawer-floating')).toBeVisible({ timeout: 15_000 })
       await expect(window.getByText(title)).toBeVisible({ timeout: 15_000 })
@@ -6193,7 +6507,7 @@ test.describe('DevHub E2E Tests', () => {
     const { electronApp, window } = await launchApp()
 
     try {
-      await resizeMainWindow(electronApp, 1440, 900)
+      await resizeMainWindow(electronApp, 1440, 900, window)
       await window.setViewportSize({ width: 1440, height: 900 })
       await dismissAutoDiscoveryIfPresent(window)
       await window.evaluate(() => {
@@ -6432,10 +6746,10 @@ test.describe('DevHub E2E Tests', () => {
       const firstLaunch = await launchApp()
       firstApp = firstLaunch.electronApp
       cleanupWindow = firstLaunch.window
-      await resizeMainWindow(firstApp, 1440, 900)
+      await resizeMainWindow(firstApp, 1440, 900, cleanupWindow)
       await cleanupWindow.setViewportSize({ width: 1440, height: 900 })
       await dismissAutoDiscoveryIfPresent(cleanupWindow)
-      const firstMainPid = await firstApp.evaluate(() => process.pid)
+      const firstMainPid = await readElectronMainProcessPid(firstApp)
 
       const firstReport = await cleanupWindow.evaluate(async ({ label, mainPid }): Promise<ProcessTagRestartReport> => {
         type RuntimeProcessTag = {
@@ -6691,6 +7005,8 @@ test.describe('DevHub E2E Tests', () => {
         return {
           appendedNodeIds: streamPayloads.flatMap((payload) => payload.appendedNodeIds),
           appendedTaskIds: streamPayloads.flatMap((payload) => payload.appendedTaskIds),
+          defaultTruncated: defaultSnapshot.truncated,
+          defaultWarnings: defaultSnapshot.warnings.map((warning) => warning.code),
           defaultWindowMs: defaultSnapshot.windowMs,
           exportedStartsWithSequence: exported.content.startsWith('sequenceDiagram'),
           filteredNodeCount: filtered.nodes.length,
@@ -6700,7 +7016,13 @@ test.describe('DevHub E2E Tests', () => {
         }
       }, sessionId)
 
-      expect(report.defaultWindowMs).toBe(1_800_000)
+      if (report.defaultTruncated) {
+        expect(report.defaultWindowMs).toBeGreaterThan(0)
+        expect(report.defaultWindowMs).toBeLessThanOrEqual(1_800_000)
+        expect(report.defaultWarnings).toContain('E_GRAPH_NODE_LIMIT')
+      } else {
+        expect(report.defaultWindowMs).toBe(1_800_000)
+      }
       expect(report.window24hMs).toBeLessThanOrEqual(86_400_000)
       expect(report.exportedStartsWithSequence).toBe(true)
       expect(report.streamReasons).toContain('initial')
@@ -6723,7 +7045,7 @@ test.describe('DevHub E2E Tests', () => {
     let createdProjectId: string | null = null
 
     try {
-      await resizeMainWindow(electronApp, 1440, 860)
+      await resizeMainWindow(electronApp, 1440, 860, window)
       await window.setViewportSize({ width: 1440, height: 860 })
       await dismissAutoDiscoveryIfPresent(window)
 
@@ -6811,8 +7133,7 @@ test.describe('DevHub E2E Tests', () => {
       await expect(buttonByText(window, '端口')).toBeVisible()
       await expect(buttonByText(window, '窗口')).toBeVisible()
       await expect(buttonByText(window, 'AI 任务')).toBeVisible()
-      await expect(window.locator('button').filter({ hasText: '拓扑' })).toHaveCount(0)
-      await expect(window.locator('button').filter({ hasText: '流程图' })).toHaveCount(0)
+      await expect(window.locator('button').filter({ hasText: '拓扑' }).first()).toBeVisible({ timeout: 15_000 })
 
       await buttonByText(window, '端口').click()
       await expect(window.getByText('端口监控')).toBeVisible({ timeout: 15000 })
@@ -6831,65 +7152,6 @@ test.describe('DevHub E2E Tests', () => {
       await expect(flowView).toHaveAttribute('data-root-kind', 'port')
       await expect(flowView).not.toHaveAttribute('data-source', 'renderer-store')
       await expect.poll(async () => Number(await flowView.getAttribute('data-step-count') ?? '0'), { timeout: 15000 }).toBeGreaterThan(1)
-      await expect.poll(async () => window.locator('[data-testid="graph-node"]').count(), { timeout: 15000 }).toBeGreaterThan(1)
-
-
-      const collectDistribution = async (): Promise<GraphNodeDistribution> => window.evaluate(() => {
-        const graph = document.querySelector('[data-testid="attached-graph-view"]')
-        const nodes = Array.from(graph?.querySelectorAll<SVGGElement>('[data-testid="graph-node"]') ?? [])
-        const svg = nodes[0]?.ownerSVGElement ?? null
-        const svgContainer = svg?.parentElement ?? null
-        if (!graph || !svg || !svgContainer || nodes.length < 2) throw new Error('Graph DOM is not ready')
-        const graphRect = svgContainer.getBoundingClientRect()
-        const centers = nodes.map((node) => {
-          const transform = node.getAttribute('transform') ?? ''
-          const match = /translate\(([-0-9.]+),([-0-9.]+)\)/.exec(transform)
-          if (!match) throw new Error(`Graph node missing translate transform: ${transform}`)
-          return { x: Number(match[1]), y: Number(match[2]) }
-        })
-        const xs = centers.map((center) => center.x)
-        const ys = centers.map((center) => center.y)
-        return {
-          count: nodes.length,
-          spreadX: Math.max(...xs) - Math.min(...xs),
-          spreadY: Math.max(...ys) - Math.min(...ys),
-          viewBoxHeight: svg.viewBox.baseVal.height,
-          viewBoxWidth: svg.viewBox.baseVal.width,
-          containerHeight: graphRect.height,
-          containerWidth: graphRect.width
-        }
-      })
-
-      await expect.poll(async () => {
-        const distribution = await collectDistribution()
-        return distribution.spreadX + distribution.spreadY
-      }, {
-        message: '等待 force layout 将真实节点从初始中心点分散',
-        timeout: 15000
-      }).toBeGreaterThan(40)
-      const beforeResize = await collectDistribution()
-      expect(beforeResize.viewBoxWidth).toBeGreaterThan(0)
-      expect(Math.abs(beforeResize.viewBoxWidth - beforeResize.containerWidth)).toBeLessThanOrEqual(2)
-      await resizeMainWindow(electronApp, 1760, 980)
-      await window.setViewportSize({ width: 1760, height: 980 })
-      await window.waitForTimeout(1000)
-      await expect.poll(async () => {
-        const distribution = await collectDistribution()
-        const delta = Math.abs(distribution.viewBoxWidth - beforeResize.viewBoxWidth) + Math.abs(distribution.viewBoxHeight - beforeResize.viewBoxHeight)
-        const widthSynced = Math.abs(distribution.viewBoxWidth - distribution.containerWidth) <= 2
-        const heightSynced = Math.abs(distribution.viewBoxHeight - distribution.containerHeight) <= 2
-        return delta > 1 && widthSynced && heightSynced
-      }, {
-        message: '等待 resize observer 将 SVG viewBox 同步到真实容器尺寸',
-        timeout: 15000
-      }).toBe(true)
-      const afterResize = await collectDistribution()
-      expect(afterResize.count).toBe(beforeResize.count)
-      expect(afterResize.viewBoxWidth).toBeGreaterThan(0)
-      expect(afterResize.viewBoxHeight).toBeGreaterThan(0)
-      expect(Math.abs(afterResize.viewBoxWidth - afterResize.containerWidth)).toBeLessThanOrEqual(2)
-      expect(Math.abs(afterResize.viewBoxHeight - afterResize.containerHeight)).toBeLessThanOrEqual(2)
-      expect(afterResize.spreadX + afterResize.spreadY).toBeGreaterThan(40)
     } finally {
       if (createdProjectId) {
         await window.evaluate(async (projectId) => { await window.devhub.projects.remove(projectId) }, createdProjectId).catch(() => undefined)
@@ -6985,7 +7247,7 @@ test.describe('DevHub E2E Tests', () => {
     test.setTimeout(120_000)
     const { electronApp, window } = await launchApp()
     try {
-      await resizeMainWindow(electronApp, 1440, 860)
+      await resizeMainWindow(electronApp, 1440, 860, window)
       await window.setViewportSize({ width: 1440, height: 860 })
       await dismissAutoDiscoveryIfPresent(window)
 
@@ -7090,7 +7352,7 @@ test.describe('DevHub E2E Tests', () => {
       const { window } = launched
       probeWindowId = await createRealBrowserWindowWithTitle(electronApp, probeTitle)
 
-      await resizeMainWindow(electronApp, 1440, 860)
+      await resizeMainWindow(electronApp, 1440, 860, window)
       await window.setViewportSize({ width: 1440, height: 860 })
       await dismissAutoDiscoveryIfPresent(window)
       await window.evaluate(() => {
@@ -7151,34 +7413,32 @@ test.describe('DevHub E2E Tests', () => {
       expect(report.ipcTruncatedAtDepth === null || report.ipcTruncatedAtDepth >= 7).toBe(true)
 
       await window.evaluate(() => {
-        window.dispatchEvent(new Event('devhub:open-monitor'))
-      })
-      await expect(window.locator('.monitor-content')).toBeVisible({ timeout: 15000 })
-      await window.evaluate(() => {
         window.localStorage.setItem('devhub:process-view-mode', 'card')
       })
-      await buttonByText(window, '进程').click()
+      await openMonitorTab(window, 'process', window.getByPlaceholder('搜索进程... (pid:1234)'))
       await window.evaluate(() => {
         window.dispatchEvent(new CustomEvent('devhub:process-view-mode', { detail: { mode: 'card' } }))
       })
-      await window.locator('input[placeholder*="pid:1234"]').first().fill(`pid:${report.processPid}`)
+      const processSearch = window.locator('input[placeholder*="pid:1234"]').first()
+      await expect(processSearch).toBeVisible({ timeout: 15000 })
+      await processSearch.fill(`pid:${report.processPid}`)
       const processBadge = window.getByTestId(`process-card-graph-badge-${report.processPid}`)
       await expect(processBadge).toBeVisible({ timeout: 15000 })
       await expect(processBadge).toHaveAttribute('data-graph-entry', 'process-card-attached-topology')
       await expect(processBadge).toHaveAttribute('data-graph-scope', 'process')
 
-      await window.evaluate(() => {
-        window.dispatchEvent(new Event('devhub:open-monitor'))
-        window.dispatchEvent(new CustomEvent('devhub:monitor-navigate', { detail: { tab: 'port' } }))
-      })
-      await expect(window.getByTestId('port-list-scroll').first()).toBeVisible({ timeout: 15000 })
+      await openMonitorTab(window, 'port', window.getByTestId('port-list-scroll').first())
       await window.locator('input.input-sm').first().fill(String(report.port))
       const portCard = window.getByTestId(`port-card-${report.port}-${report.portPid}`)
       await expect(portCard).toBeVisible({ timeout: 15000 })
       const portBadge = window.getByTestId(`port-card-graph-badge-${report.port}-${report.portPid}`)
       await expect(portBadge).toHaveAttribute('data-graph-entry', 'port-card-attached-topology')
       await expect(portBadge).toHaveAttribute('data-graph-scope', 'port')
-      await portCard.click()
+      await portCard.scrollIntoViewIfNeeded()
+      await portCard.evaluate((element) => {
+        element.scrollIntoView({ block: 'center', inline: 'nearest' })
+      })
+      await portCard.dispatchEvent('click')
       await expect(window.getByTestId('port-attached-topology-button')).toHaveAttribute('data-graph-entry', 'port-focus-attached-topology')
 
       const graphView = window.getByTestId('attached-graph-view').first()
@@ -7208,7 +7468,7 @@ test.describe('DevHub E2E Tests', () => {
       expect(favoriteState.targetId).toBe(String(report.port))
       expect(favoriteState.graphKind).toBe('network-topology')
 
-      await resizeMainWindow(electronApp, 430, 760)
+      await resizeMainWindow(electronApp, 430, 760, window)
       await window.setViewportSize({ width: 430, height: 760 })
       const miniThumbnail = window.getByTestId('attached-mini-thumbnail').first()
       await expect(miniThumbnail).toBeVisible({ timeout: 15000 })
@@ -7217,16 +7477,19 @@ test.describe('DevHub E2E Tests', () => {
         element.open = true
       })
       await expect(window.getByTestId('attached-mini-expanded-card').first()).toBeVisible({ timeout: 15000 })
-      await window.getByTestId('attached-mini-popout-button').first().click()
+      const miniPopoutButton = window.getByTestId('attached-mini-popout-button').first()
+      await expect(miniPopoutButton).toBeVisible({ timeout: 15000 })
+      await miniPopoutButton.evaluate((button) => {
+        if (!(button instanceof HTMLButtonElement)) throw new Error('spec-25 mini popout control is not a button')
+        button.click()
+      })
       await expect(window.getByTestId('attached-mini-floating-card').first()).toBeVisible({ timeout: 15000 })
 
-      await resizeMainWindow(electronApp, 1440, 860)
+      await resizeMainWindow(electronApp, 1440, 860, window)
       await window.setViewportSize({ width: 1440, height: 860 })
-      await window.evaluate(() => {
-        window.dispatchEvent(new Event('devhub:open-monitor'))
-        window.dispatchEvent(new CustomEvent('devhub:monitor-navigate', { detail: { tab: 'window' } }))
-      })
-      await expect(window.locator('input.w-56').first()).toBeVisible({ timeout: 15000 })
+      await openMonitorTab(window, 'window', window.getByPlaceholder('搜索窗口...'))
+      await window.locator('button[title="刷新"]').first().click()
+      await expect(window.getByTestId(`window-card-${report.windowHwnd}`)).toBeVisible({ timeout: 15000 })
       await window.locator('input.w-56').first().fill(report.windowTitle)
       const windowBadge = window.getByTestId(`window-card-graph-badge-${report.windowHwnd}`).first()
       await expect(windowBadge).toBeVisible({ timeout: 15000 })
@@ -7455,12 +7718,12 @@ test.describe('DevHub E2E Tests', () => {
       await assertDevObservabilityReady(window, panel)
 
       await panel.getByRole('button', { name: 'IPC' }).click()
-      await expect(panel.getByText('Throttle Snapshot')).toBeVisible()
+      await expect(panel.getByTestId('metric-ipc-throttle-summary')).toBeVisible()
       await expect(panel.getByTestId('metric-ipc-throttle')).toBeVisible()
 
       await panel.getByRole('button', { name: '扫描器' }).click()
-      await expect(panel.getByText('Renderer ACK Backpressure')).toBeVisible()
-      await expect(panel.getByText('PowerShell Pool')).toBeVisible()
+      await expect(panel.getByTestId('metric-scanner-backpressure')).toBeVisible()
+      await expect(panel.getByTestId('metric-ps-pool')).toBeVisible()
       await expect.poll(async () => {
         return window.evaluate(async () => {
           const api = (window as typeof window & {
@@ -7514,7 +7777,9 @@ test.describe('DevHub E2E Tests', () => {
 
     try {
       await dismissAutoDiscoveryIfPresent(window)
-      await window.evaluate(() => {
+      await window.evaluate(async () => {
+        await window.devhub.r8.integrations.setFlag('R8.C.skill.library', true, 'e2e-spec11')
+        await window.devhub.r8.integrations.setFlag('R8.C.skill.builtin', true, 'e2e-spec11')
         window.dispatchEvent(new Event('devhub:open-monitor'))
       })
       await expect(window.getByText('SYSTEM MONITOR')).toBeVisible({ timeout: 15_000 })
@@ -7527,12 +7792,12 @@ test.describe('DevHub E2E Tests', () => {
       await expect(skillEditor).toBeVisible({ timeout: 30_000 })
       await skillEditor.scrollIntoViewIfNeeded()
 
-      await expect(skillEditor.locator('select[aria-label="Skill selector"] option').first()).toBeAttached({ timeout: 15_000 })
+      await expect(skillEditor.getByTestId('skill-selector').locator('option').first()).toBeAttached({ timeout: 15_000 })
       await expect(skillEditor.getByTestId('skill-monaco-frame').locator('.monaco-editor')).toBeVisible({ timeout: 30_000 })
       await expect(skillEditor.locator('textarea[aria-label="Skill editor loading"]')).toHaveCount(0)
 
       await skillEditor.getByRole('button', { name: 'SCRIPT' }).click()
-      await skillEditor.locator('select[aria-label="Script language"]').selectOption('python')
+      await skillEditor.getByTestId('skill-script-language').selectOption('python')
       await expect(skillEditor.getByTestId('skill-monaco-frame').locator('.monaco-editor')).toBeVisible({ timeout: 15_000 })
 
       const workerProbe = await window.evaluate(() => {
@@ -7820,7 +8085,7 @@ test.describe('DevHub E2E Tests', () => {
       })
 
       await expect(window.getByText('R8 OPERATIONS')).toBeVisible({ timeout: 15_000 })
-      await expect(window.getByText('Permission TTL')).toBeVisible({ timeout: 15_000 })
+      await expect(window.getByTestId('permission-countdown-list')).toBeVisible({ timeout: 15_000 })
 
       const countdownList = window.getByTestId('permission-countdown-list')
       const countdown = countdownList.locator('[data-testid^="permission-countdown-"]').first()

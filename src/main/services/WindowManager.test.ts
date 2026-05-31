@@ -20,6 +20,13 @@ vi.mock('electron', () => ({
   app: {
     getPath: vi.fn(() => 'C:/Users/HP/AppData/Roaming/DevHubTest')
   },
+  BrowserWindow: {
+    getAllWindows: vi.fn(() => [])
+  },
+  clipboard: {
+    readText: vi.fn(() => ''),
+    writeText: vi.fn()
+  },
   screen: {
     getPrimaryDisplay: vi.fn(() => ({
       id: 1,
@@ -43,6 +50,7 @@ vi.mock('electron', () => ({
   }
 }))
 
+import { BrowserWindow, clipboard, screen } from 'electron'
 import { WindowManager } from './WindowManager'
 
 function createDisabledWin32Enumerator(): Win32WindowEnumeratorLike {
@@ -78,6 +86,9 @@ describe('WindowManager group persistence', () => {
   beforeEach(() => {
     storeData.layouts = []
     storeData.groups = []
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([])
+    vi.mocked(clipboard.readText).mockReturnValue('')
+    vi.mocked(clipboard.writeText).mockClear()
   })
 
   afterEach(() => {
@@ -154,18 +165,31 @@ describe('WindowManager group persistence', () => {
     const [script, options] = execute.mock.calls[0]
     expect(script).toContain('SetWindowPos')
     expect(script).toContain('WIN32_SETPOS_FAILED')
+    expect(script).toContain('public delegate bool EnumChildProc')
+    expect(script).not.toContain('private delegate bool EnumChildProc')
     expect(options.label).toBe('window-manager:set-window-pos')
   })
 
   it('sends arbitrary text through SendInput after focusing the real HWND', async () => {
-    const execute = vi.fn().mockResolvedValue('')
+    const execute = vi.fn()
+      .mockRejectedValueOnce(new Error('WINDOW_SEND_TEXT_NO_EDIT_CHILD'))
+      .mockRejectedValueOnce(new Error('WINDOW_SEND_TEXT_VERIFY_FAILED'))
+      .mockResolvedValueOnce('')
     const manager = new WindowManager({ execute } as never, createDisabledWin32Enumerator())
 
     const result = await manager.sendTextToWindow(777, "hello 中文 it's")
 
     expect(result).toEqual({ success: true, data: { characters: 13, mode: 'sendinput' } })
-    expect(execute).toHaveBeenCalledTimes(1)
-    const [script, options] = execute.mock.calls[0]
+    expect(execute).toHaveBeenCalledTimes(3)
+    expect(execute.mock.calls[0][0]).toContain('[EditTextInjectionHelper]::PasteText([IntPtr]777,')
+    expect(execute.mock.calls[0][0]).toContain('public class EditTextInjectionHelper')
+    expect(execute.mock.calls[0][0]).toContain('WM_GETTEXT')
+    expect(execute.mock.calls[0][0]).toContain('WM_GETTEXTLENGTH')
+    expect(execute.mock.calls[0][0]).not.toContain('GetWindowTextLength')
+    expect(execute.mock.calls[0][1].label).toBe('window-manager:send-text-to-window-clipboard-paste')
+    expect(execute.mock.calls[1][0]).toContain('[EditTextInjectionHelper]::SendText([IntPtr]777,')
+    expect(execute.mock.calls[1][1].label).toBe('window-manager:send-text-to-window-wm-char')
+    const [script, options] = execute.mock.calls[2]
     expect(script).toContain('SendInput')
     expect(script).toContain('TextInputHelper')
     expect(script).toContain('SendUnicode')
@@ -174,9 +198,9 @@ describe('WindowManager group persistence', () => {
     expect(options.label).toBe('window-manager:send-text-to-window')
   })
 
-  it('falls back to WM_CHAR when SendInput fails', async () => {
+  it('sends text directly to an edit child with WM_CHAR when available', async () => {
     const execute = vi.fn()
-      .mockRejectedValueOnce(new Error('sendinput unavailable'))
+      .mockRejectedValueOnce(new Error('WINDOW_SEND_TEXT_VERIFY_FAILED'))
       .mockResolvedValueOnce('')
     const manager = new WindowManager({ execute } as never, createDisabledWin32Enumerator())
 
@@ -184,8 +208,39 @@ describe('WindowManager group persistence', () => {
 
     expect(result).toEqual({ success: true, data: { characters: 8, mode: 'wm-char' } })
     expect(execute).toHaveBeenCalledTimes(2)
-    expect(execute.mock.calls[1][0]).toContain('[WindowHelper]::SendText([IntPtr]778,')
-    expect(execute.mock.calls[1][1].label).toBe('window-manager:send-text-to-window-fallback')
+    expect(execute.mock.calls[0][0]).toContain('[EditTextInjectionHelper]::PasteText([IntPtr]778,')
+    expect(execute.mock.calls[0][0]).toContain('public class EditTextInjectionHelper')
+    expect(execute.mock.calls[0][1].label).toBe('window-manager:send-text-to-window-clipboard-paste')
+    expect(execute.mock.calls[1][0]).toContain('[EditTextInjectionHelper]::SendText([IntPtr]778,')
+    expect(execute.mock.calls[1][1].label).toBe('window-manager:send-text-to-window-wm-char')
+  })
+
+  it('injects text into an owned Electron BrowserWindow through the DOM and verifies the value', async () => {
+    const execute = vi.fn()
+    const nativeHandle = Buffer.alloc(8)
+    nativeHandle.writeBigUInt64LE(BigInt(779), 0)
+    const executeJavaScript = vi.fn().mockResolvedValue(true)
+    const browserWindow = {
+      isDestroyed: vi.fn(() => false),
+      getNativeWindowHandle: vi.fn(() => nativeHandle),
+      show: vi.fn(),
+      focus: vi.fn(),
+      webContents: {
+        focus: vi.fn(),
+        executeJavaScript
+      }
+    } as unknown as ReturnType<typeof BrowserWindow.getAllWindows>[number]
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([browserWindow])
+    const manager = new WindowManager({ execute } as never, createDisabledWin32Enumerator())
+
+    const result = await manager.sendTextToWindow(779, 'electron dom')
+
+    expect(result).toEqual({ success: true, data: { characters: 12, mode: 'electron-dom' } })
+    expect(execute).not.toHaveBeenCalled()
+    expect(browserWindow.show).toHaveBeenCalled()
+    expect(browserWindow.focus).toHaveBeenCalled()
+    expect(browserWindow.webContents.focus).toHaveBeenCalled()
+    expect(executeJavaScript.mock.calls[0]?.[0]).toContain('electron dom')
   })
 
   it('focuses multiple HWNDs through one PowerShell helper invocation', async () => {
@@ -292,6 +347,45 @@ describe('WindowManager group persistence', () => {
         isSystemWindow: false
       })
     ])
+  })
+
+  it('normalizes native Win32 window coordinates into Electron DIP coordinates', async () => {
+    const scaledDisplay = {
+      id: 1,
+      label: 'Scaled',
+      bounds: { x: 0, y: 0, width: 1280, height: 720 },
+      workArea: { x: 0, y: 0, width: 1280, height: 720 },
+      workAreaSize: { width: 1280, height: 720 },
+      scaleFactor: 1.5
+    } as ReturnType<typeof screen.getPrimaryDisplay>
+    vi.mocked(screen.getPrimaryDisplay).mockReturnValueOnce(scaledDisplay)
+    vi.mocked(screen.getAllDisplays).mockReturnValueOnce([scaledDisplay])
+    const execute = vi.fn().mockResolvedValue([
+      '"Id","ProcessName"',
+      '"7104","Code"'
+    ].join('\n'))
+    const nativeEnumerator: Win32WindowEnumeratorLike = {
+      enumerateVisibleWindows: vi.fn(async () => ({
+        success: true,
+        data: [{
+          hwnd: 6004,
+          title: 'Code - scaled.ts',
+          className: 'Chrome_WidgetWin_1',
+          pid: 7104,
+          x: 120,
+          y: 135,
+          width: 630,
+          height: 480,
+          isMinimized: false
+        }]
+      }))
+    }
+    const manager = new WindowManager({ execute } as never, nativeEnumerator)
+
+    const result = await manager.scanWindows(false)
+
+    expect(result.success).toBe(true)
+    expect(result.data?.[0]?.rect).toEqual({ x: 80, y: 90, width: 420, height: 320 })
   })
 
   it('saves a restore point before applying tile layout and restores previous positions', async () => {

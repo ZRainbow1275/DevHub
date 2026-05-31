@@ -188,7 +188,7 @@ export function SkillEditorPanel() {
   return (
     <div className="space-y-3" data-testid="skill-editor-panel" data-theme-axis-sync="palette-density-radius-motion">
       <div className="flex flex-wrap items-center gap-2">
-        <select className="input flex-1 min-w-48" value={selectedName} onChange={event => setSelectedName(event.target.value)} aria-label={t('skills.editor.selector', 'Skill selector')}>
+        <select data-testid="skill-selector" className="input flex-1 min-w-48" value={selectedName} onChange={event => setSelectedName(event.target.value)} aria-label={t('skills.editor.selector', 'Skill selector')}>
           {skills.map(skill => <option key={skill.name} value={skill.name}>{skill.name} · {skill.source}</option>)}
         </select>
         <select className="input min-w-44" value={selectedTemplateId} onChange={event => setSelectedTemplateId(event.target.value)} aria-label={t('skills.editor.template', 'Skill template')}>
@@ -204,7 +204,7 @@ export function SkillEditorPanel() {
         {(['yaml', 'body', 'script'] as const).map(tab => (
           <button key={tab} type="button" className={activeTab === tab ? 'btn-primary' : 'btn-secondary'} onClick={() => setActiveTab(tab)} data-tab={tab}>{tab.toUpperCase()}</button>
         ))}
-        <select className="input-sm" value={scriptLanguage} onChange={event => { setScriptLanguage(event.target.value as SkillScriptLanguage); setDirty(true) }} aria-label={t('skills.editor.scriptLanguage', 'Script language')}>
+        <select data-testid="skill-script-language" className="input-sm" value={scriptLanguage} onChange={event => { setScriptLanguage(event.target.value as SkillScriptLanguage); setDirty(true) }} aria-label={t('skills.editor.scriptLanguage', 'Script language')}>
           {skillScriptLanguages.map(language => <option key={language} value={language}>{language}</option>)}
         </select>
       </div>

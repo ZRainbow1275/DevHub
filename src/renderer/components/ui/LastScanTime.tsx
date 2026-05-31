@@ -12,7 +12,7 @@ export const LastScanTime = memo(function LastScanTime({
   if (!lastScanTime) return null
 
   return (
-    <span className="text-xs text-text-muted">
+    <span className="text-xs text-text-muted whitespace-nowrap">
       {label} {lastScanTime.toLocaleTimeString()}
     </span>
   )

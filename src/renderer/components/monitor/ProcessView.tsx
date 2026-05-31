@@ -1,5 +1,6 @@
 import React, { useEffect, memo, useState, useCallback, useMemo, useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { PanelDetachButton } from '../popout/PanelDetachButton'
 import { useSystemProcesses } from '../../hooks/useSystemProcesses'
 import { ProcessInfo, ProcessGroup, SortColumn } from '@shared/types-extended'
 import { PROCESS_BATCH_LIMITS, processBatchTagArgsSchema } from '@shared/schemas/r8-runtime'
@@ -671,13 +672,12 @@ export const ProcessItem = memo(function ProcessItem({ process, maxMemory, isSel
         onContextMenu={handleContextMenu}
         className={`
           group flex items-center gap-4 px-4 py-2 cursor-pointer transition-all duration-200
-          border-l-3 bg-surface-800 radius-sm
+          border-l-3 bg-surface-800 radius-sm min-h-[3rem]
           ${isSelected
             ? 'border-accent bg-accent/10'
             : 'border-transparent hover:border-surface-500 hover:bg-surface-700'
           }
         `}
-        style={{ height: '48px' }}
       >
         {/* Status + Type Icon */}
         <div data-vm-field="type" data-vm-status="ok" data-vm-source="ProcessInfo" className="relative flex-shrink-0">
@@ -688,29 +688,29 @@ export const ProcessItem = memo(function ProcessItem({ process, maxMemory, isSel
         </div>
 
         {/* Name */}
-        <span data-vm-field="name" data-vm-status="ok" data-vm-source="ProcessInfo" className="min-w-[100px] max-w-[180px]">
+        <span data-vm-field="name" data-vm-status="ok" data-vm-source="ProcessInfo" className="min-w-[6.25rem] max-w-[11.25rem]">
           <TruncatedText text={pName} className="text-xs font-bold text-text-primary" maxWidth="180px" />
         </span>
 
-        <span className="min-w-[92px] max-w-[120px]">
+        <span className="min-w-[5.75rem] max-w-[7.5rem]">
           <ProcessTagBadge compact onClick={() => onEditTag(process)} showEmpty tag={processTag} />
         </span>
 
         {/* PID */}
-        <span data-vm-field="pid" data-vm-status="ok" data-vm-source="ProcessInfo" className="text-[10px] text-text-muted font-mono min-w-[50px]">{pPid}</span>
+        <span data-vm-field="pid" data-vm-status="ok" data-vm-source="ProcessInfo" className="text-[10px] text-text-muted font-mono min-w-[3.125rem]">{pPid}</span>
 
         {/* Parent */}
-        <span data-vm-field="ppid" data-vm-status={process.ppid ? 'ok' : 'data_missing'} data-vm-source="ProcessInfo" className="text-[10px] text-text-muted font-mono min-w-[92px] max-w-[120px]">
+        <span data-vm-field="ppid" data-vm-status={process.ppid ? 'ok' : 'data_missing'} data-vm-source="ProcessInfo" className="text-[10px] text-text-muted font-mono min-w-[5.75rem] max-w-[7.5rem]">
           <TruncatedText text={pParentLabel} maxWidth="120px" />
         </span>
 
         {/* Port */}
-        <span data-vm-field="port" data-vm-status={pPort ? 'ok' : 'data_missing'} data-vm-source="ProcessInfo" className={`text-[10px] font-mono min-w-[50px] ${pPort ? 'text-gold font-bold' : 'text-text-muted'}`}>
+        <span data-vm-field="port" data-vm-status={pPort ? 'ok' : 'data_missing'} data-vm-source="ProcessInfo" className={`text-[10px] font-mono min-w-[3.125rem] ${pPort ? 'text-gold font-bold' : 'text-text-muted'}`}>
           {pPort ? `:${pPort}` : '-'}
         </span>
 
         {/* CPU */}
-        <div className="flex items-center gap-1 min-w-[70px]">
+        <div className="flex items-center gap-1 min-w-[4.375rem]">
           <div className="w-[30px] h-1 bg-surface-700 radius-sm">
             <div className={`h-full ${cpuColor.bg}`} style={{ width: `${Math.min(pCpu, 100)}%`, borderRadius: '1px' }} />
           </div>
@@ -718,7 +718,7 @@ export const ProcessItem = memo(function ProcessItem({ process, maxMemory, isSel
         </div>
 
         {/* Memory */}
-        <div className="flex items-center gap-1 min-w-[70px]">
+        <div className="flex items-center gap-1 min-w-[4.375rem]">
           <div className="w-[30px] h-1 bg-surface-700 radius-sm">
             <div className={`h-full ${memColor.bg}`} style={{ width: `${memPercent}%`, borderRadius: '1px' }} />
           </div>
@@ -726,8 +726,8 @@ export const ProcessItem = memo(function ProcessItem({ process, maxMemory, isSel
         </div>
 
         {/* Start Time */}
-        <span data-vm-field="startTime" data-vm-status="ok" data-vm-source="ProcessInfo" className="text-[10px] text-text-muted min-w-[30px]">{formatStartTime(pStartTime)}</span>
-        <span className="min-w-[96px]">
+        <span data-vm-field="startTime" data-vm-status="ok" data-vm-source="ProcessInfo" className="text-[10px] text-text-muted min-w-[1.875rem]">{formatStartTime(pStartTime)}</span>
+        <span className="min-w-[6rem]">
           <ProcessSparkline history={history24h} metric="cpu" width={96} />
         </span>
         <span data-vm-field="command" data-vm-status={pCommand ? 'ok' : 'data_missing'} data-vm-source="ProcessInfo" className="sr-only">{pCommand ?? '无命令行信息'}</span>
@@ -795,21 +795,21 @@ const ProcessGroupCard = memo(function ProcessGroupCard({
     >
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-5 py-4 flex items-center justify-between hover:bg-surface-700/50 transition-all duration-200"
+        className="w-full px-5 py-4 flex items-center flex-wrap justify-between gap-y-2 hover:bg-surface-700/50 transition-all duration-200"
       >
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 min-w-0">
           <div className={`
-            w-10 h-10 bg-accent/10 flex items-center justify-center border-l-3 border-accent
+            w-10 h-10 bg-accent/10 flex items-center justify-center border-l-3 border-accent flex-shrink-0
             transition-transform duration-300 ${isExpanded ? 'rotate-0' : '-rotate-90'}
            radius-sm`}>
             <ChevronDownIcon size={20} className="text-accent" />
           </div>
-          <div className="text-left">
-            <h3 className="text-base font-bold text-text-primary">{group.projectName}</h3>
-            <span className="text-xs text-text-muted">{group.processes.length} 个进程</span>
+          <div className="text-left min-w-0">
+            <h3 className="text-base font-bold text-text-primary truncate">{group.projectName}</h3>
+            <span className="text-xs text-text-muted whitespace-nowrap">{group.processes.length} 个进程</span>
           </div>
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 flex-shrink-0">
           <div className="text-right">
             <div className="text-sm font-bold text-text-primary font-mono">{(isFinite(group.totalCpu ?? 0) ? (group.totalCpu ?? 0) : 0).toFixed(1)}%</div>
             <div className="text-[10px] text-text-muted uppercase tracking-wider">CPU</div>
@@ -878,17 +878,17 @@ const VirtualListView = memo(function VirtualListView({
   return (
     <div className="flex flex-col h-full">
       {/* Table Header */}
-      <div className="flex items-center gap-4 px-4 py-2 bg-surface-900 border-b border-surface-700 flex-shrink-0" style={{ minHeight: '32px' }}>
+      <div className="flex items-center gap-4 px-4 py-2 bg-surface-900 border-b border-surface-700 flex-shrink-0 min-h-[2rem]">
         <div className="w-6 flex-shrink-0" /> {/* icon spacer */}
-        <SortableHeader column="name" label="名称" className="min-w-[100px] max-w-[180px] flex-1" sortConfigs={sortConfigs} onSort={onSort} />
-        <div className="min-w-[92px] text-[10px] uppercase tracking-wider text-text-muted">标签</div>
-        <SortableHeader column="pid" label="PID" className="min-w-[50px]" sortConfigs={sortConfigs} onSort={onSort} />
-        <div className="min-w-[92px] text-[10px] uppercase tracking-wider text-text-muted">父进程</div>
-        <SortableHeader column="port" label="端口" className="min-w-[50px]" sortConfigs={sortConfigs} onSort={onSort} />
-        <SortableHeader column="cpu" label="CPU" className="min-w-[70px]" sortConfigs={sortConfigs} onSort={onSort} />
-        <SortableHeader column="memory" label="内存" className="min-w-[70px]" sortConfigs={sortConfigs} onSort={onSort} />
-        <SortableHeader column="startTime" label="启动" className="min-w-[30px]" sortConfigs={sortConfigs} onSort={onSort} />
-        <div className="min-w-[96px] text-[10px] uppercase tracking-wider text-text-muted">24h</div>
+        <SortableHeader column="name" label="名称" className="min-w-[6.25rem] max-w-[11.25rem] flex-1 whitespace-nowrap" sortConfigs={sortConfigs} onSort={onSort} />
+        <div className="min-w-[5.75rem] text-[10px] uppercase tracking-wider text-text-muted whitespace-nowrap">标签</div>
+        <SortableHeader column="pid" label="PID" className="min-w-[3.125rem] whitespace-nowrap" sortConfigs={sortConfigs} onSort={onSort} />
+        <div className="min-w-[5.75rem] text-[10px] uppercase tracking-wider text-text-muted whitespace-nowrap">父进程</div>
+        <SortableHeader column="port" label="端口" className="min-w-[3.125rem] whitespace-nowrap" sortConfigs={sortConfigs} onSort={onSort} />
+        <SortableHeader column="cpu" label="CPU" className="min-w-[4.375rem] whitespace-nowrap" sortConfigs={sortConfigs} onSort={onSort} />
+        <SortableHeader column="memory" label="内存" className="min-w-[4.375rem] whitespace-nowrap" sortConfigs={sortConfigs} onSort={onSort} />
+        <SortableHeader column="startTime" label="启动" className="min-w-[1.875rem] whitespace-nowrap" sortConfigs={sortConfigs} onSort={onSort} />
+        <div className="min-w-[6rem] text-[10px] uppercase tracking-wider text-text-muted whitespace-nowrap">24h</div>
         <div className="w-[60px] ml-auto" /> {/* actions spacer */}
       </div>
 
@@ -1522,23 +1522,23 @@ export function ProcessView() {
   const disabledProcessBatchActions = useMemo<Partial<Record<ProcessBatchAction, string>>>(() => ({}), [])
 
   return (
-    <div className="h-full flex flex-col bg-surface-950">
+    <div className="h-full min-h-0 flex flex-col bg-surface-950">
       {/* Header */}
       <div className="flex-shrink-0 px-5 py-4 border-b-2 border-surface-700 bg-surface-900 relative">
         <div className="absolute inset-0 deco-diagonal opacity-20 pointer-events-none" />
-        <div className="flex items-center justify-between relative z-10">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-surface-700 flex items-center justify-center border-l-3 border-accent radius-sm">
+        <div className="flex items-center flex-wrap justify-between gap-4 relative z-10">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="w-10 h-10 bg-surface-700 flex items-center justify-center border-l-3 border-accent radius-sm flex-shrink-0">
               <ProcessIcon size={20} className="text-accent" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h2
-                className="text-text-primary font-bold uppercase tracking-wider"
+                className="text-text-primary font-bold uppercase tracking-wider whitespace-nowrap"
                 style={{ fontFamily: 'var(--font-display)', fontSize: '16px' }}
               >
                 系统进程
               </h2>
-              <div className="flex items-center gap-3 text-xs text-text-muted">
+              <div className="flex items-center flex-wrap gap-3 text-xs text-text-muted">
                 <span className="font-mono">{processes.length} 个进程</span>
                 {processModuleNewBadge.isActive && (
                   <span
@@ -1557,7 +1557,7 @@ export function ProcessView() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center flex-wrap gap-3">
             <ViewModeToggle
               modes={[
                 { key: 'list', icon: <ListIcon size={16} />, label: '列表' },
@@ -1570,48 +1570,58 @@ export function ProcessView() {
               onChange={(mode) => setViewMode(mode as ProcessViewMode)}
             />
 
+            <div className="w-px h-5 bg-surface-700" />
+
             {zombies.length > 0 && (
               <button
                 onClick={handleCleanupZombies}
-                className="btn-warning flex items-center gap-2 text-xs px-4 py-2"
+                className="btn-warning flex items-center gap-2 text-xs px-4 py-2 whitespace-nowrap"
               >
                 <AlertIcon size={16} />
                 清理 {zombies.length} 个僵尸
               </button>
             )}
 
-            <button
-              type="button"
-              data-testid="process-module-tour-open-button"
-              onClick={openProcessTour}
-              className="btn-secondary flex items-center gap-1.5 text-xs px-3 py-1.5"
-              aria-label="打开进程模块导览"
-              title="进程导览"
-            >
-              <InfoIcon size={14} />
-              导览
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                data-testid="process-module-tour-open-button"
+                onClick={openProcessTour}
+                className="btn-secondary flex items-center gap-1.5 text-xs px-3 py-1.5 whitespace-nowrap"
+                aria-label="打开进程模块导览"
+                title="进程导览"
+              >
+                <InfoIcon size={14} />
+                导览
+              </button>
 
-            <button
-              type="button"
-              data-testid="process-module-help-open-button"
-              onClick={openProcessHelp}
-              className="btn-secondary flex items-center gap-1.5 text-xs px-3 py-1.5"
-              aria-label="打开进程模块帮助"
-              title="进程帮助 F1"
-            >
-              <InfoIcon size={14} />
-              帮助 F1
-            </button>
+              <button
+                type="button"
+                data-testid="process-module-help-open-button"
+                onClick={openProcessHelp}
+                className="btn-secondary flex items-center gap-1.5 text-xs px-3 py-1.5 whitespace-nowrap"
+                aria-label="打开进程模块帮助"
+                title="进程帮助 F1"
+              >
+                <InfoIcon size={14} />
+                帮助 F1
+              </button>
+            </div>
 
-            <button
-              onClick={refreshAll}
-              disabled={isScanning}
-              className={`btn-icon bg-surface-800 border border-surface-700 ${isScanning ? 'opacity-50' : 'hover:bg-surface-700 hover:border-surface-600'}`}
-              title="刷新"
-            >
-              <RefreshIcon size={18} className={`text-text-secondary ${isScanning ? 'animate-spin' : ''}`} />
-            </button>
+            <div className="w-px h-5 bg-surface-700" />
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={refreshAll}
+                disabled={isScanning}
+                className={`btn-icon bg-surface-800 border border-surface-700 ${isScanning ? 'opacity-50' : 'hover:bg-surface-700 hover:border-surface-600'}`}
+                title="刷新"
+              >
+                <RefreshIcon size={18} className={`text-text-secondary ${isScanning ? 'animate-spin' : ''}`} />
+              </button>
+
+              <PanelDetachButton surface="process" />
+            </div>
           </div>
         </div>
       </div>
@@ -1638,7 +1648,7 @@ export function ProcessView() {
       />
 
       {/* Hero Stats */}
-      <div className="flex-shrink-0 py-4 stat-grid border-b border-surface-700/50 bg-surface-900/50" style={{ paddingLeft: 'var(--responsive-padding, 20px)', paddingRight: 'var(--responsive-padding, 20px)' }}>
+      <div className="flex-shrink-0 py-4 stat-grid border-b border-surface-700/50 bg-surface-900/50" style={{ paddingLeft: 'var(--responsive-padding, 20px)', paddingRight: 'var(--responsive-padding, 20px)', gap: '16px' }}>
         <StatCard icon={<ProcessIcon size={20} className="text-accent" />} label="活跃进程" value={processes.length} color="accent" />
         <StatCard icon={<ProcessIcon size={20} className="text-info" />} label="CPU 使用" value={`${(isFinite(totalResources.cpu) ? totalResources.cpu : 0).toFixed(1)}%`} color={totalResources.cpu > 50 ? 'warning' : 'default'} />
         <StatCard icon={<ProcessIcon size={20} className="text-success" />} label="内存使用" value={formatBytes(totalResources.memory)} color={totalResources.memory > 2000 ? 'warning' : 'default'} />
@@ -1729,7 +1739,7 @@ export function ProcessView() {
       )}
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden">
         {viewMode === 'list' ? (
           <VirtualListView
             processes={displayProcesses}

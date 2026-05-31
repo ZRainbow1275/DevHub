@@ -498,12 +498,12 @@ describe('WatchdogSupervisor', () => {
         }
       }, 1500)
       await waitForCondition(() => supervisor.status().channelStates['named-pipe'], 1500)
-      const directPing = await requestNamedPipe(initial.eventPipePath, {
+      const directPing = await waitForNamedPipeResponse(initial.eventPipePath, {
         jsonrpc: '2.0',
         id: 'child-ping-1',
         method: 'ping',
         params: { sessionToken: session.token }
-      })
+      }, 1500)
       const status = await supervisor.pingInnerWatchdog(1000)
 
       expect(directPing).toMatchObject({

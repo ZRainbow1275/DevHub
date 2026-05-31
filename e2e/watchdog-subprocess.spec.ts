@@ -200,7 +200,24 @@ async function launchApp(): Promise<LaunchResult> {
       XDG_CONFIG_HOME: xdgConfig
     }
   })
-  const userDataPath = await electronApp.evaluate(({ app }) => app.getPath('userData'))
+  const userDataDeadline = Date.now() + 15_000
+  let userDataPath: string | null = null
+  let lastUserDataError: unknown
+  while (Date.now() < userDataDeadline) {
+    try {
+      userDataPath = await electronApp.evaluate(({ app }) => app.getPath('userData'))
+      break
+    } catch (error) {
+      lastUserDataError = error
+      await new Promise((resolve) => setTimeout(resolve, 250))
+    }
+  }
+  if (!userDataPath) {
+    await closeElectronApp(electronApp)
+    throw lastUserDataError instanceof Error
+      ? lastUserDataError
+      : new Error('Timed out while reading isolated Electron userData path')
+  }
   if (!userDataPath.startsWith(tempRoot)) {
     await closeElectronApp(electronApp)
     throw new Error(`Electron userData isolation failed: ${userDataPath}`)
@@ -223,21 +240,77 @@ async function launchApp(): Promise<LaunchResult> {
 }
 
 async function closeElectronApp(electronApp: ElectronApplication): Promise<void> {
+  const closePromise = new Promise<void>((resolve) => {
+    electronApp.once('close', () => {
+      resolve()
+    })
+  })
+
+  const waitForClose = async (timeoutMs: number): Promise<boolean> => {
+    const timeoutPromise = new Promise<false>((resolve) => {
+      const timer = setTimeout(() => resolve(false), timeoutMs)
+      timer.unref?.()
+    })
+
+    return Promise.race([
+      closePromise.then(() => true),
+      timeoutPromise
+    ])
+  }
+
   try {
     await electronApp.evaluate(({ app }) => {
       app.quit()
     })
   } catch {
+    // The main process may already be closing; fall back to process cleanup below.
+  }
+
+  if (await waitForClose(8_000)) {
     return
   }
 
-  await Promise.race([
-    electronApp.close(),
-    new Promise<void>((resolve) => {
-      const timer = setTimeout(resolve, 8_000)
-      timer.unref?.()
+  const electronProcess = electronApp.process()
+  if (electronProcess.exitCode !== null || electronProcess.signalCode !== null) {
+    return
+  }
+
+  const processExitPromise = new Promise<boolean>((resolve) => {
+    const timer = setTimeout(() => resolve(false), 8_000)
+    timer.unref?.()
+    electronProcess.once('exit', () => {
+      clearTimeout(timer)
+      resolve(true)
     })
-  ]).catch(() => undefined)
+  })
+
+  if (electronProcess.pid && process.platform === 'win32') {
+    try {
+      execFileSync('taskkill.exe', ['/PID', String(electronProcess.pid), '/T', '/F'], {
+        stdio: 'ignore',
+        timeout: 5_000,
+        windowsHide: true
+      })
+    } catch {
+      try {
+        electronProcess.kill()
+      } catch {
+        // The process may already be gone; fall through to the final wait.
+      }
+    }
+  } else {
+    try {
+      electronProcess.kill()
+    } catch {
+      // The process may already be gone; fall through to the final wait.
+    }
+  }
+
+  if (await Promise.race([waitForClose(8_000), processExitPromise])) {
+    return
+  }
+
+  throw new Error('Timed out while closing Electron app process')
 }
 
 async function supervisorStatus(page: Page): Promise<SupervisorStatus> {

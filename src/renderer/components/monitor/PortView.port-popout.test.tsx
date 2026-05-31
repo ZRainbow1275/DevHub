@@ -655,12 +655,12 @@ describe('PortView R8.B port popout triggers', () => {
     expect(isolateButton).toHaveAttribute('aria-pressed', 'false')
   })
 
-  it('pins and closes floating port cards without removing the source port card', async () => {
+  it('closes floating port cards without removing the source port card', async () => {
     await renderPortView()
 
     fireEvent.click(screen.getByTestId('port-popout-click-3000-4242'))
-    fireEvent.click(screen.getByTestId('port-popout-pin-3000-4242'))
     expect(screen.getByTestId('port-popout-card-3000-4242')).toBeInTheDocument()
+    expect(screen.queryByTestId('port-popout-pin-3000-4242')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByTestId('port-popout-close-3000-4242'))
     expect(screen.queryByTestId('port-popout-card-3000-4242')).not.toBeInTheDocument()
@@ -757,7 +757,7 @@ describe('PortView R8.B port popout triggers', () => {
     expect(screen.getByTestId('port-card-3000-4242')).toBeInTheDocument()
   })
 
-  it('updates the statusbar popout tile when floating cards open, pin, and close', async () => {
+  it('updates the statusbar popout tile when floating cards open and close', async () => {
     await renderPortViewWithStatusBar()
 
     const popoutTile = () => screen.getByTestId('status-tile-popouts')
@@ -767,11 +767,6 @@ describe('PortView R8.B port popout triggers', () => {
     await waitFor(() => {
       expect(popoutTile()).toHaveAttribute('data-status-value', '1')
       expect(popoutTile()).toHaveAttribute('data-status-badge-value', '1')
-    })
-
-    fireEvent.click(screen.getByTestId('port-popout-pin-3000-4242'))
-    await waitFor(() => {
-      expect(popoutTile()).toHaveAttribute('data-status-value', '1')
     })
 
     fireEvent.click(screen.getByTestId('port-popout-close-3000-4242'))

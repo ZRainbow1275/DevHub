@@ -6,6 +6,7 @@ import { useDashboardLayout } from '../../hooks/useDashboardLayout'
 import type { DashboardBreakpoint, DashboardGridItem } from '@shared/schemas/r8-runtime'
 import type { FeatureFlagName } from '@shared/feature-flags'
 import {
+  clampLayoutsForBreakpoint,
   DASHBOARD_BREAKPOINT_WIDTHS,
   DASHBOARD_COLS,
   toReactGridLayouts
@@ -17,6 +18,7 @@ import {
   type DashboardWidgetConfigValue
 } from './dashboard-widget-config'
 import { WidgetHost } from './WidgetRegistry'
+import { PanelDetachButton } from '../popout/PanelDetachButton'
 
 const DASHBOARD_GRID_FLAG: FeatureFlagName = 'R8.B.dashboard.grid'
 
@@ -81,7 +83,7 @@ function DashboardWidgetConfigEditor({
     <div className="mb-4 rounded-lg border border-accent/50 bg-surface-900 p-4" data-testid="dashboard-widget-config-editor">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-text-primary">{definition.title}</h3>
+          <h3 className="text-sm font-semibold tracking-[0.05em] text-text-primary">{definition.title}</h3>
           <p className="mt-1 text-xs text-text-muted">实例：{item.i}；配置通过 dashboard:save-layout 持久化。</p>
         </div>
         <button className="rounded border border-surface-600 px-3 py-1.5 text-xs text-text-muted hover:border-accent hover:text-accent" onClick={onClose} type="button">
@@ -91,12 +93,12 @@ function DashboardWidgetConfigEditor({
 
       <div className="grid gap-3 md:grid-cols-2">
         {definition.fields.map(field => (
-          <label className="rounded border border-surface-700 bg-surface-950/60 p-3" key={field.key}>
-            <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-text-secondary">{field.label}</span>
-            <span className="mt-1 block text-[11px] text-text-muted">{field.description}</span>
+          <label className="flex flex-col gap-1.5 rounded border border-surface-700 bg-surface-950/60 p-3" key={field.key}>
+            <span className="block text-xs font-semibold tracking-[0.05em] text-text-secondary">{field.label}</span>
+            <span className="block text-[11px] text-text-muted">{field.description}</span>
             {field.kind === 'number' ? (
               <input
-                className="mt-2 w-full rounded border border-surface-600 bg-surface-900 px-2 py-1.5 text-sm text-text-primary"
+                className="w-full rounded border border-surface-600 bg-surface-900 px-2 py-1.5 text-sm text-text-primary"
                 data-testid={`dashboard-config-${field.key}`}
                 max={field.max}
                 min={field.min}
@@ -108,14 +110,14 @@ function DashboardWidgetConfigEditor({
             ) : field.kind === 'boolean' ? (
               <input
                 checked={Boolean(draft[field.key] ?? field.defaultValue)}
-                className="mt-3 h-4 w-4 accent-accent"
+                className="h-4 w-4 accent-accent"
                 data-testid={`dashboard-config-${field.key}`}
                 onChange={event => setDraftValue(field.key, event.target.checked)}
                 type="checkbox"
               />
             ) : (
               <select
-                className="mt-2 w-full rounded border border-surface-600 bg-surface-900 px-2 py-1.5 text-sm text-text-primary"
+                className="w-full rounded border border-surface-600 bg-surface-900 px-2 py-1.5 text-sm text-text-primary"
                 data-testid={`dashboard-config-${field.key}`}
                 onChange={event => setDraftValue(field.key, event.target.value)}
                 value={String(draft[field.key] ?? field.defaultValue)}
@@ -161,7 +163,12 @@ export function Dashboard() {
   const [featureError, setFeatureError] = useState<string | null>(null)
   const [editingWidgetId, setEditingWidgetId] = useState<string | null>(null)
   const [configSaving, setConfigSaving] = useState(false)
+  const [activeBreakpoint, setActiveBreakpoint] = useState<DashboardBreakpoint>('md')
   const gridLayouts = useMemo(() => toReactGridLayouts(layout), [layout])
+  const displayLayouts = useMemo(
+    () => clampLayoutsForBreakpoint(gridLayouts, activeBreakpoint),
+    [gridLayouts, activeBreakpoint]
+  )
   const widgetItems = layout.layouts.md
   const editingItem = useMemo(
     () => widgetItems.find(item => item.i === editingWidgetId) ?? null,
@@ -172,6 +179,10 @@ export function Dashboard() {
   const handleLayoutChange = useCallback((_current: unknown, allLayouts: ResponsiveLayouts<DashboardBreakpoint>) => {
     void updateFromGrid(allLayouts)
   }, [updateFromGrid])
+
+  const handleBreakpointChange = useCallback((breakpoint: DashboardBreakpoint, _cols: number) => {
+    setActiveBreakpoint(breakpoint)
+  }, [])
 
   const refreshFeatureFlag = useCallback(async () => {
     const bridge = window.devhub?.r8?.integrations
@@ -259,15 +270,15 @@ export function Dashboard() {
   }
 
   return (
-    <div className="h-full overflow-auto bg-surface-950 p-4" data-testid="dashboard-page">
+    <div className="h-full overflow-y-auto overflow-x-hidden bg-surface-950 p-4" data-testid="dashboard-page">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-surface-700 bg-surface-900/80 p-3">
-        <div>
-          <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-text-primary">R8 Dashboard</h2>
-          <p className="mt-1 text-xs text-text-muted">拖拽、缩放和预设持久化使用真实 dashboard IPC；主监控三栏保持不变。</p>
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-sm font-semibold uppercase tracking-[0.2em] text-text-primary">R8 Dashboard</h2>
+          <p className="mt-1 truncate text-xs text-text-muted">拖拽、缩放和预设持久化使用真实 dashboard IPC；主监控三栏保持不变。</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
-            className="rounded border border-warning/50 px-3 py-1.5 text-xs uppercase tracking-[0.12em] text-warning hover:bg-warning/10 disabled:opacity-60"
+            className="rounded border border-warning/50 px-3 py-1.5 text-xs uppercase tracking-[0.12em] whitespace-nowrap text-warning hover:bg-warning/10 disabled:opacity-60"
             data-testid="dashboard-feature-disable"
             disabled={featureBusy || featureEnabled === null}
             onClick={() => { void setDashboardFeatureFlag(false) }}
@@ -277,7 +288,7 @@ export function Dashboard() {
           </button>
           {presets.map(preset => (
             <button
-              className={`rounded border px-3 py-1.5 text-xs uppercase tracking-[0.12em] ${layout.name === preset ? 'border-accent text-accent' : 'border-surface-600 text-text-muted hover:border-accent hover:text-accent'}`}
+              className={`rounded border px-3 py-1.5 text-xs uppercase tracking-[0.12em] whitespace-nowrap ${layout.name === preset ? 'border-accent text-accent' : 'border-surface-600 text-text-muted hover:border-accent hover:text-accent'}`}
               data-testid={`dashboard-preset-${preset}`}
               key={preset}
               onClick={() => { void applyPreset(preset) }}
@@ -286,6 +297,7 @@ export function Dashboard() {
               {preset}
             </button>
           ))}
+          <PanelDetachButton surface="dashboard" />
         </div>
       </div>
 
@@ -324,8 +336,9 @@ export function Dashboard() {
             cols={DASHBOARD_COLS}
             containerPadding={layout.containerPadding}
             dragConfig={{ enabled: true, bounded: false, handle: '.widget-drag-handle', cancel: 'button', threshold: 3 }}
-            layouts={gridLayouts}
+            layouts={displayLayouts}
             margin={layout.margin}
+            onBreakpointChange={handleBreakpointChange}
             onLayoutChange={handleLayoutChange}
             resizeConfig={{ enabled: true, handles: ['se'] }}
             rowHeight={layout.rowHeight}

@@ -2,6 +2,7 @@ import { app, BrowserWindow, shell, Tray, Menu, nativeImage, session } from 'ele
 import type { AIMonitorState, AITask, AIWindowAlias, PortInfo, ProcessInfo, ScannerCacheSnapshot, WindowInfo } from '@shared/types-extended'
 import type { CliOutputEvent, GraphKind, ParserStrategy } from '@shared/schemas/r8-runtime'
 import { mkdirSync } from 'fs'
+import os from 'os'
 import { isAbsolute, join, resolve } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerIpcHandlers, cleanupIpcHandlers, getR8RuntimeServiceForTests } from './ipc'
@@ -222,7 +223,14 @@ function createTopologyFixtureSnapshotForTests(graphKind: GraphKind, nodeCount: 
       activePortCount: 0,
       aiToolCount: aiTasks.length,
       cpuTotal: processes.reduce((total, processInfo) => total + processInfo.cpu, 0),
-      memoryUsedPercent: Math.round(processes.reduce((total, processInfo) => total + processInfo.memory, 0)),
+      // memoryUsedPercent is a true percentage of system RAM (processInfo.memory is per-process RSS in MB).
+      memoryUsedPercent: (() => {
+        const totalMemoryMb = processes.reduce((total, processInfo) => total + processInfo.memory, 0)
+        const totalSystemMb = os.totalmem() / (1024 * 1024)
+        return totalSystemMb > 0
+          ? Math.min(100, Math.max(0, Math.round((totalMemoryMb / totalSystemMb) * 100)))
+          : 0
+      })(),
       processCount: processes.length,
       windowCount: 0
     }
@@ -671,7 +679,7 @@ function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
-    minWidth: 800,
+    minWidth: 720,
     minHeight: 600,
     show: false,
     frame: false, // Custom title bar

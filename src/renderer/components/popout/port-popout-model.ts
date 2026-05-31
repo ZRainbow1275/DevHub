@@ -80,6 +80,8 @@ function isLayoutMemory(value: PortPopoutPosition | PortPopoutLayoutMemory | und
   return !!value && 'position' in value
 }
 
+const ANCHOR_POPOUT_GAP_PX = 48
+
 export function getDefaultPortPopoutPosition(
   port: Pick<PortInfo, 'port' | 'pid'>,
   index: number,
@@ -89,7 +91,12 @@ export function getDefaultPortPopoutPosition(
   const remembered = positionMemory[getPortPopoutMemoryKey(port)]
   if (isLayoutMemory(remembered)) return normalizePortPopoutPosition(remembered.position)
   if (remembered) return normalizePortPopoutPosition(remembered)
-  if (anchor) return normalizePortPopoutPosition({ x: anchor.x + 16, y: anchor.y + 16 })
+  if (anchor) {
+    return normalizePortPopoutPosition({
+      x: anchor.x + ANCHOR_POPOUT_GAP_PX,
+      y: anchor.y - PORT_POPOUT_LIMITS.CARD_DEFAULT_H - ANCHOR_POPOUT_GAP_PX
+    })
+  }
   return { x: 48 + index * 28, y: 96 + index * 28 }
 }
 
@@ -179,6 +186,7 @@ export function closePortPopout(current: PortPopout[], id: string): PortPopout[]
   return current.filter(popout => popout.id !== id)
 }
 
+/** @internal Floating popout in-DOM pin flag. UI surface removed in 0525 R2; retained for tests/internal flows. */
 export function pinPortPopout(current: PortPopout[], id: string, pinned: boolean): PortPopout[] {
   return current.map(popout => popout.id === id ? { ...popout, pinned, lastInteractedAt: Date.now() } : popout)
 }

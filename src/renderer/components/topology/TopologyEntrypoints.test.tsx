@@ -2,11 +2,16 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { Sidebar } from '../layout/Sidebar'
 import { StatusBar } from '../layout/StatusBar'
+import { ToastProvider } from '../ui/Toast'
 
 describe('global topology redundant entrypoints', () => {
   it('exposes a sidebar activity entry for fullscreen topology', async () => {
     const onTopologyClick = vi.fn()
-    render(<Sidebar onSettingsClick={vi.fn()} onTopologyClick={onTopologyClick} />)
+    render(
+      <ToastProvider>
+        <Sidebar onSettingsClick={vi.fn()} onTopologyClick={onTopologyClick} />
+      </ToastProvider>
+    )
 
     await act(async () => {
       await Promise.resolve()

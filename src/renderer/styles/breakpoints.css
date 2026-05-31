@@ -4,6 +4,14 @@
    ======================================== */
 
 :root {
+  /* NOTE: These breakpoint threshold tokens stay in px on purpose.
+     They are NOT referenced by the @media / @container queries below
+     (CSS media/container queries cannot read var(), and the queries in
+     globals.css use literal px values: 900px / 640px / 480px). Converting
+     only the tokens to em would be a half-conversion that does not reach
+     any query, so per the zoom-scaling finding we leave them as-is to
+     avoid breaking reflow. Revisit if the queries are ever migrated to em
+     literals in the same pass. */
   --bp-container-xs: 320px;
   --bp-container-sm: 480px;
   --bp-container-md: 640px;
@@ -13,7 +21,9 @@
   --bp-viewport-md: 768px;
   --bp-viewport-lg: 1024px;
   --bp-viewport-xl: 1280px;
-  --responsive-sidebar-collapsed-width: 56px;
+  /* rem (3.5rem == 56px @ 16px root) so the collapsed rail scales with
+     zoom and matches Sidebar.tsx COLLAPSED_WIDTH (3.5rem). */
+  --responsive-sidebar-collapsed-width: 3.5rem;
 }
 
 .responsive-container {

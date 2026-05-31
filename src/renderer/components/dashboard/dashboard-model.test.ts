@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  clampLayoutsForBreakpoint,
+  clampTileWidth,
   createDashboardLayout,
   DASHBOARD_BREAKPOINTS,
   DEFAULT_WIDGET_IDS,
@@ -57,5 +59,34 @@ describe('R8.B dashboard model', () => {
       minTone: 'danger'
     })
     expect(() => parseDashboardWidgetConfig('treemap-mini', { maxRows: 99 })).toThrow()
+  })
+
+  it('clampTileWidth returns w when within cols and shrinks otherwise', () => {
+    expect(clampTileWidth(3, 8)).toBe(3)
+    expect(clampTileWidth(12, 4)).toBe(4)
+    expect(clampTileWidth(1, 4)).toBe(1)
+    expect(clampTileWidth(0, 4)).toBe(1)
+  })
+
+  it('clampLayoutsForBreakpoint clamps x when x+w overflows cols', () => {
+    const layout = createDashboardLayout()
+    const gridLayouts = toReactGridLayouts(layout)
+    const xsItems = gridLayouts.xs ?? []
+    // tile at x:7 w:3 in a cols=4 breakpoint: w clamps to 3 (<=4), but x+w=10>4
+    const overflowX = { ...xsItems[0], w: 3, x: 7 }
+    const next = clampLayoutsForBreakpoint({ ...gridLayouts, xs: [overflowX, ...xsItems.slice(1)] }, 'xs')
+    // cols=4, w=3 => x should be max(0, 4-3) = 1
+    expect(next.xs?.[0].w).toBe(3)
+    expect(next.xs?.[0].x).toBe(1)
+  })
+
+  it('clampLayoutsForBreakpoint shrinks tiles wider than current breakpoint cols', () => {
+    const layout = createDashboardLayout()
+    const gridLayouts = toReactGridLayouts(layout)
+    const xsItems = gridLayouts.xs ?? []
+    const oversized = { ...xsItems[0], w: 10, x: 0 }
+    const next = clampLayoutsForBreakpoint({ ...gridLayouts, xs: [oversized, ...xsItems.slice(1)] }, 'xs')
+    expect(next.xs?.[0].w).toBe(4)
+    expect(next.xs?.[0].x).toBe(0)
   })
 })

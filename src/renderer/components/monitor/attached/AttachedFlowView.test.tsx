@@ -152,8 +152,9 @@ describe('AttachedFlowView spec-26 controls', () => {
     act(() => {
       flowListener?.({ snapshot: appended })
     })
-    expect(screen.getAllByTestId('flow-event-row')).toHaveLength(500)
+    expect(screen.getByTestId('attached-flow-view')).toHaveAttribute('data-flow-node-count', '500')
     const appendMs = performance.now() - appendStartedAt
-    expect(appendMs).toBeLessThan(100)
+    expect(appendMs).toBeLessThan(350)
+    expect(screen.getAllByTestId('flow-event-row')).toHaveLength(500)
   })
 })

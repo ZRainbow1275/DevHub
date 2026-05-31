@@ -14,7 +14,7 @@ export function useDensity() {
     if (stored === 'compact' || stored === 'standard' || stored === 'comfortable') {
       return stored
     }
-    return 'standard'
+    return 'comfortable'
   })
 
   useEffect(() => {

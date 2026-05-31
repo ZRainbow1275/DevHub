@@ -276,7 +276,14 @@ export function R8CommandPalette({ open, onClose, returnFocusTo = null }: R8Comm
   }
 
   return (
-    <div className="fixed inset-0 z-[6000] bg-black/50 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="R8 命令面板" data-testid="command-palette">
+    <div
+      className="fixed inset-0 z-[6000] bg-black/50 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label="R8 命令面板"
+      data-testid="command-palette"
+      onMouseDown={(event) => { if (event.target === event.currentTarget) closePalette() }}
+    >
       <div className="mx-auto mt-24 w-[min(760px,calc(100vw-32px))] border border-surface-600 bg-surface-950 shadow-2xl radius-md overflow-hidden">
         <Command className="bg-surface-950 text-text-primary" shouldFilter={false}>
           <div className="flex items-center gap-3 border-b border-surface-700 px-4 py-3">

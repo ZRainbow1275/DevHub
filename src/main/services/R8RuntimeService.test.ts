@@ -104,7 +104,7 @@ async function waitUntilAsync(assertion: () => Promise<boolean>, timeoutMs = 200
 
 async function removePathWithRetry(targetPath: string): Promise<void> {
   let lastError: unknown = null
-  for (let attempt = 0; attempt < 5; attempt += 1) {
+  for (let attempt = 0; attempt < 12; attempt += 1) {
     try {
       await rm(targetPath, { recursive: true, force: true })
       return
@@ -112,7 +112,7 @@ async function removePathWithRetry(targetPath: string): Promise<void> {
       lastError = error
       const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : ''
       if (!['ENOTEMPTY', 'EBUSY', 'EPERM'].includes(code)) throw error
-      await new Promise(resolve => setTimeout(resolve, 50 * (attempt + 1)))
+      await new Promise(resolve => setTimeout(resolve, 100 * (attempt + 1)))
     }
   }
   throw lastError instanceof Error ? lastError : new Error(String(lastError))
@@ -136,9 +136,35 @@ const runtime = {
 interface TestRuntimeStoreShape {
   taskQueueEngine?: unknown
   featureOverrides?: Record<string, boolean>
+  toolOverrides?: Record<string, string>
+  toolDetectCache?: Record<string, unknown>
+  drawers?: unknown[]
+  drawerLayoutVersion?: unknown
 }
 
 let defaultUserDataRoot = join(tmpdir(), `devhub-r8-runtime-test-${randomUUID()}`)
+const createdRuntimeServices: R8RuntimeService[] = []
+
+type RuntimeServiceArgs = ConstructorParameters<typeof R8RuntimeService>
+
+function createRuntimeService(
+  getMainWindow: RuntimeServiceArgs[1] = (() => null) as RuntimeServiceArgs[1],
+  runtimeOverride: RuntimeServiceArgs[2] = runtime as never
+): R8RuntimeService {
+  const service = new R8RuntimeService(appStore as never, getMainWindow, runtimeOverride)
+  createdRuntimeServices.push(service)
+  return service
+}
+
+function createRuntimeServiceWithStore(
+  store: RuntimeServiceArgs[0],
+  getMainWindow: RuntimeServiceArgs[1] = (() => null) as RuntimeServiceArgs[1],
+  runtimeOverride: RuntimeServiceArgs[2] = runtime as never
+): R8RuntimeService {
+  const service = new R8RuntimeService(store, getMainWindow, runtimeOverride)
+  createdRuntimeServices.push(service)
+  return service
+}
 
 describe('R8RuntimeService', () => {
   beforeEach(() => {
@@ -150,14 +176,26 @@ describe('R8RuntimeService', () => {
     const featureOverrides = runtimeStore.get('featureOverrides', {})
     delete featureOverrides['R8.C.task.queue.engine']
     runtimeStore.set('featureOverrides', featureOverrides)
+    runtimeStore.delete('toolOverrides')
+    runtimeStore.delete('toolDetectCache')
+    runtimeStore.delete('drawers')
+    runtimeStore.delete('drawerLayoutVersion')
   })
 
   afterEach(async () => {
+    for (const service of createdRuntimeServices.splice(0).reverse()) {
+      try {
+        service.dispose()
+      } catch {
+        // Best-effort cleanup; assertion failures should still report the original test error.
+      }
+    }
+    await flushAsyncWork()
     await removePathWithRetry(defaultUserDataRoot)
-  })
+  }, 30000)
 
   it('reports real registry health without background mocks', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const health = service.healthCheck()
 
     expect(health.featureFlags).toBeGreaterThanOrEqual(100)
@@ -166,7 +204,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('exposes spec-31 channel registrations and rate-limit stats without fake data', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const channels = service.listRateLimitChannels()
     const stats = service.rateLimitStats()
 
@@ -190,7 +228,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('builds a local spec-32 observability snapshot with all metric kinds', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const snapshot = service.getObservabilitySnapshot()
     const kinds = new Set(snapshot.metrics.map(metric => metric.kind))
 
@@ -203,7 +241,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('exports spec-32 observability snapshots as real JSON and CSV files', async () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const tempDir = await mkdtemp(join(tmpdir(), 'devhub-obs-'))
 
     try {
@@ -226,7 +264,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('limits spec-32 observability stream subscriptions to three active senders', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const sender = (id: number) => ({
       id,
       isDestroyed: vi.fn(() => false),
@@ -257,7 +295,7 @@ describe('R8RuntimeService', () => {
     const previousNodeEnv = process.env.NODE_ENV
     process.env.NODE_ENV = 'development'
     try {
-      const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+      const service = createRuntimeService(() => null, runtime as never)
       service.listRateLimitChannels()
 
       expect(service.overrideRateClass({ channel: 'ipc:rate-limit-stats', rateClass: 'low_freq_op', confirmedBy: 'vitest' })).toEqual({
@@ -274,7 +312,7 @@ describe('R8RuntimeService', () => {
 
 
   it('returns truthful contract-only status for registered but non-executable channels', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const query = service.invokeContractOnlyChannel({ channel: 'audit:query', payload: { token: 'secret-value' } })
     const destructive = service.invokeContractOnlyChannel({ channel: 'audit:purge' })
 
@@ -288,7 +326,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('validates payloads through the Zod runtime registry', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const schemas = service.listSchemas()
     const migration = service.migrationStatus()
 
@@ -306,7 +344,7 @@ describe('R8RuntimeService', () => {
   it('loads strict builtin and user skills without executing skill scripts', async () => {
     const userData = await mkdtemp(join(tmpdir(), 'devhub-skills-'))
     vi.mocked(app.getPath).mockImplementation(() => userData)
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const auditSpy = vi.spyOn(auditLogger, 'log').mockImplementation(() => undefined)
     const previousBuiltinEnabled = service.getFeatureFlag('R8.C.skill.builtin')
     service.setFeatureFlag({ flag: 'R8.C.skill.builtin', value: true, confirmedBy: 'vitest' })
@@ -536,7 +574,7 @@ describe('R8RuntimeService', () => {
         send: vi.fn()
       }
     }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
     const serviceInternals = service as unknown as { store: { set: (key: string, value: unknown) => void } }
     serviceInternals.store.set('popouts', [])
     serviceInternals.store.set('monitorPopoutLayouts', {})
@@ -591,7 +629,7 @@ describe('R8RuntimeService', () => {
         send: vi.fn()
       }
     }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
     const skillDir = join(userData, 'skills', 'watched-skill')
     const skillPath = join(skillDir, 'SKILL.md')
 
@@ -636,7 +674,7 @@ describe('R8RuntimeService', () => {
   it('honors skill builtin feature flag off without hiding user skills', async () => {
     const userData = await mkdtemp(join(tmpdir(), 'devhub-skill-flag-'))
     vi.mocked(app.getPath).mockImplementation(() => userData)
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const skillDir = join(userData, 'skills', 'user-only-skill')
     const previousBuiltinEnabled = service.getFeatureFlag('R8.C.skill.builtin')
 
@@ -678,7 +716,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('detects DAG cycles and ready roots', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
 
     expect(service.detectDagCycle({ nodes: [{ id: 'a', dependencyIds: ['b'] }, { id: 'b', dependencyIds: ['a'] }] }).hasCycle).toBe(true)
     expect(service.buildDag({ nodes: [{ id: 'root' }, { id: 'child', dependencyIds: ['root'] }] }).ready).toEqual(['root'])
@@ -687,7 +725,7 @@ describe('R8RuntimeService', () => {
   it('builds, stores, layers, exports, and checks a DAG from a real CSV path', async () => {
     const userData = await mkdtemp(join(tmpdir(), 'devhub-dag-'))
     vi.mocked(app.getPath).mockImplementation(() => userData)
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const csvPath = join(userData, 'dag.csv')
     const dagSessionId = `csv-session-${randomUUID()}`
 
@@ -728,7 +766,7 @@ describe('R8RuntimeService', () => {
 
 
   it('parses real CLI progress lines and stores latest progress plus sessions', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const events = service.parseCliChunk({ tool: 'codex', stream: 'stdout', instanceId: 'codex-test', chunk: 'Step 2/4 running typecheck' })
 
     expect(events[0].progress).toBe(0.5)
@@ -750,7 +788,7 @@ describe('R8RuntimeService', () => {
         }
       }
     }
-    const service = new R8RuntimeService(appStore as never, () => null, runtimeWithTracker as never)
+    const service = createRuntimeService(() => null, runtimeWithTracker as never)
 
     service.parseCliChunk({ tool: 'codex', stream: 'stdout', instanceId: 'codex-shared-tracker', chunk: 'Step 3/4 running typecheck' })
 
@@ -764,7 +802,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('publishes an ERROR notification for Claude result.is_error stream-json events', async () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
 
     const events = service.parseCliChunk({
       tool: 'claude',
@@ -804,7 +842,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('requires operator confirmation before restarting Claude after non stream-json output and then runs a real local child', async () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const instanceId = `claude-post-output-fallback-${randomUUID()}`
     const restartedLine = JSON.stringify({
       type: 'result',
@@ -877,7 +915,7 @@ describe('R8RuntimeService', () => {
 
 
   it('installs and uninstalls real shim files behind explicit confirmation', async () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
 
     await expect(service.installShim({ tool: 'codex' })).rejects.toThrow('E_PERMISSION')
     const installed = await service.installShim({ tool: 'codex', confirmedBy: 'vitest' })
@@ -923,7 +961,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('reloads Gemini parser rules behind confirmation and exposes stats', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     service.parseCliChunk({ tool: 'gemini', stream: 'stdout', instanceId: 'gemini-rules', strategy: 'line', chunk: 'plain model text' })
 
     expect(service.getGeminiPatternStat({ instanceId: 'gemini-rules' }).unmatchedRatio).toBe(1)
@@ -937,39 +975,55 @@ describe('R8RuntimeService', () => {
   })
 
   it('reloads Gemini parser rules from a real gemini-pattern.json watcher event', async () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
+    const userData = app.getPath('userData')
+    await mkdir(userData, { recursive: true })
+    const watchedPath = join(userData, 'gemini-pattern.json')
+
+    const initialRules = {
+      rules: [
+        { kind: 'thinking', regex: 'Awaiting Gemini plan', flags: 'i', confidence: 0.79, ansiStrip: true }
+      ]
+    }
+    await writeFile(watchedPath, `${JSON.stringify(initialRules)}\n`, 'utf8')
 
     const started = await service.startGeminiRuleWatcher()
     expect(started.success).toBe(true)
     if (!started.watchedPath) throw new Error('expected Gemini pattern watcher path')
 
-    await writeFile(started.watchedPath, `${JSON.stringify({
-      rules: [
-        { kind: 'thinking', regex: 'Awaiting Gemini plan', flags: 'i', confidence: 0.79, ansiStrip: true }
-      ]
-    })}\n`, 'utf8')
+    const initialVersion = service.getGeminiPatternStat().ruleVersion
+    await waitUntil(() => service.getGeminiPatternStat().ruleVersion > initialVersion, 10_000)
 
-    await waitUntil(() => service.getGeminiPatternStat().ruleVersion > 1, 3000)
+    const updatedRules = {
+      rules: [
+        { kind: 'thinking', regex: 'Awaiting Gemini plan updated', flags: 'i', confidence: 0.83, ansiStrip: true }
+      ]
+    }
+    await writeFile(watchedPath, `${JSON.stringify(updatedRules)}\n`, 'utf8')
+
+    const versionBeforeUpdate = service.getGeminiPatternStat().ruleVersion
+    await waitUntil(() => service.getGeminiPatternStat().ruleVersion > versionBeforeUpdate, 10_000)
+    const currentVersion = service.getGeminiPatternStat().ruleVersion
     const events = service.parseCliChunk({
       tool: 'gemini',
       stream: 'stdout',
       instanceId: 'gemini-watch-rules',
       strategy: 'line',
-      chunk: 'Awaiting Gemini plan'
+      chunk: 'Awaiting Gemini plan updated'
     })
 
     expect(events[0]).toMatchObject({
       eventType: 'progress',
       phase: 'thinking',
-      confidence: 0.79,
-      payload: { kind: 'thinking', ruleVersion: service.getGeminiPatternStat().ruleVersion }
+      confidence: 0.83,
+      payload: { kind: 'thinking', ruleVersion: currentVersion }
     })
     service.dispose()
   })
 
   it('audits a WARN-severity Gemini parser low match rate once per rule version', () => {
     const auditSpy = vi.spyOn(auditLogger, 'log').mockImplementation(() => undefined)
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
 
     service.parseCliChunk({
       tool: 'gemini',
@@ -1004,7 +1058,7 @@ describe('R8RuntimeService', () => {
   it('emits one unknown Gemini timeout event and WARN audit after stdout goes stale', () => {
     const auditSpy = vi.spyOn(auditLogger, 'log').mockImplementation(() => undefined)
     const dateSpy = vi.spyOn(Date, 'now').mockReturnValue(1_000)
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
 
     service.parseCliChunk({
       tool: 'gemini',
@@ -1044,7 +1098,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('switches CLI parser strategy for an existing session', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     service.parseCliChunk({ tool: 'codex', stream: 'stdout', instanceId: 'codex-switch-service', chunk: 'Step 1/2 running' })
 
     const selected = service.selectCliStrategy({ instanceId: 'codex-switch-service', strategy: 'shim' })
@@ -1060,7 +1114,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('validates tool override paths and detects the override command', async () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
 
     expect(() => service.setToolOverride({ tool: 'codex', path: 'Z:/definitely-missing/codex.exe', confirmedBy: 'vitest' })).toThrow('E_VALIDATION')
     expect(service.setToolOverride({ tool: 'codex', path: process.execPath, confirmedBy: 'vitest' })).toMatchObject({ tool: 'codex', path: process.execPath })
@@ -1089,7 +1143,7 @@ describe('R8RuntimeService', () => {
         })
       }
     }
-    const service = new R8RuntimeService(appStore as never, () => ({ webContents: { send } }) as never, runtimeWithWindows as never)
+    const service = createRuntimeService(() => ({ webContents: { send } }) as never, runtimeWithWindows as never)
     service.setToolOverride({ tool: 'codex', path: process.execPath, confirmedBy: 'vitest' })
 
     const state = await service.detectTools({ force: true })
@@ -1103,7 +1157,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('detects all five AI tools from scanner snapshots without treating plain gh as Copilot', async () => {
-    const service = new R8RuntimeService(appStore as never, () => null, {
+    const service = createRuntimeService(() => null, {
       scannerCache: {
         getSnapshot: () => ({
           windows: {
@@ -1142,9 +1196,53 @@ describe('R8RuntimeService', () => {
     expect(matcher.rowLooksLikeTool({ processName: 'gh.exe', commandLine: 'gh auth status' }, 'copilot')).toBe(false)
   })
 
+  it('prefers live Codex scanner evidence over a stale timeout cache entry', async () => {
+    const checkedAt = Date.now()
+    const runtimeStore = new Store<TestRuntimeStoreShape>({ name: 'devhub-r8-runtime' })
+    runtimeStore.set('toolDetectCache', {
+      codex: {
+        tool: 'codex',
+        found: false,
+        version: null,
+        path: 'C:/Users/HP/AppData/Roaming/npm/codex.CMD',
+        detectStrategy: 'not-found',
+        recommendedParser: null,
+        capabilities: [],
+        errors: ['CLI version probe timed out after 3000ms'],
+        error: 'CLI version probe timed out after 3000ms',
+        checkedAt,
+        detectedAt: checkedAt
+      }
+    })
+    const service = createRuntimeService(() => null, {
+      scannerCache: {
+        getSnapshot: () => ({
+          windows: { data: [] },
+          aiTasks: {
+            data: [
+              { tool: 'codex', pid: 2301, commandLine: 'node C:/Users/HP/AppData/Roaming/npm/node_modules/@openai/codex/bin/codex.js' }
+            ]
+          },
+          processes: { data: [] }
+        })
+      }
+    } as never)
+
+    const detected = await service.detectTool({ tool: 'codex', force: false })
+
+    expect(detected).toMatchObject({
+      tool: 'codex',
+      found: true,
+      detectStrategy: 'module-list',
+      recommendedParser: 'shim'
+    })
+    const serviceStore = (service as unknown as { store: Store<TestRuntimeStoreShape> }).store
+    expect(serviceStore.get('toolDetectCache', {}).codex).toBeUndefined()
+  })
+
   it('covers CLI detection GWT matrix with real executable overrides and cache reuse', async () => {
     const send = vi.fn()
-    const service = new R8RuntimeService(appStore as never, () => ({ webContents: { send } }) as never, undefined)
+    const service = createRuntimeService(() => ({ webContents: { send } }) as never, undefined)
 
     expect(() => service.setToolOverride({ tool: 'gemini', path: 'Z:/definitely-missing/gemini.exe', confirmedBy: 'vitest' })).toThrow('E_VALIDATION')
     const codexOverride = service.setToolOverride({ tool: 'codex', path: process.execPath, confirmedBy: 'vitest' })
@@ -1194,7 +1292,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('queues CSV rows as durable task runs without pretending external CLI success', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const task = service.enqueueCsvRow({ id: `row-${Date.now()}`, tool: 'codex', prompt: 'run real checks', dry_run: true })
 
     expect(task.status).toBe('queued')
@@ -1203,7 +1301,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('uses the enum task queue engine selector and real queue.sqlite storage by default', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const task = service.enqueueCsvRow({ id: `sqlite-row-${Date.now()}`, group: 'sqlite-engine', tool: 'codex', prompt: 'persist in sqlite', dry_run: true })
     const status = service.getTaskQueueStorageStatus()
 
@@ -1229,19 +1327,21 @@ describe('R8RuntimeService', () => {
   })
 
   it('exports real task results as CSV and JSON artifacts', async () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
+    const sessionId = `export-session-${randomUUID()}`
+    const taskId = `export-task-a-${randomUUID()}`
     service.enqueueCsvRow({
-      id: 'export-task-a',
-      group: 'export-session',
+      id: taskId,
+      group: sessionId,
       tool: 'codex',
       prompt: 'write result, with csv "quotes"',
-      output_path: join(defaultUserDataRoot, 'task-artifacts', 'export-task-a'),
+      output_path: join(defaultUserDataRoot, 'task-artifacts', taskId),
       retries: 0
     })
-    const started = service.startReadyTasks({ sessionId: 'export-session', concurrent: 1 }).started[0]
+    const started = service.startReadyTasks({ sessionId, concurrent: 1 }).started[0]
     const completed = service.completeTaskRun({ runId: started.runId, exitCode: 0 })
     const result = await service.exportTaskResults({
-      sessionId: 'export-session',
+      sessionId,
       format: 'both',
       outputDir: join(defaultUserDataRoot, 'result-export'),
       confirmedBy: 'vitest'
@@ -1250,7 +1350,7 @@ describe('R8RuntimeService', () => {
     expect(result).toMatchObject({
       success: true,
       scope: 'session',
-      sessionId: 'export-session',
+      sessionId,
       taskCount: 1,
       runIds: [completed.runId],
       artifactDir: join(defaultUserDataRoot, 'result-export')
@@ -1270,32 +1370,34 @@ describe('R8RuntimeService', () => {
     expect(jsonPayload.tasks[0]).toMatchObject({
       runId: completed.runId,
       status: 'succeeded',
-      artifactsPath: join(defaultUserDataRoot, 'task-artifacts', 'export-task-a')
+      artifactsPath: join(defaultUserDataRoot, 'task-artifacts', taskId)
     })
     const csvText = await readFile(csvFile.path, 'utf8')
     expect(csvText).toContain('runId,taskId,sessionId,status')
-    expect(csvText).toContain('export-task-a')
+    expect(csvText).toContain(taskId)
     expect(csvText).toContain('"write result, with csv ""quotes"""')
   })
 
   it('audits on_fail branch and fallback tool switch transitions', () => {
     const auditSpy = vi.spyOn(auditLogger, 'log').mockImplementation(() => undefined)
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
+    const sessionId = `on-fail-audit-session-${randomUUID()}`
+    const taskId = `on-fail-audit-${randomUUID()}`
 
     try {
       const task = service.enqueueCsvRow({
-        id: 'on-fail-audit',
-        group: 'on-fail-audit-session',
+        id: taskId,
+        group: sessionId,
         tool: 'codex',
         prompt: 'real on_fail fallback',
         retries: 0,
         on_fail: 'fallback-tool',
         fallback_tool: 'gemini'
       })
-      const started = service.startReadyTasks({ sessionId: 'on-fail-audit-session', concurrent: 1 }).started[0]
+      const started = service.startReadyTasks({ sessionId, concurrent: 1 }).started[0]
       service.completeTaskRun({ runId: started.runId, exitCode: 1, errorCode: 'E_TOOL' })
 
-      expect(service.listTasks({ sessionId: 'on-fail-audit-session' })[0].row.tool).toBe('gemini')
+      expect(service.listTasks({ sessionId }).find(item => item.runId === task.runId)?.row.tool).toBe('gemini')
       expect(auditSpy).toHaveBeenCalledWith('task:tool-switch', expect.objectContaining({
         taskId: task.row.id,
         prev: 'running',
@@ -1311,9 +1413,10 @@ describe('R8RuntimeService', () => {
     const userData = await mkdtemp(join(tmpdir(), 'devhub-on-fail-skill-'))
     vi.mocked(app.getPath).mockImplementation(() => userData)
     const auditSpy = vi.spyOn(auditLogger, 'log').mockImplementation(() => undefined)
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const previousLibraryEnabled = service.getFeatureFlag('R8.C.skill.library')
     service.setFeatureFlag({ flag: 'R8.C.skill.library', value: true, confirmedBy: 'vitest' })
+    const sessionId = `skill-exec-session-${randomUUID()}`
 
     try {
       const skillDir = join(userData, 'skills', 'on-fail-recovery')
@@ -1357,7 +1460,7 @@ describe('R8RuntimeService', () => {
 
       service.enqueueCsvRow({
         id: 'skill-exec-task',
-        group: 'skill-exec-session',
+        group: sessionId,
         tool: 'codex',
         prompt: 'real failing task triggers local skill',
         retries: 0,
@@ -1365,16 +1468,16 @@ describe('R8RuntimeService', () => {
         execute_skill: 'on-fail-recovery',
         timeout_ms: 5_000
       })
-      const started = service.startReadyTasks({ sessionId: 'skill-exec-session', concurrent: 1 }).started[0]
+      const started = service.startReadyTasks({ sessionId, concurrent: 1 }).started[0]
       const pending = service.completeTaskRun({ runId: started.runId, exitCode: 1, errorCode: 'E_REAL_FAIL', errorMessage: 'real executor failure' })
       expect(pending).toMatchObject({ status: 'awaiting-human', errorCode: 'ON_FAIL_EXECUTE_SKILL_RUNNING' })
 
       await waitUntil(() => {
-        const current = service.listTasks({ sessionId: 'skill-exec-session' })[0]
+        const current = service.listTasks({ sessionId })[0]
         return current?.status === 'queued' && current.errorCode === 'ON_FAIL_EXECUTE_SKILL_SUCCEEDED' && typeof current.artifactsPath === 'string'
       }, 3000)
 
-      const updated = service.listTasks({ sessionId: 'skill-exec-session' })[0]
+      const updated = service.listTasks({ sessionId })[0]
       expect(updated).toMatchObject({
         status: 'queued',
         errorCode: 'ON_FAIL_EXECUTE_SKILL_SUCCEEDED',
@@ -1404,7 +1507,7 @@ describe('R8RuntimeService', () => {
   it('enforces read-only SKILL sandbox by blocking write side effects', async () => {
     const userData = await mkdtemp(join(tmpdir(), 'devhub-on-fail-skill-read-only-'))
     vi.mocked(app.getPath).mockImplementation(() => userData)
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const previousLibraryEnabled = service.getFeatureFlag('R8.C.skill.library')
     service.setFeatureFlag({ flag: 'R8.C.skill.library', value: true, confirmedBy: 'vitest' })
 
@@ -1471,9 +1574,10 @@ describe('R8RuntimeService', () => {
   it('permits system SKILL sandbox to run child processes explicitly', async () => {
     const userData = await mkdtemp(join(tmpdir(), 'devhub-on-fail-skill-system-'))
     vi.mocked(app.getPath).mockImplementation(() => userData)
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const previousLibraryEnabled = service.getFeatureFlag('R8.C.skill.library')
     service.setFeatureFlag({ flag: 'R8.C.skill.library', value: true, confirmedBy: 'vitest' })
+    const sessionId = `system-skill-session-${randomUUID()}`
 
     try {
       const skillDir = join(userData, 'skills', 'system-recovery')
@@ -1512,7 +1616,7 @@ describe('R8RuntimeService', () => {
 
       service.enqueueCsvRow({
         id: 'system-skill-task',
-        group: 'system-skill-session',
+        group: sessionId,
         tool: 'codex',
         prompt: 'system sandbox task',
         retries: 0,
@@ -1520,15 +1624,15 @@ describe('R8RuntimeService', () => {
         execute_skill: 'system-recovery',
         timeout_ms: 5_000
       })
-      const started = service.startReadyTasks({ sessionId: 'system-skill-session', concurrent: 1 }).started[0]
+      const started = service.startReadyTasks({ sessionId, concurrent: 1 }).started[0]
       service.completeTaskRun({ runId: started.runId, exitCode: 1, errorCode: 'E_REAL_FAIL', errorMessage: 'real executor failure' })
 
       await waitUntil(() => {
-        const current = service.listTasks({ sessionId: 'system-skill-session' })[0]
+        const current = service.listTasks({ sessionId })[0]
         return current?.status === 'queued' && current.errorCode === 'ON_FAIL_EXECUTE_SKILL_SUCCEEDED' && typeof current.artifactsPath === 'string'
       }, 3000)
 
-      const updated = service.listTasks({ sessionId: 'system-skill-session' })[0]
+      const updated = service.listTasks({ sessionId })[0]
       expect(await readFile(join(updated.artifactsPath ?? '', 'failure-context.json.seen'), 'utf8')).toBe('system-ok')
       expect(await readFile(join(updated.artifactsPath ?? '', 'stdout.txt'), 'utf8')).toContain('system-ok')
     } finally {
@@ -1540,9 +1644,10 @@ describe('R8RuntimeService', () => {
   it('passes MCP stdio server metadata to system SKILL scripts that call a real local server', async () => {
     const userData = await mkdtemp(join(tmpdir(), 'devhub-on-fail-skill-mcp-'))
     vi.mocked(app.getPath).mockImplementation(() => userData)
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const previousLibraryEnabled = service.getFeatureFlag('R8.C.skill.library')
     service.setFeatureFlag({ flag: 'R8.C.skill.library', value: true, confirmedBy: 'vitest' })
+    const sessionId = `mcp-skill-session-${randomUUID()}`
 
     try {
       const skillDir = join(userData, 'skills', 'mcp-recovery')
@@ -1629,7 +1734,7 @@ describe('R8RuntimeService', () => {
 
       service.enqueueCsvRow({
         id: 'mcp-skill-task',
-        group: 'mcp-skill-session',
+        group: sessionId,
         tool: 'codex',
         prompt: 'mcp sandbox task',
         retries: 0,
@@ -1637,15 +1742,15 @@ describe('R8RuntimeService', () => {
         execute_skill: 'mcp-recovery',
         timeout_ms: 5_000
       })
-      const started = service.startReadyTasks({ sessionId: 'mcp-skill-session', concurrent: 1 }).started[0]
+      const started = service.startReadyTasks({ sessionId, concurrent: 1 }).started[0]
       service.completeTaskRun({ runId: started.runId, exitCode: 1, errorCode: 'E_REAL_FAIL', errorMessage: 'real executor failure' })
 
       await waitUntil(() => {
-        const current = service.listTasks({ sessionId: 'mcp-skill-session' })[0]
+        const current = service.listTasks({ sessionId })[0]
         return current?.status === 'queued' && current.errorCode === 'ON_FAIL_EXECUTE_SKILL_SUCCEEDED' && typeof current.artifactsPath === 'string'
       }, 3000)
 
-      const updated = service.listTasks({ sessionId: 'mcp-skill-session' })[0]
+      const updated = service.listTasks({ sessionId })[0]
       expect(await readFile(join(updated.artifactsPath ?? '', 'failure-context.json.mcp'), 'utf8')).toContain('echo:real')
       expect(await readFile(join(updated.artifactsPath ?? '', 'stdout.txt'), 'utf8')).toContain('echo:real')
     } finally {
@@ -1655,7 +1760,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('keeps injection dry-run real and blocks native execution while nut-js is disabled', async () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     service.addInjectWhitelist({ alias: 'r8-test', reason: 'vitest', confirmedBy: 'vitest' })
     const dryRun = service.dryRunInject({ targetAlias: 'r8-test', text: 'hello', dryRun: true })
     const blocked = await service.executeInject({ targetAlias: 'r8-test', text: 'hello', confirmedBy: 'vitest' })
@@ -1676,8 +1781,8 @@ describe('R8RuntimeService', () => {
   })
 
   it('triggers csv-task-driven inject from a real allow_inject task start', async () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
-    const sessionId = 'r8c-spec18-task-start'
+    const service = createRuntimeService(() => null, runtime as never)
+    const sessionId = `r8c-spec18-task-start-${randomUUID()}`
     const rowId = `inject-start-${randomUUID()}`
     const targetAlias = `codex-${rowId}`
     const prompt = 'Task queue start should trigger real csv-task-driven inject'
@@ -1738,7 +1843,7 @@ describe('R8RuntimeService', () => {
         send: vi.fn()
       }
     }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
     const actionId = randomUUID()
     const alias = `r8-countdown-${randomUUID()}`
 
@@ -1769,7 +1874,7 @@ describe('R8RuntimeService', () => {
         send: vi.fn()
       }
     }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
     const actionId = randomUUID()
     const alias = `r8-countdown-cancel-${randomUUID()}`
 
@@ -1799,7 +1904,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('fuses AI signals with weighted decay and transparent contribution percentages', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const now = 60_000
     const fused = service.fuseSignals({
       instanceId: 'ai-1',
@@ -1822,7 +1927,7 @@ describe('R8RuntimeService', () => {
 
   it('audits newly detected state assertion violations without disabling old task state paths', () => {
     const auditSpy = vi.spyOn(auditLogger, 'log').mockImplementation(() => undefined)
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
 
     const state = service.transitionInstanceState({ instanceId: 'ai-dead', layer: 'system', event: 'process-exit', reason: 'real process exit' })
 
@@ -1842,7 +1947,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('caps confidence when fusion has no cli_parse source', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const now = 90_000
     const fused = service.fuseSignals({
       instanceId: 'ai-no-cli',
@@ -1858,7 +1963,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('applies user weight profiles and decays stale cli_parse signals', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const profile = service.setWeightProfile({
       profileId: 'user-custom',
       weights: { cli_parse: 0.5, window_title: 0.5, process_cpu_io: 0, task_queue: 0, watchdog: 0, user_feedback: 0 },
@@ -1894,14 +1999,14 @@ describe('R8RuntimeService', () => {
 
 
   it('requires confirmation for command history clearing', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
 
     expect(() => service.clearCommandHistory({})).toThrow('E_PERMISSION')
     expect(service.clearCommandHistory({ confirmedBy: 'vitest' }).success).toBe(true)
   })
 
   it('persists command history as deduplicated recent entries with use counts', async () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     service.clearCommandHistory({ confirmedBy: 'vitest' })
 
     await service.invokeCommand({ commandId: 'monitor.process' })
@@ -1916,7 +2021,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('supports standalone command history writes and rejects unsafe custom commands', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     service.clearCommandHistory({ confirmedBy: 'vitest' })
 
     expect(service.addCommandHistory({
@@ -1966,7 +2071,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('registers and unregisters the devhub OS protocol behind confirmation', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
 
     expect(() => service.registerOsProtocol({ register: true })).toThrow('E_PERMISSION')
 
@@ -1997,7 +2102,7 @@ describe('R8RuntimeService', () => {
   it('executes enabled custom commands through safe command and URI handlers', async () => {
     const send = vi.fn()
     const mainWindow = { isDestroyed: () => false, webContents: { send } }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
 
     service.saveCustomCommand({
       id: 'custom.open-port-monitor',
@@ -2030,7 +2135,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('generates CSV launch commands and only queues real execution sessions', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const row = { id: `launch-${Date.now()}`, tool: 'codex', prompt: 'run typecheck', dry_run: 'false' }
 
     expect(service.generateCsvCommand(row).command).toEqual(['codex', 'exec', 'run typecheck'])
@@ -2055,7 +2160,7 @@ describe('R8RuntimeService', () => {
       csvRow({ taskId: 'B', taskName: 'Child B', dependsOn: 'A', concurrencyKey: 'frontend' }),
       csvRow({ taskId: 'C', taskName: 'Child C', dependsOn: 'A', concurrencyKey: 'frontend' })
     ]), 'utf8')
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const previousBuiltinEnabled = service.getFeatureFlag('R8.C.skill.builtin')
     service.setFeatureFlag({ flag: 'R8.C.skill.builtin', value: true, confirmedBy: 'vitest' })
 
@@ -2089,14 +2194,16 @@ describe('R8RuntimeService', () => {
         send: vi.fn()
       }
     }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
     const auditSpy = vi.spyOn(auditLogger, 'log').mockImplementation(() => undefined)
+    const sessionId = `task-stream-${randomUUID()}`
 
     try {
-      const task = service.enqueueCsvRow({ id: 'stream-task', group: 'task-stream', tool: 'codex', prompt: 'real stream transition', retries: 0, dry_run: false, allow_inject: false })
-      service.startReadyTasks({ sessionId: 'task-stream', concurrent: 1 })
+      const task = service.enqueueCsvRow({ id: 'stream-task', group: sessionId, tool: 'codex', prompt: 'real stream transition', retries: 0, dry_run: false, allow_inject: false })
+      service.startReadyTasks({ sessionId, concurrent: 1 })
       service.completeTaskRun({ runId: task.runId, exitCode: 0 })
 
+      await waitUntil(() => mainWindow.webContents.send.mock.calls.filter(([channel]) => channel === 'task:state-stream').length >= 2, 1000)
       const streamCalls = mainWindow.webContents.send.mock.calls.filter(([channel]) => channel === 'task:state-stream')
       expect(streamCalls.length).toBeGreaterThanOrEqual(2)
       expect(streamCalls[0]?.[1]).toMatchObject({
@@ -2110,7 +2217,7 @@ describe('R8RuntimeService', () => {
     } finally {
       auditSpy.mockRestore()
       service.dispose()
-      await rm(userData, { recursive: true, force: true })
+      await removePathWithRetry(userData)
     }
   })
 
@@ -2118,7 +2225,7 @@ describe('R8RuntimeService', () => {
     const userData = await mkdtemp(join(tmpdir(), 'devhub-r8c-task-recording-'))
     const cwd = await mkdtemp(join(tmpdir(), 'devhub-r8c-task-recording-cwd-'))
     vi.mocked(app.getPath).mockImplementation(() => userData)
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const auditSpy = vi.spyOn(auditLogger, 'log').mockImplementation(() => undefined)
     const previousRecordingEnabled = service.getFeatureFlag('R8.C.recording.engine')
     service.setFeatureFlag({ flag: 'R8.C.recording.engine', value: true, confirmedBy: 'vitest' })
@@ -2160,6 +2267,19 @@ describe('R8RuntimeService', () => {
       const manifestAfterStop = await service.getRecordingManifest({ recordingId })
       expect(manifestAfterStop.manifest).toMatchObject({ recordingId, status: 'stopped' })
       expect(existsSync(manifestAfterStop.manifest?.manifestPath ?? '')).toBe(true)
+      await waitUntil(() => auditSpy.mock.calls.some(([action, target, result, reason]) => (
+        action === 'recording:task-auto-stop'
+        && typeof target === 'object'
+        && target !== null
+        && 'runId' in target
+        && target.runId === task.runId
+        && 'recordingId' in target
+        && target.recordingId === recordingId
+        && 'next' in target
+        && target.next === 'succeeded'
+        && result === 'success'
+        && reason === 'executor-success'
+      )))
       expect(auditSpy).toHaveBeenCalledWith('recording:task-auto-start', expect.objectContaining({ runId: task.runId, recordingId }), 'success')
       expect(auditSpy).toHaveBeenCalledWith('recording:task-auto-stop', expect.objectContaining({ runId: task.runId, recordingId, next: 'succeeded' }), 'success', 'executor-success')
     } finally {
@@ -2180,8 +2300,10 @@ describe('R8RuntimeService', () => {
         send: vi.fn()
       }
     }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
     const auditSpy = vi.spyOn(auditLogger, 'log').mockImplementation(() => undefined)
+    const previousRecordingEnabled = service.getFeatureFlag('R8.C.recording.engine')
+    service.setFeatureFlag({ flag: 'R8.C.recording.engine', value: false, confirmedBy: 'vitest' })
 
     try {
       const sessionId = randomUUID()
@@ -2236,9 +2358,10 @@ describe('R8RuntimeService', () => {
       })
       expect(auditSpy).toHaveBeenCalledWith('task:on-fail', expect.objectContaining({ taskId: 'retry-progress-reset', prev: 'running', next: 'retrying' }), 'success', 'on-fail-retry')
     } finally {
+      service.setFeatureFlag({ flag: 'R8.C.recording.engine', value: previousRecordingEnabled, confirmedBy: 'vitest-restore' })
       auditSpy.mockRestore()
       service.dispose()
-      await rm(userData, { recursive: true, force: true })
+      await removePathWithRetry(userData)
     }
   })
 
@@ -2256,7 +2379,7 @@ describe('R8RuntimeService', () => {
         send: vi.fn()
       }
     }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
     const auditSpy = vi.spyOn(auditLogger, 'log').mockImplementation(() => undefined)
     const previousBuiltinEnabled = service.getFeatureFlag('R8.C.skill.builtin')
     const previousPythonEnabled = service.getFeatureFlag('R8.C.csv.launch.python')
@@ -2305,7 +2428,7 @@ describe('R8RuntimeService', () => {
       service.setFeatureFlag({ flag: 'R8.C.skill.builtin', value: previousBuiltinEnabled, confirmedBy: 'vitest-restore' })
       service.setFeatureFlag({ flag: 'R8.C.csv.launch.python', value: previousPythonEnabled, confirmedBy: 'vitest-restore' })
       auditSpy.mockRestore()
-      await rm(userData, { recursive: true, force: true })
+      await removePathWithRetry(userData)
     }
   })
 
@@ -2322,7 +2445,7 @@ describe('R8RuntimeService', () => {
         send: vi.fn()
       }
     }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
     const auditSpy = vi.spyOn(auditLogger, 'log').mockImplementation(() => undefined)
     const previousBuiltinEnabled = service.getFeatureFlag('R8.C.skill.builtin')
     service.setFeatureFlag({ flag: 'R8.C.skill.builtin', value: true, confirmedBy: 'vitest' })
@@ -2343,7 +2466,7 @@ describe('R8RuntimeService', () => {
       service.setFeatureFlag({ flag: 'R8.C.skill.builtin', value: previousBuiltinEnabled, confirmedBy: 'vitest-restore' })
       auditSpy.mockRestore()
       service.dispose()
-      await rm(userData, { recursive: true, force: true })
+      await removePathWithRetry(userData)
     }
   })
 
@@ -2361,7 +2484,7 @@ describe('R8RuntimeService', () => {
         send: vi.fn()
       }
     }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
     const previousBuiltinEnabled = service.getFeatureFlag('R8.C.skill.builtin')
     const previousPythonEnabled = service.getFeatureFlag('R8.C.csv.launch.python')
     const previousPythonRowDelay = process.env.DEVHUB_CSV_PYTHON_ROW_DELAY_MS
@@ -2373,7 +2496,7 @@ describe('R8RuntimeService', () => {
       const info = await service.getCsvRunnerInfo({ kind: 'python' })
       expect(info.available).toBe(true)
 
-      const launched = await service.launchCsv({ csvPath: filePath, runner: 'python', dryRun: true, confirmedBy: 'vitest' })
+      const launched = await service.launchCsv({ csvPath: filePath, runner: 'python', confirmedBy: 'vitest' })
       expect(launched.session.runner).toBe('python')
       expect(launched.session.pid).toEqual(expect.any(Number))
       expect(mainWindow.webContents.send).toHaveBeenCalledWith('csv:session-event-stream', expect.objectContaining({ type: 'session-start', data: expect.objectContaining({ transport: 'named-pipe' }) }))
@@ -2402,12 +2525,12 @@ describe('R8RuntimeService', () => {
       }
       service.setFeatureFlag({ flag: 'R8.C.skill.builtin', value: previousBuiltinEnabled, confirmedBy: 'vitest-restore' })
       service.setFeatureFlag({ flag: 'R8.C.csv.launch.python', value: previousPythonEnabled, confirmedBy: 'vitest-restore' })
-      await rm(userData, { recursive: true, force: true })
+      await removePathWithRetry(userData)
     }
-  }, 15_000)
+  }, 45_000)
 
   it('records injection whitelist resolution and cancellation without native execution', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const entry = service.addInjectWhitelist({ alias: `target-${Date.now()}`, reason: 'vitest', confirmedBy: 'vitest' })
 
     expect(service.resolveInjectTarget({ targetAlias: entry.alias }).found).toBe(true)
@@ -2440,7 +2563,7 @@ describe('R8RuntimeService', () => {
         subscribeToCliOutputParser: vi.fn(() => () => undefined)
       }
     }
-    const service = new R8RuntimeService(appStore as never, () => null, trackerRuntime as never)
+    const service = createRuntimeService(() => null, trackerRuntime as never)
     try {
       const alias = activeTask.alias ?? activeTask.id
       service.addInjectWhitelist({ alias, reason: 'active-ai-task-map', confirmedBy: 'vitest' })
@@ -2469,7 +2592,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('runs inject whitelist expiry cleanup and records target safety audit events', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     try {
       const expiring = service.addInjectWhitelist({ alias: `cleanup-${randomUUID()}`, duration: '24h', reason: 'vitest', confirmedBy: 'vitest' })
       const strictTarget = service.addInjectWhitelist({ alias: `strict-${randomUUID()}`, reason: 'vitest', confirmedBy: 'vitest' })
@@ -2498,7 +2621,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('persists first-time inject confirmation through SQLite and reuses it as whitelist evidence', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     try {
       service.configureInjectStrictMode({ enabled: false, confirmedBy: 'vitest' })
       const taskId = `first-time-${randomUUID()}`
@@ -2544,7 +2667,7 @@ describe('R8RuntimeService', () => {
     const userData = await mkdtemp(join(tmpdir(), 'devhub-r8c-watchdog-'))
     vi.mocked(app.getPath).mockImplementation(() => userData)
     try {
-      const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+      const service = createRuntimeService(() => null, runtime as never)
       const base = Date.now()
       service.configureWatchdog({ maxRestartsPerHour: 100 })
       service.registerWatchdogInstance({ instanceId: 'watchdog-policy', pid: process.pid, tool: 'codex', mode: 'strict', graceMs: 0 })
@@ -2568,7 +2691,7 @@ describe('R8RuntimeService', () => {
     const activityPath = join(userData, 'watchdog-activity.log')
     await writeFile(markerPath, '{"writer":"test"}\n', 'utf8')
     await writeFile(activityPath, 'runtime activity\n', 'utf8')
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const serviceInternals = service as unknown as { store: { delete: (key: string) => void } }
     serviceInternals.store.delete('watchdogInstances')
     serviceInternals.store.delete('watchdogBeats')
@@ -2620,7 +2743,7 @@ describe('R8RuntimeService', () => {
         send: vi.fn()
       }
     }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
 
     try {
       service.registerWatchdogInstance({ instanceId: 'watchdog-stream', pid: 901, tool: 'codex', graceMs: 0 })
@@ -2644,7 +2767,7 @@ describe('R8RuntimeService', () => {
   it('detects a killed real child process and requests restart without fake respawn', async () => {
     const userData = await mkdtemp(join(tmpdir(), 'devhub-r8c-watchdog-kill-'))
     vi.mocked(app.getPath).mockImplementation(() => userData)
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
       stdio: 'ignore',
       windowsHide: true
@@ -2682,7 +2805,7 @@ describe('R8RuntimeService', () => {
     resetUnifiedNotificationService()
     const userData = await mkdtemp(join(tmpdir(), 'devhub-r8c-watchdog-action-'))
     vi.mocked(app.getPath).mockImplementation(() => userData)
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
 
     try {
       const taskId = `watchdog-action-restart-${randomUUID()}`
@@ -2736,7 +2859,7 @@ describe('R8RuntimeService', () => {
     resetUnifiedNotificationService()
     const userData = await mkdtemp(join(tmpdir(), 'devhub-r8c-watchdog-human-'))
     vi.mocked(app.getPath).mockImplementation(() => userData)
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
 
     try {
       const taskId = `watchdog-action-human-${randomUUID()}`
@@ -2787,7 +2910,7 @@ describe('R8RuntimeService', () => {
     const auditSpy = vi.spyOn(auditLogger, 'log').mockImplementation(() => undefined)
     const userData = await mkdtemp(join(tmpdir(), 'devhub-r8c-supervisor-'))
     vi.mocked(app.getPath).mockImplementation(() => userData)
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     let spawnedPid: number | null = null
     try {
       const serviceInternals = service as unknown as { store: { delete: (key: string) => void; set: (key: string, value: unknown) => void } }
@@ -2882,7 +3005,7 @@ describe('R8RuntimeService', () => {
         send: vi.fn()
       }
     }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
 
     try {
       const serviceInternals = service as unknown as { store: { delete: (key: string) => void } }
@@ -2923,7 +3046,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('builds monitor snapshots from real parser and title-signal state', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, {
+    const service = createRuntimeService(() => null, {
       scannerCache: {
         getSnapshot: () => ({
           windows: { data: [
@@ -2972,7 +3095,7 @@ describe('R8RuntimeService', () => {
         send: vi.fn()
       }
     }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
 
     service.parseCliChunk({
       tool: 'claude',
@@ -3002,7 +3125,7 @@ describe('R8RuntimeService', () => {
           send: vi.fn()
         }
       }
-      const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+      const service = createRuntimeService(() => mainWindow as never, runtime as never)
 
       service.parseCliChunk({ tool: 'claude', stream: 'stdout', instanceId: 'claude-monitor-stream', chunk: 'Step 1/3 thinking' })
       service.parseCliChunk({ tool: 'claude', stream: 'stdout', instanceId: 'claude-monitor-stream', chunk: 'Step 2/3 running tool' })
@@ -3028,7 +3151,7 @@ describe('R8RuntimeService', () => {
       focus: vi.fn(),
       webContents: { send: vi.fn() }
     }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
 
     try {
       const opened = await service.openMonitorWindow()
@@ -3051,7 +3174,7 @@ describe('R8RuntimeService', () => {
 
   it('enforces one monitor popout per tool and returns real card snapshots', async () => {
     const auditSpy = vi.spyOn(auditLogger, 'log').mockImplementation(() => undefined)
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const serviceInternals = service as unknown as { store: { set: (key: string, value: unknown) => void } }
     serviceInternals.store.set('popouts', [])
     serviceInternals.store.set('monitorPopoutLayouts', {})
@@ -3085,7 +3208,7 @@ describe('R8RuntimeService', () => {
 
   it('keeps monitor tool popout streams alive after the main monitor window closes', async () => {
     vi.useFakeTimers()
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const serviceInternals = service as unknown as {
       store: { set: (key: string, value: unknown) => void }
       popoutWindows: Map<string, { webContents: { send: ReturnType<typeof vi.fn> }; isDestroyed: () => boolean }>
@@ -3118,7 +3241,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('manages BrowserWindow popout cap, bounds, monitor migration, promote, and demote paths', async () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     ;(service as unknown as { store: { set: (key: string, value: unknown) => void } }).store.set('popouts', [])
 
     const floating = await service.createPopout({
@@ -3153,14 +3276,24 @@ describe('R8RuntimeService', () => {
     expect(demoted.popout.mode).toBe('floating')
 
     ;(service as unknown as { store: { set: (key: string, value: unknown) => void } }).store.set('popouts', [])
-    for (let index = 0; index < 8; index += 1) {
+    const panelPopout = await service.createPopout({ surface: 'process', targetId: 'r8-panel-process', mode: 'browserwindow', route: '/panel/process', title: 'DevHub process' })
+    const duplicatePanelPopout = await service.createPopout({ surface: 'process', targetId: 'r8-panel-process', mode: 'browserwindow', route: '/panel/process', title: 'DevHub process duplicate' })
+    expect(duplicatePanelPopout.windowId).toBe(panelPopout.windowId)
+    expect(service.listPopouts().filter(popout => (
+      popout.surface === 'process'
+      && popout.targetId === 'r8-panel-process'
+      && popout.bridgeState !== 'closed'
+    ))).toHaveLength(1)
+
+    ;(service as unknown as { store: { set: (key: string, value: unknown) => void } }).store.set('popouts', [])
+    for (let index = 0; index < 10; index += 1) {
       await service.createPopout({ surface: 'port', targetId: 4000 + index, mode: 'browserwindow', route: '/monitor', title: `Port ${4000 + index}` })
     }
     await expect(service.createPopout({ surface: 'port', targetId: 5000, mode: 'browserwindow', route: '/monitor', title: 'Port 5000' })).rejects.toThrow('E_RATE_LIMITED')
-  })
+  }, 10_000)
 
   it('records BrowserWindow popout heartbeats, reaps stale bridges, and restores pinned records', async () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const serviceInternals = service as unknown as { store: { set: (key: string, value: unknown) => void } }
     serviceInternals.store.set('popouts', [])
 
@@ -3218,7 +3351,7 @@ describe('R8RuntimeService', () => {
       focus: vi.fn(),
       webContents: { send: vi.fn() }
     }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
     const serviceInternals = service as unknown as { store: { set: (key: string, value: unknown) => void } }
     serviceInternals.store.set('popouts', [])
 
@@ -3264,7 +3397,7 @@ describe('R8RuntimeService', () => {
       off: vi.fn(() => mainWindow),
       webContents: { send: vi.fn() }
     }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
     const serviceInternals = service as unknown as {
       store: { set: (key: string, value: unknown) => void }
       popoutWindows: Map<string, { isDestroyed: () => boolean }>
@@ -3295,7 +3428,7 @@ describe('R8RuntimeService', () => {
       isDestroyed: vi.fn(() => false),
       webContents: { send }
     }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
     const serviceInternals = service as unknown as { store: { set: (key: string, value: unknown) => void } }
     serviceInternals.store.set('popouts', [])
 
@@ -3335,7 +3468,7 @@ describe('R8RuntimeService', () => {
       isDestroyed: vi.fn(() => false),
       webContents: { send }
     }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
     const serviceInternals = service as unknown as {
       store: { set: (key: string, value: unknown) => void }
       popoutWindows: Map<string, { setBounds: ReturnType<typeof vi.fn>; isDestroyed: () => boolean }>
@@ -3394,7 +3527,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('auto-closes idle unpinned BrowserWindow popouts without closing pinned popouts', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const serviceInternals = service as unknown as { store: { set: (key: string, value: unknown) => void } }
     serviceInternals.store.set('popouts', [
       {
@@ -3441,7 +3574,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('broadcasts real theme settings to live BrowserWindow popouts over the bridge', async () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const serviceInternals = service as unknown as {
       store: { set: (key: string, value: unknown) => void }
       popoutWindows: Map<string, { webContents: { send: ReturnType<typeof vi.fn> }; isDestroyed: () => boolean }>
@@ -3494,7 +3627,7 @@ describe('R8RuntimeService', () => {
       isDestroyed: vi.fn(() => false),
       webContents: { send: vi.fn() }
     }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
     const serviceInternals = service as unknown as {
       store: { set: (key: string, value: unknown) => void }
       popoutWindows: Map<string, { webContents: { send: ReturnType<typeof vi.fn> }; isDestroyed: () => boolean }>
@@ -3574,7 +3707,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('uses the shared persist:popouts session for BrowserWindow popouts', async () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const serviceInternals = service as unknown as {
       popoutWindows: Map<string, { options: { webPreferences?: { session?: unknown } } }>
     }
@@ -3599,7 +3732,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('persists port popout positions through the main electron-store wrapper', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const saved = service.savePortPopoutPosition({
       port: 3000,
       position: { x: 220.4, y: 360.6 },
@@ -3613,7 +3746,7 @@ describe('R8RuntimeService', () => {
       size: { width: 420.2, height: 340.7 }
     })
 
-    const reloaded = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const reloaded = createRuntimeService(() => null, runtime as never)
     expect(reloaded.getPortPopoutPosition({ port: 3000 })).toMatchObject({
       success: true,
       port: 3000,
@@ -3624,7 +3757,7 @@ describe('R8RuntimeService', () => {
 
   it('routes port-specific popout open/list/pin/sync/batch/close paths through real runtime state', async () => {
     const mainWindow = { webContents: { send: vi.fn() }, isDestroyed: () => false }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
     const serviceInternals = service as unknown as {
       store: { set: (key: string, value: unknown) => void }
     }
@@ -3703,7 +3836,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('demotes port-specific BrowserWindow popouts back to floating runtime records', async () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const serviceInternals = service as unknown as {
       store: { set: (key: string, value: unknown) => void }
     }
@@ -3749,7 +3882,7 @@ describe('R8RuntimeService', () => {
 
   it('auto-evicts unpinned BrowserWindow port popouts when the RSS budget is exceeded', async () => {
     const mainWindow = { webContents: { send: vi.fn() }, isDestroyed: () => false }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
     const serviceInternals = service as unknown as {
       store: { set: (key: string, value: unknown) => void }
     }
@@ -3799,7 +3932,7 @@ describe('R8RuntimeService', () => {
 
   it('degrades a single over-budget BrowserWindow port popout without closing it when the total budget is still safe', async () => {
     const mainWindow = { webContents: { send: vi.fn() }, isDestroyed: () => false }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
     const serviceInternals = service as unknown as {
       store: { set: (key: string, value: unknown) => void }
     }
@@ -3844,7 +3977,7 @@ describe('R8RuntimeService', () => {
 
   it('keeps a fresh over-total BrowserWindow port popout alive during the RSS degrade grace window', async () => {
     const mainWindow = { webContents: { send: vi.fn() }, isDestroyed: () => false }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
     const serviceInternals = service as unknown as {
       store: { set: (key: string, value: unknown) => void }
     }
@@ -3895,7 +4028,7 @@ describe('R8RuntimeService', () => {
     ])
 
     try {
-      const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+      const service = createRuntimeService(() => null, runtime as never)
       const serviceInternals = service as unknown as {
         store: { set: (key: string, value: unknown) => void }
         popoutWindows: Map<string, { webContents: { getOSProcessId?: () => number } }>
@@ -3947,7 +4080,7 @@ describe('R8RuntimeService', () => {
     const previousRendererUrl = process.env.ELECTRON_RENDERER_URL
     delete process.env.ELECTRON_RENDERER_URL
     try {
-      new R8RuntimeService(appStore as never, () => null, runtime as never)
+      createRuntimeService(() => null, runtime as never)
       const popoutSession = vi.mocked(session.fromPartition).mock.results[0]?.value as {
         webRequest: { onHeadersReceived: ReturnType<typeof vi.fn> }
       } | undefined
@@ -3986,7 +4119,7 @@ describe('R8RuntimeService', () => {
 
   it('detects Cursor and Copilot window-title signals from scanner cache', () => {
     const auditSpy = vi.spyOn(auditLogger, 'log')
-    const service = new R8RuntimeService(appStore as never, () => null, {
+    const service = createRuntimeService(() => null, {
       scannerCache: {
         getSnapshot: () => ({
           windows: { data: [
@@ -4034,7 +4167,7 @@ describe('R8RuntimeService', () => {
         send: vi.fn()
       }
     }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
     const auditSpy = vi.spyOn(auditLogger, 'log').mockImplementation(() => undefined)
 
     try {
@@ -4100,7 +4233,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('stores and deletes real CSV node templates with duplicate-name protection', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     expect(service.listCsvTemplates({ source: 'builtin' })).toHaveLength(BUILTIN_NODE_TEMPLATES.length)
     expect(service.listCsvTemplates({ source: 'builtin' }).map(template => template.name)).toEqual(['PR 描述', 'commit', '修 bug', '写测试', '代码评审'])
     const saved = service.saveCsvTemplate({ name: 'code-review-block', rowTemplate: csvRow({ taskId: 'template-A' }), confirmedBy: 'vitest' })
@@ -4117,7 +4250,7 @@ describe('R8RuntimeService', () => {
     const userData = await mkdtemp(join(tmpdir(), 'devhub-misreport-'))
     vi.mocked(app.getPath).mockImplementation(() => userData)
     const auditSpy = vi.spyOn(auditLogger, 'log').mockImplementation(() => undefined)
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const now = 150_000
 
     service.fuseSignals({
@@ -4153,7 +4286,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('persists recovery reports and dismisses them by id', async () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const report = await service.recoveryScan()
 
     expect(report.reportId).toMatch(/^recovery-/)
@@ -4163,7 +4296,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('records and stops replayable operator sessions without exporting fake artifacts', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
 
     expect(() => service.startRecording({ label: 'vitest' })).toThrow('E_PERMISSION')
     const recording = service.startRecording({ label: 'vitest', source: 'system', confirmedBy: 'vitest' })
@@ -4180,7 +4313,7 @@ describe('R8RuntimeService', () => {
     const cwd = await mkdtemp(join(tmpdir(), 'devhub-r8c-recording-cwd-'))
     vi.mocked(app.getPath).mockImplementation(() => userData)
     try {
-      const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+      const service = createRuntimeService(() => null, runtime as never)
       service.setFeatureFlag({ flag: 'R8.C.recording.engine', value: true, confirmedBy: 'vitest' })
       const sessionId = randomUUID()
       const manifest = await service.startRecording({
@@ -4210,7 +4343,7 @@ describe('R8RuntimeService', () => {
       expect((await readFile(castPath, 'utf8')).split('\n')[0]).toContain('"version":2')
       expect(await service.deleteRecording({ recordingId: manifest.recordingId, confirmedBy: 'vitest' })).toEqual({ deleted: true })
     } finally {
-      const cleanupService = new R8RuntimeService(appStore as never, () => null, runtime as never)
+      const cleanupService = createRuntimeService(() => null, runtime as never)
       cleanupService.setFeatureFlag({ flag: 'R8.C.recording.engine', value: true, confirmedBy: 'vitest-restore' })
       await rm(userData, { recursive: true, force: true })
       await rm(cwd, { recursive: true, force: true })
@@ -4222,7 +4355,7 @@ describe('R8RuntimeService', () => {
     const cwd = await mkdtemp(join(tmpdir(), 'devhub-r8c-recording-flags-cwd-'))
     vi.mocked(app.getPath).mockImplementation(() => userData)
     try {
-      const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+      const service = createRuntimeService(() => null, runtime as never)
       service.setFeatureFlag({ flag: 'R8.C.recording.engine', value: true, confirmedBy: 'vitest' })
       service.setFeatureFlag({ flag: 'R8.C.recording.engine.screenshot', value: true, confirmedBy: 'vitest' })
       service.setFeatureFlag({ flag: 'R8.C.recording.engine.screenshot', value: false, confirmedBy: 'vitest' })
@@ -4239,7 +4372,7 @@ describe('R8RuntimeService', () => {
       service.setFeatureFlag({ flag: 'R8.C.recording.engine', value: false, confirmedBy: 'vitest' })
       expect(() => service.startRecording({ label: 'disabled', source: 'system', confirmedBy: 'vitest' })).toThrow('E_FEATURE_DISABLED:R8.C.recording.engine')
     } finally {
-      const cleanupService = new R8RuntimeService(appStore as never, () => null, runtime as never)
+      const cleanupService = createRuntimeService(() => null, runtime as never)
       cleanupService.setFeatureFlag({ flag: 'R8.C.recording.engine', value: true, confirmedBy: 'vitest-restore' })
       cleanupService.setFeatureFlag({ flag: 'R8.C.recording.engine.screenshot', value: true, confirmedBy: 'vitest-restore' })
       await rm(userData, { recursive: true, force: true })
@@ -4251,7 +4384,7 @@ describe('R8RuntimeService', () => {
     const userData = await mkdtemp(join(tmpdir(), 'devhub-r8c-flow-'))
     const cwd = await mkdtemp(join(tmpdir(), 'devhub-r8c-flow-cwd-'))
     vi.mocked(app.getPath).mockImplementation(() => userData)
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     try {
       service.enqueueCsvRow({ id: 'flow-failed', group: 'flow-failed-session', tool: 'codex', prompt: 'real failed task', retries: 0 })
       const failed = service.startReadyTasks({ sessionId: 'flow-failed-session', concurrent: 1 }).started[0]
@@ -4297,7 +4430,7 @@ describe('R8RuntimeService', () => {
       send,
       once: vi.fn()
     }
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     try {
       const response = service.subscribeFlowEventStream(sender as never, {
         subscriberId: 'flow-vitest',
@@ -4324,7 +4457,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('keeps permission reset behind explicit operator confirmation', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
 
     expect(service.listPermissionAllowlist()).toEqual(expect.any(Array))
     expect(() => service.resetPermissions({})).toThrow('E_PERMISSION')
@@ -4362,7 +4495,7 @@ describe('R8RuntimeService', () => {
       })),
       getProjects: vi.fn(() => [])
     }
-    const service = new R8RuntimeService(secretStore as never, () => null, runtime as never)
+    const service = createRuntimeServiceWithStore(secretStore as never, () => null, runtime as never)
 
     try {
       const bundle = await service.createBackup({ categories: ['settings', 'csv-tasks', 'skills', 'audit-log'] })
@@ -4394,7 +4527,7 @@ describe('R8RuntimeService', () => {
     await writeFile(join(userData, 'devhub-config.json'), '{"appearance":{"theme":"dark"}}\n', 'utf8')
     await writeFile(join(skillDir, 'SKILL.md'), 'name: data-owned-skill\nruntime: node\n', 'utf8')
     await writeFile(join(csvDir, 'example.csv'), csvDocument([csvRow({ taskId: 'data-owner-row' })]), 'utf8')
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
 
     try {
       const paths = await service.listDataOwnershipPaths()
@@ -4455,7 +4588,7 @@ describe('R8RuntimeService', () => {
       getProjects: vi.fn(() => []),
       updateSettings
     }
-    const service = new R8RuntimeService(restoreStore as never, () => null, runtime as never)
+    const service = createRuntimeServiceWithStore(restoreStore as never, () => null, runtime as never)
 
     try {
       const bundle = await service.createBackup({ categories: ['settings', 'csv-tasks'] })
@@ -4483,7 +4616,7 @@ describe('R8RuntimeService', () => {
     const userData = await mkdtemp(join(tmpdir(), 'devhub-r8-tamper-'))
     vi.mocked(app.getPath).mockImplementation(() => userData)
     const updateSettings = vi.fn()
-    const service = new R8RuntimeService({ ...appStore, updateSettings } as never, () => null, runtime as never)
+    const service = createRuntimeServiceWithStore({ ...appStore, updateSettings } as never, () => null, runtime as never)
 
     try {
       const bundle = await service.createBackup({ categories: ['settings'] })
@@ -4506,7 +4639,7 @@ describe('R8RuntimeService', () => {
   it('exports and deletes classified backup bundles from an explicit local destination', async () => {
     const userData = await mkdtemp(join(tmpdir(), 'devhub-r8-export-delete-'))
     vi.mocked(app.getPath).mockImplementation(() => userData)
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
 
     try {
       const destPath = join(userData, 'operator-backups')
@@ -4527,7 +4660,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('persists backup schedule metadata while keeping cron validation strict', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
 
     const configured = service.configureBackupSchedule({
       enabled: true,
@@ -4546,7 +4679,7 @@ describe('R8RuntimeService', () => {
   it('executes enabled backup schedule through a real node-cron task', async () => {
     const userData = await mkdtemp(join(tmpdir(), 'devhub-r8-scheduled-backup-'))
     vi.mocked(app.getPath).mockImplementation(() => userData)
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
 
     try {
       const destPath = join(userData, 'scheduled-backups')
@@ -4579,7 +4712,7 @@ describe('R8RuntimeService', () => {
   it('runs the backup content grep gate against real classified artifacts', async () => {
     const userData = await mkdtemp(join(tmpdir(), 'devhub-r8-backup-content-gate-'))
     vi.mocked(app.getPath).mockImplementation(() => userData)
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
 
     try {
       const bundle = await service.createBackup({ categories: ['settings', 'skills'] })
@@ -4603,7 +4736,7 @@ describe('R8RuntimeService', () => {
     const userData = await mkdtemp(join(tmpdir(), 'devhub-r8-backup-migration-'))
     vi.mocked(app.getPath).mockImplementation(() => userData)
     const updateSettings = vi.fn()
-    const service = new R8RuntimeService({ ...appStore, updateSettings } as never, () => null, runtime as never)
+    const service = createRuntimeServiceWithStore({ ...appStore, updateSettings } as never, () => null, runtime as never)
     const auditSpy = vi.spyOn(auditLogger, 'log').mockImplementation(() => undefined)
 
     try {
@@ -4640,7 +4773,7 @@ describe('R8RuntimeService', () => {
     const previousCustomSecret = process.env.DEVHUB_CUSTOM_DIAG_SECRET
     process.env.DEVHUB_DIAG_TOKEN = 'sk-diagnostic1234567890'
     process.env.DEVHUB_CUSTOM_DIAG_SECRET = 'operator-secret-123'
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const auditSpy = vi.spyOn(auditLogger, 'log').mockImplementation(() => undefined)
 
     try {
@@ -4704,7 +4837,7 @@ describe('R8RuntimeService', () => {
     const httpsGetSpy = vi.spyOn(httpsModule, 'get')
     const netConnectSpy = vi.spyOn(netModule, 'connect')
     const netCreateConnectionSpy = vi.spyOn(netModule, 'createConnection')
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
 
     try {
       await service.previewDiagnosticPack({
@@ -4743,7 +4876,7 @@ describe('R8RuntimeService', () => {
     const userData = await mkdtemp(join(tmpdir(), 'devhub-r8-permission-'))
     vi.mocked(app.getPath).mockImplementation(() => userData)
     resetRateLimits()
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     ;(service as unknown as { store: { set: (key: string, value: unknown) => void } }).store.set('permissionTtlRequestLog', {})
     ;(service as unknown as { store: { set: (key: string, value: unknown) => void } }).store.set('permissionTtlGrants', [])
     ;(service as unknown as { store: { set: (key: string, value: unknown) => void } }).store.set('permissionTtlPolicies', {})
@@ -4814,7 +4947,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('returns stable disabled contracts for deferred cloud sync and OCR facades', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const auditSpy = vi.spyOn(auditLogger, 'log').mockImplementation(() => undefined)
 
     try {
@@ -4869,7 +5002,7 @@ describe('R8RuntimeService', () => {
     const auditSpy = vi.spyOn(auditLogger, 'log').mockImplementation(() => undefined)
     let service: R8RuntimeService | null = null
     try {
-      service = new R8RuntimeService(graphAppStore as never, () => null, graphRuntime as never)
+      service = createRuntimeServiceWithStore(graphAppStore as never, () => null, graphRuntime as never)
       const fullscreen = await service.topologyFullscreen()
       const historical = await service.getNetworkTopology({ scope: 'process', targetIds: [1234], asOfTs: 1_800_000 })
       const network = await service.getNetworkTopology({ scope: 'process', targetIds: [1234] })
@@ -5004,7 +5137,7 @@ describe('R8RuntimeService', () => {
     let service: R8RuntimeService | null = null
 
     try {
-      service = new R8RuntimeService(appStore as never, () => null, graphRuntime as never)
+      service = createRuntimeService(() => null, graphRuntime as never)
       await expect(service.topologyAttachedDeep10({
         scope: 'process',
         targetId: 1,
@@ -5067,7 +5200,7 @@ describe('R8RuntimeService', () => {
     let service: R8RuntimeService | null = null
 
     try {
-      service = new R8RuntimeService(appStore as never, () => null, graphRuntime as never)
+      service = createRuntimeService(() => null, graphRuntime as never)
       await service.topologyAttachedDeep10({ scope: 'process', graphKind: 'network-topology', depth: 3 })
       const samples: number[] = []
       const buildSamples: number[] = []
@@ -5099,7 +5232,7 @@ describe('R8RuntimeService', () => {
   it('opens fullscreen topology from the R8 command palette without using monitor tabs', async () => {
     const send = vi.fn()
     const mainWindow = { isDestroyed: () => false, webContents: { send } }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
 
     expect(service.listCommands().some(command => command.id === 'topology.global' && command.shortcut === 'Ctrl+T')).toBe(true)
     expect(service.listCommands().some(command => command.id === 'topology.flow' && command.title === '打开全局流程图')).toBe(true)
@@ -5118,7 +5251,7 @@ describe('R8RuntimeService', () => {
     const userData = await mkdtemp(join(tmpdir(), 'devhub-r8-drawer-'))
     vi.mocked(app.getPath).mockImplementation(() => userData)
     try {
-      const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+      const service = createRuntimeService(() => null, runtime as never)
       const initial = service.getDrawerState()
       expect(initial.map(drawer => drawer.slot)).toEqual(['top', 'right', 'bottom', 'floating', 'statusbar'])
 
@@ -5144,10 +5277,33 @@ describe('R8RuntimeService', () => {
     }
   })
 
+  it('runs the drawer layout migration once without closing later same-version restarts', async () => {
+    const userData = await mkdtemp(join(tmpdir(), 'devhub-r8-drawer-migration-'))
+    vi.mocked(app.getPath).mockImplementation(() => userData)
+    try {
+      const firstService = createRuntimeService(() => null, runtime as never)
+      const migrated = firstService.getDrawerState()
+      expect(migrated.every(drawer => drawer.open === false)).toBe(true)
+
+      const opened = firstService.setDrawerState({ slot: 'right', open: true, contentId: 'monitor.port-detail', size: 360 })
+      expect(opened.open).toBe(true)
+
+      const relaunchedService = createRuntimeService(() => null, runtime as never)
+      const restoredRight = relaunchedService.getDrawerState().find(drawer => drawer.slot === 'right')
+      expect(restoredRight).toMatchObject({
+        contentId: 'monitor.port-detail',
+        open: true,
+        slot: 'right'
+      })
+    } finally {
+      await rm(userData, { recursive: true, force: true })
+    }
+  })
+
   it('opens drawer slots from the R8 command palette', async () => {
     const send = vi.fn()
     const mainWindow = { isDestroyed: () => false, webContents: { send } }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
 
     expect(service.listCommands().some(command => command.id === 'drawer.notifications')).toBe(true)
     await service.invokeCommand({ commandId: 'drawer.notifications' })
@@ -5158,7 +5314,7 @@ describe('R8RuntimeService', () => {
   it('exposes executable default commands for the command palette five-scope assertion', async () => {
     const send = vi.fn()
     const mainWindow = { isDestroyed: () => false, webContents: { send } }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
     const commands = service.listCommands()
 
     expect(commands).toEqual(expect.arrayContaining([
@@ -5210,7 +5366,7 @@ describe('R8RuntimeService', () => {
         })
       }
     }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, snapshotRuntime as never)
+    const service = createRuntimeService(() => mainWindow as never, snapshotRuntime as never)
     const commands = service.listCommands()
     const processCommand = commands.find(command => command.id === 'process.open.4001')
     const processTopologyCommand = commands.find(command => command.id === 'topology.process.4001')
@@ -5261,7 +5417,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('creates a BrowserWindow port popout from the R8 command palette command', async () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
 
     expect(service.listCommands().some(command => command.id === 'popout.port' && command.handler === 'popout:create')).toBe(true)
     const result = await service.invokeCommand({ commandId: 'popout.port', args: { port: 3000 } })
@@ -5288,7 +5444,7 @@ describe('R8RuntimeService', () => {
   it('opens batch tag dialog from the R8 command palette through monitor events', async () => {
     const send = vi.fn()
     const mainWindow = { isDestroyed: () => false, webContents: { send } }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
 
     expect(service.listCommands()).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -5308,7 +5464,7 @@ describe('R8RuntimeService', () => {
   it('opens filtered window batch focus from the R8 command palette through monitor events', async () => {
     const send = vi.fn()
     const mainWindow = { isDestroyed: () => false, webContents: { send } }
-    const service = new R8RuntimeService(appStore as never, () => mainWindow as never, runtime as never)
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
 
     expect(service.listCommands()).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -5335,7 +5491,7 @@ describe('R8RuntimeService', () => {
         })
       }
     }
-    const service = new R8RuntimeService(appStore as never, () => null, uriRuntime as never)
+    const service = createRuntimeService(() => null, uriRuntime as never)
 
     expect(service.resolveCommandUri({ uri: 'devhub://port/3000' })).toMatchObject({
       kind: 'port',
@@ -5356,7 +5512,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('persists dashboard presets and morphs a widget into the real drawer state store', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const presetName = `vitest-dashboard-${randomUUID()}`
     service.resetDashboardLayout({ preset: 'default', confirmedBy: 'vitest' })
     const base = service.getDashboardLayout().layout
@@ -5397,7 +5553,7 @@ describe('R8RuntimeService', () => {
         })
       }
     }
-    const service = new R8RuntimeService(appStore as never, () => ({ isDestroyed: () => false, webContents: { send } }) as never, processRuntime as never)
+    const service = createRuntimeService(() => ({ isDestroyed: () => false, webContents: { send } }) as never, processRuntime as never)
 
     const tree = service.processTree({ maxDepth: 3 }).tree
     const treemap = service.processTreemapData({ groupBy: 'parent', colorBy: 'rss', width: 1500, height: 100 })
@@ -5413,7 +5569,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('builds status aggregate from scanner cache summary', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const aggregate = service.statusAggregate()
 
     expect(aggregate.tiles).toHaveLength(12)
@@ -5424,7 +5580,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('persists statusbar hidden tile and order config through the runtime store', () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     const initial = service.getStatusbarConfig()
     const configured = service.setStatusbarConfig({
       updatedAt: initial.updatedAt,
@@ -5449,7 +5605,7 @@ describe('R8RuntimeService', () => {
 
   it('pushes status aggregate snapshots through the main-window IPC bridge', async () => {
     const send = vi.fn()
-    const service = new R8RuntimeService(appStore as never, () => ({
+    const service = createRuntimeService(() => ({
       isDestroyed: () => false,
       webContents: { send }
     }) as never, runtime as never)
@@ -5465,7 +5621,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('counts only live BrowserWindow popouts in the status aggregate', async () => {
-    const service = new R8RuntimeService(appStore as never, () => null, runtime as never)
+    const service = createRuntimeService(() => null, runtime as never)
     ;(service as unknown as { store: { set: (key: string, value: unknown) => void } }).store.set('popouts', [])
 
     const browserPopout = await service.createPopout({
@@ -5491,7 +5647,7 @@ describe('R8RuntimeService', () => {
   })
 
   it('classifies R8.B spec-13 port tiers and persists user blocklist entries', async () => {
-    const service = new R8RuntimeService(appStore as never, () => null, {
+    const service = createRuntimeService(() => null, {
       scannerCache: {
         getSnapshot: () => ({
           ports: {

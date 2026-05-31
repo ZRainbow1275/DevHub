@@ -51,7 +51,8 @@ export function SearchInput({
         placeholder={placeholder}
         onChange={handleChange}
         aria-label={ariaLabel ?? placeholder}
-        className={`input-sm w-full pl-10 pr-9 ${sizeClass}`}
+        className={`input-sm w-full pr-9 ${sizeClass}`}
+        style={{ paddingLeft: '2.5rem' }}
         data-testid="search-input"
       />
       {showClear && (

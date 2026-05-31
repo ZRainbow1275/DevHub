@@ -36,7 +36,7 @@ describe('R8.B port popout model', () => {
 
     expect(first.opened?.mode).toBe('floating')
     expect(first.opened?.zIndex).toBe(PORT_POPOUT_LIMITS.Z_INDEX_BASE)
-    expect(first.opened?.position).toEqual({ x: 116, y: 136 })
+    expect(first.opened?.position).toEqual({ x: 148, y: 0 })
     expect(first.opened?.syncPolicy).toEqual(DEFAULT_PORT_POPOUT_SYNC_POLICY)
 
     const second = openPortPopout(first.popouts, {
@@ -120,14 +120,14 @@ describe('R8.B port popout model', () => {
 
     const expanded = resizePortPopout(opened, getPortPopoutId(basePort), 'se', { x: 40, y: 30 })
     expect(expanded[0].size).toEqual({ width: 400, height: 310 })
-    expect(expanded[0].position).toEqual({ x: 116, y: 116 })
+    expect(expanded[0].position).toEqual({ x: 148, y: 0 })
 
     const northWest = resizePortPopout(expanded, getPortPopoutId(basePort), 'nw', { x: 500, y: 500 }, expanded[0])
     expect(northWest[0].size).toEqual({
       width: PORT_POPOUT_LIMITS.CARD_MIN_W,
       height: PORT_POPOUT_LIMITS.CARD_MIN_H
     })
-    expect(northWest[0].position).toEqual({ x: 236, y: 226 })
+    expect(northWest[0].position).toEqual({ x: 268, y: 110 })
   })
 
   it('restores remembered floating card size with backward-compatible position memory', () => {

@@ -1,6 +1,6 @@
 import { app } from 'electron'
 import { appendFileSync, existsSync, mkdirSync, readdirSync, renameSync, statSync, unlinkSync } from 'fs'
-import { join } from 'path'
+import { dirname, join } from 'path'
 
 export type AuditResult = 'success' | 'refused' | 'error'
 
@@ -34,20 +34,18 @@ function getDefaultLogDir(): string {
 }
 
 export class AuditLogger {
-  private readonly logDir: string
-  private readonly logPath: string
+  private readonly configuredLogDir: string | null
   private readonly retentionDays: number
   private readonly now: () => Date
 
   constructor(options: AuditLoggerOptions = {}) {
-    this.logDir = options.logDir ?? getDefaultLogDir()
-    this.logPath = join(this.logDir, SECURITY_AUDIT_FILE)
+    this.configuredLogDir = options.logDir ?? null
     this.retentionDays = options.retentionDays ?? 30
     this.now = options.now ?? (() => new Date())
   }
 
   getAuditLogPath(): string {
-    return this.logPath
+    return join(this.getLogDir(), SECURITY_AUDIT_FILE)
   }
 
   log(action: string, target: Record<string, unknown>, result: AuditResult, reason?: string): void {
@@ -64,36 +62,42 @@ export class AuditLogger {
     }
 
     try {
-      this.ensureLogDirectory()
-      this.rotateStaleActiveLog(timestamp)
-      this.pruneExpiredLogs(timestamp)
-      appendFileSync(this.logPath, `${JSON.stringify(entry)}\n`, 'utf8')
+      const logDir = this.getLogDir()
+      const logPath = join(logDir, SECURITY_AUDIT_FILE)
+      this.ensureLogDirectory(logDir)
+      this.rotateStaleActiveLog(logPath, timestamp)
+      this.pruneExpiredLogs(logDir, timestamp)
+      appendFileSync(logPath, `${JSON.stringify(entry)}\n`, 'utf8')
     } catch (err) {
       console.error('AuditLogger write failed:', err instanceof Error ? err.message : err)
     }
   }
 
-  private ensureLogDirectory(): void {
-    mkdirSync(this.logDir, { recursive: true })
+  private getLogDir(): string {
+    return this.configuredLogDir ?? getDefaultLogDir()
   }
 
-  private rotateStaleActiveLog(now: Date): void {
-    if (!existsSync(this.logPath)) return
+  private ensureLogDirectory(logDir: string): void {
+    mkdirSync(logDir, { recursive: true })
+  }
 
-    const stats = statSync(this.logPath)
+  private rotateStaleActiveLog(logPath: string, now: Date): void {
+    if (!existsSync(logPath)) return
+
+    const stats = statSync(logPath)
     if (this.formatDay(stats.mtime) === this.formatDay(now)) return
 
-    const rotatedPath = this.getRotatedLogPath(stats.mtime)
-    renameSync(this.logPath, rotatedPath)
+    const rotatedPath = this.getRotatedLogPath(logPath, stats.mtime)
+    renameSync(logPath, rotatedPath)
   }
 
-  private pruneExpiredLogs(now: Date): void {
+  private pruneExpiredLogs(logDir: string, now: Date): void {
     const cutoff = now.getTime() - this.retentionDays * DAY_IN_MS
 
-    for (const fileName of readdirSync(this.logDir)) {
+    for (const fileName of readdirSync(logDir)) {
       if (!fileName.startsWith(ROTATED_AUDIT_PREFIX) || !fileName.endsWith('.log')) continue
 
-      const path = join(this.logDir, fileName)
+      const path = join(logDir, fileName)
       const stats = statSync(path)
       if (stats.mtime.getTime() < cutoff) {
         unlinkSync(path)
@@ -101,13 +105,14 @@ export class AuditLogger {
     }
   }
 
-  private getRotatedLogPath(date: Date): string {
+  private getRotatedLogPath(logPath: string, date: Date): string {
     const day = this.formatDay(date)
-    const basePath = join(this.logDir, `${ROTATED_AUDIT_PREFIX}${day}.log`)
+    const logDir = dirname(logPath)
+    const basePath = join(logDir, `${ROTATED_AUDIT_PREFIX}${day}.log`)
     if (!existsSync(basePath)) return basePath
 
     const timestamp = date.toISOString().replace(/[:.]/g, '-')
-    return join(this.logDir, `${ROTATED_AUDIT_PREFIX}${day}-${timestamp}.log`)
+    return join(logDir, `${ROTATED_AUDIT_PREFIX}${day}-${timestamp}.log`)
   }
 
   private formatDay(date: Date): string {

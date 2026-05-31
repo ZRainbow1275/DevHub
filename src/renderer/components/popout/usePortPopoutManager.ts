@@ -15,7 +15,6 @@ import {
   minimizePortPopout,
   movePortPopout,
   openPortPopout,
-  pinPortPopout,
   resizePortPopout,
   syncPortPopoutsWithPorts,
   type PortPopout,
@@ -126,10 +125,6 @@ export function usePortPopoutManager(ports: PortInfo[], defaultSyncPolicy?: Port
     updatePopouts(previous => closePortPopout(previous, id))
   }, [updatePopouts])
 
-  const pin = useCallback((id: string, pinned: boolean) => {
-    updatePopouts(previous => pinPortPopout(previous, id, pinned))
-  }, [updatePopouts])
-
   const minimize = useCallback((id: string, minimized: boolean) => {
     updatePopouts(previous => minimizePortPopout(previous, id, minimized))
   }, [updatePopouts])
@@ -229,12 +224,11 @@ export function usePortPopoutManager(ports: PortInfo[], defaultSyncPolicy?: Port
     popouts,
     open,
     close,
-    pin,
     minimize,
     isolateTheme,
     move,
     resize,
     promote,
     isOpen
-  }), [close, isolateTheme, isOpen, minimize, move, open, pin, popouts, promote, resize])
+  }), [close, isolateTheme, isOpen, minimize, move, open, popouts, promote, resize])
 }

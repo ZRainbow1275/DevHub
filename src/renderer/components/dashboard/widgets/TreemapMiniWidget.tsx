@@ -23,17 +23,17 @@ export default function TreemapMiniWidget({ item }: DashboardWidgetProps) {
       {rows.map(row => {
         const weight = row.memory + row.cpu * 10
         return (
-          <div className="grid grid-cols-[minmax(0,1fr)_64px] items-center gap-3 text-xs" key={row.pid}>
+          <div className="grid grid-cols-[minmax(0,1fr)_clamp(3rem,15%,5rem)] items-center gap-3 text-xs" key={row.pid}>
             <div className="min-w-0">
               <div className="mb-1 flex items-center justify-between gap-2">
-                <span className="truncate text-text-secondary">{row.name}</span>
-                <span className="tabular-nums text-text-muted">{row.pid}</span>
+                <span className="min-w-0 flex-1 truncate text-text-secondary">{row.name}</span>
+                <span className="shrink-0 whitespace-nowrap tabular-nums text-text-muted">{row.pid}</span>
               </div>
               <div className="h-2 overflow-hidden rounded bg-surface-800">
                 <div className="h-full bg-accent" style={{ width: `${Math.max(4, (weight / maxWeight) * 100)}%` }} />
               </div>
             </div>
-            <div className="text-right tabular-nums text-text-muted">{row.cpu.toFixed(1)}%</div>
+            <div className="shrink-0 whitespace-nowrap text-right tabular-nums text-text-muted">{row.cpu.toFixed(1)}%</div>
           </div>
         )
       })}

@@ -9,7 +9,6 @@ interface PortPopoutHostProps {
   onClose: (id: string) => void
   onMinimize: (id: string, minimized: boolean) => void
   onThemeIsolate: (id: string, themeIsolated: boolean) => void
-  onPin: (id: string, pinned: boolean) => void
   onMove: (id: string, position: PortPopoutPosition) => void
   onResize: (
     id: string,
@@ -25,7 +24,6 @@ export function PortPopoutHost({
   onClose,
   onMinimize,
   onThemeIsolate,
-  onPin,
   onMove,
   onResize,
   onPromote
@@ -52,7 +50,6 @@ export function PortPopoutHost({
           onClose={onClose}
           onMinimize={onMinimize}
           onThemeIsolate={onThemeIsolate}
-          onPin={onPin}
           onMove={onMove}
           onResize={onResize}
           onPromote={onPromote}

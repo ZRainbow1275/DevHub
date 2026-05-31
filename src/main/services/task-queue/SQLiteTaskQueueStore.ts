@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, renameSync } from 'node:fs'
 import { dirname } from 'node:path'
-import DatabaseConstructor, { type Database as DatabaseHandle } from 'better-sqlite3'
+import type { Database as DatabaseHandle } from 'better-sqlite3'
+import { loadBetterSqlite } from '../sqlite/betterSqliteLoader'
 import {
   taskRunSchema,
   taskStateTransitionSchema,
@@ -89,6 +90,7 @@ export class SQLiteTaskQueueStore implements TaskQueueStore {
   private openDatabase(): DatabaseHandle {
     mkdirSync(dirname(this.options.dbPath), { recursive: true })
     if (!this.integrityChecked) this.checkIntegrityOrRecover()
+    const DatabaseConstructor = loadBetterSqlite()
     const db = new DatabaseConstructor(this.options.dbPath)
     db.pragma('journal_mode = WAL')
     this.ensureSchema(db)
@@ -110,6 +112,7 @@ export class SQLiteTaskQueueStore implements TaskQueueStore {
     }
 
     try {
+      const DatabaseConstructor = loadBetterSqlite()
       const db = new DatabaseConstructor(this.options.dbPath, { readonly: true, fileMustExist: true })
       try {
         const integrity = db.pragma('integrity_check', { simple: true }) as unknown

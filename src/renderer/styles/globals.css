@@ -81,26 +81,16 @@
    Scrollbar - Theme-aware
    ======================================== */
 
+/* Hide scrollbars globally -- modern desktop app pattern.
+   Content still scrolls via mousewheel/trackpad/touch.
+   Specific areas can override with scrollbar-width: thin if needed. */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 0;
+  height: 0;
 }
 
-::-webkit-scrollbar-track {
-  background: var(--surface-800);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--surface-600);
-  border-radius: var(--radius-sm);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--surface-500);
-}
-
-::-webkit-scrollbar-corner {
-  background: var(--surface-800);
+* {
+  scrollbar-width: none;
 }
 
 /* ========================================
@@ -421,7 +411,7 @@ html[data-a11y-reduced-motion="true"] *::after {
    ======================================== */
 
 .status-badge {
-  @apply inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold;
+  @apply inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold whitespace-nowrap;
   transition: all var(--motion-duration-fast, 150ms) var(--motion-easing, linear);
   border-radius: var(--radius-badge, 0px);
   clip-path: var(--deco-clip-card, polygon(0 0, 100% 0, 95% 100%, 0 100%));
@@ -1170,6 +1160,14 @@ select option {
   font-size: 10px;
 }
 
+[data-density="standard"] .project-list-scroll {
+  --project-list-row-gap: 12px;
+}
+
+[data-density="standard"] .project-card {
+  --project-card-min-width: 240px;
+}
+
 /* ========================================
    Action Group (hover reveal) - Theme-Aware
    ======================================== */
@@ -1264,14 +1262,16 @@ select option {
   overflow: hidden;
 }
 
+/* rem widths so the rail scales with zoom and matches Sidebar.tsx
+   (COLLAPSED_WIDTH = 3.5rem/56px, DEFAULT_SIDEBAR_WIDTH = 14rem/224px). */
 .sidebar-collapsed {
-  width: 56px;
-  min-width: 56px;
+  width: 3.5rem;
+  min-width: 3.5rem;
 }
 
 .sidebar-expanded {
-  width: var(--sidebar-width, 224px);
-  min-width: var(--sidebar-width, 224px);
+  width: var(--sidebar-width, 14rem);
+  min-width: var(--sidebar-width, 14rem);
 }
 
 /* ========================================
@@ -1360,13 +1360,7 @@ select option {
   border: 1px solid rgba(0, 255, 255, 0.1);
 }
 
-[data-theme="cyberpunk"] ::-webkit-scrollbar-thumb {
-  background: rgba(0, 255, 255, 0.2);
-}
-
-[data-theme="cyberpunk"] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 255, 255, 0.35);
-}
+/* Cyberpunk scrollbar overrides removed -- scrollbars hidden globally */
 
 /* --- Swiss: Clean, restrained, functional --- */
 [data-theme="swiss"] .card,
@@ -1420,18 +1414,7 @@ select option {
   display: none;
 }
 
-[data-theme="swiss"] ::-webkit-scrollbar-track {
-  background: var(--surface-200);
-}
-
-[data-theme="swiss"] ::-webkit-scrollbar-thumb {
-  background: var(--surface-400);
-  border-radius: 0;
-}
-
-[data-theme="swiss"] ::-webkit-scrollbar-thumb:hover {
-  background: var(--surface-500);
-}
+/* Swiss scrollbar overrides removed -- scrollbars hidden globally */
 
 /* ========================================
    Cyberpunk Dot-Grid Background Utility
@@ -1483,11 +1466,28 @@ select option {
    P8 Responsive Shell Reflow
    ======================================== */
 
+/* overflow-x: clip on body avoids the scroll-anchoring trap of `hidden`
+   (clip does not establish a scroll container, so descendants can still
+   scroll programmatically) without introducing a horizontal scrollbar.
+   html / #root keep `hidden` so the OS window never shows a stray
+   horizontal scrollbar; min-width:0 lets flex children shrink correctly. */
 html,
-body,
 #root {
   overflow-x: hidden;
   min-width: 0;
+}
+
+body {
+  overflow-x: clip;
+  min-width: 0;
+}
+
+/* Forced-colors / high-contrast mode: expose horizontal scroll as an
+   escape hatch so clipped content is always reachable. */
+@media (forced-colors: active) {
+  html {
+    overflow-x: auto;
+  }
 }
 
 .responsive-container {
@@ -1579,6 +1579,9 @@ body,
 
 @media (max-width: 640px) {
   .responsive-app-shell {
-    font-size: calc(14px * var(--responsive-font-scale, 0.875));
+    /* rem (0.875rem == 14px @ 16px root) so user zoom + a11y-large-text
+       inherit, and density composes via --density-font-scale.
+       Fallbacks are 1 so the size is unchanged when the tokens are unset. */
+    font-size: calc(0.875rem * var(--responsive-font-scale, 1) * var(--density-font-scale, 1));
   }
 }

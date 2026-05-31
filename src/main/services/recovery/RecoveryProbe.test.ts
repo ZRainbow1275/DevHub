@@ -334,11 +334,31 @@ describe('RecoveryProbe', () => {
     }
   })
 
-  it('keeps the default startup probe budget inside the splash-screen target', () => {
-    expect(DEFAULT_RECOVERY_PROBE_TIMEOUT_MS).toBe(2_000)
+  it('keeps recoverable findings when the Windows process probe exceeds the legacy two second budget', async () => {
+    const harness = await createHarness({
+      marker: 'running',
+      tasks: [taskRun('queued-1', 'queued')],
+      timeoutMs: DEFAULT_RECOVERY_PROBE_TIMEOUT_MS,
+      processProbe: () => new Promise(resolve => setTimeout(() => resolve([]), 2_200))
+    })
+    await writeFile(join(harness.userDataRoot, 'devhub-r8-runtime.json.tmp'), '{"dirty":true}\n', 'utf8')
+
+    try {
+      const response = await harness.probe.checkDirty()
+      const kinds = response.findings.map(item => item.kind).sort()
+
+      expect(response.probe.timedOut).toBe(false)
+      expect(kinds).toEqual(['pending-tasks-in-queue', 'unclean-shutdown', 'unsaved-store'])
+    } finally {
+      await harness.cleanup()
+    }
   })
 
-  it('keeps real filesystem startup probe p95 under the 2 second budget across ten samples', async () => {
+  it('keeps the default startup probe budget bounded for startup work', () => {
+    expect(DEFAULT_RECOVERY_PROBE_TIMEOUT_MS).toBe(6_000)
+  })
+
+  it('keeps real filesystem startup probe p95 under the default budget across ten samples', async () => {
     const harness = await createHarness({
       marker: 'clean-shutdown',
       timeoutMs: DEFAULT_RECOVERY_PROBE_TIMEOUT_MS

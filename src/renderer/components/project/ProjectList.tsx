@@ -37,10 +37,28 @@ const STATUS_PRIORITY: Record<string, number> = {
   stopped: 2
 }
 
+// Base row heights authored against a 16px root font-size. These are scaled by
+// the runtime root font-size ratio (see readRootFontScale) so virtual rows keep
+// pace with the user's font-size / zoom and cards are not clipped between rows.
 const PROJECT_ROW_HEIGHT_BY_DENSITY: Record<InformationDensity, number> = {
   compact: 64,
   standard: 120,
   comfortable: 144
+}
+
+const BASE_ROOT_FONT_SIZE = 16
+
+function readRootFontScale(): number {
+  if (typeof document === 'undefined' || typeof getComputedStyle === 'undefined') {
+    return 1
+  }
+
+  const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize)
+  if (!Number.isFinite(rootFontSize) || rootFontSize <= 0) {
+    return 1
+  }
+
+  return rootFontSize / BASE_ROOT_FONT_SIZE
 }
 
 function isInformationDensity(value: string | undefined): value is InformationDensity {
@@ -101,15 +119,30 @@ export function ProjectList({ onAddProject, onShowProjectDetail, decorationConfi
   // Virtual scroll container ref
   const parentRef = useRef<HTMLDivElement>(null)
   const [density, setDensity] = useState<InformationDensity>(() => readDocumentDensity())
+  const [rootFontScale, setRootFontScale] = useState<number>(() => readRootFontScale())
 
   useEffect(() => {
     if (typeof document === 'undefined' || typeof MutationObserver === 'undefined') return undefined
 
-    const syncDensity = () => setDensity(readDocumentDensity())
-    syncDensity()
+    const sync = () => {
+      setDensity(readDocumentDensity())
+      setRootFontScale(readRootFontScale())
+    }
+    sync()
 
-    const observer = new MutationObserver(syncDensity)
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-density'] })
+    const observer = new MutationObserver(sync)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-density', 'style', 'class']
+    })
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', sync)
+      return () => {
+        observer.disconnect()
+        window.removeEventListener('resize', sync)
+      }
+    }
 
     return () => observer.disconnect()
   }, [])
@@ -149,7 +182,7 @@ export function ProjectList({ onAddProject, onShowProjectDetail, decorationConfi
     return sorted
   }, [filteredProjects, sortConfig])
 
-  const estimatedItemHeight = PROJECT_ROW_HEIGHT_BY_DENSITY[density]
+  const estimatedItemHeight = Math.round(PROJECT_ROW_HEIGHT_BY_DENSITY[density] * rootFontScale)
 
   // Configure virtualizer
   const virtualizer = useVirtualizer({
@@ -158,6 +191,12 @@ export function ProjectList({ onAddProject, onShowProjectDetail, decorationConfi
     estimateSize: () => estimatedItemHeight,
     overscan: 5
   })
+
+  // Recompute virtual row sizes when density or root font-size (zoom) changes so
+  // cards are not clipped between fixed-height rows.
+  useEffect(() => {
+    virtualizer.measure()
+  }, [virtualizer, estimatedItemHeight])
 
   const [searchValue, setSearchValue] = useState('')
   const debouncedSearch = useDebouncedCallback((value: string) => {
@@ -305,10 +344,10 @@ export function ProjectList({ onAddProject, onShowProjectDetail, decorationConfi
 
           <div className="flex items-center gap-3 relative z-10">
             <h2
-              className="text-accent font-bold uppercase tracking-wider"
+              className="text-accent font-bold uppercase tracking-wider py-0.5"
               style={{
                 fontFamily: 'var(--font-display)',
-                fontSize: '16px',
+                fontSize: '1rem',
                 transform: 'rotate(-4deg)',
                 transformOrigin: 'left center'
               }}

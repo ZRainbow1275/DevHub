@@ -19,7 +19,7 @@ export const ViewModeToggle = memo(function ViewModeToggle({
 }: ViewModeToggleProps) {
   return (
     <div
-      className="flex items-center bg-surface-800 p-1 border border-surface-700 radius-sm"
+      className="flex items-center gap-0.5 bg-surface-800 p-1 border border-surface-700 radius-sm"
     >
       {modes.map(({ key, icon, label }) => (
         <button

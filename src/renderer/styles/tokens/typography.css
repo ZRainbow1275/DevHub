@@ -24,22 +24,27 @@
   --font-serif: 'Playfair Display Variable', 'Noto Serif SC', Georgia, serif;
 
   /* ---- Font Sizes ---- */
-  --text-hero: 48px;
-  --text-h1: 24px;
-  --text-h2: 18px;
-  --text-h3: 14px;
-  --text-body: 13px;
-  --text-small: 12px;
-  --text-micro: 11px;
+  /* Expressed in rem against a 16px root so browser/OS zoom AND
+     html[data-a11y-large-text="true"] {font-size:120%} both scale text.
+     Each value is an exact px/16 conversion -- visual size at 100% zoom
+     is identical to the previous raw-px scale (48/24/18/14/13/12/11px). */
+  --text-hero: 3rem;       /* 48px */
+  --text-h1: 1.5rem;       /* 24px */
+  --text-h2: 1.125rem;     /* 18px */
+  --text-h3: 0.875rem;     /* 14px */
+  --text-body: 0.8125rem;  /* 13px */
+  --text-small: 0.75rem;   /* 12px */
+  --text-micro: 0.6875rem; /* 11px */
 
   /* ---- Line Heights ---- */
-  --leading-hero: 56px;
-  --leading-h1: 32px;
-  --leading-h2: 24px;
-  --leading-h3: 20px;
-  --leading-body: 20px;
-  --leading-small: 16px;
-  --leading-micro: 14px;
+  /* Also rem (px/16) so they scale together with the font sizes above. */
+  --leading-hero: 3.5rem;   /* 56px */
+  --leading-h1: 2rem;       /* 32px */
+  --leading-h2: 1.5rem;     /* 24px */
+  --leading-h3: 1.25rem;    /* 20px */
+  --leading-body: 1.25rem;  /* 20px */
+  --leading-small: 1rem;    /* 16px */
+  --leading-micro: 0.875rem;/* 14px */
 
   /* ---- Font Weights ---- */
   --weight-regular: 400;

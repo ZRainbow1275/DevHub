@@ -1,4 +1,5 @@
 import { useEffect, memo, useState, useCallback, useMemo, useRef, type MouseEvent } from 'react'
+import { PanelDetachButton } from '../popout/PanelDetachButton'
 import { useWindows } from '../../hooks/useWindows'
 import { useAITasks } from '../../hooks/useAITasks'
 import { useBatchSelection, type WindowSelectionGesture } from '../../hooks/useBatchSelection'
@@ -183,7 +184,7 @@ const WindowOperationPanel = memo(function WindowOperationPanel({
 
   return (
     <div
-      className={`grid gap-1 ${compact ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-4'}`}
+      className={`grid gap-1 ${compact ? 'grid-cols-[repeat(auto-fit,minmax(6rem,1fr))]' : 'grid-cols-[repeat(auto-fit,minmax(7rem,1fr))]'}`}
       onClick={(event) => event.stopPropagation()}
       data-testid={`window-operation-panel-${windowInfo.hwnd}`}
     >
@@ -199,7 +200,7 @@ const WindowOperationPanel = memo(function WindowOperationPanel({
             data-testid={`window-op-${operation.kind}`}
             onClick={() => enabled && onRun(operation.kind, windowInfo)}
             className={`
-              flex items-center gap-2 min-w-0 px-2 py-1.5 text-[11px] font-medium text-left transition-all border-l-2 radius-sm
+              flex items-center gap-2 min-w-0 px-2 py-1.5 text-xs font-medium text-left transition-all border-l-2 radius-sm
               ${operation.danger
                 ? 'bg-error/10 text-error border-error/50 hover:bg-error hover:text-white'
                 : isFavorite
@@ -546,19 +547,19 @@ const WindowCard = memo(function WindowCard({
             />
           </div>
 
-          <div className="flex items-center gap-3 text-xs text-text-muted">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted min-w-0">
             <span
               data-window-field="processName"
-              className="font-mono bg-surface-800 px-2 py-0.5 border-l-2 border-surface-600 radius-sm"
+              className="font-mono bg-surface-800 px-2 py-0.5 border-l-2 border-surface-600 radius-sm min-w-0 truncate"
             >
               {window.processName}
             </span>
-            <span data-window-field="pid" className="text-text-tertiary font-mono">PID: {window.pid}</span>
-            <span data-window-field="hwnd" className="text-text-tertiary font-mono">HWND: {window.hwnd}</span>
+            <span data-window-field="pid" className="text-text-tertiary font-mono whitespace-nowrap">PID: {window.pid}</span>
+            <span data-window-field="hwnd" className="text-text-tertiary font-mono whitespace-nowrap">HWND: {window.hwnd}</span>
           </div>
 
           {/* Size Info */}
-          <div className="flex items-center gap-2 mt-2">
+          <div className="flex flex-wrap items-center gap-2 mt-2">
             <span
               className="text-xs text-text-tertiary font-mono bg-surface-800/50 px-2 py-0.5 border-l-2 border-surface-600 radius-sm"
             >
@@ -1262,7 +1263,7 @@ const AIWindowCard = memo(function AIWindowCard({
 
         {/* Info */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex flex-wrap items-center gap-2 mb-1 min-w-0">
             {/* Inline alias badge with edit */}
             <AIWindowAliasBadge
               displayName={displayName}
@@ -1281,7 +1282,7 @@ const AIWindowCard = memo(function AIWindowCard({
 
             {/* Monitor state badge */}
             <span
-              className="text-xs px-1.5 py-0.5 font-medium flex-shrink-0"
+              className="text-xs px-1.5 py-0.5 font-medium flex-shrink-0 whitespace-nowrap"
               style={{
                 borderRadius: '2px',
                 color: `var(--color-${stateInfo.color === 'gray' ? 'text-muted' : stateInfo.color === 'green' ? 'success' : stateInfo.color === 'red' ? 'error' : stateInfo.color === 'orange' ? 'warning' : stateInfo.color === 'yellow' ? 'warning' : 'info'}, currentColor)`,
@@ -1299,13 +1300,13 @@ const AIWindowCard = memo(function AIWindowCard({
             )}
           </div>
 
-          <div className="flex items-center gap-3 text-xs text-text-muted">
-            <span className="font-mono bg-surface-800 px-2 py-0.5 border-l-2 border-blue-500 radius-sm">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted min-w-0">
+            <span className="font-mono bg-surface-800 px-2 py-0.5 border-l-2 border-blue-500 radius-sm min-w-0 truncate">
               {win.processName}
             </span>
-            <span className="text-text-tertiary font-mono">PID: {win.pid}</span>
+            <span className="text-text-tertiary font-mono whitespace-nowrap">PID: {win.pid}</span>
             {task && (
-              <span className="text-text-tertiary font-mono">CPU: {avgCpu.toFixed(1)}%</span>
+              <span className="text-text-tertiary font-mono whitespace-nowrap">CPU: {avgCpu.toFixed(1)}%</span>
             )}
           </div>
 
@@ -1484,16 +1485,16 @@ const BatchToolbar = memo(function BatchToolbar({
 
   return (
     <div
-      className="flex items-center gap-2 px-4 py-2 bg-surface-800 border-b border-surface-700 animate-fade-in"
+      className="flex flex-wrap items-center gap-2 gap-y-2 px-4 py-2 bg-surface-800 border-b border-surface-700 animate-fade-in"
     >
-      <span className="text-xs text-text-muted">
+      <span className="text-xs text-text-muted whitespace-nowrap">
         已选择 {selectedCount} 个窗口
       </span>
       {selectedCount < totalCount && (
       <button
         onClick={onSelectAll}
         data-testid="window-batch-select-all"
-        className="text-xs text-accent hover:text-accent/80 transition-colors"
+        className="text-xs text-accent hover:text-accent/80 transition-colors whitespace-nowrap"
       >
           全选
         </button>
@@ -1502,7 +1503,7 @@ const BatchToolbar = memo(function BatchToolbar({
       <button
         onClick={onFocusAll}
         data-testid="window-batch-action-focus"
-        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-accent/10 text-accent hover:bg-accent hover:text-white transition-all radius-sm"
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium whitespace-nowrap bg-accent/10 text-accent hover:bg-accent hover:text-white transition-all radius-sm"
         title="依次聚焦选中窗口"
       >
         <EyeIcon size={12} />
@@ -1511,7 +1512,7 @@ const BatchToolbar = memo(function BatchToolbar({
       <button
         onClick={onTile}
         data-testid="window-batch-action-tile"
-        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-info/10 text-info hover:bg-info hover:text-white transition-all radius-sm"
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium whitespace-nowrap bg-info/10 text-info hover:bg-info hover:text-white transition-all radius-sm"
         title="平铺选中窗口"
       >
         <GridIcon size={12} />
@@ -1520,7 +1521,7 @@ const BatchToolbar = memo(function BatchToolbar({
       <button
         onClick={onCascade}
         data-testid="window-batch-action-cascade"
-        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-info/10 text-info hover:bg-info hover:text-white transition-all radius-sm"
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium whitespace-nowrap bg-info/10 text-info hover:bg-info hover:text-white transition-all radius-sm"
         title="层叠选中窗口"
       >
         <LayoutIcon size={12} />
@@ -1529,7 +1530,7 @@ const BatchToolbar = memo(function BatchToolbar({
       <button
         onClick={onStack}
         data-testid="window-batch-action-stack"
-        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-purple-500/10 text-purple-400 hover:bg-purple-500 hover:text-white transition-all radius-sm"
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium whitespace-nowrap bg-purple-500/10 text-purple-400 hover:bg-purple-500 hover:text-white transition-all radius-sm"
         title="堆叠选中窗口 (相同位置)"
       >
         <WindowIcon size={12} />
@@ -1538,7 +1539,7 @@ const BatchToolbar = memo(function BatchToolbar({
       <button
         onClick={onRestorePrevious}
         data-testid="window-batch-action-restore-previous"
-        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-success/10 text-success hover:bg-success hover:text-white transition-all radius-sm"
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium whitespace-nowrap bg-success/10 text-success hover:bg-success hover:text-white transition-all radius-sm"
         title="恢复上次布局前位置"
       >
         <RefreshIcon size={12} />
@@ -1547,7 +1548,7 @@ const BatchToolbar = memo(function BatchToolbar({
       <button
         onClick={onToggleTopmostAll}
         data-testid="window-batch-action-topmost"
-        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-accent/10 text-accent hover:bg-accent hover:text-white transition-all radius-sm"
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium whitespace-nowrap bg-accent/10 text-accent hover:bg-accent hover:text-white transition-all radius-sm"
         title="切换选中窗口置顶"
       >
         <GearIcon size={12} />
@@ -1556,7 +1557,7 @@ const BatchToolbar = memo(function BatchToolbar({
       <button
         onClick={onScreenshotAll}
         data-testid="window-batch-action-screenshot"
-        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-info/10 text-info hover:bg-info hover:text-white transition-all radius-sm"
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium whitespace-nowrap bg-info/10 text-info hover:bg-info hover:text-white transition-all radius-sm"
         title="依次截图选中窗口"
       >
         <DownloadIcon size={12} />
@@ -1565,7 +1566,7 @@ const BatchToolbar = memo(function BatchToolbar({
       <button
         onClick={onMinimizeAll}
         data-testid="window-batch-action-minimize"
-        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-warning/10 text-warning hover:bg-warning hover:text-white transition-all radius-sm"
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium whitespace-nowrap bg-warning/10 text-warning hover:bg-warning hover:text-white transition-all radius-sm"
         title="最小化选中窗口"
       >
         <MinimizeIcon size={12} />
@@ -1574,7 +1575,7 @@ const BatchToolbar = memo(function BatchToolbar({
       <button
         onClick={onRestoreAll}
         data-testid="window-batch-action-restore"
-        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-success/10 text-success hover:bg-success hover:text-white transition-all radius-sm"
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium whitespace-nowrap bg-success/10 text-success hover:bg-success hover:text-white transition-all radius-sm"
         title="恢复选中窗口"
       >
         <MaximizeIcon size={12} />
@@ -1583,17 +1584,16 @@ const BatchToolbar = memo(function BatchToolbar({
       <button
         onClick={onCloseAll}
         data-testid="window-batch-action-close"
-        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-error/10 text-error hover:bg-error hover:text-white transition-all radius-sm"
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium whitespace-nowrap bg-error/10 text-error hover:bg-error hover:text-white transition-all radius-sm"
         title="关闭选中窗口"
       >
         <CloseIcon size={12} />
         批量关闭
       </button>
-      <div className="flex-1" />
       <button
         onClick={onClearSelection}
         data-testid="window-batch-clear-selection"
-        className="text-xs text-text-muted hover:text-text-primary transition-colors"
+        className="text-xs text-text-muted hover:text-text-primary transition-colors whitespace-nowrap ml-auto"
       >
         清除选择
       </button>
@@ -2535,16 +2535,16 @@ export function WindowView() {
         {/* Diagonal decoration */}
         <div className="absolute inset-0 deco-diagonal opacity-20 pointer-events-none" />
 
-        <div className="flex items-center justify-between mb-4 relative z-10">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center flex-wrap justify-between gap-y-2 mb-4 relative z-10">
+          <div className="flex items-center gap-3 min-w-0">
             <div
-              className="w-10 h-10 bg-surface-700 flex items-center justify-center border-l-3 border-accent radius-sm"
+              className="w-10 h-10 bg-surface-700 flex items-center justify-center border-l-3 border-accent radius-sm flex-shrink-0"
             >
               <WindowIcon size={20} className="text-accent" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h2
-                className="text-gold font-bold uppercase tracking-wider"
+                className="text-gold font-bold uppercase tracking-wider whitespace-nowrap"
                 style={{
                   fontFamily: 'var(--font-display)',
                   fontSize: '14px',
@@ -2554,11 +2554,11 @@ export function WindowView() {
               >
                 {t('monitor.window.title', '窗口管理')}
               </h2>
-              <p className="text-xs text-text-muted">{t('monitor.window.subtitle', 'WINDOW MANAGER')}</p>
+              <p className="text-xs text-text-muted whitespace-nowrap">{t('monitor.window.subtitle', 'WINDOW MANAGER')}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center flex-wrap gap-2 gap-y-2 justify-end">
             {/* View Mode Toggle */}
             {viewTab === 'windows' && (
               <ViewModeToggle
@@ -2578,7 +2578,7 @@ export function WindowView() {
               <button
                 onClick={handleToggleSystemWindows}
                 className={`
-                  flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-all duration-200 border-l-2
+                  flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-all duration-200 border-l-2 whitespace-nowrap
                   ${showSystemWindows
                     ? 'bg-warning/20 text-warning border-warning'
                     : 'bg-surface-800 text-text-muted border-surface-600 hover:bg-surface-700 hover:text-text-secondary'
@@ -2595,7 +2595,7 @@ export function WindowView() {
             {viewTab === 'windows' && selectedWindows.size > 0 && (
               <button
                 onClick={() => setShowCreateGroup(true)}
-                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-accent/20 text-accent hover:bg-accent hover:text-white transition-all duration-200 border-l-2 border-accent radius-sm"
+                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium whitespace-nowrap bg-accent/20 text-accent hover:bg-accent hover:text-white transition-all duration-200 border-l-2 border-accent radius-sm"
               >
                 <PlusIcon size={14} />
                 创建分组 ({selectedWindows.size})
@@ -2606,7 +2606,7 @@ export function WindowView() {
             {(viewTab === 'groups' || viewTab === 'windows') && windows.length > 0 && (
               <button
                 onClick={() => setShowSaveLayout(true)}
-                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-success/20 text-success hover:bg-success hover:text-white transition-all duration-200 border-l-2 border-success radius-sm"
+                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium whitespace-nowrap bg-success/20 text-success hover:bg-success hover:text-white transition-all duration-200 border-l-2 border-success radius-sm"
               >
                 <FolderIcon size={14} />
                 保存布局
@@ -2621,7 +2621,7 @@ export function WindowView() {
                 data-graph-kind="attached"
                 title="查看关系图"
                 onClick={openSelectedWindowAttachedTopology}
-                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-surface-800 text-text-secondary hover:bg-surface-700 hover:text-accent transition-all duration-200 border-l-2 border-surface-600 hover:border-accent radius-sm"
+                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium whitespace-nowrap bg-surface-800 text-text-secondary hover:bg-surface-700 hover:text-accent transition-all duration-200 border-l-2 border-surface-600 hover:border-accent radius-sm"
               >
                 <NetworkIcon size={14} />
                 查看关系图
@@ -2636,7 +2636,7 @@ export function WindowView() {
                 data-graph-kind="global"
                 title="在全局拓扑中查看"
                 onClick={openSelectedWindowGlobalTopology}
-                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-surface-800 text-text-secondary hover:bg-surface-700 hover:text-accent transition-all duration-200 border-l-2 border-surface-600 hover:border-accent radius-sm"
+                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium whitespace-nowrap bg-surface-800 text-text-secondary hover:bg-surface-700 hover:text-accent transition-all duration-200 border-l-2 border-surface-600 hover:border-accent radius-sm"
               >
                 <GlobeIcon size={14} />
                 全局拓扑
@@ -2648,7 +2648,7 @@ export function WindowView() {
                 type="button"
                 data-testid="window-module-tour-open-button"
                 onClick={openWindowTour}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-surface-800 text-text-secondary hover:bg-surface-700 hover:text-accent transition-all duration-200 border-l-2 border-surface-600 hover:border-accent radius-sm"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium whitespace-nowrap bg-surface-800 text-text-secondary hover:bg-surface-700 hover:text-accent transition-all duration-200 border-l-2 border-surface-600 hover:border-accent radius-sm"
                 aria-label="打开窗口模块导览"
                 title="窗口导览"
               >
@@ -2672,6 +2672,8 @@ export function WindowView() {
             >
               <RefreshIcon size={16} className={isScanning ? 'animate-spin' : ''} />
             </button>
+
+            <PanelDetachButton surface="window" />
           </div>
         </div>
 
@@ -2684,6 +2686,7 @@ export function WindowView() {
                 onClick={() => setViewTab(tab.key)}
                 className={`
                   flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all duration-200
+                  whitespace-nowrap flex-shrink-0
                   ${viewTab === tab.key
                     ? 'bg-accent/15 text-accent border-l-2 border-accent'
                     : 'text-text-secondary hover:bg-surface-800 hover:text-text-primary border-l-2 border-transparent'
@@ -3154,7 +3157,7 @@ export function WindowView() {
       {showCreateGroup && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in">
           <div
-            className="bg-surface-900 p-6 w-[420px] border-2 border-surface-700 shadow-2xl relative radius-md"
+            className="bg-surface-900 p-6 w-[min(420px,calc(100vw-2rem))] mx-4 border-2 border-surface-700 shadow-2xl relative radius-md"
           >
             {/* Diagonal decoration */}
             <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none radius-md" />
@@ -3167,7 +3170,7 @@ export function WindowView() {
               </div>
               <div>
                 <h3
-                  className="text-gold font-bold uppercase tracking-wider"
+                  className="text-gold font-bold uppercase tracking-wider whitespace-nowrap"
                   style={{
                     fontFamily: 'var(--font-display)',
                     fontSize: '14px',
@@ -3222,7 +3225,7 @@ export function WindowView() {
       {showSaveLayout && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in">
           <div
-            className="bg-surface-900 p-6 w-[420px] border-2 border-surface-700 shadow-2xl relative radius-md"
+            className="bg-surface-900 p-6 w-[min(420px,calc(100vw-2rem))] mx-4 border-2 border-surface-700 shadow-2xl relative radius-md"
           >
             {/* Diagonal decoration */}
             <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none radius-md" />
@@ -3235,7 +3238,7 @@ export function WindowView() {
               </div>
               <div>
                 <h3
-                  className="text-gold font-bold uppercase tracking-wider"
+                  className="text-gold font-bold uppercase tracking-wider whitespace-nowrap"
                   style={{
                     fontFamily: 'var(--font-display)',
                     fontSize: '14px',

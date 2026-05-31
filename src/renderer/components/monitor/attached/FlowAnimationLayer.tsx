@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { memo, type ReactNode } from 'react'
 import type { FlowNode, FlowRequest } from '@shared/schemas/r8-runtime'
 import { LazyMotion, domAnimation, m } from '../../../integrations'
 import type { MotionProps, Variants } from '../../../integrations'
@@ -11,6 +11,7 @@ interface FlowAnimationLayerProps {
 }
 
 interface FlowAnimationListProps {
+  enabled: boolean
   children: ReactNode
 }
 
@@ -28,26 +29,34 @@ function getFlowRowTransition(index: number, speed: FlowRequest['speed']): Motio
   }
 }
 
-export function FlowAnimationLayer({ node, index, speed, children }: FlowAnimationLayerProps) {
+export const FlowAnimationLayer = memo(function FlowAnimationLayer({ node, index, speed, children }: FlowAnimationLayerProps) {
   const paused = speed === 0
+  const rowProps = {
+    'data-testid': 'flow-animation-layer',
+    'data-flow-node-id': node.id,
+    'data-flow-animation-order': String(index + 1),
+    'data-flow-animation-paused': paused ? 'true' : 'false',
+    className: 'flex items-center gap-2'
+  }
+
+  if (paused) {
+    return <div {...rowProps}>{children}</div>
+  }
 
   return (
     <m.div
-      data-testid="flow-animation-layer"
-      data-flow-node-id={node.id}
-      data-flow-animation-order={String(index + 1)}
-      data-flow-animation-paused={paused ? 'true' : 'false'}
-      initial={paused ? false : 'hidden'}
+      {...rowProps}
+      initial="hidden"
       animate="visible"
       variants={FLOW_ROW_VARIANTS}
       transition={getFlowRowTransition(index, speed)}
-      className="flex items-center gap-2"
     >
       {children}
     </m.div>
   )
-}
+})
 
-export function FlowAnimationList({ children }: FlowAnimationListProps) {
+export function FlowAnimationList({ children, enabled }: FlowAnimationListProps) {
+  if (!enabled) return <>{children}</>
   return <LazyMotion features={domAnimation} strict>{children}</LazyMotion>
 }

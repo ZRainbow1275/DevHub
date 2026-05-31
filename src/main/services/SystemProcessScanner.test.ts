@@ -494,6 +494,43 @@ describe('SystemProcessScanner', () => {
       expect(result.error).toBe('Failed')
     })
 
+    it('falls back to Get-Process when CIM process enumeration fails', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+      const executePowerShell = vi.spyOn(scanner as any, 'executePowerShell')
+        .mockRejectedValueOnce(new Error('CIM_TIMEOUT'))
+        .mockResolvedValueOnce([
+          '"Id","ProcessName","Path","WorkingSet64","CPU"',
+          '"4242","node","C:\\Program Files\\nodejs\\node.exe","268435456","12.5"'
+        ].join('\n'))
+
+      const result = await (scanner as any).getRawProcesses()
+
+      expect(result).toEqual([
+        expect.objectContaining({
+          pid: 4242,
+          ppid: 0,
+          name: 'node.exe',
+          commandLine: 'C:\\Program Files\\nodejs\\node.exe',
+          workingDir: 'C:\\Program Files\\nodejs',
+          memoryMB: 256
+        })
+      ])
+      expect(executePowerShell).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining('Get-CimInstance Win32_Process'),
+        expect.objectContaining({ label: 'get-raw-processes' })
+      )
+      expect(executePowerShell).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining('Get-Process'),
+        expect.objectContaining({ label: 'get-raw-processes-fallback' })
+      )
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Process enumeration via CIM failed, falling back to Get-Process:',
+        'CIM_TIMEOUT'
+      )
+    })
+
     it('should call update callback after scan', async () => {
       const callback = vi.fn()
       scanner.onUpdate(callback)
@@ -606,6 +643,9 @@ describe('SystemProcessScanner', () => {
 
     it('should calculate CPU percentage on second call', () => {
       const numCores = os.cpus().length
+      const baseTime = 1_700_000_000_000
+      const nowSpy = vi.spyOn(Date, 'now')
+      nowSpy.mockReturnValue(baseTime)
 
       // Simulate first call to store baseline
       const firstSample = new Map<number, number>([

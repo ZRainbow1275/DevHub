@@ -72,7 +72,8 @@ describe('AttachedGraphView spec-25 controls', () => {
     await waitFor(() => expect(attachedDeep10).toHaveBeenLastCalledWith(expect.objectContaining({ depth: 10 })))
     expect(screen.getByTestId('attached-lazy-banner')).toBeInTheDocument()
     expect(screen.getByTestId('attached-graph-view')).toHaveAttribute('data-lazy', 'true')
-    expect(screen.getByTestId('attached-lazy-expander')).toHaveTextContent('+1 more lazy node available')
+    expect(screen.getByTestId('attached-lazy-expander')).toHaveTextContent(/\+1 more lazy node\(s\) available/)
+    expect(screen.getByTestId('attached-lazy-placeholder')).toHaveTextContent('process-1234')
 
     fireEvent.doubleClick(screen.getByTestId('attached-lazy-placeholder'))
     await waitFor(() => expect(attachedDeep10).toHaveBeenLastCalledWith(expect.objectContaining({

@@ -1,4 +1,4 @@
-import { Profiler, useState, useEffect, useCallback, useLayoutEffect, useMemo, useRef } from 'react'
+import { Profiler, forwardRef, useState, useEffect, useCallback, useLayoutEffect, useMemo, useRef } from 'react'
 import { TitleBar } from './components/layout/TitleBar'
 import { Sidebar } from './components/layout/Sidebar'
 import { StatusBar } from './components/layout/StatusBar'
@@ -20,6 +20,7 @@ import { HeroStats } from './components/ui/HeroStats'
 import { InitializationScreen } from './components/ui/InitializationScreen'
 import { ThemeDecoration } from './components/ui/ThemeDecoration'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { PanelPopoutShell, readPanelPopoutSurface } from './components/popout/PanelPopoutShell'
 import { KeyboardNavGroup } from './components/a11y/KeyboardNavGroup'
 import { SkipLink } from './components/a11y/SkipLink'
 import { useProjects } from './hooks/useProjects'
@@ -53,7 +54,17 @@ import {
 /** Default split percentages: left panel (project list) / right panel (content) */
 const SPLIT_STORAGE_KEY = 'devhub:split-sizes'
 const DEFAULT_SPLIT = [25, 75]
-const PANEL_MIN_PX = 280
+// Pane minimums expressed in rem so accessibility text scaling (root font-size)
+// keeps the panes wide enough for CJK content instead of clipping at fixed px.
+const LEFT_PANE_MIN_REM = 17.5 // ~280px @ 16px root
+const RIGHT_PANE_MIN_REM = 25 // ~400px @ 16px root
+const STACK_BELOW_REM = 56.25 // ~900px @ 16px root
+
+function rootFontSizePx(): number {
+  if (typeof window === 'undefined') return 16
+  const parsed = parseFloat(getComputedStyle(document.documentElement).fontSize)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 16
+}
 
 type MainView = 'logs' | 'monitor' | 'dashboard' | 'topology'
 
@@ -114,8 +125,50 @@ function AppContent() {
   const shellSize = useContainerSize(shellRef)
   const windowSize = useWindowSize()
   const responsiveWidth = shellSize.width > 0 ? shellSize.width : windowSize.width
+
+  // Track the document root font-size so pane minimums (defined in rem) respect
+  // accessibility text scaling. Recompute whenever the window size changes.
+  const [remPx, setRemPx] = useState(() => rootFontSizePx())
+  useEffect(() => {
+    setRemPx(rootFontSizePx())
+  }, [windowSize.width, windowSize.height])
+  const splitMinSizes = useMemo(
+    () => [Math.round(LEFT_PANE_MIN_REM * remPx), Math.round(RIGHT_PANE_MIN_REM * remPx)],
+    [remPx]
+  )
+  const splitStackBelow = useMemo(() => Math.round(STACK_BELOW_REM * remPx), [remPx])
   const automaticShellMode = responsiveWidth < 900 ? 'stacked' : 'split'
   const shellMode = layoutModePreference === 'auto' ? automaticShellMode : layoutModePreference
+  const mainViewTabRefs = useRef<Record<MainView, HTMLButtonElement | null>>({
+    logs: null,
+    monitor: null,
+    dashboard: null,
+    topology: null
+  })
+  const viewToggleHeaderRef = useRef<HTMLDivElement>(null)
+  const [mainViewUnderlineStyle, setMainViewUnderlineStyle] = useState<{ left: number; width: number }>({ left: 16, width: 64 })
+
+  const recomputeUnderline = useCallback(() => {
+    const target = mainViewTabRefs.current[mainView]
+    if (target) {
+      setMainViewUnderlineStyle({ left: target.offsetLeft, width: target.offsetWidth })
+    }
+  }, [mainView])
+
+  useLayoutEffect(() => {
+    recomputeUnderline()
+  }, [recomputeUnderline, responsiveWidth])
+
+  // The shell width (responsiveWidth) does not change when the user drags the
+  // PanelSplitter or resizes the sidebar, so observe the tab-strip header itself
+  // and recompute the active underline whenever its box changes.
+  useEffect(() => {
+    const node = viewToggleHeaderRef.current
+    if (!node || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => recomputeUnderline())
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [recomputeUnderline])
   const openTopologyGlobal = useCallback(() => {
     setMainView('topology')
     if (window.location.hash !== '#/topology/global') {
@@ -452,6 +505,8 @@ function AppContent() {
   if (showInitScreen) {
     return (
       <div className="h-screen flex flex-col bg-surface-950 text-text-primary overflow-hidden">
+        <SkipLink />
+        <ThemeDecoration config={themeDecoration.config} position="global-background" />
         <TitleBar decorationConfig={themeDecoration.config} />
         <div className="flex-1 overflow-hidden">
           <InitializationScreen onReady={() => setInitDismissed(true)} />
@@ -472,7 +527,7 @@ function AppContent() {
           {/* Main Content */}
           <div
             ref={shellRef}
-            className="h-full w-full flex overflow-hidden responsive-app-shell responsive-container"
+            className="flex-1 min-h-0 w-full flex overflow-hidden responsive-app-shell responsive-container"
             data-layout-mode={shellMode}
             data-layout-preference={layoutModePreference}
             data-layout-breakpoint={shellSize.breakpoint}
@@ -482,24 +537,24 @@ function AppContent() {
             <Sidebar onSettingsClick={() => setShowSettings(true)} onTopologyClick={openTopologyGlobal} />
 
             {/* Main Area */}
-            <div id="main-content" role="main" tabIndex={-1} className="flex-1 flex flex-col overflow-hidden main-content">
+            <div id="main-content" role="main" tabIndex={-1} className="flex-1 min-h-0 flex flex-col overflow-hidden main-content">
               {/* Split View -- PanelSplitter handles the resize bar */}
-              <div className="flex-1 flex overflow-hidden">
+              <div className="flex-1 min-h-0 flex overflow-hidden">
                 <PanelSplitter
                   direction="horizontal"
                   defaultSizes={DEFAULT_SPLIT}
-                  minSizes={[PANEL_MIN_PX, 400]}
+                  minSizes={splitMinSizes}
                   storageKey={SPLIT_STORAGE_KEY}
-                  stackBelow={900}
+                  stackBelow={splitStackBelow}
                 >
                   {/* Left Pane: Project List */}
-                  <div className="h-full border-r-2 border-surface-700 overflow-hidden bg-surface-900/50 relative flex flex-col panel-container">
+                  <div className="h-full min-h-0 border-r-2 border-surface-700 overflow-hidden bg-surface-900/50 relative flex flex-col panel-container">
                     {/* Diagonal decoration */}
                     <div className="absolute inset-0 deco-diagonal opacity-5 pointer-events-none" />
                     {/* Hero Stats */}
                     <HeroStats />
                     {/* Project List */}
-                    <div className="flex-1 overflow-hidden">
+                    <div className="flex-1 min-h-0 overflow-hidden">
                       <ProjectList
                         onAddProject={() => setShowAddDialog(true)}
                         decorationConfig={themeDecoration.config}
@@ -508,27 +563,30 @@ function AppContent() {
                   </div>
 
                   {/* Right Pane: Log / Monitor */}
-                  <div className="h-full overflow-hidden flex flex-col relative panel-container">
+                  <div className="h-full min-h-0 overflow-hidden flex flex-col relative panel-container">
                     {/* View Toggle Header */}
-                    <div className="flex-shrink-0 px-4 py-2 border-b-2 border-surface-700 bg-surface-900 flex items-center gap-1 relative z-10">
+                    <div ref={viewToggleHeaderRef} className="flex-shrink-0 px-4 py-2 border-b-2 border-surface-700 bg-surface-900 flex items-center gap-1 relative z-10 min-w-0">
                       {/* Diagonal decoration */}
                       <div className="absolute inset-0 deco-diagonal opacity-5 pointer-events-none" />
                       <ThemeDecoration config={themeDecoration.config} position="header" />
 
-                      <KeyboardNavGroup ariaLabel={t('nav.main', 'Main view navigation')} className="flex items-center gap-1 relative z-10">
+                      <KeyboardNavGroup ariaLabel={t('nav.main', 'Main view navigation')} className="flex flex-nowrap items-center gap-1 relative z-10 min-w-0 overflow-x-auto">
                         <ViewToggleButton
+                          ref={el => { mainViewTabRefs.current['logs'] = el }}
                           active={mainView === 'logs'}
                           onClick={() => setMainView('logs')}
                           icon={<LogIcon size={16} />}
                           label="日志"
                         />
                         <ViewToggleButton
+                          ref={el => { mainViewTabRefs.current['monitor'] = el }}
                           active={mainView === 'monitor'}
                           onClick={() => setMainView('monitor')}
                           icon={<MonitorIcon size={16} />}
                           label="监控"
                         />
                         <ViewToggleButton
+                          ref={el => { mainViewTabRefs.current['dashboard'] = el }}
                           active={mainView === 'dashboard'}
                           onClick={openDashboard}
                           icon={<GridIcon size={16} />}
@@ -540,15 +598,12 @@ function AppContent() {
                       {/* Active indicator line */}
                       <div
                         className="absolute bottom-0 h-0.5 bg-accent transition-all duration-300"
-                        style={{
-                          left: mainView === 'logs' ? '16px' : mainView === 'monitor' ? '92px' : '168px',
-                          width: '64px'
-                        }}
+                        style={mainViewUnderlineStyle}
                       />
                     </div>
 
                     {/* View Content */}
-                    <div className="flex-1 overflow-hidden relative">
+                    <div className="flex-1 min-h-0 overflow-hidden relative">
                       {/* Diagonal decoration */}
                       <div className="absolute inset-0 deco-diagonal opacity-3 pointer-events-none" />
                       <ThemeDecoration config={themeDecoration.config} position="detail-panel-background" />
@@ -628,49 +683,54 @@ function AppContent() {
 }
 
 // View Toggle Button Component with Soviet styling
-function ViewToggleButton({
-  active,
-  onClick,
-  icon,
-  label,
-  testId,
-  ...buttonProps
-}: {
+const ViewToggleButton = forwardRef<HTMLButtonElement, {
   active: boolean
   onClick: () => void
   icon: React.ReactNode
   label: string
   testId?: string
-} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'onClick' | 'type'>) {
+} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'onClick' | 'type'>>(function ViewToggleButton(
+  { active, onClick, icon, label, testId, ...buttonProps },
+  ref
+) {
   return (
     <button
+      ref={ref}
       {...buttonProps}
       type="button"
       onClick={onClick}
       data-testid={testId}
       aria-pressed={active}
+      title={label}
+      aria-label={label}
       className={`
         flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-all duration-200 relative z-10
-        border-l-2
+        border-l-2 whitespace-nowrap min-w-max flex-shrink-0
         ${active
           ? 'bg-accent/15 text-accent border-accent'
           : 'text-text-secondary hover:bg-surface-800 hover:text-text-primary border-transparent hover:border-surface-500'
         }
        radius-sm`}
     >
-      <span className={active ? 'text-accent' : 'text-text-muted'}>{icon}</span>
+      <span className={`inline-flex min-[960px]:hidden ${active ? 'text-accent' : 'text-text-muted'}`}>{icon}</span>
       <span
-        className="uppercase tracking-wide"
-        style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: '12px'
-        }}
+        className="uppercase tracking-wide whitespace-nowrap text-xs hidden min-[960px]:inline min-[1280px]:hidden"
+        style={{ fontFamily: 'var(--font-display)' }}
       >
         {label}
       </span>
+      <span className="hidden min-[1280px]:inline-flex min-[1280px]:items-center min-[1280px]:gap-2">
+        <span className={active ? 'text-accent' : 'text-text-muted'}>{icon}</span>
+        <span
+          className="uppercase tracking-wide whitespace-nowrap text-xs"
+          style={{ fontFamily: 'var(--font-display)' }}
+        >
+          {label}
+        </span>
+      </span>
     </button>
   )
-}
+})
 
 function AppWithDevObservability() {
   const { showToast } = useToast()
@@ -793,6 +853,16 @@ function AppWithDevObservability() {
 }
 
 export default function App() {
+  const panelPopoutSurface = readPanelPopoutSurface()
+  if (panelPopoutSurface) {
+    return (
+      <ErrorBoundary>
+        <ToastProvider>
+          <PanelPopoutShell surface={panelPopoutSurface} />
+        </ToastProvider>
+      </ErrorBoundary>
+    )
+  }
   return (
     <ErrorBoundary>
       <ToastProvider>

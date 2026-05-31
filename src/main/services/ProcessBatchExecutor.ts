@@ -477,19 +477,54 @@ export class ProcessBatchExecutor {
   private async findWindowForPid(pid: number, args: Record<string, unknown>): Promise<WindowInfo | null> {
     const windowManager = this.options.windowManager
     if (!windowManager) return null
-    const scan = await windowManager.scanWindows(false)
-    if (!scan.success) return null
     const requestedHwnd = args.hwnd
-    if (typeof requestedHwnd === 'number' && Number.isInteger(requestedHwnd) && requestedHwnd > 0) {
-      return scan.data?.find(windowInfo =>
-        windowInfo.hwnd === requestedHwnd
-        && windowInfo.pid === pid
-        && windowInfo.isVisible
-      ) ?? null
+    const requestedHwndValue = typeof requestedHwnd === 'number' && Number.isInteger(requestedHwnd) && requestedHwnd > 0
+      ? Math.floor(requestedHwnd)
+      : null
+
+    const findInWindows = (windows: WindowInfo[] | undefined | null): WindowInfo | null => {
+      if (requestedHwndValue !== null) {
+        return windows?.find(windowInfo =>
+          windowInfo.hwnd === requestedHwndValue
+          && windowInfo.pid === pid
+          && windowInfo.isVisible
+        ) ?? null
+      }
+      return windows?.find(windowInfo => windowInfo.pid === pid && windowInfo.isVisible && !windowInfo.isMinimized)
+        ?? windows?.find(windowInfo => windowInfo.pid === pid && windowInfo.isVisible)
+        ?? null
     }
-    return scan.data?.find(windowInfo => windowInfo.pid === pid && windowInfo.isVisible && !windowInfo.isMinimized)
-      ?? scan.data?.find(windowInfo => windowInfo.pid === pid && windowInfo.isVisible)
-      ?? null
+
+    const scan = await windowManager.scanWindows(false)
+    if (scan.success) {
+      const matched = findInWindows(scan.data)
+      if (matched) return matched
+    }
+
+    if (requestedHwndValue !== null) {
+      const expandedScan = await windowManager.scanWindows(true)
+      if (expandedScan.success) {
+        const matched = findInWindows(expandedScan.data)
+        if (matched) return matched
+
+        const requestedWindow = expandedScan.data?.find(windowInfo => windowInfo.hwnd === requestedHwndValue && windowInfo.pid === pid)
+        if (requestedWindow) return requestedWindow
+      }
+
+      return {
+        hwnd: requestedHwndValue,
+        title: `PID:${pid}`,
+        processName: `PID:${pid}`,
+        pid,
+        className: 'Unknown',
+        rect: { x: 0, y: 0, width: 0, height: 0 },
+        isVisible: true,
+        isMinimized: false,
+        isSystemWindow: false
+      }
+    }
+
+    return findInWindows(scan.data)
   }
 
   private toBatchResult(pid: number, output: unknown): ProcessBatchResult {

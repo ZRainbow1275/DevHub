@@ -3,7 +3,8 @@ import { createRequire } from 'node:module'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import DatabaseConstructor, { type Database as DatabaseHandle } from 'better-sqlite3'
+import type { Database as DatabaseHandle } from 'better-sqlite3'
+import { loadBetterSqlite } from '../sqlite/betterSqliteLoader'
 import type { TaskRun } from '@shared/schemas/r8-runtime'
 import type { TaskStateTransition } from './TaskQueueService'
 
@@ -312,6 +313,7 @@ class BetterSqliteQueueStore {
   private database(): DatabaseHandle {
     if (this.db?.open) return this.db
     mkdirSync(dirname(this.dbPath), { recursive: true })
+    const DatabaseConstructor = loadBetterSqlite()
     const db = new DatabaseConstructor(this.dbPath)
     db.pragma('journal_mode = WAL')
     this.ensureSchema(db)

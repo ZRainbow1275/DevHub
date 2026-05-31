@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { BrowserPopout, DrawerState } from '@shared/schemas/r8-runtime'
+import type { BrowserPopout, DrawerSlot, DrawerState } from '@shared/schemas/r8-runtime'
 import { DrawerProvider } from './DrawerProvider'
 import { DrawerSystemHost } from './DrawerSystemHost'
 import { BUILTIN_DRAWER_CONTENTS, createDefaultDrawerStateMap } from './drawer-model'
@@ -25,9 +25,10 @@ describe('R8.B drawer host', () => {
       </DrawerProvider>
     )
 
-    for (const slot of ['top', 'right', 'bottom', 'floating', 'statusbar']) {
+    // DrawerLauncherRail was moved to Sidebar (S1); open drawers via store directly
+    for (const slot of ['top', 'right', 'bottom', 'floating', 'statusbar'] as const) {
       await act(async () => {
-        fireEvent.click(screen.getByTestId(`open-drawer-${slot}`))
+        await useDrawerStore.getState().setOpen(slot as DrawerSlot, true)
       })
     }
 
@@ -64,8 +65,9 @@ describe('R8.B drawer host', () => {
       </DrawerProvider>
     )
 
+    // DrawerLauncherRail was moved to Sidebar (S1); open drawer via store directly
     await act(async () => {
-      fireEvent.click(screen.getByTestId('open-drawer-right'))
+      await useDrawerStore.getState().setOpen('right', true)
     })
     const handle = screen.getByTestId('drawer-right-resize-handle')
 
@@ -117,8 +119,9 @@ describe('R8.B drawer host', () => {
       </DrawerProvider>
     )
 
+    // DrawerLauncherRail was moved to Sidebar (S1); open drawer via store directly
     await act(async () => {
-      fireEvent.click(screen.getByTestId('open-drawer-top'))
+      await useDrawerStore.getState().setOpen('top', true)
     })
 
     expect(await screen.findByText('真实通知')).toBeInTheDocument()
@@ -206,8 +209,9 @@ describe('R8.B drawer host', () => {
       </DrawerProvider>
     )
 
+    // DrawerLauncherRail was moved to Sidebar (S1); open drawer via store directly
     await act(async () => {
-      fireEvent.click(screen.getByTestId('open-drawer-floating'))
+      await useDrawerStore.getState().setOpen('floating', true)
     })
 
     expect(await screen.findByText('Port detail BrowserWindow')).toBeInTheDocument()
