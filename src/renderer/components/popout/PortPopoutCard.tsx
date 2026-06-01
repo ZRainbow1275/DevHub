@@ -135,7 +135,7 @@ export function PortPopoutCard({ popout, onClose, onMinimize, onThemeIsolate, on
       {!popout.minimized && (
         <div
           data-testid={`port-popout-body-${popout.port.port}-${popout.port.pid}`}
-          className="p-3 space-y-3 h-[calc(100%-2.5rem)] overflow-auto"
+          className="p-3 space-y-3 h-[calc(100%-2.25rem)] overflow-auto"
         >
           <section className="bg-surface-950 p-3 border-l-2 border-surface-600 radius-sm">
             <div className="flex items-center gap-3">
@@ -149,7 +149,7 @@ export function PortPopoutCard({ popout, onClose, onMinimize, onThemeIsolate, on
             </div>
           </section>
 
-          <section className="grid grid-cols-2 gap-2 text-[11px]">
+          <section className="grid grid-cols-1 gap-2 text-[11px] sm:grid-cols-2">
             <div className="bg-surface-800 p-2 border-l-2 border-surface-600 radius-sm">
               <div className="text-text-tertiary uppercase tracking-wider mb-1">State</div>
               <div className="font-mono text-text-primary">{popout.port.state}</div>

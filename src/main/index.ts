@@ -24,6 +24,7 @@ import { getScannerRegistry, type ScannerRegistrySnapshotRow } from './services/
 import { MetricsCollector } from './services/observability/MetricsCollector'
 import { setRateLimitObserver } from './utils/rateLimiter'
 import { installSafeConsole } from './utils/safeConsole'
+import { reconcileAutoStartOnBoot } from './utils/autoStart'
 import type { StatusAggregatorPublishResult } from './services/StatusAggregator'
 import { GraphService } from './services/graph/GraphService'
 
@@ -837,6 +838,10 @@ app.whenReady().then(async () => {
   // Stage 2: Load configuration
   sendSplashProgress(25, 'Loading configuration...')
   const settings = appStore.getSettings()
+
+  // Align the OS login item with the persisted auto-start preference. Guarded /
+  // no-op on unsupported platforms (Linux) and never throws.
+  reconcileAutoStartOnBoot(settings.advanced.autoStartOnBoot)
 
   // Stage 3: Create main window (hidden) and init scanners
   sendSplashProgress(40, 'Starting scan engine...')

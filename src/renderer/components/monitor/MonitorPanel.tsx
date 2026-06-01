@@ -9,6 +9,9 @@ import { ErrorBoundary } from '../ErrorBoundary'
 import { ViewErrorFallback } from '../ui/ViewErrorFallback'
 import { ProcessIcon, PortIcon, WindowIcon, AIIcon, MonitorIcon, GearIcon, TopologyIcon } from '../icons'
 import { useT } from '../../hooks/useT'
+import { PanelDetachButton } from '../popout/PanelDetachButton'
+import { serializeDetachTarget } from '../popout/detachable-registry'
+import { readPanelPopoutSurface } from '../popout/PanelPopoutShell'
 
 type MonitorTab = 'process' | 'port' | 'window' | 'ai-task' | 'topology' | 'r8-ops'
 
@@ -53,6 +56,8 @@ function initialMonitorTab(): MonitorTab {
 export function MonitorPanel() {
   const { t } = useT()
   const [activeTab, setActiveTab] = useState<MonitorTab>(() => initialMonitorTab())
+  // Hide the toolbar detach affordance when the panel itself is already a popout.
+  const isInsidePopout = readPanelPopoutSurface() !== null
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -129,6 +134,16 @@ export function MonitorPanel() {
               </button>
             ))}
           </div>
+
+          {!isInsidePopout ? (
+            <div className="flex shrink-0 items-center">
+              <PanelDetachButton
+                surface="monitor-toolbar"
+                target={serializeDetachTarget({ kind: 'toolbarId', value: 'monitor-quick' })}
+                testId="monitor-toolbar-detach"
+              />
+            </div>
+          ) : null}
         </div>
       </div>
 

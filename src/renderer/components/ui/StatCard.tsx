@@ -10,6 +10,8 @@ interface StatCardProps {
   subValue?: string
   /** When value is a number, specifies the format for responsive display. Defaults to 'number'. */
   metricFormat?: MetricFormat
+  /** Tighter padding + smaller icon for height-constrained panels (drawer / popout). */
+  compact?: boolean
 }
 
 const COLOR_CLASSES: Record<NonNullable<StatCardProps['color']>, { border: string; bg: string }> = {
@@ -29,7 +31,8 @@ export const StatCard = memo(function StatCard({
   value,
   color = 'default',
   subValue,
-  metricFormat = 'number'
+  metricFormat = 'number',
+  compact = false
 }: StatCardProps) {
   const colorConfig = COLOR_CLASSES[color]
 
@@ -43,14 +46,14 @@ export const StatCard = memo(function StatCard({
 
   return (
     <div
-      className={`relative bg-surface-800 border-l-3 ${colorConfig.border} ${colorConfig.bg} p-4 transition-all duration-200 hover:bg-surface-700 radius-sm`}
+      className={`relative bg-surface-800 border-l-3 ${colorConfig.border} ${colorConfig.bg} ${compact ? 'p-2' : 'p-4'} transition-all duration-200 hover:bg-surface-700 radius-sm`}
     >
       {/* Diagonal decoration */}
       <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none" />
 
-      <div className="flex items-center gap-3 relative z-10">
+      <div className={`flex items-center ${compact ? 'gap-2' : 'gap-3'} relative z-10`}>
         <div
-          className="w-10 h-10 bg-surface-700 flex items-center justify-center border-l-2 border-current radius-sm"
+          className={`${compact ? 'w-7 h-7' : 'w-10 h-10'} bg-surface-700 flex items-center justify-center border-l-2 border-current radius-sm shrink-0`}
         >
           {icon}
         </div>

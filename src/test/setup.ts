@@ -50,6 +50,7 @@ class BrowserWindowMock {
   readonly webContents = {
     setWindowOpenHandler: vi.fn(),
     on: vi.fn(),
+    once: vi.fn(),
     send: vi.fn()
   }
 

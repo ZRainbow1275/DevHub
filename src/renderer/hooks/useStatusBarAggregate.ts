@@ -10,6 +10,7 @@ import {
 import type { CodingTool, Project } from '@shared/types'
 import type { AITask, PortInfo, SystemSummary } from '@shared/types-extended'
 import { useToolStatus } from './useToolStatus'
+import { getPaletteDisplayName } from '../theme/theme-language'
 import { useProjectStore } from '../stores/projectStore'
 import { usePortPopoutStore } from '../stores/portPopoutStore'
 import { useScannerStore } from '../stores/scannerStore'
@@ -58,8 +59,8 @@ function failedAiTasks(aiTasks: readonly AITask[]): number {
 }
 
 function currentTheme(): string {
-  if (typeof document === 'undefined') return 'constructivism'
-  return document.documentElement.dataset.theme ?? 'constructivism'
+  if (typeof document === 'undefined') return getPaletteDisplayName('constructivism')
+  return getPaletteDisplayName(document.documentElement.dataset.theme)
 }
 
 function numericTileValue(tile: StatusTile | undefined): number {
@@ -120,7 +121,7 @@ export function buildRendererStatusTiles(input: {
       badgeValue: `${cpuPct}%`,
       iconToken: 'MonitorIcon',
       tooltip: 'CPU 使用率',
-      clickAction: { type: 'open-drawer', args: { slot: 'statusbar', contentId: 'statusbar.aggregate' } }
+      clickAction: { type: 'open-drawer', args: { slot: 'bottom', contentId: 'observability' } }
     }),
     createStatusTile('mem', memPct, input.now, {
       tone: memPct >= 80 ? 'warning' : 'neutral',
@@ -128,7 +129,7 @@ export function buildRendererStatusTiles(input: {
       badgeValue: `${memPct}%`,
       iconToken: 'ProcessIcon',
       tooltip: '内存使用率',
-      clickAction: { type: 'open-drawer', args: { slot: 'statusbar', contentId: 'statusbar.aggregate' } }
+      clickAction: { type: 'open-drawer', args: { slot: 'bottom', contentId: 'observability' } }
     }),
     createStatusTile('net', 0, input.now, {
       badgeType: 'experimental',
@@ -191,8 +192,6 @@ export function buildRendererStatusTiles(input: {
     }),
     createStatusTile('theme', currentTheme(), input.now, {
       tone: 'accent',
-      badgeType: 'new',
-      badgeValue: 'NEW',
       iconToken: 'PaletteIcon',
       tooltip: '当前主题与装饰轴',
       clickAction: { type: 'open-drawer', args: { slot: 'right', contentId: 'settings' } }

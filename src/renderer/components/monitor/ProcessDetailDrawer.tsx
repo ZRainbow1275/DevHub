@@ -30,6 +30,7 @@ import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
 import { PROCESS_VM_FIELD_LIST } from './process-vm-contract'
 import { ProcessSparkline, type ProcessSparklineMetric } from './process/ProcessSparkline'
+import { navigateMonitorTab } from '../../utils/navigateMonitorTab'
 
 // ============ Constants ============
 
@@ -940,7 +941,7 @@ export const ProcessDetailDrawer = memo(function ProcessDetailDrawer({
             <button
               data-graph-entry="process-drawer-action"
               data-graph-kind="attached"
-              onClick={() => window.dispatchEvent(new CustomEvent('devhub:monitor-navigate', { detail: { tab: 'process', scope: { kind: 'process', targetId: pid, depth: 2 } } }))}
+              onClick={() => navigateMonitorTab('process', { detail: { scope: { kind: 'process', targetId: pid, depth: 2 } } })}
               className="btn-icon-sm text-text-muted hover:text-accent"
               title="查看关系图"
             >

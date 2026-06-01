@@ -57,4 +57,34 @@ describe('ToastHost', () => {
     expect(dismiss).toHaveBeenCalledWith(sampleNotification.id)
     expect(screen.queryByText('Task failed')).not.toBeInTheDocument()
   })
+
+  it('renders above the drawer tier so an open drawer never buries a toast', async () => {
+    let streamListener: ((notification: DevhubNotification) => void) | null = null
+    Object.defineProperty(window, 'devhub', {
+      configurable: true,
+      value: {
+        r8: {
+          notify: {
+            dismiss: vi.fn(),
+            onStream: (listener: (notification: DevhubNotification) => void) => {
+              streamListener = listener
+              return () => { streamListener = null }
+            },
+            onDesktopBell: () => () => undefined
+          }
+        }
+      }
+    })
+
+    render(<ToastHost />)
+    await act(async () => {
+      streamListener?.(sampleNotification)
+    })
+
+    const host = screen.getByLabelText('R8 notifications')
+    // Drawer slots top out at z-index 2020; the toast host must sit above them via
+    // the toast z-tier (5000). Assert on the raw inline style so the CSS var is
+    // preserved (happy-dom normalizes away var() in computed-style assertions).
+    expect(host.getAttribute('style')).toContain('z-index: var(--z-tier-toast, 5000)')
+  })
 })

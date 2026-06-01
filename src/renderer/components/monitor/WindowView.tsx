@@ -1,5 +1,6 @@
 import { useEffect, memo, useState, useCallback, useMemo, useRef, type MouseEvent } from 'react'
 import { PanelDetachButton } from '../popout/PanelDetachButton'
+import type { DetachableViewProps } from '../popout/detachable-registry'
 import { useWindows } from '../../hooks/useWindows'
 import { useAITasks } from '../../hooks/useAITasks'
 import { useBatchSelection, type WindowSelectionGesture } from '../../hooks/useBatchSelection'
@@ -25,6 +26,7 @@ import { MisreportButton } from '../../views/monitor/MisreportButton'
 import { SignalDiagnosticPanel } from '../../views/monitor/SignalDiagnosticPanel'
 import { CardEdgeGraphBadge } from './CardEdgeGraphBadge'
 import { openWindowInGlobalTopology } from '../../utils/globalTopologyNavigation'
+import { isInsidePanelPopout, navigateMonitorTab } from '../../utils/navigateMonitorTab'
 import { useT } from '../../hooks/useT'
 
 import { ConfirmDialog } from '../ui/ConfirmDialog'
@@ -78,10 +80,6 @@ const AI_TOOL_DISPLAY_NAMES: Record<AIToolType, string> = {
 
 function getAIToolDisplayName(toolType: AIToolType): string {
   return AI_TOOL_DISPLAY_NAMES[toolType] ?? 'AI Tool'
-}
-
-function buildWindowNavigationEvent(detail: Record<string, unknown>) {
-  return new CustomEvent('devhub:monitor-navigate', { detail })
 }
 
 function toWindowSelectionGesture(event: Pick<MouseEvent, 'ctrlKey' | 'metaKey' | 'shiftKey'>, toggle = true): WindowSelectionGesture {
@@ -1604,7 +1602,7 @@ const BatchToolbar = memo(function BatchToolbar({
 // ============================================
 // Main WindowView Component
 // ============================================
-export function WindowView() {
+export function WindowView({ initialTarget }: DetachableViewProps = {}) {
   const { t } = useT()
   const {
     windows,
@@ -1649,6 +1647,15 @@ export function WindowView() {
     cascadeWindows,
     stackWindows
   } = useWindows()
+
+  // Hydrate the focused window from a detach target (window-detail popout / drawer)
+  // once on mount, reusing the existing windowStore selection.
+  useEffect(() => {
+    if (initialTarget?.kind !== 'hwnd') return
+    const hwnd = Number.parseInt(initialTarget.value, 10)
+    if (Number.isInteger(hwnd) && hwnd > 0) selectWindow(hwnd)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const { activeTasks, fetchActiveTasks } = useAITasks()
   const { aliases, fetchAliases, renameAndApply } = useAliasStore()
@@ -2096,8 +2103,7 @@ export function WindowView() {
         return
       }
       case 'jump-process':
-        window.dispatchEvent(buildWindowNavigationEvent({ tab: 'process', pid: win.pid }))
-        window.location.hash = `monitor/process/pid:${win.pid}`
+        navigateMonitorTab('process', { detail: { pid: win.pid } })
         showToast('success', `已定位进程 PID ${win.pid}`)
         return
       case 'jump-port': {
@@ -2106,8 +2112,7 @@ export function WindowView() {
           showToast('warning', '当前窗口未关联端口')
           return
         }
-        window.dispatchEvent(buildWindowNavigationEvent({ tab: 'port', port: port.port, pid: win.pid }))
-        window.location.hash = `monitor/port/${port.port}`
+        navigateMonitorTab('port', { detail: { port: port.port, pid: win.pid } })
         showToast('success', `已定位端口 ${port.port}`)
         return
       }
@@ -2117,8 +2122,7 @@ export function WindowView() {
           showToast('warning', '当前窗口未关联 AI 任务')
           return
         }
-        window.dispatchEvent(buildWindowNavigationEvent({ tab: 'ai-task', taskId: task.id, pid: win.pid }))
-        window.location.hash = `monitor/ai-task/${task.id}`
+        navigateMonitorTab('ai-task', { detail: { taskId: task.id, pid: win.pid } })
         showToast('success', `已定位 AI 任务 ${task.alias ?? getAIToolDisplayName(task.toolType)}`)
         return
       }
@@ -2133,7 +2137,13 @@ export function WindowView() {
           showToast('warning', '当前窗口未关联项目')
           return
         }
-        window.dispatchEvent(buildWindowNavigationEvent({ tab: 'project', projectId: task.projectId, pid: win.pid }))
+        if (isInsidePanelPopout()) {
+          // Project navigation is a main-window route; a detached popout cannot
+          // host it. Surface an honest notice instead of mutating only the
+          // popout's own URL and silently going nowhere.
+          showToast('info', '请在主窗口查看项目详情')
+          return
+        }
         window.location.hash = `project/${encodeURIComponent(task.projectId)}`
         showToast('success', `已定位项目 ${task.projectId}`)
         return
@@ -2674,6 +2684,11 @@ export function WindowView() {
             </button>
 
             <PanelDetachButton surface="window" />
+            <PanelDetachButton
+              surface="window-detail"
+              target={selectedHwnd === null ? null : `hwnd:${selectedHwnd}`}
+              testId="window-detail-detach-popout"
+            />
           </div>
         </div>
 
@@ -2745,28 +2760,32 @@ export function WindowView() {
 
       {/* Statistics (only for windows tab) */}
       {viewTab === 'windows' && (
-        <div className="flex-shrink-0 px-5 py-4 border-b border-surface-700/50">
+        <div className="flex-shrink-0 px-5 py-3 border-b border-surface-700/50">
           <div className="stat-grid">
             <StatCard
-              icon={<WindowIcon size={20} className="text-info" />}
+              compact
+              icon={<WindowIcon size={16} className="text-info" />}
               label="总窗口数"
               value={stats.total}
               color="info"
             />
             <StatCard
-              icon={<CheckIcon size={20} className="text-success" />}
+              compact
+              icon={<CheckIcon size={16} className="text-success" />}
               label="活动窗口"
               value={stats.active}
               color="success"
             />
             <StatCard
-              icon={<AlertIcon size={20} className="text-warning" />}
+              compact
+              icon={<AlertIcon size={16} className="text-warning" />}
               label="最小化"
               value={stats.minimized}
               color="warning"
             />
             <StatCard
-              icon={<AIIcon size={20} className="text-blue-400" />}
+              compact
+              icon={<AIIcon size={16} className="text-blue-400" />}
               label="AI 工具"
               value={stats.aiToolCount}
               color="info"

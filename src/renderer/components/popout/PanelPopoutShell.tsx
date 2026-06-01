@@ -1,48 +1,68 @@
-import { Suspense, lazy, useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import type { PanelPopoutSurface } from '@shared/schemas/r8-runtime'
 import { ErrorBoundary } from '../ErrorBoundary'
-
-const ProcessView = lazy(() => import('../monitor/ProcessView').then(m => ({ default: m.ProcessView })))
-const WindowView = lazy(() => import('../monitor/WindowView').then(m => ({ default: m.WindowView })))
-const R8OpsPanel = lazy(() => import('../monitor/R8OpsPanel').then(m => ({ default: m.R8OpsPanel })))
-const Dashboard = lazy(() => import('../dashboard/Dashboard').then(m => ({ default: m.Dashboard })))
-const FullScreenTopologyView = lazy(() => import('../topology/FullScreenTopologyView').then(m => ({ default: m.FullScreenTopologyView })))
+import { LoadingSpinner } from '../ui/LoadingSpinner'
+import { usePopoutThemeBridge } from '../../hooks/usePopoutThemeBridge'
+import {
+  DETACHABLE_REGISTRY,
+  isPanelPopoutSurface,
+  parseDetachTarget,
+  type DetachTarget
+} from './detachable-registry'
 
 export function readPanelPopoutSurface(): PanelPopoutSurface | null {
   const value = new URLSearchParams(window.location.search).get('r8PanelPopout')
-  if (value === 'process' || value === 'window' || value === 'dashboard' || value === 'topology' || value === 'r8-ops') return value
-  return null
+  return isPanelPopoutSurface(value) ? value : null
 }
 
-const SURFACE_TITLES: Record<PanelPopoutSurface, string> = {
-  process: '系统进程',
-  window: '系统窗口',
-  dashboard: '仪表板',
-  topology: '拓扑',
-  'r8-ops': 'R8 Ops'
+export function readPanelPopoutTarget(): DetachTarget | null {
+  return parseDetachTarget(new URLSearchParams(window.location.search).get('target'))
 }
 
-export function PanelPopoutShell({ surface }: { surface: PanelPopoutSurface }): React.JSX.Element {
+export function PanelPopoutShell({
+  surface,
+  initialTarget
+}: {
+  surface: PanelPopoutSurface
+  initialTarget?: DetachTarget | null
+}): React.JSX.Element {
+  const definition = DETACHABLE_REGISTRY[surface]
+
+  // Detached panel popouts are full index.html instances that boot theme on load
+  // but otherwise miss live theme switches in the main window. Subscribe to the
+  // theme bridge so the open popout re-skins in real time (R3.4).
+  usePopoutThemeBridge()
+
   useEffect(() => {
-    document.title = `DevHub - ${SURFACE_TITLES[surface]}`
-  }, [surface])
+    document.title = `DevHub - ${definition.title}`
+  }, [definition.title])
+
+  const Content = definition.component
 
   return (
-    <ErrorBoundary fallback={<div className="flex h-screen items-center justify-center text-text-muted">面板加载失败</div>}>
-      <Suspense fallback={<div className="flex h-screen items-center justify-center text-text-muted">加载中...</div>}>
-        <div className="h-screen w-screen overflow-hidden bg-surface-950" data-r8c-panel-popout={surface}>
-          <PanelPopoutContent surface={surface} />
+    <ErrorBoundary
+      fallback={
+        <div className="flex h-screen items-center justify-center p-8">
+          <div className="max-w-sm border-l-2 border-error bg-surface-950 p-4 radius-sm">
+            <div className="text-[10px] uppercase tracking-wider text-text-muted">独立窗</div>
+            <div className="mt-1 text-sm font-bold text-text-primary">面板加载失败</div>
+            <p className="mt-2 text-xs leading-5 text-text-secondary">无法在此独立窗中渲染该面板,可关闭此窗重新从主窗摘出。</p>
+          </div>
+        </div>
+      }
+    >
+      <Suspense
+        fallback={
+          <div className="flex h-screen items-center justify-center gap-3 text-sm text-text-muted">
+            <LoadingSpinner size="sm" />
+            <span>正在加载面板…</span>
+          </div>
+        }
+      >
+        <div className="h-screen w-screen overflow-hidden bg-surface-900" data-r8c-panel-popout={surface}>
+          <Content initialTarget={definition.needsTarget ? initialTarget ?? readPanelPopoutTarget() : null} />
         </div>
       </Suspense>
     </ErrorBoundary>
   )
-}
-
-function PanelPopoutContent({ surface }: { surface: PanelPopoutSurface }): React.JSX.Element {
-  if (surface === 'process') return <ProcessView />
-  if (surface === 'window') return <WindowView />
-  if (surface === 'r8-ops') return <R8OpsPanel />
-  if (surface === 'dashboard') return <Dashboard />
-  if (surface === 'topology') return <FullScreenTopologyView />
-  return <div className="p-4 text-text-muted">未知面板：{surface}</div>
 }

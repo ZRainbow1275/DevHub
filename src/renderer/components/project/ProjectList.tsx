@@ -42,8 +42,8 @@ const STATUS_PRIORITY: Record<string, number> = {
 // pace with the user's font-size / zoom and cards are not clipped between rows.
 const PROJECT_ROW_HEIGHT_BY_DENSITY: Record<InformationDensity, number> = {
   compact: 64,
-  standard: 120,
-  comfortable: 144
+  standard: 144,
+  comfortable: 168
 }
 
 const BASE_ROOT_FONT_SIZE = 16
@@ -147,13 +147,13 @@ export function ProjectList({ onAddProject, onShowProjectDetail, decorationConfi
     return () => observer.disconnect()
   }, [])
 
-  // Project statistics derived from filteredProjects
+  // Project statistics derived from filteredProjects.
+  // Only surfaces the items HeroStats does not already cover (total / withPorts);
+  // running / error counts live in HeroStats to avoid duplicate stat chips.
   const projectStats = useMemo(() => {
     const total = filteredProjects.length
-    const running = filteredProjects.filter(p => p.status === 'running').length
-    const error = filteredProjects.filter(p => p.status === 'error').length
     const withPorts = filteredProjects.filter(p => p.port).length
-    return { total, running, error, withPorts }
+    return { total, withPorts }
   }, [filteredProjects])
 
   // Apply sorting to filtered projects
@@ -338,7 +338,7 @@ export function ProjectList({ onAddProject, onShowProjectDetail, decorationConfi
     <>
       <div className="flex flex-col h-full">
         {/* Header */}
-        <div className="project-list-header flex items-center justify-between px-5 py-4 border-b-2 border-surface-700 relative">
+        <div className="project-list-header flex items-center justify-between px-4 py-4 border-b-2 border-surface-700 relative">
           {/* Diagonal decoration */}
           <div className="absolute inset-0 deco-diagonal opacity-20 pointer-events-none" />
 
@@ -405,20 +405,10 @@ export function ProjectList({ onAddProject, onShowProjectDetail, decorationConfi
 
         {/* Stats Dashboard Row */}
         {filteredProjects.length > 0 && (
-          <div className="project-list-stats flex items-center gap-3 px-4 py-2 border-b border-surface-700 bg-surface-950/40">
+          <div className="project-list-stats flex items-center px-4 py-1.5 gap-4 border-b border-surface-700/60">
             <span className="text-[11px] text-text-muted">
               共 <span className="text-text-primary font-bold">{projectStats.total}</span> 个
             </span>
-            {projectStats.running > 0 && (
-              <span className="text-[11px] text-success">
-                <span className="font-bold">{projectStats.running}</span> 运行中
-              </span>
-            )}
-            {projectStats.error > 0 && (
-              <span className="text-[11px] text-error">
-                <span className="font-bold">{projectStats.error}</span> 错误
-              </span>
-            )}
             {projectStats.withPorts > 0 && (
               <span className="text-[11px] text-text-muted">
                 <span className="text-gold font-bold">{projectStats.withPorts}</span> 有端口
@@ -428,7 +418,7 @@ export function ProjectList({ onAddProject, onShowProjectDetail, decorationConfi
         )}
 
         {/* Search */}
-        <div className="project-list-search border-b border-surface-700" style={{ padding: 'var(--container-padding) var(--container-padding)' }}>
+        <div className="project-list-search px-4 py-3 border-b border-surface-700">
           <SearchInput
             value={searchValue}
             onChange={handleSearchChange}

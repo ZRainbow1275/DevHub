@@ -3,8 +3,11 @@ import type { AppearanceSettings } from '@shared/types'
 import {
   DEFAULT_THEME_STATE,
   HOLIDAY_THEME_DEFINITIONS,
+  PALETTE_DISPLAY_NAMES,
   THEME_DECORATION_BUILTIN_COUNT,
   THEME_PRESETS,
+  getPaletteDisplayName,
+  paletteNameSchema,
   applyHolidayThemeToDocument,
   applyThemeDecorationToDocument,
   applyThemeStateToDocument,
@@ -65,6 +68,20 @@ describe('theme language state', () => {
 
     expect(THEME_PRESETS.length).toBeGreaterThanOrEqual(7)
     expect(presetPalettes).toEqual(new Set(['constructivism', 'modern-light', 'warm-light', 'cyberpunk', 'swiss', 'dark', 'light']))
+  })
+
+  it('maps every palette slug to a localized display name', () => {
+    for (const palette of paletteNameSchema.options) {
+      expect(PALETTE_DISPLAY_NAMES[palette]).toBeTruthy()
+    }
+    expect(getPaletteDisplayName('warm-light')).toBe('暖光')
+    expect(getPaletteDisplayName('constructivism')).toBe('构成主义')
+  })
+
+  it('falls back gracefully for empty or unknown palette slugs', () => {
+    expect(getPaletteDisplayName(undefined)).toBe('构成主义')
+    expect(getPaletteDisplayName(null)).toBe('构成主义')
+    expect(getPaletteDisplayName('future-palette')).toBe('future-palette')
   })
 
   it('resolves legacy or incomplete settings into a complete four-axis theme state', () => {

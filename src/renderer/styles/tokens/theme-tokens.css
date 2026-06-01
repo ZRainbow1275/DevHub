@@ -113,6 +113,16 @@
   --density-grid-gap: 8px;
 }
 
+/* ---- Constructivism-only decoration tokens ----
+   Scoped to [data-theme="constructivism"] (NOT the shared :root selector above)
+   so other themes inherit nothing and fall back to the var() defaults
+   (rotation 0deg / clip none). Putting these on :root would leak the tilt and
+   badge clip into every theme. */
+[data-theme="constructivism"] {
+  --deco-title-rotation: -1deg;
+  --deco-clip-badge: polygon(0 0, 100% 0, 95% 100%, 0 100%);
+}
+
 /* ---- Modern Light Theme ---- */
 [data-theme="modern-light"] {
   /* ---- Spacing / Layout ---- */
@@ -748,7 +758,7 @@
   --density-factor: 1;
   --density-font-scale: 1;
   --density-line-height: 1.5;
-  --project-list-row-height: 120px;
+  --project-list-row-height: 144px;
   --project-card-min-height: 80px;
   --project-card-min-width: 240px;
 }
@@ -765,7 +775,7 @@
   --density-factor: 1.2;
   --density-font-scale: 1;
   --density-line-height: 1.75;
-  --project-list-row-height: 144px;
+  --project-list-row-height: 168px;
   --project-card-min-height: 116px;
   --project-card-min-width: 260px;
 }

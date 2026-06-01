@@ -1,6 +1,17 @@
 import { CloseIcon, MinimizeIcon, PaletteIcon, PortIcon, WindowIcon } from '../icons'
-import type { PortPopout, PortPopoutPosition } from './port-popout-model'
+import type { PortPopout, PortPopoutPosition, PortPopoutTrigger } from './port-popout-model'
 import { useT } from '../../hooks/useT'
+
+// Map the raw popout trigger slug onto a friendlier zh label so the title bar
+// reads as intent ("悬停" / "右键") instead of leaking the internal enum value.
+const TRIGGER_LABELS: Record<PortPopoutTrigger, string> = {
+  'hover': '悬停',
+  'click': '点击',
+  'drag': '拖拽',
+  'context-menu': '右键',
+  'cmdk': '命令面板',
+  'api': '接口'
+}
 
 interface PortPopoutTitleBarProps {
   popout: PortPopout
@@ -32,9 +43,13 @@ export function PortPopoutTitleBar({
     >
       <div className="flex items-center gap-2 min-w-0">
         <PortIcon size={15} className="text-accent flex-shrink-0" />
-        <span className="font-mono text-sm font-bold text-accent">:{popout.port.port}</span>
-        <span className="text-[10px] uppercase tracking-wider text-text-muted">
-          {popout.trigger}
+        <span className="font-mono text-sm font-bold text-accent flex-shrink-0">:{popout.port.port}</span>
+        <span className="min-w-0 truncate text-xs text-text-secondary">
+          {popout.port.processName}
+          <span className="ml-1 font-mono text-text-muted">#{popout.port.pid}</span>
+        </span>
+        <span className="flex-shrink-0 text-[10px] uppercase tracking-wider text-text-muted">
+          {TRIGGER_LABELS[popout.trigger] ?? popout.trigger}
         </span>
       </div>
       <div className="flex items-center gap-1">

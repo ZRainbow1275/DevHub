@@ -36,6 +36,8 @@ import { getPortLabel } from '../../utils/portLabels'
 import { TruncatedText } from '../ui/TruncatedText'
 import { PortPopoutHost } from '../popout/PortPopoutHost'
 import { PopoutTriggerLayer } from '../popout/PopoutTriggerLayer'
+import { PanelDetachButton } from '../popout/PanelDetachButton'
+import type { DetachableViewProps } from '../popout/detachable-registry'
 import { usePopoutManager } from '../../hooks/usePopoutManager'
 import { type PortPopoutPosition, type PortPopoutTrigger } from '../popout/port-popout-model'
 import {
@@ -53,6 +55,7 @@ import { PublicPortBanner } from './port/PublicPortBanner'
 import { SecurityTierBadge } from './port/SecurityTierBadge'
 import { PortModuleTour, PORT_MODULE_TOUR_STORAGE_KEY, type PortModuleTourSecuritySummary } from './port/PortModuleTour'
 import { CardEdgeGraphBadge } from './CardEdgeGraphBadge'
+import { navigateMonitorTab } from '../../utils/navigateMonitorTab'
 
 // ============ Conflict detection helper ============
 
@@ -509,7 +512,7 @@ const QuickPortIndicator = memo(function QuickPortIndicator({ portNum, portInfo,
   )
 })
 
-export function PortView() {
+export function PortView({ initialTarget }: DetachableViewProps = {}) {
   const {
     ports,
     isScanning,
@@ -523,6 +526,15 @@ export function PortView() {
     getPortDetailIncremental,
     cancelPortQuery
   } = usePorts()
+
+  // Hydrate the focused port from a detach target (port-detail popout / drawer)
+  // once on mount, reusing the existing selection store rather than a new prop.
+  useEffect(() => {
+    if (initialTarget?.kind !== 'port') return
+    const port = Number.parseInt(initialTarget.value, 10)
+    if (Number.isInteger(port) && port > 0) selectPort(port)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const [viewMode, setViewModeState] = useState<PortViewMode>(() => normalizePortViewMode(window.localStorage.getItem(PORT_VIEW_MODE_STORAGE_KEY)))
   const [filter, setFilter] = useState<PortFilterMode>('all')
@@ -797,14 +809,14 @@ export function PortView() {
       )}
 
       {isScanning && filteredPorts.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
+        <div className="flex flex-col items-center justify-center py-16 animate-fade-in">
           <LoadingSpinner size="md" className="mb-4" />
           <p className="text-text-secondary">正在扫描端口...</p>
         </div>
       )}
 
       {filteredPorts.length === 0 && !isScanning && (
-        <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
+        <div className="flex flex-col items-center justify-center py-16 animate-fade-in">
           <div className="w-20 h-20 bg-surface-800 flex items-center justify-center mb-6 border-l-3 border-accent radius-md">
             <PortIcon size={40} className="text-text-muted" />
           </div>
@@ -830,7 +842,7 @@ export function PortView() {
       className="h-full min-h-0 flex flex-col bg-surface-950"
     >
       {/* Header */}
-      <div className="flex-shrink-0 px-5 py-4 border-b-2 border-surface-700 bg-surface-900 relative">
+      <div className="flex-shrink-0 px-5 py-3 border-b-2 border-surface-700 bg-surface-900 relative">
         {/* Diagonal decoration */}
         <div className="absolute inset-0 deco-diagonal opacity-20 pointer-events-none" />
 
@@ -861,55 +873,57 @@ export function PortView() {
                 placeholder="搜索端口..."
                 value={searchPort}
                 onChange={(e) => setSearchPort(e.target.value)}
-                className="input-sm w-36 pl-9"
+                className="input-sm w-40 lg:w-48 pl-9"
               />
               <SearchIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
             </div>
 
-            {/* Filter */}
-            <div className="flex items-center bg-surface-800 p-1 border border-surface-700 radius-sm">
-              {[
-                { key: 'all', label: '全部' },
-                { key: 'common', label: '常用' },
-                { key: 'listening', label: '监听' }
-                , { key: 'exposed', label: '风险' }
-              ].map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => setFilter(key as typeof filter)}
-                  className={`
-                    px-3 py-1.5 text-xs transition-all duration-200
-                    ${filter === key
-                      ? 'bg-accent text-white'
-                      : 'text-text-muted hover:text-text-primary hover:bg-surface-700'
-                    }
-                   radius-sm`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Filter */}
+              <div className="flex items-center bg-surface-800 p-1 border border-surface-700 radius-sm">
+                {[
+                  { key: 'all', label: '全部' },
+                  { key: 'common', label: '常用' },
+                  { key: 'listening', label: '监听' }
+                  , { key: 'exposed', label: '风险' }
+                ].map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setFilter(key as typeof filter)}
+                    className={`
+                      px-2.5 py-1.5 text-xs transition-all duration-200
+                      ${filter === key
+                        ? 'bg-accent text-white'
+                        : 'text-text-muted hover:text-text-primary hover:bg-surface-700'
+                      }
+                     radius-sm`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
 
-            {/* View Toggle */}
-            <ViewModeToggle
-              modes={[
-                { key: 'cards', icon: <GridIcon size={16} />, label: '卡片' },
-                { key: 'list', icon: <ListIcon size={16} />, label: '列表' },
-                { key: 'relationship', icon: <NetworkIcon size={16} />, label: '关系图' }
-              ]}
-              current={viewMode}
-              onChange={(mode) => setViewMode(normalizePortViewMode(mode))}
-            />
+              {/* View Toggle */}
+              <ViewModeToggle
+                modes={[
+                  { key: 'cards', icon: <GridIcon size={16} />, label: '卡片' },
+                  { key: 'list', icon: <ListIcon size={16} />, label: '列表' },
+                  { key: 'relationship', icon: <NetworkIcon size={16} />, label: '关系图' }
+                ]}
+                current={viewMode}
+                onChange={(mode) => setViewMode(normalizePortViewMode(mode))}
+              />
+            </div>
 
             <button
               data-testid="port-module-tour-open-button"
               onClick={openPortTour}
-              className="btn-secondary flex items-center gap-1.5 text-xs px-3 py-1.5"
+              className="btn-secondary flex items-center gap-1.5 text-xs px-2.5 py-1.5 xl:px-3"
               aria-label="打开端口模块导览"
               title="端口导览"
             >
               <InfoIcon size={14} />
-              导览
+              <span className="hidden xl:inline">导览</span>
             </button>
 
             <button
@@ -923,6 +937,8 @@ export function PortView() {
             >
               <RefreshIcon size={18} className={`text-text-secondary ${isScanning ? 'animate-spin' : ''}`} />
             </button>
+
+            <PanelDetachButton surface="port-detail" target={selectedPort === null ? null : `port:${selectedPort}`} />
           </div>
         </div>
       </div>
@@ -952,25 +968,29 @@ export function PortView() {
       {/* Hero Stats */}
       <div className="flex-shrink-0 px-5 py-2 stat-grid port-stat-grid border-b border-surface-700/50 bg-surface-900/50">
         <StatCard
-          icon={<PortIcon size={20} className="text-accent" />}
+          compact
+          icon={<PortIcon size={16} className="text-accent" />}
           label="活跃端口"
           value={ports.length}
           color="accent"
         />
         <StatCard
-          icon={<PortIcon size={20} className="text-success" />}
+          compact
+          icon={<PortIcon size={16} className="text-success" />}
           label="监听中"
           value={portsByState.listening}
           color="success"
         />
         <StatCard
-          icon={<PortIcon size={20} className="text-info" />}
+          compact
+          icon={<PortIcon size={16} className="text-info" />}
           label="已连接"
           value={portsByState.established}
           color="default"
         />
         <StatCard
-          icon={<AlertIcon size={20} className="text-error" />}
+          compact
+          icon={<AlertIcon size={16} className="text-error" />}
           label="端口冲突"
           value={activeConflicts.length}
           color={activeConflicts.length > 0 ? 'error' : 'default'}
@@ -1018,9 +1038,9 @@ export function PortView() {
                 lastScanTime={lastScanTime}
                 blocklistEntries={blocklistEntries}
                 onFocusProcess={(pid) => {
-                  // Navigate to process view (placeholder — could emit event)
-                  // TODO: Navigate to process view when cross-tab navigation is implemented
-                  void pid
+                  navigateMonitorTab('process', {
+                    detail: { pid, scope: { kind: 'process', targetId: pid, depth: 2 } }
+                  })
                 }}
                 onViewInGraph={(port) => {
                   selectPort(port)
@@ -1061,8 +1081,9 @@ export function PortView() {
                   lastScanTime={lastScanTime}
                   blocklistEntries={blocklistEntries}
                   onFocusProcess={(pid) => {
-                    // TODO: Navigate to process view when cross-tab navigation is implemented
-                    void pid
+                    navigateMonitorTab('process', {
+                      detail: { pid, scope: { kind: 'process', targetId: pid, depth: 2 } }
+                    })
                   }}
                   onViewInGraph={(port) => {
                     setViewMode('relationship')

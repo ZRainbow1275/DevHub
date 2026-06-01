@@ -790,7 +790,22 @@ export const r8ConfirmedRequestSchema = z.object({
 })
 
 export const popoutCreateRequestSchema = z.object({
-  surface: z.enum(['port', 'monitor', 'process', 'window', 'dashboard', 'topology', 'r8-ops']),
+  surface: z.enum([
+    'port',
+    'monitor',
+    'process',
+    'window',
+    'dashboard',
+    'topology',
+    'r8-ops',
+    'process-detail',
+    'window-detail',
+    'port-detail',
+    'ai-task-detail',
+    'dashboard-widget',
+    'monitor-toolbar',
+    'drawer'
+  ]),
   targetId: z.union([z.string().min(1), z.number().int().nonnegative()]),
   mode: z.enum(['floating', 'browserwindow']).default('browserwindow'),
   route: z.string().min(1).default('/monitor'),
@@ -798,7 +813,28 @@ export const popoutCreateRequestSchema = z.object({
   title: z.string().min(1).max(120).optional()
 })
 
-export const panelPopoutSurfaceSchema = z.enum(['process', 'window', 'dashboard', 'topology', 'r8-ops'])
+// Single source of truth for the surfaces that detach into a real BrowserWindow
+// rendering a full React view. PR2 adds the four detail surfaces; PR3 adds the
+// widget- and toolbar-level surfaces. The renderer detachable registry is derived
+// from this enum (a `Record<PanelPopoutSurface, ...>` forces exhaustiveness) so
+// adding a surface is one schema edit plus its registry entry.
+export const panelPopoutSurfaceSchema = z.enum([
+  'process',
+  'window',
+  'dashboard',
+  'topology',
+  'r8-ops',
+  'process-detail',
+  'window-detail',
+  'port-detail',
+  'ai-task-detail',
+  'dashboard-widget',
+  'monitor-toolbar',
+  // A torn-out drawer slot: morphing a drawer to a popout opens a real
+  // BrowserWindow on this surface, with `contentId:<id>` as the detach target, so
+  // the drawer content renders visibly in its own window.
+  'drawer'
+])
 export type PanelPopoutSurface = z.infer<typeof panelPopoutSurfaceSchema>
 
 export const portPopoutPositionRecordSchema = z.object({
@@ -1763,6 +1799,15 @@ export const publicBannerStateSchema = z.object({
     tier: securityTierLevelSchema,
     processName: z.string().optional()
   })).max(50)
+})
+
+// App identity surfaced to the renderer (e.g. the version-banner drawer).
+// `version`/`electron` degrade to 'unknown' when the electron app runtime is
+// unavailable so the banner stays honest instead of throwing.
+export const appVersionInfoSchema = z.object({
+  name: z.string().min(1),
+  version: z.string().min(1),
+  electron: z.string().min(1)
 })
 
 export const processTagColorSchema = z.enum(PROCESS_TAG_COLOR_VALUES)
@@ -3336,6 +3381,7 @@ export type SecurityTierLevel = z.infer<typeof securityTierLevelSchema>
 export type SecurityTier = z.infer<typeof securityTierSchema>
 export type BlocklistEntry = z.infer<typeof blocklistEntrySchema>
 export type PublicBannerState = z.infer<typeof publicBannerStateSchema>
+export type AppVersionInfo = z.infer<typeof appVersionInfoSchema>
 export type StatusAggregate = z.infer<typeof statusAggregateSchema>
 export type TaskRun = z.infer<typeof taskRunSchema>
 export type DagSnapshot = z.infer<typeof dagSnapshotSchema>
@@ -3581,6 +3627,7 @@ export const r8RuntimeSchemaRegistry = {
   SecurityTier: securityTierSchema,
   BlocklistEntry: blocklistEntrySchema,
   PublicBannerState: publicBannerStateSchema,
+  AppVersionInfo: appVersionInfoSchema,
   StatusAggregate: statusAggregateSchema,
   StatusbarConfig: statusbarConfigSchema,
   StatusbarSetConfigRequest: statusbarSetConfigRequestSchema,

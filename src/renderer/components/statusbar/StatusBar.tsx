@@ -326,12 +326,12 @@ export function StatusBar({ onTopologyClick, decorationConfig }: StatusBarProps)
         )}
       </div>
 
-      <div className="relative z-10 ml-2 flex shrink-0 items-center gap-2">
+      <div className="relative z-10 ml-2 flex shrink-0 items-center gap-1.5">
         <button
           type="button"
           data-testid="topology-status-badge"
           data-active-process-count={activeProcessCount}
-          className="hidden items-center gap-1 border-l-2 border-accent bg-accent/10 px-2 py-0.5 text-accent-300 hover:bg-accent/20 radius-sm sm:flex"
+          className="hidden h-[22px] items-center gap-1 border-l-2 border-accent bg-accent/10 px-2 text-accent-300 hover:bg-accent/20 radius-sm sm:flex"
           onClick={onTopologyClick ?? (() => window.dispatchEvent(new CustomEvent('devhub:open-topology-global')))}
           title={`打开全局拓扑，当前活跃进程 ${activeProcessCount}`}
         >

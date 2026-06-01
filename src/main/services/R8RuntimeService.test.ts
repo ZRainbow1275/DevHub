@@ -3292,6 +3292,58 @@ describe('R8RuntimeService', () => {
     await expect(service.createPopout({ surface: 'port', targetId: 5000, mode: 'browserwindow', route: '/monitor', title: 'Port 5000' })).rejects.toThrow('E_RATE_LIMITED')
   }, 10_000)
 
+  it('treats the four detail surfaces as panel popouts, carries the detach target, and broadcasts theme to them', async () => {
+    const service = createRuntimeService(() => null, runtime as never)
+    const serviceInternals = service as unknown as {
+      store: { set: (key: string, value: unknown) => void }
+      popoutWindows: Map<string, { webContents: { send: ReturnType<typeof vi.fn> }; isDestroyed: () => boolean }>
+    }
+    serviceInternals.store.set('popouts', [])
+
+    const detailPopout = await service.createPopout({
+      surface: 'process-detail',
+      targetId: 'pid:4321',
+      mode: 'browserwindow',
+      route: '/panel/process-detail',
+      title: 'DevHub process-detail'
+    })
+
+    // Detail surfaces are panel popouts (full index.html), de-duped per target.
+    expect(detailPopout.surface).toBe('process-detail')
+    expect(detailPopout.targetId).toBe('pid:4321')
+    const duplicate = await service.createPopout({
+      surface: 'process-detail',
+      targetId: 'pid:4321',
+      mode: 'browserwindow',
+      route: '/panel/process-detail',
+      title: 'DevHub process-detail duplicate'
+    })
+    expect(duplicate.windowId).toBe(detailPopout.windowId)
+
+    // A different target opens a distinct detail popout.
+    const otherTarget = await service.createPopout({
+      surface: 'process-detail',
+      targetId: 'pid:9999',
+      mode: 'browserwindow',
+      route: '/panel/process-detail',
+      title: 'DevHub process-detail other'
+    })
+    expect(otherTarget.windowId).not.toBe(detailPopout.windowId)
+
+    const settings = {
+      ...DEFAULT_SETTINGS,
+      appearance: { ...DEFAULT_SETTINGS.appearance, theme: 'cyberpunk' }
+    } satisfies typeof DEFAULT_SETTINGS
+    const result = service.broadcastPopoutThemeSettings(settings, { now: 7_777 })
+    expect(result.sentWindowIds).toContain(detailPopout.windowId)
+    expect(result.sentWindowIds).toContain(otherTarget.windowId)
+    const detailWindow = serviceInternals.popoutWindows.get(detailPopout.windowId)
+    expect(detailWindow?.webContents.send).toHaveBeenCalledWith('popout:bridge-message', expect.objectContaining({
+      type: 'sync',
+      key: 'theme-settings'
+    }))
+  }, 10_000)
+
   it('records BrowserWindow popout heartbeats, reaps stale bridges, and restores pinned records', async () => {
     const service = createRuntimeService(() => null, runtime as never)
     const serviceInternals = service as unknown as { store: { set: (key: string, value: unknown) => void } }
@@ -4111,6 +4163,36 @@ describe('R8RuntimeService', () => {
       expect(csp).toContain("base-uri 'self'")
       expect(csp).toContain("form-action 'none'")
       expect(csp).not.toContain("'unsafe-eval'")
+    } finally {
+      if (previousRendererUrl === undefined) delete process.env.ELECTRON_RENDERER_URL
+      else process.env.ELECTRON_RENDERER_URL = previousRendererUrl
+    }
+  })
+
+  it('allows the Vite inline react-refresh preamble in the dev popout CSP so panel popouts boot', () => {
+    const previousRendererUrl = process.env.ELECTRON_RENDERER_URL
+    process.env.ELECTRON_RENDERER_URL = 'http://localhost:5173'
+    try {
+      createRuntimeService(() => null, runtime as never)
+      const popoutSession = vi.mocked(session.fromPartition).mock.results[0]?.value as {
+        webRequest: { onHeadersReceived: ReturnType<typeof vi.fn> }
+      } | undefined
+      if (!popoutSession) throw new Error('dev popout CSP test session was not created')
+      const listener = popoutSession.webRequest.onHeadersReceived.mock.calls[0]?.[0] as ((
+        details: { responseHeaders?: Record<string, string[]> },
+        callback: (response: { responseHeaders: Record<string, string[]> }) => void
+      ) => void) | undefined
+      if (!listener) throw new Error('popout CSP listener was not registered')
+
+      const callback = vi.fn()
+      listener({ responseHeaders: {} }, callback)
+      const response = callback.mock.calls[0]?.[0] as { responseHeaders: Record<string, string[]> } | undefined
+      const csp = response?.responseHeaders['Content-Security-Policy']?.[0]
+
+      // Without 'unsafe-inline' the inline react-refresh preamble is blocked and the
+      // detached panel renders blank ("clicked detach, nothing happened").
+      expect(csp).toContain("script-src 'self' 'unsafe-inline' 'unsafe-eval'")
+      expect(csp).toContain("connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*")
     } finally {
       if (previousRendererUrl === undefined) delete process.env.ELECTRON_RENDERER_URL
       else process.env.ELECTRON_RENDERER_URL = previousRendererUrl
@@ -5269,9 +5351,20 @@ describe('R8RuntimeService', () => {
 
       const morph = await service.morphDrawerToPopout({ slot: 'right', contentId: 'monitor.port-detail' })
       expect(morph.popoutId).toMatch(/^popout-/)
+      // Morph now tears out into a REAL, visible BrowserWindow on the dedicated
+      // `drawer` surface (not an invisible floating record), with the content id
+      // carried as a `contentId:<id>` detach target.
+      const morphedRecord = service.listPopouts().find(popout => popout.windowId === morph.popoutId)
+      expect(morphedRecord).toMatchObject({
+        surface: 'drawer',
+        mode: 'browserwindow',
+        targetId: 'contentId:monitor.port-detail'
+      })
       const restored = service.morphPopoutToDrawer({ popoutId: morph.popoutId, slot: 'bottom' })
       expect(restored.drawerState.slot).toBe('bottom')
       expect(restored.drawerState.open).toBe(true)
+      // Recall strips the contentId: prefix to restore the original drawer content.
+      expect(restored.drawerState.contentId).toBe('monitor.port-detail')
     } finally {
       await rm(userData, { recursive: true, force: true })
     }
@@ -5333,6 +5426,23 @@ describe('R8RuntimeService', () => {
     expect(send).toHaveBeenCalledWith('r8:command-event', { type: 'settings-open' })
     expect(send).toHaveBeenCalledWith('r8:command-event', { type: 'theme-apply', theme: 'constructivism' })
     expect(service.listCommandHistory().map(item => item.commandId)).toEqual(expect.arrayContaining(['ai.tasks.open', 'settings.open', 'theme.apply.constructivism']))
+  })
+
+  it('forwards detached toolbar monitor tab commands as monitor-navigate events (PR3 cross-process bridge)', async () => {
+    const send = vi.fn()
+    const mainWindow = { isDestroyed: () => false, webContents: { send } }
+    const service = createRuntimeService(() => mainWindow as never, runtime as never)
+
+    // A detached monitor-toolbar popout drives the main window's monitor tab by
+    // invoking monitor.<tab> in the main process, which broadcasts monitor-navigate.
+    await service.invokeCommand({ commandId: 'monitor.topology' })
+    await service.invokeCommand({ commandId: 'monitor.r8-ops' })
+
+    expect(send).toHaveBeenCalledWith('r8:command-event', { type: 'monitor-navigate', tab: 'topology' })
+    expect(send).toHaveBeenCalledWith('r8:command-event', { type: 'monitor-navigate', tab: 'r8-ops' })
+    // monitor.topology must NOT also fire a topology-navigate (which would open the
+    // distinct fullscreen global topology view rather than the monitor topology tab).
+    expect(send).not.toHaveBeenCalledWith('r8:command-event', expect.objectContaining({ type: 'topology-navigate' }))
   })
 
   it('extends the default command registry with executable scanner object commands above 100 entries', async () => {
@@ -5577,6 +5687,81 @@ describe('R8RuntimeService', () => {
     expect(aggregate.tiles.find(tile => tile.id === 'listening-ports')?.value).toBe(1)
     expect(aggregate.tiles.find(tile => tile.id === 'cpu')?.badgeType).toBe('number')
     expect(aggregate.tiles.find(tile => tile.id === 'cmdk')?.clickAction?.type).toBe('open-cmdk')
+
+    const themeTile = aggregate.tiles.find(tile => tile.id === 'theme')
+    expect(themeTile?.badgeType).toBeUndefined()
+    expect(themeTile?.badgeValue).toBeUndefined()
+    // Empty appearance.theme falls back to the constructivism palette; the tile
+    // must show the localized display name, never the raw slug.
+    expect(themeTile?.value).toBe('构成主义')
+
+    const cpuTile = aggregate.tiles.find(tile => tile.id === 'cpu')
+    const memTile = aggregate.tiles.find(tile => tile.id === 'mem')
+    expect(cpuTile?.clickAction).toEqual({ type: 'open-drawer', args: { slot: 'bottom', contentId: 'observability' } })
+    expect(memTile?.clickAction).toEqual({ type: 'open-drawer', args: { slot: 'bottom', contentId: 'observability' } })
+  })
+
+  it('keeps the notifications tile count in lockstep with notify.list() (no count-without-content drift)', async () => {
+    const service = createRuntimeService(() => null, runtime as never)
+
+    // Invariant under test: the statusbar "通知" tile count MUST equal exactly
+    // what the notifications drawer shows (notify.list() with the default
+    // filter), so a non-zero badge always corresponds to visible drawer content.
+    const tileValue = () => service.statusAggregate().tiles.find(tile => tile.id === 'notifications')
+    const expectParity = () => {
+      const list = service.listNotifications()
+      const tile = tileValue()
+      expect(service.countUnreadNotifications()).toBe(list.length)
+      expect(tile?.value).toBe(list.length)
+      expect(tile?.badgeValue).toBe(list.length)
+      return list
+    }
+
+    expectParity()
+
+    // Emit a fresh notification: the count helper, the tile, and the drawer
+    // list must stay equal, and the new item must be in both the list and the
+    // count (a badge increment always has matching drawer content).
+    await service.emitNotification({
+      level: 'ERROR',
+      source: 'system',
+      title: 'Count-list parity probe',
+      body: 'parity'
+    })
+    await flushAsyncWork()
+
+    const afterEmit = expectParity()
+    const probe = afterEmit.find(item => item.title === 'Count-list parity probe')
+    expect(probe).toBeDefined()
+
+    // Dismissing the probe drops it from BOTH the default list and the count,
+    // keeping the tile and the drawer in agreement (no stale badge).
+    service.dismissNotification({ notificationId: probe!.id })
+
+    const afterDismiss = expectParity()
+    expect(afterDismiss.some(item => item.title === 'Count-list parity probe')).toBe(false)
+
+    service.dispose()
+  })
+
+  it('renders the theme tile with the localized palette name from the active appearance', () => {
+    const themedStore = {
+      ...appStore,
+      getSettings: vi.fn(() => ({
+        appearance: { theme: 'warm-light' },
+        scan: {},
+        process: {},
+        notification: {},
+        window: {},
+        advanced: {},
+        firstLaunchDone: true
+      }))
+    }
+    const service = createRuntimeServiceWithStore(themedStore as never, () => null, runtime as never)
+    const themeTile = service.statusAggregate().tiles.find(tile => tile.id === 'theme')
+
+    expect(themeTile?.value).toBe('暖光')
+    expect(themeTile?.badgeType).toBeUndefined()
   })
 
   it('persists statusbar hidden tile and order config through the runtime store', () => {

@@ -288,7 +288,8 @@ html[data-a11y-reduced-motion="true"] *::after {
 }
 
 .btn-secondary {
-  @apply bg-transparent border border-surface-600 text-text-secondary px-5 py-2.5 font-semibold;
+  @apply bg-transparent border border-surface-600 text-text-secondary font-semibold;
+  padding: var(--component-btn-padding, 8px 16px);
   transition: all var(--motion-duration-fast, 150ms) var(--motion-easing, linear);
   @apply hover:bg-surface-700 hover:border-surface-500 hover:text-text-primary;
   border-radius: var(--radius-button, 2px);
@@ -299,7 +300,8 @@ html[data-a11y-reduced-motion="true"] *::after {
 }
 
 .btn-ghost {
-  @apply text-text-tertiary px-4 py-2.5;
+  @apply text-text-tertiary;
+  padding: var(--component-btn-padding, 8px 16px);
   transition: all var(--motion-duration-fast, 150ms) var(--motion-easing, linear);
   @apply hover:bg-surface-800 hover:text-text-primary;
   border-radius: var(--radius-button, 2px);
@@ -330,7 +332,8 @@ html[data-a11y-reduced-motion="true"] *::after {
 }
 
 .btn-danger {
-  @apply bg-transparent text-error border px-4 py-2 font-semibold;
+  @apply bg-transparent text-error border font-semibold;
+  padding: var(--component-btn-padding, 8px 16px);
   border-color: color-mix(in srgb, var(--error) 50%, transparent);
   transition: all var(--motion-duration-fast, 150ms) var(--motion-easing, linear);
   @apply hover:bg-error hover:text-white hover:border-error;
@@ -338,7 +341,8 @@ html[data-a11y-reduced-motion="true"] *::after {
 }
 
 .btn-success {
-  @apply bg-transparent text-success border px-4 py-2 font-semibold;
+  @apply bg-transparent text-success border font-semibold;
+  padding: var(--component-btn-padding, 8px 16px);
   border-color: color-mix(in srgb, var(--success) 50%, transparent);
   transition: all var(--motion-duration-fast, 150ms) var(--motion-easing, linear);
   @apply hover:bg-success hover:text-white hover:border-success;
@@ -414,7 +418,7 @@ html[data-a11y-reduced-motion="true"] *::after {
   @apply inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold whitespace-nowrap;
   transition: all var(--motion-duration-fast, 150ms) var(--motion-easing, linear);
   border-radius: var(--radius-badge, 0px);
-  clip-path: var(--deco-clip-card, polygon(0 0, 100% 0, 95% 100%, 0 100%));
+  clip-path: var(--deco-clip-badge, none);
 }
 
 .status-badge-running {
@@ -745,7 +749,8 @@ select option {
 
 /* Hero Stats responsive grid */
 .hero-stats-grid {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   align-items: stretch;
 }
 
@@ -812,6 +817,25 @@ select option {
 @container monitor (width < 500px) {
   .stat-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Process monitor hero-stat guard: in height-constrained windows (the panel
+   popout opens as its own short BrowserWindow, or the drawer embed) four
+   stacked stat cards would consume nearly all vertical space and squeeze the
+   process list to a single row. Keep the grid at two columns (never a single
+   tall column) so the list always retains its flex-1 height. Width-only
+   container queries can't see height, so this uses viewport height which is
+   the dimension that actually shrinks in a popout window. */
+@media (max-height: 640px) {
+  .monitor-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-height: 480px) {
+  .monitor-stat-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 

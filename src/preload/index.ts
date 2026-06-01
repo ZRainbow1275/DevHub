@@ -53,6 +53,7 @@ import type {
   A11yOsPrefs,
   A11yPrefs,
   A11ySelfCheckResult,
+  AppVersionInfo,
   IconLibrary,
   IconListLibrariesResponse,
   IconResolveResponse,
@@ -380,9 +381,11 @@ const r8Api = {
     demote: (windowId: string) => ipcRenderer.invoke('popout:demote', { windowId })
   },
   panel: {
-    openPopout: (surface: PanelPopoutSurface): Promise<BrowserPopout> => ipcRenderer.invoke('popout:create', {
+    // `target` (kind:value, e.g. `pid:1234`) carries the focused item for detail
+    // surfaces; whole-panel surfaces omit it and use the stable r8-panel target.
+    openPopout: (surface: PanelPopoutSurface, target?: string): Promise<BrowserPopout> => ipcRenderer.invoke('popout:create', {
       surface,
-      targetId: `r8-panel-${surface}`,
+      targetId: target ?? `r8-panel-${surface}`,
       mode: 'browserwindow',
       route: `/panel/${surface}`,
       title: `DevHub ${surface}`
@@ -1157,7 +1160,10 @@ contextBridge.exposeInMainWorld('devhub', {
 
   // ==================== System ====================
   system: {
-    getDrives: (): Promise<string[]> => ipcRenderer.invoke('system:get-drives')
+    getDrives: (): Promise<string[]> => ipcRenderer.invoke('system:get-drives'),
+    getVersion: (): Promise<AppVersionInfo> => ipcRenderer
+      .invoke('system:get-version')
+      .catch(() => ({ name: 'DevHub', version: 'unknown', electron: 'unknown' }))
   },
 
   // ==================== Window Controls ====================

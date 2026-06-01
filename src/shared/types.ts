@@ -223,7 +223,7 @@ export interface WindowSettings {
 }
 
 export interface AdvancedSettings {
-  autoStartOnBoot: boolean  // TODO: 后端实际未实现，暂保留 UI
+  autoStartOnBoot: boolean
   minimizeToTray: boolean
   dataStoragePath: string
   logLevel: LogLevel
@@ -387,7 +387,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     },
   },
   advanced: {
-    autoStartOnBoot: false,  // TODO: 后端实际未实现，暂保留 UI
+    autoStartOnBoot: false,
     minimizeToTray: false,
     dataStoragePath: '',
     logLevel: 'info',

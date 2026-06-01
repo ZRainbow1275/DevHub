@@ -7,7 +7,7 @@ export interface IconProps {
   style?: CSSProperties
 }
 
-const LEGACY_ICON_TOKENS = {
+export const LEGACY_ICON_TOKENS = {
   AIIcon: 'lucide:Bot',
   AlertIcon: 'lucide:AlertTriangle',
   BellIcon: 'lucide:Bell',

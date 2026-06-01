@@ -30,9 +30,9 @@ function HeroStat({ value, label, delta, variant = 'default' }: HeroStatProps) {
 
   return (
     <div
-      className="hero-stat-card flex items-center gap-2 px-3 py-2 min-w-0"
+      className="hero-stat-card flex flex-col items-start gap-0.5 px-3 py-2 min-w-0"
       style={{
-        borderBottom: `2px solid ${borderColor}`,
+        borderBottom: '2px solid var(--surface-700)',
         background: variant !== 'default' ? `color-mix(in srgb, ${borderColor} 5%, transparent)` : undefined
       }}
     >
@@ -85,8 +85,6 @@ export function HeroStats() {
       <div
         className="hero-stats-grid"
         style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
           gap: 0
         }}
       >

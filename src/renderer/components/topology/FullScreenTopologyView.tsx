@@ -14,6 +14,7 @@ import {
   readPendingGlobalTopologyGraphKind,
   readPendingGlobalTopologyNodeId
 } from '../../utils/globalTopologyNavigation'
+import { navigateMonitorTab } from '../../utils/navigateMonitorTab'
 import { useT } from '../../hooks/useT'
 
 type ScopeValue = GraphSlice['scope']
@@ -139,8 +140,7 @@ export function FullScreenTopologyView() {
   const openProcessDetail = () => {
     const pid = nodePid(selectedNode)
     if (pid === null) return
-    window.dispatchEvent(new CustomEvent('devhub:open-monitor'))
-    window.dispatchEvent(new CustomEvent('devhub:monitor-navigate', { detail: { tab: 'process', scope: { kind: 'process', targetId: pid, depth: 2 } } }))
+    navigateMonitorTab('process', { detail: { scope: { kind: 'process', targetId: pid, depth: 2 } } })
   }
 
   const selectGraphNode = useCallback((node: GraphSnapshot['nodes'][number]) => {

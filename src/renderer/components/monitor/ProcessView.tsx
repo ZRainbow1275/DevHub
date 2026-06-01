@@ -1,6 +1,7 @@
 import React, { useEffect, memo, useState, useCallback, useMemo, useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { PanelDetachButton } from '../popout/PanelDetachButton'
+import type { DetachableViewProps } from '../popout/detachable-registry'
 import { useSystemProcesses } from '../../hooks/useSystemProcesses'
 import { ProcessInfo, ProcessGroup, SortColumn } from '@shared/types-extended'
 import { PROCESS_BATCH_LIMITS, processBatchTagArgsSchema } from '@shared/schemas/r8-runtime'
@@ -21,6 +22,7 @@ import { ViewModeToggle } from '../ui/ViewModeToggle'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
 import { LastScanTime } from '../ui/LastScanTime'
 import { formatBytes } from '../../utils/formatNumber'
+import { navigateMonitorTab } from '../../utils/navigateMonitorTab'
 import { ProcessFilterBar, SortIndicator } from './ProcessFilterBar'
 import { ProcessDetailPanel } from './ProcessDetailPanel'
 import { ProcessDetailDrawer } from './ProcessDetailDrawer'
@@ -358,12 +360,9 @@ export const ProcessCard = memo(function ProcessCard({ process, index, maxMemory
   ]
 
   const openProcessCardGraph = () => {
-    window.dispatchEvent(new CustomEvent('devhub:monitor-navigate', {
-      detail: {
-        tab: 'process',
-        scope: { kind: 'process', targetId: pPid, depth: 2 }
-      }
-    }))
+    navigateMonitorTab('process', {
+      detail: { scope: { kind: 'process', targetId: pPid, depth: 2 } }
+    })
   }
 
   const handleCardDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -671,8 +670,8 @@ export const ProcessItem = memo(function ProcessItem({ process, maxMemory, isSel
         onClick={handleRowClick}
         onContextMenu={handleContextMenu}
         className={`
-          group flex items-center gap-4 px-4 py-2 cursor-pointer transition-all duration-200
-          border-l-3 bg-surface-800 radius-sm min-h-[3rem]
+          group flex items-center gap-3 px-4 py-2 cursor-pointer transition-all duration-200
+          border-l-3 bg-surface-800 radius-sm min-h-[3rem] min-w-[820px]
           ${isSelected
             ? 'border-accent bg-accent/10'
             : 'border-transparent hover:border-surface-500 hover:bg-surface-700'
@@ -727,7 +726,7 @@ export const ProcessItem = memo(function ProcessItem({ process, maxMemory, isSel
 
         {/* Start Time */}
         <span data-vm-field="startTime" data-vm-status="ok" data-vm-source="ProcessInfo" className="text-[10px] text-text-muted min-w-[1.875rem]">{formatStartTime(pStartTime)}</span>
-        <span className="min-w-[6rem]">
+        <span className="min-w-[6rem] hidden xl:inline-block">
           <ProcessSparkline history={history24h} metric="cpu" width={96} />
         </span>
         <span data-vm-field="command" data-vm-status={pCommand ? 'ok' : 'data_missing'} data-vm-source="ProcessInfo" className="sr-only">{pCommand ?? '无命令行信息'}</span>
@@ -878,7 +877,7 @@ const VirtualListView = memo(function VirtualListView({
   return (
     <div className="flex flex-col h-full">
       {/* Table Header */}
-      <div className="flex items-center gap-4 px-4 py-2 bg-surface-900 border-b border-surface-700 flex-shrink-0 min-h-[2rem]">
+      <div className="flex items-center gap-3 px-4 py-2 bg-surface-900 border-b border-surface-700 flex-shrink-0 min-h-[2rem] min-w-[820px]">
         <div className="w-6 flex-shrink-0" /> {/* icon spacer */}
         <SortableHeader column="name" label="名称" className="min-w-[6.25rem] max-w-[11.25rem] flex-1 whitespace-nowrap" sortConfigs={sortConfigs} onSort={onSort} />
         <div className="min-w-[5.75rem] text-[10px] uppercase tracking-wider text-text-muted whitespace-nowrap">标签</div>
@@ -888,7 +887,7 @@ const VirtualListView = memo(function VirtualListView({
         <SortableHeader column="cpu" label="CPU" className="min-w-[4.375rem] whitespace-nowrap" sortConfigs={sortConfigs} onSort={onSort} />
         <SortableHeader column="memory" label="内存" className="min-w-[4.375rem] whitespace-nowrap" sortConfigs={sortConfigs} onSort={onSort} />
         <SortableHeader column="startTime" label="启动" className="min-w-[1.875rem] whitespace-nowrap" sortConfigs={sortConfigs} onSort={onSort} />
-        <div className="min-w-[6rem] text-[10px] uppercase tracking-wider text-text-muted whitespace-nowrap">24h</div>
+        <div className="min-w-[6rem] text-[10px] uppercase tracking-wider text-text-muted whitespace-nowrap hidden xl:block">24h</div>
         <div className="w-[60px] ml-auto" /> {/* actions spacer */}
       </div>
 
@@ -941,7 +940,7 @@ const VirtualListView = memo(function VirtualListView({
 
 // ============ Main ProcessView ============
 
-export function ProcessView() {
+export function ProcessView({ initialTarget }: DetachableViewProps = {}) {
   const {
     processes,
     groups,
@@ -988,7 +987,11 @@ export function ProcessView() {
     const stored = localStorage.getItem('devhub:process-view-mode')
     return stored === 'card' || stored === 'list' || stored === 'grouped' || stored === 'tree' || stored === 'treemap' ? stored : 'list'
   })
-  const [detailPid, setDetailPid] = useState<number | null>(null)
+  const [detailPid, setDetailPid] = useState<number | null>(() => {
+    if (initialTarget?.kind !== 'pid') return null
+    const pid = Number.parseInt(initialTarget.value, 10)
+    return Number.isInteger(pid) && pid > 0 ? pid : null
+  })
   const [drawerPid, setDrawerPid] = useState<number | null>(null)
   const [drawerBasicProcessInfo, setDrawerBasicProcessInfo] = useState<ProcessInfo | null>(null)
   const [exactPidSearchResult, setExactPidSearchResult] = useState<ProcessInfo | null>(null)
@@ -998,6 +1001,8 @@ export function ProcessView() {
   const [processTourStep, setProcessTourStep] = useState(0)
   const [tourOperationMenuPid, setTourOperationMenuPid] = useState<number | null>(null)
   const [isProcessHelpOpen, setIsProcessHelpOpen] = useState(false)
+  // Collapsed "?" guide/help dropdown anchor for narrow (<=1280px) toolbars.
+  const [helpMenuPos, setHelpMenuPos] = useState<{ x: number; y: number } | null>(null)
 
   const setViewMode = useCallback((mode: ProcessViewMode) => {
     setViewModeState(mode)
@@ -1170,12 +1175,9 @@ export function ProcessView() {
     if (!processTourTarget) return
     setTourOperationMenuPid(null)
     handleSelectProcess(processTourTarget.pid)
-    window.dispatchEvent(new CustomEvent('devhub:monitor-navigate', {
-      detail: {
-        tab: 'process',
-        scope: { kind: 'process', targetId: processTourTarget.pid, depth: 2 }
-      }
-    }))
+    navigateMonitorTab('process', {
+      detail: { scope: { kind: 'process', targetId: processTourTarget.pid, depth: 2 } }
+    })
   }, [handleSelectProcess, processTourTarget])
 
   const openTourOperationMenu = useCallback(() => {
@@ -1524,9 +1526,9 @@ export function ProcessView() {
   return (
     <div className="h-full min-h-0 flex flex-col bg-surface-950">
       {/* Header */}
-      <div className="flex-shrink-0 px-5 py-4 border-b-2 border-surface-700 bg-surface-900 relative">
+      <div className="flex-shrink-0 px-5 py-3 border-b-2 border-surface-700 bg-surface-900 relative">
         <div className="absolute inset-0 deco-diagonal opacity-20 pointer-events-none" />
-        <div className="flex items-center flex-wrap justify-between gap-4 relative z-10">
+        <div className="flex items-center justify-between gap-4 relative z-10">
           <div className="flex items-center gap-4 min-w-0">
             <div className="w-10 h-10 bg-surface-700 flex items-center justify-center border-l-3 border-accent radius-sm flex-shrink-0">
               <ProcessIcon size={20} className="text-accent" />
@@ -1538,8 +1540,8 @@ export function ProcessView() {
               >
                 系统进程
               </h2>
-              <div className="flex items-center flex-wrap gap-3 text-xs text-text-muted">
-                <span className="font-mono">{processes.length} 个进程</span>
+              <div className="flex items-center gap-3 text-xs text-text-muted min-w-0">
+                <span className="font-mono whitespace-nowrap">{processes.length} 个进程</span>
                 {processModuleNewBadge.isActive && (
                   <span
                     data-testid="process-module-new-badge"
@@ -1552,12 +1554,14 @@ export function ProcessView() {
                     NEW
                   </span>
                 )}
-                <LastScanTime lastScanTime={lastScanTime} />
+                <span className="min-w-0 truncate">
+                  <LastScanTime lastScanTime={lastScanTime} />
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center flex-wrap gap-3">
+          <div className="flex items-center gap-3 flex-shrink-0">
             <ViewModeToggle
               modes={[
                 { key: 'list', icon: <ListIcon size={16} />, label: '列表' },
@@ -1570,7 +1574,7 @@ export function ProcessView() {
               onChange={(mode) => setViewMode(mode as ProcessViewMode)}
             />
 
-            <div className="w-px h-5 bg-surface-700" />
+            <div className="w-px self-stretch bg-surface-700 hidden md:block" />
 
             {zombies.length > 0 && (
               <button
@@ -1582,7 +1586,7 @@ export function ProcessView() {
               </button>
             )}
 
-            <div className="flex items-center gap-2">
+            <div className="hidden xl:flex items-center gap-2">
               <button
                 type="button"
                 data-testid="process-module-tour-open-button"
@@ -1608,7 +1612,19 @@ export function ProcessView() {
               </button>
             </div>
 
-            <div className="w-px h-5 bg-surface-700" />
+            {/* Collapsed guide/help "?" dropdown for narrow toolbars (<=1280px) */}
+            <button
+              type="button"
+              data-testid="process-module-help-menu-button"
+              onClick={(e) => setHelpMenuPos({ x: e.currentTarget.getBoundingClientRect().left, y: e.currentTarget.getBoundingClientRect().bottom + 4 })}
+              className="btn-secondary xl:hidden flex items-center justify-center text-xs px-2.5 py-1.5"
+              aria-label="打开进程模块导览与帮助"
+              title="导览与帮助"
+            >
+              <InfoIcon size={14} />
+            </button>
+
+            <div className="w-px self-stretch bg-surface-700 hidden md:block" />
 
             <div className="flex items-center gap-2">
               <button
@@ -1621,6 +1637,11 @@ export function ProcessView() {
               </button>
 
               <PanelDetachButton surface="process" />
+              <PanelDetachButton
+                surface="process-detail"
+                target={detailPid === null ? null : `pid:${detailPid}`}
+                testId="process-detail-detach-popout"
+              />
             </div>
           </div>
         </div>
@@ -1647,12 +1668,24 @@ export function ProcessView() {
         onClose={closeProcessHelp}
       />
 
-      {/* Hero Stats */}
-      <div className="flex-shrink-0 py-4 stat-grid border-b border-surface-700/50 bg-surface-900/50" style={{ paddingLeft: 'var(--responsive-padding, 20px)', paddingRight: 'var(--responsive-padding, 20px)', gap: '16px' }}>
-        <StatCard icon={<ProcessIcon size={20} className="text-accent" />} label="活跃进程" value={processes.length} color="accent" />
-        <StatCard icon={<ProcessIcon size={20} className="text-info" />} label="CPU 使用" value={`${(isFinite(totalResources.cpu) ? totalResources.cpu : 0).toFixed(1)}%`} color={totalResources.cpu > 50 ? 'warning' : 'default'} />
-        <StatCard icon={<ProcessIcon size={20} className="text-success" />} label="内存使用" value={formatBytes(totalResources.memory)} color={totalResources.memory > 2000 ? 'warning' : 'default'} />
-        <StatCard icon={<AlertIcon size={20} className="text-warning" />} label="僵尸进程" value={zombies.length} color={zombies.length > 0 ? 'warning' : 'default'} />
+      <ContextMenu
+        items={[
+          { label: '进程导览', icon: <InfoIcon size={16} />, onClick: openProcessTour },
+          { label: '进程帮助 F1', icon: <InfoIcon size={16} />, onClick: openProcessHelp }
+        ]}
+        position={helpMenuPos}
+        onClose={() => setHelpMenuPos(null)}
+      />
+
+      {/* Hero Stats — compact + height-aware so the process list keeps its space
+          in short windows (drawer embed / popout). The `monitor-stat-grid`
+          guard collapses the grid to a single scroll-free compact row instead
+          of stacking four tall cards when vertical room is scarce. */}
+      <div className="flex-shrink-0 py-3 stat-grid monitor-stat-grid border-b border-surface-700/50 bg-surface-900/50" style={{ paddingLeft: 'var(--responsive-padding, 20px)', paddingRight: 'var(--responsive-padding, 20px)', gap: '12px' }}>
+        <StatCard compact icon={<ProcessIcon size={16} className="text-accent" />} label="活跃进程" value={processes.length} color="accent" />
+        <StatCard compact icon={<ProcessIcon size={16} className="text-info" />} label="CPU 使用" value={`${(isFinite(totalResources.cpu) ? totalResources.cpu : 0).toFixed(1)}%`} color={totalResources.cpu > 50 ? 'warning' : 'default'} />
+        <StatCard compact icon={<ProcessIcon size={16} className="text-success" />} label="内存使用" value={formatBytes(totalResources.memory)} color={totalResources.memory > 2000 ? 'warning' : 'default'} />
+        <StatCard compact icon={<AlertIcon size={16} className="text-warning" />} label="僵尸进程" value={zombies.length} color={zombies.length > 0 ? 'warning' : 'default'} />
       </div>
 
       {/* Filter Bar */}
@@ -1724,9 +1757,10 @@ export function ProcessView() {
         </div>
       )}
 
-      {/* Detail Panel */}
+      {/* Detail Panel — capped so an open detail never starves the process list
+          of vertical space; it scrolls internally instead. */}
       {detailPid !== null && (
-        <div className="flex-shrink-0 px-5 py-3">
+        <div className="flex-shrink-0 px-5 py-3 max-h-[40%] overflow-y-auto">
           <ProcessDetailPanel
             pid={detailPid}
             basicProcessInfo={processes.find(p => p.pid === detailPid)}
@@ -1821,14 +1855,14 @@ export function ProcessView() {
         )}
 
         {isScanning && displayProcesses.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
+          <div className="flex flex-col items-center justify-center py-16 animate-fade-in">
             <LoadingSpinner size="md" className="mb-4" />
             <p className="text-text-secondary">正在扫描进程...</p>
           </div>
         )}
 
         {displayProcesses.length === 0 && processes.length === 0 && !isScanning && exactPidSearch === null && (
-          <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
+          <div className="flex flex-col items-center justify-center py-16 animate-fade-in">
             <div className="w-20 h-20 bg-surface-800 flex items-center justify-center mb-6 border-l-3 border-accent radius-md">
               <ProcessIcon size={40} className="text-text-muted" />
             </div>
@@ -1843,7 +1877,7 @@ export function ProcessView() {
         )}
 
         {displayProcesses.length === 0 && processes.length > 0 && !isScanning && (
-          <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
+          <div className="flex flex-col items-center justify-center py-16 animate-fade-in">
             <div className="w-16 h-16 bg-surface-800 flex items-center justify-center mb-4 border-l-3 border-warning radius-md">
               <AlertIcon size={32} className="text-warning" />
             </div>

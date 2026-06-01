@@ -80,7 +80,7 @@ export function ConfirmDialog({
             style={{
               fontFamily: 'var(--font-display)',
               fontSize: '14px',
-              transform: 'rotate(-1deg)',
+              transform: 'rotate(var(--deco-title-rotation, 0deg))',
               transformOrigin: 'left center'
             }}
           >

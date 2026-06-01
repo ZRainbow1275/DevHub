@@ -29,7 +29,7 @@ export function WidgetFrame({
         </div>
         {action}
       </div>
-      <div className="min-h-0 flex-1 overflow-auto p-3">
+      <div className="min-h-0 flex-1 overflow-auto p-2.5">
         {children}
       </div>
     </section>
@@ -38,7 +38,7 @@ export function WidgetFrame({
 
 export function MetricValue({ value, label, tone = 'text-text-primary' }: { value: string | number; label: string; tone?: string }) {
   return (
-    <div className="min-w-0 rounded-md border border-surface-700 bg-surface-950/70 p-3">
+    <div className="min-w-0 rounded-md bg-surface-950/40 p-2">
       <div className={`truncate text-xl font-bold leading-tight tabular-nums md:text-2xl ${tone}`}>{value}</div>
       <div className="mt-1 truncate text-[11px] uppercase tracking-[0.16em] text-text-muted">{label}</div>
     </div>

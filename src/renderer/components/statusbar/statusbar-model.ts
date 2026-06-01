@@ -126,8 +126,8 @@ export function applyStatusbarConfig(tiles: readonly StatusTile[], config: Statu
 export function createEmptyStatusAggregate(now: number): StatusAggregate {
   const tiles = STATUSBAR_BUILTIN_TILE_IDS.map(tileId => createStatusTile(tileId, tileId === 'cmdk' ? 'Ctrl+K' : 0, now, {
     visible: tileId !== 'battery',
-    badgeType: tileId === 'theme' ? 'new' : 'number',
-    badgeValue: tileId === 'theme' ? 'NEW' : 0
+    badgeType: tileId === 'theme' ? undefined : 'number',
+    badgeValue: tileId === 'theme' ? undefined : 0
   }))
   return {
     generatedAt: now,

@@ -133,7 +133,55 @@ describe('R8.B drawer host', () => {
     )
   })
 
-  it('renders a truthful lazy boundary for registered content without a dedicated renderer', async () => {
+  it('renders a neutral boundary for registered content without a dedicated renderer yet', async () => {
+    render(
+      <DrawerProvider>
+        <DrawerSystemHost>
+          <main data-testid="drawer-main">main</main>
+        </DrawerSystemHost>
+      </DrawerProvider>
+    )
+
+    // RIGHT detail surfaces now render real embedded views; the neutral boundary
+    // only backs unknown / not-yet-bound contentIds (the registry fallback path).
+    await act(async () => {
+      await useDrawerStore.getState().setContent('right', 'unknown.contentId')
+    })
+
+    expect(await screen.findByText(/该内容暂不可用/)).toBeInTheDocument()
+    const boundary = screen.getByText(/该内容暂不可用/).closest('[data-r8b-drawer-content-status]')
+    expect(boundary).toHaveAttribute('data-r8b-drawer-content-status', 'registered-boundary')
+    // And the dev-time placeholder phrasing is gone for good.
+    expect(screen.queryByText(/该状态不会生成模拟数据/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/尚未暴露该内容源的专用渲染器/)).not.toBeInTheDocument()
+  })
+
+  it('embeds the real settings dialog (with theme switcher) in the right drawer', async () => {
+    Object.assign(window.devhub, {
+      settings: {
+        get: vi.fn(async () => null)
+      },
+      system: {
+        getDrives: vi.fn(async () => []),
+        getVersion: vi.fn(async () => ({ name: 'DevHub', version: '0.0.0-test', electron: 'test' }))
+      },
+      r8: {
+        drawer: {
+          getState: vi.fn(async () => []),
+          setState: vi.fn(async (state: unknown) => state)
+        },
+        statusbar: {
+          getConfig: vi.fn(async () => null)
+        },
+        command: {
+          onEvent: vi.fn()
+        },
+        processViews: {
+          treeChildren: vi.fn()
+        }
+      }
+    })
+
     render(
       <DrawerProvider>
         <DrawerSystemHost>
@@ -146,9 +194,8 @@ describe('R8.B drawer host', () => {
       await useDrawerStore.getState().setContent('right', BUILTIN_DRAWER_CONTENTS.RIGHT_SETTINGS)
     })
 
-    expect(await screen.findByText(/该状态不会生成模拟数据/)).toBeInTheDocument()
-    const boundary = screen.getByText(/该状态不会生成模拟数据/).closest('[data-r8b-drawer-content-status]')
-    expect(boundary).toHaveAttribute('data-r8b-drawer-content-status', 'registered-boundary')
+    expect(await screen.findByText('外观')).toBeInTheDocument()
+    expect(screen.queryByText(/该内容暂不可用/)).not.toBeInTheDocument()
   })
 
   it('returns an active BrowserWindow popout into a real drawer slot through the bridge', async () => {

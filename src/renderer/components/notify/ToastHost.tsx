@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { DevhubNotification, NotificationLevel } from '@shared/schemas/notification'
 import { useT } from '../../hooks/useT'
-import { AlertIcon, CheckIcon, CloseIcon, InfoIcon, LightningIcon } from '../icons'
+import { AlertIcon, CloseIcon, InfoIcon, LightningIcon } from '../icons'
 
 const MAX_TOASTS = 5
 
@@ -13,10 +13,10 @@ function levelClass(level: NotificationLevel): string {
 }
 
 function levelIcon(level: NotificationLevel) {
-  if (level === 'FATAL') return <LightningIcon size={18} className="text-error" />
-  if (level === 'ERROR') return <CloseIcon size={18} className="text-error" />
-  if (level === 'WARN') return <AlertIcon size={18} className="text-warning" />
-  return <InfoIcon size={18} className="text-info" />
+  if (level === 'FATAL') return <LightningIcon size={16} className="text-error" />
+  if (level === 'ERROR') return <CloseIcon size={16} className="text-error" />
+  if (level === 'WARN') return <AlertIcon size={16} className="text-warning" />
+  return <InfoIcon size={16} className="text-info" />
 }
 
 function playDesktopBell(): void {
@@ -67,11 +67,18 @@ export function ToastHost() {
   if (toasts.length === 0) return null
 
   return (
-    <section aria-label="R8 notifications" className="fixed bottom-12 right-6 z-[60] flex w-[380px] max-w-[calc(100vw-2rem)] flex-col gap-3">
+    // Toasts must sit above every drawer slot (drawer tier = 2000-2020) so an open
+    // TOP/RIGHT/BOTTOM drawer never buries an ERROR/SYSTEM toast. The toast z-tier
+    // (5000) is above drawers yet below the command palette (6000).
+    <section
+      aria-label="R8 notifications"
+      className="fixed bottom-12 right-6 flex w-[380px] max-w-[calc(100vw-2rem)] flex-col gap-3"
+      style={{ zIndex: 'var(--z-tier-toast, 5000)' }}
+    >
       {toasts.map((toast) => (
         <article key={toast.id} className={`relative overflow-hidden border-2 border-surface-600 border-l-4 shadow-elevated radius-sm ${levelClass(toast.level)}`}>
           <div className="absolute inset-0 deco-diagonal opacity-5 pointer-events-none" />
-          <div className="relative z-10 flex gap-3 px-4 py-3">
+          <div className="relative z-10 flex gap-3 p-3">
             <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center border-l-2 border-current bg-surface-800 radius-sm">
               {levelIcon(toast.level)}
             </div>
@@ -96,8 +103,8 @@ export function ToastHost() {
                 </div>
               )}
             </div>
-            <button aria-label={t('notify.dismiss', 'Dismiss notification')} className="h-7 w-7 text-text-muted hover:text-text-primary" onClick={() => dismiss(toast.id)}>
-              <CheckIcon size={16} />
+            <button aria-label={t('notify.dismiss', 'Dismiss notification')} className="flex h-7 w-7 shrink-0 items-center justify-center text-text-muted hover:bg-surface-800 hover:text-text-primary radius-sm" onClick={() => dismiss(toast.id)}>
+              <CloseIcon size={16} />
             </button>
           </div>
         </article>

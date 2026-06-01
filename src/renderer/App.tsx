@@ -150,25 +150,49 @@ function AppContent() {
 
   const recomputeUnderline = useCallback(() => {
     const target = mainViewTabRefs.current[mainView]
-    if (target) {
-      setMainViewUnderlineStyle({ left: target.offsetLeft, width: target.offsetWidth })
-    }
+    const header = viewToggleHeaderRef.current
+    if (!target || !header) return
+    // Measure the active tab relative to the (position: relative) header so the
+    // indicator stays aligned regardless of the nav group's horizontal scroll
+    // offset (the tab strip is overflow-x-auto). offsetLeft would ignore that
+    // scroll and drift; bounding-rect deltas account for it and are sub-pixel
+    // accurate for CJK label widths.
+    const headerRect = header.getBoundingClientRect()
+    const targetRect = target.getBoundingClientRect()
+    setMainViewUnderlineStyle({
+      left: targetRect.left - headerRect.left,
+      width: targetRect.width
+    })
   }, [mainView])
 
   useLayoutEffect(() => {
     recomputeUnderline()
   }, [recomputeUnderline, responsiveWidth])
 
+  // Web fonts (and CJK fallbacks) can swap in after first paint, changing tab
+  // label widths without resizing the header box — recompute once fonts settle
+  // so the indicator matches the final laid-out tab.
+  useEffect(() => {
+    if (!document.fonts?.ready) return
+    let active = true
+    void document.fonts.ready.then(() => { if (active) recomputeUnderline() })
+    return () => { active = false }
+  }, [recomputeUnderline])
+
   // The shell width (responsiveWidth) does not change when the user drags the
   // PanelSplitter or resizes the sidebar, so observe the tab-strip header itself
-  // and recompute the active underline whenever its box changes.
+  // and recompute the active underline whenever its box changes. Also observe
+  // the active tab button so a label-width change (font swap, i18n) realigns the
+  // indicator even when the header box is unchanged.
   useEffect(() => {
     const node = viewToggleHeaderRef.current
     if (!node || typeof ResizeObserver === 'undefined') return
     const observer = new ResizeObserver(() => recomputeUnderline())
     observer.observe(node)
+    const activeTab = mainViewTabRefs.current[mainView]
+    if (activeTab) observer.observe(activeTab)
     return () => observer.disconnect()
-  }, [recomputeUnderline])
+  }, [recomputeUnderline, mainView])
   const openTopologyGlobal = useCallback(() => {
     setMainView('topology')
     if (window.location.hash !== '#/topology/global') {

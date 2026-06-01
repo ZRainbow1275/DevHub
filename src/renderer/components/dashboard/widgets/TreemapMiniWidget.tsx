@@ -19,7 +19,7 @@ export default function TreemapMiniWidget({ item }: DashboardWidgetProps) {
   if (rows.length === 0) return <EmptyWidgetState message="暂无进程数据，Treemap 等待 scanner 快照" />
 
   return (
-    <div className="flex h-full flex-col gap-2 overflow-hidden">
+    <div className="flex h-full flex-col gap-2 overflow-y-auto pr-1">
       {rows.map(row => {
         const weight = row.memory + row.cpu * 10
         return (

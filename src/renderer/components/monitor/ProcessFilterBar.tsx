@@ -64,7 +64,7 @@ const Dropdown = memo(function Dropdown({ label, isOpen, onToggle, children, has
   }, [isOpen, onToggle])
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative flex-shrink-0">
       <button
         onClick={onToggle}
         className={`
@@ -172,9 +172,9 @@ export const ProcessFilterBar = memo(function ProcessFilterBar({
   const isFiltered = filteredCount !== totalCount
 
   return (
-    <div className="flex items-center gap-3 flex-wrap">
+    <div className="flex items-center gap-3 min-w-0">
       {/* Search Box */}
-      <div className="relative flex-1 min-w-[200px] max-w-[400px]">
+      <div className="relative flex-1 min-w-[150px] max-w-[400px]">
         <SearchIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
         <input
           ref={searchRef}
@@ -246,7 +246,7 @@ export const ProcessFilterBar = memo(function ProcessFilterBar({
 
       {/* Active Sort Display */}
       {hasSorts && (
-        <div className="flex items-center gap-1 text-[10px] text-accent">
+        <div className="flex items-center gap-1 text-[10px] text-accent flex-shrink-0 whitespace-nowrap">
           <span className="text-text-muted">排序:</span>
           {sortConfigs.map((s, i) => (
             <span key={s.column} className="bg-accent/10 px-1.5 py-0.5 font-mono radius-sm">
@@ -265,7 +265,7 @@ export const ProcessFilterBar = memo(function ProcessFilterBar({
       )}
 
       {/* Result Count + Clear */}
-      <div className="flex items-center gap-2 ml-auto text-[10px]">
+      <div className="flex items-center gap-2 ml-auto text-[10px] flex-shrink-0 whitespace-nowrap">
         <span className={`font-mono ${isFiltered ? 'text-accent' : 'text-text-muted'}`}>
           {isFiltered ? `${filteredCount} / ${totalCount}` : `${totalCount}`} 个进程
         </span>

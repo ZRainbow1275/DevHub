@@ -96,7 +96,10 @@ export function NotificationCenter() {
           ref={panelRef}
           role="dialog"
           aria-label={t('notify.center.title', 'Notification Center')}
-          className="fixed right-4 top-10 z-[60] w-[420px] max-w-[calc(100vw-2rem)] border-2 border-surface-700 bg-surface-900 shadow-elevated radius-sm"
+          // Above every drawer slot (drawer tier = 2000-2020) so the notification
+          // center popover is never buried under an open TOP/RIGHT/BOTTOM drawer.
+          className="fixed right-4 top-10 w-[420px] max-w-[calc(100vw-2rem)] border-2 border-surface-700 bg-surface-900 shadow-elevated radius-sm"
+          style={{ zIndex: 'var(--z-tier-toast, 5000)' }}
         >
           <header className="flex items-center justify-between border-b border-surface-700 px-4 py-3">
             <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-text-primary">{t('notify.center.title', 'Notification Center')}</h2>
@@ -113,7 +116,7 @@ export function NotificationCenter() {
             {count === 0 ? (
               <div className="px-4 py-8 text-center text-xs text-text-muted">{t('notify.center.emptyActive', 'No active notifications')}</div>
             ) : notifications.map(notification => (
-              <article key={notification.id} className="border-b border-surface-800 px-4 py-3 last:border-b-0">
+              <article key={notification.id} className="border-b border-surface-800 p-3 last:border-b-0">
                 <div className="flex gap-3">
                   <div className="mt-1">{levelIcon(notification.level)}</div>
                   <div className="min-w-0 flex-1">

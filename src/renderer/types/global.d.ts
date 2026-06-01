@@ -96,6 +96,7 @@ import type {
   ReplayState,
   BlocklistEntry,
   PublicBannerState,
+  AppVersionInfo,
   SkillListStreamPayload,
   Skill,
   SkillLoadError,
@@ -398,6 +399,7 @@ declare global {
       // ==================== System ====================
       system: {
         getDrives: () => Promise<string[]>
+        getVersion: () => Promise<AppVersionInfo>
       }
 
       // ==================== Window Controls ====================
@@ -709,7 +711,7 @@ declare global {
           demote: (windowId: string) => Promise<{ success: boolean; floatingId: string; popout: BrowserPopout }>
         }
         panel: {
-          openPopout: (surface: PanelPopoutSurface) => Promise<BrowserPopout>
+          openPopout: (surface: PanelPopoutSurface, target?: string) => Promise<BrowserPopout>
           listPopouts: () => Promise<BrowserPopout[]>
           closePopout: (windowId: string) => Promise<{ success: boolean; windowId: string }>
         }

@@ -10,7 +10,10 @@ import { AIProgressTimeline } from './AIProgressTimeline'
 import { ProgressBar } from './ai-task/ProgressBar'
 import { formatDuration, formatDurationCN } from '../../utils/formatDuration'
 import { AIToolBrandLogo } from '../icons/AIToolBrandLogo'
-import { AIIcon, RefreshIcon } from '../icons'
+import { AIIcon, RefreshIcon, LightningIcon, CheckIcon, AlertIcon, ClockIcon } from '../icons'
+import { StatCard } from '../ui/StatCard'
+import { PanelDetachButton } from '../popout/PanelDetachButton'
+import type { DetachableViewProps } from '../popout/detachable-registry'
 
 const TOOL_INFO: Record<AIToolType, { name: string; accentClass: string }> = {
   'codex': { name: 'Codex', accentClass: 'text-green-400' },
@@ -130,7 +133,7 @@ const TaskListRow = memo(function TaskListRow({ task, isSelected, onSelect, exis
       data-state={progressState}
       className={`
         grid w-full grid-cols-[minmax(0,1.4fr)_110px_90px_120px] items-center gap-3
-        rounded-lg border px-3 py-2 text-left transition-colors
+        radius-md border px-3 py-2 text-left transition-colors
         ${isSelected
           ? 'border-accent/50 bg-surface-700'
           : 'border-surface-700 bg-surface-800 hover:border-surface-600'
@@ -177,7 +180,7 @@ const TaskDetailPanel = memo(function TaskDetailPanel({ task, onSaveAlias, exist
 
   return (
     <section
-      className="space-y-4 rounded-xl border border-surface-700 bg-surface-800 p-4"
+      className="space-y-4 radius-md border border-surface-700 bg-surface-800 p-4"
       data-testid="ai-task-detail-panel"
       data-task-id={task.id}
       data-view-kind="detail"
@@ -277,17 +280,17 @@ const TaskCard = memo(function TaskCard({ task, isSelected, onSelect, onSaveAlia
       data-progress-mode={derivedProgress.mode}
       data-progress-pct={derivedProgress.percentage ?? ''}
       className={`
-        group p-4 rounded-xl cursor-pointer transition-all duration-200
+        group monitor-card cursor-pointer border-l-3
         ${isSelected
-          ? 'bg-surface-700 border border-accent/50'
-          : 'bg-surface-800 border border-transparent hover:bg-surface-750 hover:border-surface-600'
+          ? 'border-l-accent bg-surface-750'
+          : 'border-l-blue-500'
         }
       `}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3">
           <div
-            className="flex h-10 w-10 items-center justify-center rounded-lg border border-surface-600 bg-surface-800"
+            className="flex h-10 w-10 items-center justify-center radius-sm border border-surface-600 bg-surface-800"
             title={toolInfo.name}
           >
             <AIToolBrandLogo toolType={task.toolType} title={toolInfo.name} size={20} />
@@ -434,10 +437,10 @@ const HistoryItem = memo(function HistoryItem({ entry }: HistoryItemProps) {
   }[entry.status] ?? 'text-text-muted'
 
   return (
-    <div className="p-3 bg-surface-800 rounded-lg border border-transparent hover:border-surface-600 transition-colors">
+    <div className="p-3 bg-surface-800 radius-md border border-transparent hover:border-surface-600 transition-colors">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-surface-600 bg-surface-800">
+          <div className="flex h-8 w-8 items-center justify-center radius-sm border border-surface-600 bg-surface-800">
             <AIToolBrandLogo toolType={entry.toolType} title={toolInfo.name} size={16} />
           </div>
           <div>
@@ -462,7 +465,7 @@ const HistoryItem = memo(function HistoryItem({ entry }: HistoryItemProps) {
   )
 })
 
-export function AITaskView() {
+export function AITaskView({ initialTarget }: DetachableViewProps = {}) {
   const {
     activeTasks,
     history,
@@ -473,6 +476,14 @@ export function AITaskView() {
     fetchStatistics,
     selectTask
   } = useAITasks()
+
+  // Hydrate the focused task from a detach target (ai-task-detail popout / drawer)
+  // once on mount, reusing the existing aiTaskStore selection.
+  useEffect(() => {
+    if (initialTarget?.kind !== 'taskId') return
+    if (initialTarget.value) selectTask(initialTarget.value)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const { aliases, fetchAliases, saveAlias } = useAliasStore()
   const { showToast } = useToast()
@@ -515,10 +526,11 @@ export function AITaskView() {
   }, [fetchActiveTasks, fetchHistory, fetchStatistics, fetchAliases])
 
   return (
-    <div className="h-full min-h-0 flex flex-col bg-surface-950">
+    <div className="h-full min-h-0 flex flex-col bg-surface-950" data-testid="ai-task-view">
       {/* Header */}
-      <div className="flex-shrink-0 px-4 py-3 border-b border-surface-700 bg-surface-900">
-        <div className="flex items-center justify-between">
+      <div className="flex-shrink-0 px-5 py-3 border-b-2 border-surface-700 bg-surface-900 relative">
+        <div className="absolute inset-0 deco-diagonal opacity-20 pointer-events-none" />
+        <div className="flex items-center justify-between relative z-10">
           <div className="flex items-center gap-3">
             <h2 className="text-base font-semibold text-text-primary">AI 任务追踪</h2>
             {activeTasks.length > 0 && (
@@ -531,7 +543,7 @@ export function AITaskView() {
 
           <div className="flex items-center gap-2">
             {/* Tabs */}
-            <div className="flex items-center bg-surface-800 rounded-lg p-0.5">
+            <div className="flex items-center bg-surface-800 radius-md p-0.5">
               <button
                 onClick={() => setViewTab('active')}
                 className={`px-3 py-1 text-xs rounded transition-colors ${
@@ -575,8 +587,46 @@ export function AITaskView() {
             >
               <RefreshIcon size={16} />
             </button>
+
+            <PanelDetachButton
+              surface="ai-task-detail"
+              target={selectedActiveTask ? `taskId:${selectedActiveTask.id}` : null}
+              testId="ai-task-detail-detach-popout"
+            />
           </div>
         </div>
+      </div>
+
+      {/* Hero Stats — overview cards aligned with Process/Port/Window hero rhythm */}
+      <div className="flex-shrink-0 px-5 py-3 stat-grid border-b border-surface-700/50 bg-surface-900/50">
+        <StatCard
+          compact
+          icon={<LightningIcon size={16} className="text-info" />}
+          label="活跃任务"
+          value={activeTasks.length}
+          color="info"
+        />
+        <StatCard
+          compact
+          icon={<CheckIcon size={16} className="text-success" />}
+          label="已完成"
+          value={statistics?.completedTasks ?? 0}
+          color="success"
+        />
+        <StatCard
+          compact
+          icon={<AlertIcon size={16} className="text-error" />}
+          label="错误"
+          value={statistics?.errorTasks ?? 0}
+          color={statistics && statistics.errorTasks > 0 ? 'error' : 'default'}
+        />
+        <StatCard
+          compact
+          icon={<ClockIcon size={16} className="text-steel" />}
+          label="平均时长"
+          value={statistics ? formatDurationCN(statistics.avgDuration) : '--'}
+          color="steel"
+        />
       </div>
 
       {/* Content */}
@@ -585,7 +635,7 @@ export function AITaskView() {
           <div className="space-y-3">
             {activeTasks.length > 0 && (
               <div
-                className="flex items-center justify-between rounded-lg border border-surface-700 bg-surface-900 px-3 py-2"
+                className="flex items-center justify-between radius-md border border-surface-700 bg-surface-900 px-3 py-2"
                 data-testid="ai-task-active-view-switcher"
               >
                 <span className="text-xs text-text-muted">活动任务视图</span>
@@ -644,8 +694,8 @@ export function AITaskView() {
             )}
 
             {activeTasks.length === 0 && (
-              <div className="text-center py-12 text-text-muted">
-                <span className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full border border-surface-700 bg-surface-800">
+              <div className="flex flex-col items-center justify-center py-16 text-center text-text-muted">
+                <span className="mb-3 inline-flex h-12 w-12 items-center justify-center radius-sm border-l-3 border-accent bg-surface-800">
                   <AIIcon className="text-text-muted" size={24} />
                 </span>
                 <p>没有检测到运行中的 AI 编程工具</p>
@@ -663,7 +713,7 @@ export function AITaskView() {
               <HistoryItem key={entry.id} entry={entry} />
             ))}
             {history.length === 0 && (
-              <div className="text-center py-12 text-text-muted">
+              <div className="text-center py-16 text-text-muted">
                 <p>暂无任务历史</p>
               </div>
             )}
@@ -673,35 +723,39 @@ export function AITaskView() {
         {viewTab === 'stats' && statistics && (
           <div className="space-y-4">
             {/* Overview Cards */}
-            <div className="grid grid-cols-4 gap-4">
-              <div className="p-4 bg-surface-800 rounded-xl">
-                <div className="text-2xl font-bold text-text-primary">
-                  {statistics.totalTasks}
-                </div>
-                <div className="text-xs text-text-muted mt-1">总任务数</div>
-              </div>
-              <div className="p-4 bg-surface-800 rounded-xl">
-                <div className="text-2xl font-bold text-success">
-                  {statistics.completedTasks}
-                </div>
-                <div className="text-xs text-text-muted mt-1">已完成</div>
-              </div>
-              <div className="p-4 bg-surface-800 rounded-xl">
-                <div className="text-2xl font-bold text-error">
-                  {statistics.errorTasks}
-                </div>
-                <div className="text-xs text-text-muted mt-1">错误</div>
-              </div>
-              <div className="p-4 bg-surface-800 rounded-xl">
-                <div className="text-2xl font-bold text-accent-300">
-                  {formatDurationCN(statistics.avgDuration)}
-                </div>
-                <div className="text-xs text-text-muted mt-1">平均时长</div>
-              </div>
+            <div className="stat-grid">
+              <StatCard
+                compact
+                icon={<AIIcon size={16} className="text-info" />}
+                label="总任务数"
+                value={statistics.totalTasks}
+                color="info"
+              />
+              <StatCard
+                compact
+                icon={<CheckIcon size={16} className="text-success" />}
+                label="已完成"
+                value={statistics.completedTasks}
+                color="success"
+              />
+              <StatCard
+                compact
+                icon={<AlertIcon size={16} className="text-error" />}
+                label="错误"
+                value={statistics.errorTasks}
+                color={statistics.errorTasks > 0 ? 'error' : 'default'}
+              />
+              <StatCard
+                compact
+                icon={<ClockIcon size={16} className="text-steel" />}
+                label="平均时长"
+                value={formatDurationCN(statistics.avgDuration)}
+                color="steel"
+              />
             </div>
 
             {/* By Tool */}
-            <div className="bg-surface-800 rounded-xl p-4">
+            <div className="bg-surface-800 radius-md p-4">
               <h3 className="text-sm font-semibold text-text-primary mb-3">按工具统计</h3>
               <div className="space-y-2">
                 {Object.entries(statistics.byTool)
@@ -714,7 +768,7 @@ export function AITaskView() {
                       : 0
                     return (
                       <div key={tool} className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-surface-600 bg-surface-800">
+                        <div className="flex h-8 w-8 items-center justify-center radius-sm border border-surface-600 bg-surface-800">
                           <AIToolBrandLogo toolType={tool as AIToolType} title={info.name} size={16} />
                         </div>
                         <span className={`text-sm w-24 ${info.accentClass}`}>{info.name}</span>
@@ -736,7 +790,7 @@ export function AITaskView() {
         )}
 
         {viewTab === 'stats' && !statistics && (
-          <div className="text-center py-12 text-text-muted">
+          <div className="text-center py-16 text-text-muted">
             <p>暂无统计数据</p>
           </div>
         )}

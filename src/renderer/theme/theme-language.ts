@@ -24,6 +24,11 @@ export const paletteNameSchema = z.enum([
   'light'
 ])
 
+// Localized palette display names live in `@shared/theme-display-names` so the
+// main process (statusAggregate) and the renderer share one source. Re-exported
+// here to keep existing renderer call sites importing from theme-language.
+export { PALETTE_DISPLAY_NAMES, getPaletteDisplayName } from '@shared/theme-display-names'
+
 export const densityLevelSchema = z.enum(['compact', 'standard', 'comfortable'])
 export const radiusFamilySchema = z.enum(['sharp', 'soft', 'round'])
 export const motionLevelSchema = z.enum(['reduced', 'balanced', 'expressive'])

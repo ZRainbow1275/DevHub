@@ -49,13 +49,14 @@ describe('R8.B StatusBar', () => {
     })
   })
 
-  it('renders seven-plus aggregate tiles and six badge types are data-addressable', () => {
+  it('renders seven-plus aggregate tiles and the theme tile drops the stale NEW badge', () => {
     render(<StatusBar />)
 
     expect(screen.getByTestId('statusbar')).toHaveAttribute('data-r8b-statusbar-tiles')
     expect(screen.getAllByTestId(/^status-tile-/).length).toBeGreaterThanOrEqual(7)
     expect(screen.getByTestId('status-tile-cmdk')).toHaveAttribute('data-status-badge-type', 'experimental')
-    expect(screen.getByTestId('status-tile-theme')).toHaveAttribute('data-status-badge-type', 'new')
+    // R2.3: the theme tile no longer carries the hard-coded decorative NEW badge.
+    expect(screen.getByTestId('status-tile-theme')).toHaveAttribute('data-status-badge-type', 'none')
   })
 
   it('dispatches the command palette event from the cmdk tile', () => {

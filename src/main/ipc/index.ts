@@ -25,6 +25,7 @@ import { BackgroundScannerManager } from '../services/BackgroundScannerManager'
 import { R8RuntimeService } from '../services/R8RuntimeService'
 import type { SharedMonitorRuntime } from './runtimeBundle'
 import { openProjectInTarget } from '../utils/projectLauncher'
+import { applyAutoStartSetting } from '../utils/autoStart'
 
 const projectScanner = new ProjectScanner()
 const projectWatcher = new ProjectWatcher()
@@ -458,6 +459,12 @@ export function registerIpcHandlers(
 
       appStore.updateSettings(sanitized)
       const updatedSettings = appStore.getSettings()
+      // Apply OS-level auto-start only when the advanced section actually carried
+      // the toggle, so unrelated settings updates do not touch the login item.
+      const advancedUpdate = sanitized.advanced as Record<string, unknown> | undefined
+      if (advancedUpdate && 'autoStartOnBoot' in advancedUpdate) {
+        applyAutoStartSetting(updatedSettings.advanced.autoStartOnBoot)
+      }
       try {
         r8RuntimeService?.broadcastPopoutThemeSettings(updatedSettings)
       } catch (error) {
@@ -727,6 +734,17 @@ export function registerIpcHandlers(
     'system:get-drives', RATE_LIMITS.SCAN,
     async () => {
       return projectScanner.getAvailableDrives()
+    }
+  ))
+
+  // App version / name banner. Lazily probes electron `app` so a missing or
+  // mocked runtime degrades to a stable 'unknown' instead of throwing.
+  ipcMain.handle('system:get-version', withRateLimit(
+    'system:get-version', RATE_LIMITS.SCAN,
+    async () => {
+      const version = typeof app.getVersion === 'function' ? app.getVersion() : 'unknown'
+      const name = typeof app.getName === 'function' ? app.getName() : 'DevHub'
+      return { name, version, electron: process.versions.electron ?? 'unknown' }
     }
   ))
 

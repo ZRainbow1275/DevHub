@@ -177,6 +177,7 @@ import {
   processViewModeSetRequestSchema,
   processViewModeSetResultSchema,
   popoutCreateRequestSchema,
+  panelPopoutSurfaceSchema,
   r8ContractOnlyResponseSchema,
   r8NotificationSchema,
   recordingExportAsciinemaRequestSchema,
@@ -330,6 +331,7 @@ import {
   type ZodValidatePayloadResponse
 } from '@shared/schemas/r8-runtime'
 import { THEME_DECORATION_KIND_VALUES, type ThemeOption } from '@shared/types'
+import { getPaletteDisplayName } from '@shared/theme-display-names'
 import { PORT_POPOUT_LIMITS, type AITask, type AIToolType } from '@shared/types-extended'
 import {
   R8_FEATURE_FLAGS,
@@ -600,7 +602,10 @@ interface ClosedPopoutRssReleaseResult {
   checkedAt: number
 }
 const BROWSER_POPOUT_LIMIT = 10
-const PANEL_POPOUT_SURFACES = new Set(['process', 'window', 'dashboard', 'topology', 'r8-ops'])
+// Derived from the Zod single source of truth so adding a detachable surface is a
+// one-line schema edit (process/window/dashboard/topology/r8-ops + the four
+// PR2 detail surfaces).
+const PANEL_POPOUT_SURFACES = new Set<string>(panelPopoutSurfaceSchema.options)
 const BROWSER_POPOUT_HEARTBEAT_TIMEOUT_MS = 30_000
 const BROWSER_POPOUT_IDLE_AUTO_CLOSE_MS = 60 * 60_000
 const BROWSER_POPOUT_RSS_MONITOR_INTERVAL_MS = 5_000
@@ -622,9 +627,15 @@ const POPOUT_PROD_CSP = [
   "base-uri 'self'",
   "form-action 'none'"
 ].join('; ')
+// The dev popout window loads the SAME Vite-served index.html as the main window.
+// Vite + @vitejs/plugin-react inject an INLINE React-refresh preamble script into
+// the served HTML; without 'unsafe-inline' in script-src that inline script is
+// blocked by CSP and the popout's React app never boots — the popout opens blank /
+// "nothing happens". Mirror the main window's dev CSP (src/main/index.ts) so the
+// detached panel boots identically. Prod CSP stays strict (no unsafe-inline/eval).
 const POPOUT_DEV_CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-eval'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
@@ -1833,6 +1844,7 @@ export class R8RuntimeService {
         })
         upsertPopoutRecord(record)
       } catch (error) {
+        console.error('[popout] createPopout failed loading window', { windowId, surface: request.surface, targetId: request.targetId, mode: request.mode }, error)
         this.popoutWindows.delete(windowId)
         this.store.set('popouts', this.listPopouts().filter(popout => popout.windowId !== windowId))
         if (!popoutWindow.isDestroyed()) popoutWindow.close()
@@ -2775,12 +2787,17 @@ export class R8RuntimeService {
     const current = this.getDrawerState().find(drawer => drawer.slot === request.slot)
     const contentId = request.contentId ?? current?.contentId
     if (!contentId) throw new Error('E_VALIDATION:drawer contentId is required')
-    const surface = contentId.includes('port') ? 'port' : contentId.includes('process') ? 'process' : contentId.includes('window') ? 'window' : 'monitor'
+    // Tear the drawer out into a REAL, visible BrowserWindow on the dedicated
+    // `drawer` surface — the same mechanism the panel detach button uses. The
+    // `contentId:<id>` target hydrates DrawerPopoutView inside the window so the
+    // content (e.g. notifications.top) actually renders. The previous behaviour
+    // created a `mode:'floating'` record with no visible host, so the drawer just
+    // vanished ("can't morph to popout").
     const popout = await this.createPopout({
-      surface,
-      targetId: contentId,
-      mode: 'floating',
-      route: '/monitor',
+      surface: 'drawer',
+      targetId: `contentId:${contentId}`,
+      mode: 'browserwindow',
+      route: '/panel/drawer',
       title: `Drawer ${contentId}`
     })
     this.setDrawerState({
@@ -2796,10 +2813,15 @@ export class R8RuntimeService {
     const popout = this.listPopouts().find(item => item.windowId === request.popoutId)
     if (!popout) throw new Error('E_NOT_FOUND:popout')
     this.closePopout({ windowId: request.popoutId })
+    // The drawer surface encodes its content as `contentId:<id>`; strip the prefix
+    // so recalling the popout re-opens the original drawer content (legacy records
+    // that stored a bare targetId still resolve to themselves).
+    const rawTarget = String(popout.targetId)
+    const contentId = rawTarget.startsWith('contentId:') ? rawTarget.slice('contentId:'.length) : rawTarget
     const drawerState = this.setDrawerState({
       slot: request.slot,
       open: true,
-      contentId: String(popout.targetId),
+      contentId,
       scope: 'global'
     })
     return drawerMorphFromPopoutResultSchema.parse({ drawerState })
@@ -3187,6 +3209,8 @@ export class R8RuntimeService {
       commandPaletteEntrySchema.parse({ id: 'monitor.port', title: 'Open port monitor', category: 'navigation', description: 'Show listening ports and conflict signals' }),
       commandPaletteEntrySchema.parse({ id: 'monitor.window', title: 'Open window manager', category: 'navigation', description: 'Show tracked windows and layouts' }),
       commandPaletteEntrySchema.parse({ id: 'monitor.ai-task', title: 'Open AI tasks', category: 'monitor', description: 'Review AI task progress and recording state' }),
+      commandPaletteEntrySchema.parse({ id: 'monitor.topology', title: 'Open topology tab', category: 'navigation', description: 'Switch the system monitor to its topology tab' }),
+      commandPaletteEntrySchema.parse({ id: 'monitor.r8-ops', title: 'Open R8 ops tab', category: 'monitor', description: 'Switch the system monitor to its R8 operations tab' }),
       commandPaletteEntrySchema.parse({ id: 'ai.tasks.open', title: 'Open AI task actions', category: 'ai-action', description: 'Jump to the live AI task monitor from the AI command scope', keywords: ['ai', 'assistant', 'codex', 'claude', 'gemini', 'monitor'], scope: 'monitor' }),
       commandPaletteEntrySchema.parse({ id: 'settings.open', title: 'Open settings', category: 'settings', description: 'Open the DevHub settings dialog', keywords: ['settings', 'preferences', 'advanced'] }),
       commandPaletteEntrySchema.parse({ id: 'popout.port', title: '打开端口 BrowserWindow Popout', category: 'port', description: 'Create a real BrowserWindow popout for a port by number', keywords: ['popout', 'browserwindow', 'floating', 'port'], handler: 'popout:create', scope: 'monitor' }),
@@ -3811,7 +3835,7 @@ export class R8RuntimeService {
       ? aiTasks.filter(task => ['running', 'waiting'].includes(nestedState(task))).length
       : numberField(summary, 'aiToolCount')
     const aiTasksFailed = aiTasks.filter(task => ['failed', 'error'].includes(nestedState(task))).length
-    const notificationsUnread = this.listNotifications().length
+    const notificationsUnread = this.countUnreadNotifications()
     const popoutsActive = this.listPopouts()
       .filter(popout => popout.mode === 'browserwindow' && this.isLivePopout(popout))
       .length
@@ -3841,7 +3865,7 @@ export class R8RuntimeService {
         badgeValue: `${cpuPct}%`,
         iconToken: 'MonitorIcon',
         tooltip: 'CPU 使用率',
-        clickAction: { type: 'open-drawer', args: { slot: 'statusbar', contentId: 'statusbar.aggregate' } }
+        clickAction: { type: 'open-drawer', args: { slot: 'bottom', contentId: 'observability' } }
       }),
       tile('mem', 'MEM', memPct, {
         tone: memPct >= 80 ? 'warning' : 'neutral',
@@ -3849,7 +3873,7 @@ export class R8RuntimeService {
         badgeValue: `${memPct}%`,
         iconToken: 'ProcessIcon',
         tooltip: '内存使用率',
-        clickAction: { type: 'open-drawer', args: { slot: 'statusbar', contentId: 'statusbar.aggregate' } }
+        clickAction: { type: 'open-drawer', args: { slot: 'bottom', contentId: 'observability' } }
       }),
       tile('net', 'NET', 0, {
         badgeType: 'experimental',
@@ -3911,10 +3935,8 @@ export class R8RuntimeService {
         tooltip: '当前浮卡数量',
         clickAction: { type: 'open-drawer', args: { slot: 'floating', contentId: 'popout.manager' } }
       }),
-      tile('theme', '主题', currentTheme, {
+      tile('theme', '主题', getPaletteDisplayName(currentTheme), {
         tone: 'accent',
-        badgeType: 'new',
-        badgeValue: 'NEW',
         iconToken: 'PaletteIcon',
         tooltip: '当前主题与装饰轴',
         clickAction: { type: 'open-drawer', args: { slot: 'right', contentId: 'settings' } }
@@ -4329,6 +4351,14 @@ export class R8RuntimeService {
   listNotifications(input: Partial<NotifyListRequest> = {}): DevhubNotification[] {
     this.notificationSystem.setMainWindow(this.getMainWindow())
     return this.notificationSystem.list(notifyListRequestSchema.parse(input))
+  }
+
+  // Single source of truth for the statusbar "通知" tile count. It MUST mirror
+  // exactly what the notifications drawer shows (`notify.list()` with the same
+  // default filter) so the badge and the drawer can never disagree — i.e. a
+  // non-zero count always corresponds to visible drawer content.
+  countUnreadNotifications(): number {
+    return this.listNotifications().length
   }
 
   dismissNotification(input: { notificationId?: string; id?: string }) {
@@ -9746,6 +9776,15 @@ export class R8RuntimeService {
   }
 
   private createBrowserPopout(record: PopoutRecord): BrowserWindow {
+    try {
+      return this.createBrowserPopoutWindow(record)
+    } catch (error) {
+      console.error('[popout] createBrowserPopout failed', { windowId: record.windowId, surface: record.surface, targetId: record.targetId }, error)
+      throw error
+    }
+  }
+
+  private createBrowserPopoutWindow(record: PopoutRecord): BrowserWindow {
     const isMonitorWindow = this.isMonitorWindow(record)
     const isMonitorToolPopout = this.isMonitorToolPopout(record)
     const isPanelPopout = this.isPanelPopout(record)
@@ -9792,7 +9831,27 @@ export class R8RuntimeService {
       if (url.startsWith('file://')) return
       event.preventDefault()
     })
-    window.once('ready-to-show', () => window.show())
+    // Robust show: in some environments (a dedicated session partition under the
+    // dev server, or a renderer that errors before first paint) `ready-to-show`
+    // never fires, which would leave the popout window permanently hidden — the
+    // "clicked detach, nothing happened" symptom. Show on EITHER `ready-to-show`
+    // or `did-finish-load`, guarded so we only show once.
+    let shown = false
+    const showOnce = () => {
+      if (shown) return
+      shown = true
+      if (window.isDestroyed()) return
+      window.show()
+      window.focus()
+    }
+    window.once('ready-to-show', () => showOnce())
+    window.webContents.once('did-finish-load', () => showOnce())
+    window.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+      console.error('[popout] did-fail-load', { windowId: record.windowId, surface: record.surface, errorCode, errorDescription, validatedURL })
+    })
+    window.webContents.on('render-process-gone', (_event, details) => {
+      console.error('[popout] render-process-gone', { windowId: record.windowId, surface: record.surface, reason: details.reason, exitCode: details.exitCode })
+    })
     return window
   }
 
@@ -9800,15 +9859,20 @@ export class R8RuntimeService {
     const isPanelPopout = this.isPanelPopout(record)
     const query: Record<string, string> = { r8Popout: record.windowId, surface: record.surface, target: String(record.targetId) }
     if (isPanelPopout) query.r8PanelPopout = record.surface
-    if (process.env.ELECTRON_RENDERER_URL) {
-      const entry = isPanelPopout ? 'index.html' : this.isMonitorToolPopout(record) ? 'monitor-popout.html' : this.isMonitorWindow(record) ? 'monitor.html' : 'port-popout.html'
-      const url = new URL(entry, `${process.env.ELECTRON_RENDERER_URL}/`)
-      for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value)
-      await window.loadURL(url.toString())
-      return
+    try {
+      if (process.env.ELECTRON_RENDERER_URL) {
+        const entry = isPanelPopout ? 'index.html' : this.isMonitorToolPopout(record) ? 'monitor-popout.html' : this.isMonitorWindow(record) ? 'monitor.html' : 'port-popout.html'
+        const url = new URL(entry, `${process.env.ELECTRON_RENDERER_URL}/`)
+        for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value)
+        await window.loadURL(url.toString())
+        return
+      }
+      const rendererEntry = isPanelPopout ? '../renderer/index.html' : this.isMonitorToolPopout(record) ? '../renderer/monitor-popout.html' : this.isMonitorWindow(record) ? '../renderer/monitor.html' : '../renderer/port-popout.html'
+      await window.loadFile(join(__dirname, rendererEntry), { query })
+    } catch (error) {
+      console.error('[popout] loadPopoutWindow failed', { windowId: record.windowId, surface: record.surface, targetId: record.targetId, dev: Boolean(process.env.ELECTRON_RENDERER_URL) }, error)
+      throw error
     }
-    const rendererEntry = isPanelPopout ? '../renderer/index.html' : this.isMonitorToolPopout(record) ? '../renderer/monitor-popout.html' : this.isMonitorWindow(record) ? '../renderer/monitor.html' : '../renderer/port-popout.html'
-    await window.loadFile(join(__dirname, rendererEntry), { query })
   }
 
   private isMonitorWindow(record: PopoutRecord): boolean {

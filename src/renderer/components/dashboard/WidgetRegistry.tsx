@@ -1,6 +1,8 @@
 import { lazy, Suspense, type ComponentType } from 'react'
 import type { DashboardGridItem, DashboardWidgetId } from '@shared/schemas/r8-runtime'
 import { EmptyWidgetState, WidgetFrame } from './WidgetFrame'
+import { PanelDetachButton } from '../popout/PanelDetachButton'
+import { serializeDetachTarget } from '../popout/detachable-registry'
 
 export interface DashboardWidgetProps {
   item: DashboardGridItem
@@ -40,11 +42,14 @@ export const WIDGET_REGISTRY: Record<DashboardWidgetId, WidgetEntry | undefined>
 export function WidgetHost({
   item,
   onConfigure,
-  onMorphToDrawer
+  onMorphToDrawer,
+  detachable = true
 }: {
   item: DashboardGridItem
   onConfigure: (widgetInstanceId: string) => void
   onMorphToDrawer: (widgetInstanceId: string, slot: 'right' | 'bottom') => void
+  /** Hide the detach affordance when this host is itself rendered inside a popout. */
+  detachable?: boolean
 }) {
   const entry = WIDGET_REGISTRY[item.widgetId]
   if (!entry) {
@@ -58,7 +63,16 @@ export function WidgetHost({
   return (
     <WidgetFrame
       action={
-        <div className="flex shrink-0 flex-wrap items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1.5">
+          {detachable ? (
+            <PanelDetachButton
+              surface="dashboard-widget"
+              target={serializeDetachTarget({ kind: 'widgetId', value: item.i })}
+              testId={`widget-detach-${item.i}`}
+              className="rounded border border-accent/40 px-2 py-1 text-[11px] whitespace-nowrap text-accent hover:border-accent hover:text-accent"
+              label="悬浮"
+            />
+          ) : null}
           <button
             className="rounded border border-surface-600 px-2 py-1 text-[11px] whitespace-nowrap text-text-muted hover:border-accent hover:text-accent"
             data-testid={`widget-configure-${item.i}`}

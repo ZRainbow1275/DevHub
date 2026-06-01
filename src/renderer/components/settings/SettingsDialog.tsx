@@ -256,11 +256,15 @@ function isStatusbarTileId(value: string): value is StatusTile['id'] {
 interface SettingsDialogProps {
   isOpen: boolean
   onClose: () => void
+  // When true, render the settings body inline (no full-screen modal overlay or
+  // backdrop) so it can be hosted inside a drawer slot. The close affordance
+  // simply closes the host (drawer) instead of dismissing a modal.
+  embedded?: boolean
 }
 
 // ============ Main Component ============
 
-export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
+export function SettingsDialog({ isOpen, onClose, embedded = false }: SettingsDialogProps) {
   const { t } = useT()
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [activeCategory, setActiveCategory] = useState<SettingsCategory>('appearance')
@@ -430,9 +434,13 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
     input.click()
   }, [emitSettingsChange, setTheme])
 
-  // Keyboard navigation
+  // Keyboard navigation. Only the full-screen modal variant installs the global
+  // Escape / arrow-key handler; the embedded (drawer) variant is non-modal and
+  // shares the document with the rest of the app, so it must not hijack Escape
+  // or arrow keys from other surfaces. The drawer header/footer close affordance
+  // and explicit category clicks cover navigation there.
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen || embedded) return
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose()
@@ -452,146 +460,168 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, onClose, activeCategory])
+  }, [isOpen, embedded, onClose, activeCategory])
 
   if (!isOpen) return null
 
-  return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center animate-fade-in" style={{ zIndex: 'var(--z-tier-modal, 3000)' }}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="settings-dialog-title"
-        className="bg-surface-900 border-2 border-surface-600 w-full max-w-4xl mx-4 shadow-elevated flex flex-col relative radius-md h-[min(85vh,56rem)] max-h-[92vh] min-h-[480px]"
-      >
-        {/* Diagonal decoration */}
-        <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none radius-md" />
+  const dialog = (
+    <div
+      role={embedded ? undefined : 'dialog'}
+      aria-modal={embedded ? undefined : true}
+      aria-labelledby="settings-dialog-title"
+      className={
+        embedded
+          ? 'bg-surface-900 w-full h-full shadow-none flex flex-col relative radius-sm'
+          : 'bg-surface-900 border-2 border-surface-600 w-full max-w-4xl mx-4 shadow-elevated flex flex-col relative radius-md h-[min(85vh,56rem)] max-h-[92vh] min-h-[480px]'
+      }
+    >
+      {/* Diagonal decoration */}
+      <div className="absolute inset-0 deco-diagonal opacity-10 pointer-events-none radius-md" />
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b-2 border-surface-700 relative z-10 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 bg-gold/20 flex items-center justify-center border-l-3 border-gold radius-sm"
-            >
-              <SettingsIcon size={20} className="text-gold" />
-            </div>
-            <div>
-              <h2
-                id="settings-dialog-title"
-                className="text-gold font-bold uppercase tracking-wider text-sm"
-                style={{
-                  fontFamily: 'var(--font-display)',
-                  transform: 'rotate(-1deg)',
-                  transformOrigin: 'left center',
-                }}
-              >
-                {t('settings.title', 'Application Settings')}
-              </h2>
-              <p className="text-xs text-text-muted">{t('settings.eyebrow', 'APPLICATION SETTINGS')}</p>
-            </div>
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b-2 border-surface-700 relative z-10 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div
+            className="w-10 h-10 bg-gold/20 flex items-center justify-center border-l-3 border-gold radius-sm"
+          >
+            <SettingsIcon size={20} className="text-gold" />
           </div>
-          <button
-            aria-label={t('settings.close', 'Close settings')}
-            onClick={onClose}
-            className="btn-icon-sm text-text-muted hover:text-text-primary"
-          >
-            <CloseIcon size={20} />
-          </button>
+          <div>
+            <h2
+              id="settings-dialog-title"
+              className="text-gold font-bold uppercase tracking-wider text-sm"
+              style={{
+                fontFamily: 'var(--font-display)',
+                transform: 'rotate(-1deg)',
+                transformOrigin: 'left center',
+              }}
+            >
+              {t('settings.title', 'Application Settings')}
+            </h2>
+            <p className="text-xs text-text-muted">{t('settings.eyebrow', 'APPLICATION SETTINGS')}</p>
+          </div>
         </div>
+        <button
+          aria-label={t('settings.close', 'Close settings')}
+          onClick={onClose}
+          className="btn-icon-sm text-text-muted hover:text-text-primary"
+        >
+          <CloseIcon size={20} />
+        </button>
+      </div>
 
-        {/* Body: Left Nav + Right Panel */}
-        <div className="flex flex-1 overflow-hidden relative z-10">
-          {/* Left Navigation */}
-          <nav
-            ref={navRef}
-            className="w-44 lg:w-52 xl:w-56 flex-shrink-0 border-r-2 border-surface-700 overflow-y-auto py-2"
-            aria-label={t('settings.nav', 'Settings categories')}
-          >
-            {CATEGORIES.map((cat) => {
-              const Icon = cat.icon
-              const isActive = activeCategory === cat.key
-              return (
-                <button
-                  key={cat.key}
-                  onClick={() => setActiveCategory(cat.key)}
-                  className={`nav-item ${isActive ? 'nav-item-active' : ''}`}
-                  aria-current={isActive ? 'page' : undefined}
-                >
-                  <Icon size={16} className="flex-shrink-0" />
+      {/* Body: Left Nav + Right Panel. Embedded variant stacks the nav above the
+          panel so it fits a narrow drawer; modal variant keeps the side rail. */}
+      <div className={`flex flex-1 overflow-hidden relative z-10 ${embedded ? 'flex-col' : ''}`}>
+        {/* Navigation */}
+        <nav
+          ref={navRef}
+          className={
+            embedded
+              ? 'flex flex-row gap-1 overflow-x-auto border-b-2 border-surface-700 px-2 py-2 flex-shrink-0'
+              : 'w-44 lg:w-52 xl:w-56 flex-shrink-0 border-r-2 border-surface-700 overflow-y-auto py-2'
+          }
+          aria-label={t('settings.nav', 'Settings categories')}
+        >
+          {CATEGORIES.map((cat) => {
+            const Icon = cat.icon
+            const isActive = activeCategory === cat.key
+            return (
+              <button
+                key={cat.key}
+                onClick={() => setActiveCategory(cat.key)}
+                className={`nav-item ${isActive ? 'nav-item-active' : ''} ${embedded ? 'flex-shrink-0' : ''}`}
+                aria-current={isActive ? 'page' : undefined}
+                title={embedded ? cat.label : undefined}
+              >
+                <Icon size={16} className="flex-shrink-0" />
+                {embedded ? (
+                  <span className="text-xs font-medium truncate">{cat.label}</span>
+                ) : (
                   <div className="flex flex-col min-w-0 flex-1">
                     <span className="text-sm font-medium truncate">{cat.label}</span>
                     <span className="text-[10px] text-text-muted tracking-wider truncate">{cat.sublabel}</span>
                   </div>
-                </button>
-              )
-            })}
-          </nav>
+                )}
+              </button>
+            )
+          })}
+        </nav>
 
-          {/* Right Panel */}
-          <div className="flex-1 overflow-y-auto p-6">
-            {!settings ? (
-              <div className="text-text-muted text-center py-8">{t('settings.loading', 'Loading...')}</div>
-            ) : (
-              <>
-                {activeCategory === 'appearance' && (
-                  <AppearancePanel
-                    settings={settings}
-                    onSave={handleSave}
-                    theme={theme}
-                    themeState={themeState}
-                    setTheme={setTheme}
-                    setDensity={setDensity}
-                    setRadiusFamily={setRadiusFamily}
-                    setMotionLevel={setMotionLevel}
-                    applyPreset={applyPreset}
-                    statusbarConfig={statusbarConfig}
-                    statusbarConfigError={statusbarConfigError}
-                    onStatusbarConfigChange={saveStatusbarConfig}
-                    onStatusbarConfigReset={resetStatusbarConfig}
-                  />
-                )}
-                {activeCategory === 'scan' && (
-                  <ScanPanel settings={settings} onSave={handleSave} availableDrives={availableDrives} />
-                )}
-                {activeCategory === 'process' && (
-                  <ProcessPanel settings={settings} onSave={handleSave} />
-                )}
-                {activeCategory === 'notification' && (
-                  <NotificationPanel settings={settings} onSave={handleSave} />
-                )}
-                {activeCategory === 'window' && (
-                  <WindowPanel settings={settings} onSave={handleSave} />
-                )}
-                {activeCategory === 'signal' && (
-                  <SignalWeightPanel />
-                )}
-                {activeCategory === 'data' && (
-                  <DataOwnershipPanel />
-                )}
-                {activeCategory === 'advanced' && (
-                  <AdvancedPanel
-                    settings={settings}
-                    onSave={handleSave}
-                    onExport={handleExportSettings}
-                    onImport={handleImportSettings}
-                    onReset={handleResetDefaults}
-                  />
-                )}
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-end gap-3 px-6 py-3 border-t-2 border-surface-700 relative z-10 flex-shrink-0">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-text-secondary hover:bg-surface-800 transition-colors radius-sm"
-          >
-            关闭
-          </button>
+        {/* Active Panel */}
+        <div className={`flex-1 overflow-y-auto ${embedded ? 'p-4' : 'p-6'}`}>
+          {!settings ? (
+            <div className="text-text-muted text-center py-8">{t('settings.loading', 'Loading...')}</div>
+          ) : (
+            <>
+              {activeCategory === 'appearance' && (
+                <AppearancePanel
+                  settings={settings}
+                  onSave={handleSave}
+                  theme={theme}
+                  themeState={themeState}
+                  setTheme={setTheme}
+                  setDensity={setDensity}
+                  setRadiusFamily={setRadiusFamily}
+                  setMotionLevel={setMotionLevel}
+                  applyPreset={applyPreset}
+                  statusbarConfig={statusbarConfig}
+                  statusbarConfigError={statusbarConfigError}
+                  onStatusbarConfigChange={saveStatusbarConfig}
+                  onStatusbarConfigReset={resetStatusbarConfig}
+                />
+              )}
+              {activeCategory === 'scan' && (
+                <ScanPanel settings={settings} onSave={handleSave} availableDrives={availableDrives} />
+              )}
+              {activeCategory === 'process' && (
+                <ProcessPanel settings={settings} onSave={handleSave} />
+              )}
+              {activeCategory === 'notification' && (
+                <NotificationPanel settings={settings} onSave={handleSave} />
+              )}
+              {activeCategory === 'window' && (
+                <WindowPanel settings={settings} onSave={handleSave} />
+              )}
+              {activeCategory === 'signal' && (
+                <SignalWeightPanel />
+              )}
+              {activeCategory === 'data' && (
+                <DataOwnershipPanel />
+              )}
+              {activeCategory === 'advanced' && (
+                <AdvancedPanel
+                  settings={settings}
+                  onSave={handleSave}
+                  onExport={handleExportSettings}
+                  onImport={handleImportSettings}
+                  onReset={handleResetDefaults}
+                />
+              )}
+            </>
+          )}
         </div>
       </div>
+
+      {/* Footer */}
+      <div className="flex justify-end gap-3 px-6 py-3 border-t-2 border-surface-700 relative z-10 flex-shrink-0">
+        <button
+          onClick={onClose}
+          className="px-4 py-2 text-text-secondary hover:bg-surface-800 transition-colors radius-sm"
+        >
+          关闭
+        </button>
+      </div>
+    </div>
+  )
+
+  if (embedded) {
+    return dialog
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center animate-fade-in" style={{ zIndex: 'var(--z-tier-modal, 3000)' }}>
+      {dialog}
     </div>
   )
 }
@@ -2902,10 +2932,9 @@ function AdvancedPanel({
       <section>
         <SectionHeader title="启动与托盘" />
         <div className="space-y-2">
-          {/* TODO: autoStartOnBoot 后端实际未实现，UI 保留但标注说明 */}
           <SettingToggle
             label="开机自启动"
-            description="(暂未实现) 登录系统时自动启动 DevHub"
+            description="登录系统时自动启动 DevHub"
             checked={adv.autoStartOnBoot}
             onChange={(v) => updateAdvanced({ autoStartOnBoot: v })}
           />
